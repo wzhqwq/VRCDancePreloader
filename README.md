@@ -1,0 +1,2 @@
+# PyPyDancePreloader
+通过监听PyPyDance在VRChat日志中打印的曲目队列提前下载即将播放的歌曲，从而在降低下载延迟的同时，不占用太多磁盘缓存
