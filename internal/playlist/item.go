@@ -8,17 +8,10 @@ import (
 	"sync"
 
 	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
-)
-
-type Status string
-
-const (
-	Downloading Status = "downloading"
-	Downloaded  Status = "downloaded"
-	Failed      Status = "failed"
-	Pending     Status = "pending"
-	Playing     Status = "playing"
-	Ended       Status = "ended"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/constants"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/gui"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
 )
 
 type PlayItem struct {
@@ -31,7 +24,7 @@ type PlayItem struct {
 	Size     int
 	Duration int
 
-	Status   Status
+	Status   constants.Status
 	Progress float64
 
 	DownloadWaitingChs      []chan struct{}
@@ -39,12 +32,19 @@ type PlayItem struct {
 
 	PlayWaitingChs      []chan struct{}
 	PlayWaitingChsMutex sync.Mutex
+
+	Index int
+	Dirty bool
 }
 
 func NewPlayItem(title, group, adder, url string, id, duration int) *PlayItem {
+	status := constants.Pending
 	if id >= 0 {
 		url = fmt.Sprintf("http://jd.pypy.moe/api/v1/videos/%d.mp4", id)
+	} else {
+		status = constants.Ignored
 	}
+
 	return &PlayItem{
 		ID:       id,
 		Title:    title,
@@ -52,7 +52,7 @@ func NewPlayItem(title, group, adder, url string, id, duration int) *PlayItem {
 		Adder:    adder,
 		URL:      url,
 		Duration: duration,
-		Status:   Pending,
+		Status:   status,
 
 		DownloadWaitingChs: make([]chan struct{}, 0),
 		PlayWaitingChs:     make([]chan struct{}, 0),
@@ -60,19 +60,25 @@ func NewPlayItem(title, group, adder, url string, id, duration int) *PlayItem {
 }
 
 func (i *PlayItem) UpdateProgress(progress float64) {
+	if i.Progress == progress {
+		return
+	}
 	i.Progress = progress
+	i.Dirty = true
 }
-func (i *PlayItem) UpdateStatus(status Status) {
+func (i *PlayItem) UpdateStatus(status constants.Status) {
 	changed := i.Status != status
 	i.Status = status
 
 	if changed {
+		i.Dirty = true
+
 		switch status {
-		case Ended:
+		case constants.Ended:
 			i.Detach()
-		case Failed:
+		case constants.Failed:
 			i.Detach()
-		case Playing:
+		case constants.Playing:
 			i.PlayWaitingChsMutex.Lock()
 			for _, ch := range i.PlayWaitingChs {
 				close(ch)
@@ -82,34 +88,54 @@ func (i *PlayItem) UpdateStatus(status Status) {
 		}
 	}
 }
+func (i *PlayItem) UpdateIndex(index int) {
+	if i.Index == index {
+		return
+	}
+	i.Index = index
+	i.Dirty = true
+	gui.UpdatePlayItemCh <- i
+}
+
+func (i *PlayItem) GetRendered() *types.PlayItemRendered {
+	return &types.PlayItemRendered{
+		ID:       i.ID,
+		Title:    i.Title,
+		Group:    i.Group,
+		Adder:    i.Adder,
+		Status:   i18n.T("status_" + string(i.Status)),
+		Progress: i.Progress,
+		Index:    i.Index,
+	}
+}
 
 func (i *PlayItem) Download() {
-	if i.Status != Pending {
+	if i.Status != constants.Pending {
 		return
 	}
 
 	if i.URL == "" {
-		i.UpdateStatus(Failed)
+		i.UpdateStatus(constants.Failed)
 		return
 	}
 
 	file := cache.RequestCache(i.ID)
 	if file == nil {
-		i.UpdateStatus(Failed)
+		i.UpdateStatus(constants.Failed)
 		return
 	}
 	stat, statErr := file.Stat()
 	if statErr == nil && stat.Size() > 0 {
-		i.UpdateStatus(Downloaded)
+		i.UpdateStatus(constants.Downloaded)
 		i.Size = int(stat.Size())
 		return
 	} else {
-		i.UpdateStatus(Downloading)
+		i.UpdateStatus(constants.Downloading)
 	}
 
 	resp, err := http.Get(i.URL)
 	if err != nil {
-		i.UpdateStatus(Failed)
+		i.UpdateStatus(constants.Failed)
 		return
 	}
 	defer resp.Body.Close()
@@ -120,22 +146,22 @@ func (i *PlayItem) Download() {
 
 	// file already downloaded
 	if statErr == nil && stat.Size() == int64(i.Size) {
-		i.UpdateStatus(Downloaded)
+		i.UpdateStatus(constants.Downloaded)
 		return
 	}
 
 	// download the file, and keep track of progress
 	err = ProgressiveDownload(resp.Body, file, i)
 	if err != nil {
-		i.UpdateStatus(Failed)
-		log.Println("Failed to download", err)
+		i.UpdateStatus(constants.Failed)
+		log.Println("constants.Failed to download", err)
 		return
 	}
 
 	cache.FlushCache(i.ID)
-	i.UpdateStatus(Downloaded)
+	i.UpdateStatus(constants.Downloaded)
 
-	log.Println("Downloaded", i.Title)
+	log.Println("constants.Downloaded", i.Title)
 
 	// notify waiting readers
 	i.DownloadWaitingChsMutex.Lock()
@@ -154,16 +180,16 @@ type nopCloserRS struct {
 func (nopCloserRS) Close() error { return nil }
 
 func (i *PlayItem) ToReader() (io.ReadSeekCloser, error) {
-	if i.Status == Downloading {
+	if i.Status == constants.Downloading {
 		ch := make(chan struct{})
 		i.DownloadWaitingChsMutex.Lock()
 		i.DownloadWaitingChs = append(i.DownloadWaitingChs, ch)
 		i.DownloadWaitingChsMutex.Unlock()
 		<-ch
 	}
-	if i.Status == Pending {
+	if i.Status == constants.Pending {
 		i.Download()
-		if i.Status == Failed {
+		if i.Status == constants.Failed {
 			return nil, fmt.Errorf("failed to download %s", i.Title)
 		}
 	}
@@ -182,7 +208,7 @@ func (i *PlayItem) ToReader() (io.ReadSeekCloser, error) {
 }
 
 func (i *PlayItem) WaitForPlay() {
-	if i.Status == Playing {
+	if i.Status == constants.Playing {
 		return
 	}
 	ch := make(chan struct{})

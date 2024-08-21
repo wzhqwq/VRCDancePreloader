@@ -1,0 +1,14 @@
+- key: status_downloading
+  default: "Downloading"
+- key: status_downloaded
+  default: "Downloaded"
+- key: status_failed
+  default: "Failed"
+- key: status_pending
+  default: "Pending"
+- key: status_playing
+  default: "Playing"
+- key: status_ended
+  default: "Ended"
+- key: status_ignored
+  default: "Ignored"

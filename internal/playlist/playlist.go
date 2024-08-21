@@ -8,6 +8,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/samber/lo"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/constants"
 )
 
 var currentPlaylist []*PlayItem
@@ -15,7 +16,7 @@ var currentPlaylist []*PlayItem
 func Init() {
 	err := loadSongs()
 	if err != nil {
-		log.Println("Failed to load songs:", err)
+		log.Println("constants.Failed to load songs:", err)
 		panic(err)
 	}
 	go pw.Render()
@@ -55,13 +56,13 @@ func PreloadPlaylist() {
 		if scanned >= 4 {
 			break
 		}
-		if item.Status == Ended || item.Status == Playing {
+		if item.Status == constants.Ended || item.Status == constants.Playing {
 			continue
 		}
-		if item.Status == Failed {
-			item.UpdateStatus(Pending)
+		if item.Status == constants.Failed {
+			item.UpdateStatus(constants.Pending)
 		}
-		if item.Status == Pending && item.ID >= 0 {
+		if item.Status == constants.Pending {
 			go func() {
 				defer CriticalUpdate()
 
@@ -118,13 +119,13 @@ func PlaySong(id int) (int, io.ReadSeekCloser) {
 		if item.ID == id {
 			reader, err := item.ToReader()
 			if err != nil {
-				log.Println("Failed to copy song from cache:", err)
+				log.Println("constants.Failed to copy song from cache:", err)
 				return 0, nil
 			}
-			item.UpdateStatus(Playing)
+			item.UpdateStatus(constants.Playing)
 			for i := 0; i < index; i++ {
-				if currentPlaylist[i].Status == Playing {
-					currentPlaylist[i].UpdateStatus(Ended)
+				if currentPlaylist[i].Status == constants.Playing {
+					currentPlaylist[i].UpdateStatus(constants.Ended)
 				}
 			}
 			return item.Size, reader
@@ -135,7 +136,7 @@ func PlaySong(id int) (int, io.ReadSeekCloser) {
 	if item := createFromSongList(id); item != nil {
 		reader, err := item.ToReader()
 		if err != nil {
-			log.Println("Failed to copy song from cache:", err)
+			log.Println("constants.Failed to copy song from cache:", err)
 			return 0, nil
 		}
 		return item.Size, reader

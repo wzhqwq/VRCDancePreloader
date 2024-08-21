@@ -1,0 +1,14 @@
+- key: status_downloading
+  default: "下载中"
+- key: status_downloaded
+  default: "下载完成"
+- key: status_failed
+  default: "处理失败"
+- key: status_pending
+  default: "等待下载"
+- key: status_playing
+  default: "正在播放"
+- key: status_ended
+  default: "已结束"
+- key: status_ignored
+  default: "已忽略"

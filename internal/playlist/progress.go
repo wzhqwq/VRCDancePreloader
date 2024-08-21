@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/jedib0t/go-pretty/v6/progress"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/constants"
 )
 
 var pw progress.Writer = progress.NewWriter()
@@ -27,7 +28,7 @@ func (wc *WriteCounter) Write(p []byte) (int, error) {
 }
 
 func ProgressiveDownload(body io.ReadCloser, file *os.File, item *PlayItem) error {
-	item.UpdateStatus(Downloading)
+	item.UpdateStatus(constants.Downloading)
 	pt := &progress.Tracker{
 		Message: fmt.Sprintf("Downloading %s", item.Title),
 		Total:   int64(item.Size),
