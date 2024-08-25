@@ -6,15 +6,16 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var fileMap = make(map[int]*os.File)
+var mutexMap = make(map[int]*sync.Mutex)
+
+var mapMutex = &sync.Mutex{}
+
 var cachePath string
 var maxSize int
-
-func fillInCache() {
-	// fill in cache from cachePath
-}
 
 func InitCache(path string, max int) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -23,14 +24,21 @@ func InitCache(path string, max int) {
 
 	cachePath = path
 	maxSize = max
-	// fillInCache()
+
+	go pw.Render()
 }
 
-func RequestCache(id int) *os.File {
-	// check if file exists in cache
+func StopCache() {
+}
+
+func OpenCache(id int) *os.File {
+	mapMutex.Lock()
+	defer mapMutex.Unlock()
+
 	if file, ok := fileMap[id]; ok {
 		return file
 	}
+
 	file, err := os.OpenFile(fmt.Sprintf("%s/%d.mp4", cachePath, id), os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		return nil
@@ -39,21 +47,32 @@ func RequestCache(id int) *os.File {
 	fileMap[id] = file
 	return file
 }
+func closeCache(id int) {
+	mapMutex.Lock()
+	defer mapMutex.Unlock()
 
-func DetachCache(id int) {
 	if file, ok := fileMap[id]; ok {
 		file.Close()
 		delete(fileMap, id)
+		delete(mutexMap, id)
 	}
+}
+
+func DetachCache(id int) {
+	closeCache(id)
 	CleanUpCache()
 }
 
-func FlushCache(id int) *os.File {
+func RemoveCache(id int) {
+	mapMutex.Lock()
+	defer mapMutex.Unlock()
+
 	if file, ok := fileMap[id]; ok {
 		file.Close()
 		delete(fileMap, id)
+		delete(mutexMap, id)
+		os.Remove(fmt.Sprintf("%s/%d.mp4", cachePath, id))
 	}
-	return RequestCache(id)
 }
 
 func CleanUpCache() {

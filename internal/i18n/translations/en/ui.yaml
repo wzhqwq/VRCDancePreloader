@@ -1,0 +1,27 @@
+- Key: placeholder_unknown_adder
+  Default: "Unknown"
+- Key: placeholder_custom_song
+  Default: "Custom Song"
+- Key: placeholder_unknown_size
+  Default: "Unknown Size"
+
+- Key: key_id
+  Default: "ID"
+- Key: key_title
+  Default: "Title"
+- Key: key_adder
+  Default: "Requester"
+- Key: key_group
+  Default: "Group"
+- Key: key_url
+  Default: "URL"
+- Key: key_status
+  Default: "Status"
+
+- Key: btn_playlist
+  Default: "Room Playlist"
+- Key: btn_history
+  Default: "Play History"
+
+- Key: wrapper_adder
+  Default: "Requested by {{.Adder}}"

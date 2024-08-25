@@ -22,6 +22,8 @@ var args struct {
 	CacheDiskMax int    `arg:"-c,--cache" default:"100" help:"maximum disk cache size(MB)"`
 	VrChatDir    string `arg:"-d,--vrchat-dir" default:"" help:"VRChat directory"`
 	GuiEnabled   bool   `arg:"-g,--gui" default:"true" help:"enable GUI"`
+	PreloadMax   int    `arg:"--max-preload" default:"4" help:"maximum preload count"`
+	DownloadMax  int    `arg:"--max-download" default:"2" help:"maximum parallel download count"`
 }
 
 func main() {
@@ -45,7 +47,7 @@ func main() {
 
 	i18n.Init()
 	cache.InitCache("./cache", args.CacheDiskMax)
-	playlist.Init()
+	playlist.Init(args.PreloadMax, args.DownloadMax)
 
 	logDir := args.VrChatDir
 	if logDir == "" {
@@ -60,7 +62,7 @@ func main() {
 
 	go proxy.Start(args.Port)
 	if args.GuiEnabled {
-		gui.MainWindow()
+		gui.InitGui()
 		gui.MainLoop(osSignalCh)
 	}
 	for {

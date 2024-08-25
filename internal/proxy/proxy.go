@@ -3,6 +3,7 @@ package proxy
 import (
 	"bufio"
 	"context"
+	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -33,9 +34,9 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 		}
 
 		log.Println("Intercepted video request:", id)
-		length, reader := playlist.PlaySong(id)
-		if length == 0 {
-			http.Error(w, "Not found", http.StatusNotFound)
+		reader, err := playlist.PlaySong(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
 			return true
 		}
 
@@ -109,9 +110,11 @@ func Start(port string) {
 
 	proxy.OnRequest(goproxy.ReqHostIs("jd.pypy.moe:80")).HijackConnect(handleConnect)
 
-	runningServer = &http.Server{Addr: ":" + port, Handler: proxy}
+	runningServer = &http.Server{Addr: "127.0.0.1:" + port, Handler: proxy}
 	log.Println("Starting proxy server on port", port)
-	log.Fatal(runningServer.ListenAndServe())
+	if err := runningServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalf("HTTP server error: %v", err)
+	}
 }
 
 func Stop() {

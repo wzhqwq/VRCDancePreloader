@@ -58,7 +58,7 @@ func diffQueues(old, new []QueueItem) {
 	if lengths[len(old)][len(new)] == 0 {
 		// if the lcs is zero, then we consider it as a new queue
 		// clear the current queue
-		playlist.RestartPlaylist(lo.Map(new, func(item QueueItem, _ int) *playlist.PlayItem {
+		playlist.RestartPlaylist(lo.Map(new, func(item QueueItem, index int) *playlist.PlayItem {
 			return playlist.NewPlayItem(
 				item.VideoName,
 				item.Group,
@@ -66,6 +66,7 @@ func diffQueues(old, new []QueueItem) {
 				item.URL,
 				item.SongNum,
 				item.Length,
+				index,
 			)
 		}))
 		return
@@ -85,6 +86,7 @@ func diffQueues(old, new []QueueItem) {
 				new[y].URL,
 				new[y].SongNum,
 				new[y].Length,
+				-1,
 			)
 			if x == len(old) {
 				playlist.InsertItem(newItem, -1)

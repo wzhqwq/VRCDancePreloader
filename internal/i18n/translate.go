@@ -9,10 +9,10 @@ import (
 )
 
 //go:embed translations/en/*.yaml
-var enTranslations embed.FS
+var enTranslationsFS embed.FS
 
 //go:embed translations/zh_CN/*.yaml
-var zhCNTranslations embed.FS
+var zhCNTranslationsFS embed.FS
 
 var i18n *goeasyi18n.I18n
 var lang string
@@ -26,20 +26,20 @@ func Init() {
 	}
 	log.Println("Detected language:", lang)
 
-	i18n := goeasyi18n.NewI18n()
+	i18n = goeasyi18n.NewI18n()
 	// Load the translations
-	enTranslations, err := goeasyi18n.LoadFromYamlFS(enTranslations)
+	enTranslations, err := goeasyi18n.LoadFromYamlFS(enTranslationsFS, "translations/en/*.yaml")
 	if err != nil {
 		panic(err)
 	}
-	zhCNTranslations, err := goeasyi18n.LoadFromYamlFS(zhCNTranslations)
+	zhCNTranslations, err := goeasyi18n.LoadFromYamlFS(zhCNTranslationsFS, "translations/zh_CN/*.yaml")
 	if err != nil {
 		panic(err)
 	}
 
 	// Register the translations
 	i18n.AddLanguage("en", enTranslations)
-	i18n.AddLanguage("zh_CN", zhCNTranslations)
+	i18n.AddLanguage("zh-CN", zhCNTranslations)
 }
 
 func T(key string, options ...goeasyi18n.Options) string {

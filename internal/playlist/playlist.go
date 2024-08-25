@@ -1,25 +1,34 @@
 package playlist
 
 import (
+	"errors"
 	"io"
 	"log"
-	"os"
 	"slices"
+	"sync"
 
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/samber/lo"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/constants"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/gui"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
 )
 
 var currentPlaylist []*PlayItem
+var mutatingMutex = &sync.Mutex{}
 
-func Init() {
+var maxPreload int
+var maxParallelDownload int
+
+func Init(maxPreload_, maxParallelDownload_ int) {
 	err := loadSongs()
 	if err != nil {
-		log.Println("constants.Failed to load songs:", err)
+		log.Println("Failed to load songs:", err)
 		panic(err)
 	}
-	go pw.Render()
+
+	maxPreload = maxPreload_
+	maxParallelDownload = maxParallelDownload_
+
+	go keepCriticalUpdate()
 }
 
 func Stop() {
@@ -33,94 +42,86 @@ func GetSongsResponse() []byte {
 	return savedResponse
 }
 
-func CriticalUpdate() {
-	// for _, item := range currentPlaylist {
-	// 	log.Println(item.ID, item.Title, item.Status)
-	// }
-	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"ID", "Title", "Status"})
-	t.AppendRows(lo.Map(currentPlaylist, func(item *PlayItem, _ int) table.Row {
-		if item.ID >= 0 {
-			return table.Row{item.ID, item.Title, item.Status}
-		}
-		return table.Row{"Custom", item.Title, item.Status}
-	}))
-	t.Render()
-	PreloadPlaylist()
-}
-
-func PreloadPlaylist() {
-	scanned := 0
-	for _, item := range currentPlaylist {
-		if scanned >= 4 {
-			break
-		}
-		if item.Status == constants.Ended || item.Status == constants.Playing {
-			continue
-		}
-		if item.Status == constants.Failed {
-			item.UpdateStatus(constants.Pending)
-		}
-		if item.Status == constants.Pending {
-			go func() {
-				defer CriticalUpdate()
-
-				item.Download()
-				item.WaitForPlay()
-			}()
-		}
-		scanned++
-	}
-}
-
 func RestartPlaylist(items []*PlayItem) {
-	defer CriticalUpdate()
+	mutatingMutex.Lock()
+	defer mutatingMutex.Unlock()
 
 	currentPlaylist = items
+	for _, item := range currentPlaylist {
+		gui.AddPlayItem(item)
+	}
+	CriticalUpdate()
 	log.Println("Restarted playlist")
 }
 
 func RemoveItem(id int) {
-	defer CriticalUpdate()
+	mutatingMutex.Lock()
+	defer mutatingMutex.Unlock()
 
-	currentPlaylist = lo.Filter(currentPlaylist, func(item *PlayItem, _ int) bool {
-		return item.ID != id
-	})
-	log.Println("Removed item", id)
+	removed := false
+	for i, item := range currentPlaylist {
+		if item.ID == id {
+			currentPlaylist = slices.Delete(currentPlaylist, i, i+1)
+			log.Println("Removed item", item.Title)
+			removed = true
+			gui.RemovePlayItem(item)
+		}
+		if removed {
+			item.UpdateIndex(item.Index - 1)
+		}
+	}
+
+	if removed {
+		CriticalUpdate()
+	}
 }
 
 func InsertItem(item *PlayItem, beforeId int) {
-	defer CriticalUpdate()
+	mutatingMutex.Lock()
+	defer mutatingMutex.Unlock()
 
 	if beforeId == -1 {
+		item.Index = len(currentPlaylist)
 		currentPlaylist = append(currentPlaylist, item)
 		log.Println("Appended item", item.Title)
-		return
+
+		gui.AddPlayItem(item)
+		CriticalUpdate()
 	}
-	for i, v := range currentPlaylist {
-		if v.ID == beforeId {
-			currentPlaylist = slices.Insert(currentPlaylist, i, item)
-			log.Println("Inserted item", item.Title, "before", beforeId)
-			return
+	beforeIndex := -1
+	for i, item := range currentPlaylist {
+		if item.ID == beforeId {
+			beforeIndex = i
+			item.Index = i
 		}
+		if beforeIndex != -1 {
+			item.UpdateIndex(item.Index + 1)
+		}
+	}
+
+	if beforeIndex != -1 {
+		currentPlaylist = slices.Insert(currentPlaylist, beforeIndex, item)
+		log.Println("Inserted item", item.Title, "before", beforeId)
+
+		gui.AddPlayItem(item)
+		CriticalUpdate()
 	}
 }
 
 func createFromSongList(id int) *PlayItem {
 	if song, ok := songMap[id]; ok {
-		return NewPlayItem(song.Name, songGroups[song.Group], "", "", song.ID, song.End)
+		return NewPlayItem(song.Name, songGroups[song.Group], i18n.T("placeholder_unknown_adder"), "", song.ID, song.End, -1)
 	}
 	return nil
 }
 
-func PlaySong(id int) (int, io.ReadSeekCloser) {
+func PlaySong(id int) (io.ReadSeekCloser, error) {
+	mutatingMutex.Lock()
 	for index, item := range currentPlaylist {
 		if item.ID == id {
 			reader, err := item.ToReader()
 			if err != nil {
-				log.Println("constants.Failed to copy song from cache:", err)
-				return 0, nil
+				return nil, err
 			}
 			item.UpdateStatus(constants.Playing)
 			for i := 0; i < index; i++ {
@@ -128,19 +129,19 @@ func PlaySong(id int) (int, io.ReadSeekCloser) {
 					currentPlaylist[i].UpdateStatus(constants.Ended)
 				}
 			}
-			return item.Size, reader
+			return reader, nil
 		}
 	}
+	mutatingMutex.Unlock()
 
-	// create temperate
-	if item := createFromSongList(id); item != nil {
-		reader, err := item.ToReader()
+	// it won't be rendered, but it will be downloaded
+	if tempItem := createFromSongList(id); tempItem != nil {
+		reader, err := tempItem.ToReader()
 		if err != nil {
-			log.Println("constants.Failed to copy song from cache:", err)
-			return 0, nil
+			return nil, err
 		}
-		return item.Size, reader
+		return reader, nil
 	}
 
-	return 0, nil
+	return nil, errors.New("Song not found")
 }

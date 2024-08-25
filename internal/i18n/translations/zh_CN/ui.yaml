@@ -1,0 +1,27 @@
+- Key: placeholder_unknown_adder
+  Default: "未知"
+- Key: placeholder_custom_song
+  Default: "自选歌曲"
+- Key: placeholder_unknown_size
+  Default: "未知大小"
+
+- Key: key_id
+  Default: "ID"
+- Key: key_title
+  Default: "标题"
+- Key: key_adder
+  Default: "点歌人"
+- Key: key_group
+  Default: "类别"
+- Key: key_url
+  Default: "URL"
+- Key: key_status
+  Default: "状态"
+
+- Key: btn_playlist
+  Default: "房间播放列表"
+- Key: btn_history
+  Default: "播放历史"
+
+- Key: wrapper_adder
+  Default: "由{{.Adder}}点歌"

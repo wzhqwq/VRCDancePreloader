@@ -1,14 +1,16 @@
-- key: status_downloading
-  default: "Downloading"
-- key: status_downloaded
-  default: "Downloaded"
-- key: status_failed
-  default: "Failed"
-- key: status_pending
-  default: "Pending"
-- key: status_playing
-  default: "Playing"
-- key: status_ended
-  default: "Ended"
-- key: status_ignored
-  default: "Ignored"
+- Key: status_requesting
+  Default: "Requesting Video"
+- Key: status_downloading
+  Default: "Downloading Video"
+- Key: status_downloaded
+  Default: "Video Downloaded"
+- Key: status_failed
+  Default: "Preload Failed"
+- Key: status_pending
+  Default: "Preload Pending"
+- Key: status_playing
+  Default: "Video Playing"
+- Key: status_ended
+  Default: "Video Ended"
+- Key: status_ignored
+  Default: "URL Ignored"

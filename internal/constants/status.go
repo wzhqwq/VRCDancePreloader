@@ -3,6 +3,7 @@ package constants
 type Status string
 
 const (
+	Requesting  Status = "requesting"
 	Downloading Status = "downloading"
 	Downloaded  Status = "downloaded"
 	Failed      Status = "failed"
