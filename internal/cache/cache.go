@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"fmt"
 	"os"
 	"sort"
 	"strconv"
@@ -39,13 +38,12 @@ func OpenCache(id int) *os.File {
 		return file
 	}
 
-	file, err := os.OpenFile(fmt.Sprintf("%s/%d.mp4", cachePath, id), os.O_RDWR|os.O_CREATE, 0666)
-	if err != nil {
-		return nil
+	if file := openCacheFS(id); file != nil {
+		fileMap[id] = file
+		return file
 	}
 
-	fileMap[id] = file
-	return file
+	return nil
 }
 func closeCache(id int) {
 	mapMutex.Lock()
@@ -71,7 +69,7 @@ func RemoveCache(id int) {
 		file.Close()
 		delete(fileMap, id)
 		delete(mutexMap, id)
-		os.Remove(fmt.Sprintf("%s/%d.mp4", cachePath, id))
+		os.Remove(getCacheFileName(id))
 	}
 }
 
