@@ -9,20 +9,19 @@ import (
 )
 
 var fileMap = make(map[int]*os.File)
-var mutexMap = make(map[int]*sync.Mutex)
-
-var mapMutex = &sync.Mutex{}
+var fileMapMutex = &sync.Mutex{}
 
 var cachePath string
 var maxSize int
 
-func InitCache(path string, max int) {
+func InitCache(path string, max int, maxParallel int) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		os.Mkdir(path, 0777)
 	}
 
 	cachePath = path
 	maxSize = max
+	downloadCh = make(chan int, maxParallel)
 
 	go pw.Render()
 }
@@ -31,8 +30,8 @@ func StopCache() {
 }
 
 func OpenCache(id int) *os.File {
-	mapMutex.Lock()
-	defer mapMutex.Unlock()
+	fileMapMutex.Lock()
+	defer fileMapMutex.Unlock()
 
 	if file, ok := fileMap[id]; ok {
 		return file
@@ -46,13 +45,12 @@ func OpenCache(id int) *os.File {
 	return nil
 }
 func closeCache(id int) {
-	mapMutex.Lock()
-	defer mapMutex.Unlock()
+	fileMapMutex.Lock()
+	defer fileMapMutex.Unlock()
 
 	if file, ok := fileMap[id]; ok {
 		file.Close()
 		delete(fileMap, id)
-		delete(mutexMap, id)
 	}
 }
 
@@ -62,13 +60,12 @@ func DetachCache(id int) {
 }
 
 func RemoveCache(id int) {
-	mapMutex.Lock()
-	defer mapMutex.Unlock()
+	fileMapMutex.Lock()
+	defer fileMapMutex.Unlock()
 
 	if file, ok := fileMap[id]; ok {
 		file.Close()
 		delete(fileMap, id)
-		delete(mutexMap, id)
 		os.Remove(getCacheFileName(id))
 	}
 }

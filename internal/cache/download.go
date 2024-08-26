@@ -12,40 +12,47 @@ import (
 	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
 )
 
-var pw progress.Writer = progress.NewWriter()
-
-type WriteCounter struct {
-	Total   int64
-	item    types.PlayItemI
-	tracker *progress.Tracker
+type DownloadState struct {
+	Downloaded int64
+	Item       types.PlayItemI
+	Tracker    *progress.Tracker
+	Mutex      sync.Mutex
 }
 
-func (wc *WriteCounter) Write(p []byte) (int, error) {
+var pw progress.Writer = progress.NewWriter()
+
+var downloadStateMap = make(map[int]*DownloadState)
+var stateMapMutex = sync.Mutex{}
+
+var downloadCh chan int
+var prioritizedID int
+
+func (ds *DownloadState) Write(p []byte) (int, error) {
+	if ds.Item.IsDisposed() {
+		return 0, io.EOF
+	}
+
 	n := len(p)
-	wc.Total += int64(n)
-	wc.item.UpdateProgress(wc.Total)
-	wc.tracker.Increment(int64(n))
+	ds.Downloaded += int64(n)
+	ds.Item.UpdateProgress(ds.Downloaded)
+	ds.Tracker.Increment(int64(n))
 	return n, nil
 }
 
-func progressiveDownload(body io.ReadCloser, file *os.File, item types.PlayItemI) error {
-	item.UpdateStatus(constants.Downloading)
-	i := item.GetInfo()
-	pt := &progress.Tracker{
-		Message: fmt.Sprintf("Downloading %s", i.Title),
-		Total:   int64(i.Size),
-		Units:   progress.UnitsBytes,
-	}
-	pw.AppendTracker(pt)
-	counter := &WriteCounter{item: item, tracker: pt}
+func progressiveDownload(body io.ReadCloser, file *os.File, ds *DownloadState) error {
+	ds.Item.UpdateStatus(constants.Downloading)
 
+	downloadCh <- ds.Item.GetInfo().ID
+	defer func() {
+		<-downloadCh
+	}()
 	// Write the body to file, while showing progress of the download
-	_, err := io.Copy(file, io.TeeReader(body, counter))
+	_, err := io.Copy(file, io.TeeReader(body, ds))
 	if err != nil {
-		pt.MarkAsErrored()
+		ds.Tracker.MarkAsErrored()
 		return err
 	}
-	pt.MarkAsDone()
+	ds.Tracker.MarkAsDone()
 
 	return nil
 }
@@ -53,17 +60,31 @@ func progressiveDownload(body io.ReadCloser, file *os.File, item types.PlayItemI
 func Download(item types.PlayItemI) error {
 	i := item.GetInfo()
 	// get mutex for the id
-	mapMutex.Lock()
-	mutex, ok := mutexMap[i.ID]
+	stateMapMutex.Lock()
+	ds, ok := downloadStateMap[i.ID]
 	if !ok {
-		mutex = &sync.Mutex{}
-		mutexMap[i.ID] = mutex
+		pt := &progress.Tracker{
+			Message: fmt.Sprintf("Downloading %s", i.Title),
+			Total:   int64(i.Size),
+			Units:   progress.UnitsBytes,
+		}
+		pw.AppendTracker(pt)
+		defer func() {
+			pt.MarkAsDone()
+		}()
+
+		ds = &DownloadState{
+			Item:    item,
+			Tracker: pt,
+			Mutex:   sync.Mutex{},
+		}
+		downloadStateMap[i.ID] = ds
 	}
-	mapMutex.Unlock()
+	stateMapMutex.Unlock()
 
 	// lock the mutex to force single download
-	mutex.Lock()
-	defer mutex.Unlock()
+	ds.Mutex.Lock()
+	defer ds.Mutex.Unlock()
 
 	// check if file is already downloaded
 	if size := getCacheSize(i.ID); size > 0 {
@@ -93,7 +114,7 @@ func Download(item types.PlayItemI) error {
 	item.UpdateSize(resp.ContentLength)
 
 	// download
-	err = progressiveDownload(resp.Body, tempFile, item)
+	err = progressiveDownload(resp.Body, tempFile, ds)
 	if err != nil {
 		return err
 	}
@@ -115,5 +136,11 @@ func Download(item types.PlayItemI) error {
 
 	item.UpdateProgress(i.Size)
 
+	delete(downloadStateMap, i.ID)
+
 	return nil
+}
+
+func Prioritize(id int) {
+	prioritizedID = id
 }

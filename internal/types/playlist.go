@@ -12,10 +12,16 @@ type PlayItemI interface {
 	UpdateStatus(status constants.Status)
 	UpdateIndex(index int)
 	UpdateSize(size int64)
+
 	Download()
 	ToReader() (io.ReadSeekCloser, error)
+
 	Render() *PlayItemRendered
 	GetInfo() *PlayItemInfo
+	IsDisposed() bool
+
+	Detach()
+	Dispose()
 }
 
 type PlayItemInfo struct {

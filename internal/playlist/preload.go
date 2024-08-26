@@ -41,20 +41,15 @@ func PrintPlaylist() {
 
 func PreloadPlaylist() {
 	scanned := 0
-	downloading := 0
 	for _, item := range currentPlaylist {
-		if scanned >= maxPreload || downloading >= maxParallelDownload {
+		if scanned >= maxPreload {
 			break
 		}
 		switch item.Status {
-		case constants.Playing:
-		case constants.Ended:
+		case constants.Playing, constants.Ended:
 			continue
 		case constants.Pending:
-			downloading++
 			go item.Download()
-		case constants.Downloading:
-			downloading++
 		case constants.Failed:
 			item.UpdateStatus(constants.Pending)
 		}

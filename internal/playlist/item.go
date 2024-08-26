@@ -38,6 +38,7 @@ type PlayItem struct {
 	downloadingMutex sync.Mutex
 
 	dirty       bool
+	disposed    bool
 	updateMutex sync.Mutex
 }
 
@@ -120,10 +121,13 @@ func (i *PlayItem) UpdateSize(size int64) {
 	i.updateGui()
 }
 func (i *PlayItem) updateGui() {
-	if !i.dirty {
+	if !i.dirty && !i.disposed {
 		gui.UpdatePlayItem(i)
 		i.dirty = true
 	}
+}
+func (i *PlayItem) IsDisposed() bool {
+	return i.disposed
 }
 
 func (i *PlayItem) Render() *types.PlayItemRendered {
@@ -237,4 +241,8 @@ func (i *PlayItem) ToReader() (io.ReadSeekCloser, error) {
 
 func (i *PlayItem) Detach() {
 	cache.DetachCache(i.ID)
+}
+func (i *PlayItem) Dispose() {
+	i.disposed = true
+	i.Detach()
 }
