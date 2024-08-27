@@ -12,7 +12,6 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/eduardolat/goeasyi18n"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
 )
@@ -34,8 +33,7 @@ type PlayItemGui struct {
 
 func NewPlayItemGui(rendered *types.PlayItemRendered) *PlayItemGui {
 	// Title
-	title := canvas.NewText(rendered.Title, theme.Color(theme.ColorNameForeground))
-	title.Alignment = fyne.TextAlignLeading
+	title := NewEllipseText(rendered.Title, theme.Color(theme.ColorNameForeground))
 	title.TextSize = 16
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
@@ -53,10 +51,7 @@ func NewPlayItemGui(rendered *types.PlayItemRendered) *PlayItemGui {
 	group.TextSize = 12
 
 	// Adder
-	adderText := i18n.T("wrapper_adder", goeasyi18n.Options{
-		Data: map[string]any{"Adder": rendered.Adder},
-	})
-	adder := canvas.NewText(adderText, theme.Color(theme.ColorNamePlaceHolder))
+	adder := canvas.NewText(rendered.Adder, theme.Color(theme.ColorNamePlaceHolder))
 	adder.TextSize = 12
 
 	// Status
@@ -80,10 +75,12 @@ func NewPlayItemGui(rendered *types.PlayItemRendered) *PlayItemGui {
 	playBar := NewPlayBar()
 
 	cardContent := container.NewVBox(
-		container.NewHBox(
-			title,
-			layout.NewSpacer(),
+		container.NewBorder(
+			nil,
+			nil,
+			nil,
 			id,
+			title,
 		),
 		container.NewBorder(
 			nil,
@@ -105,7 +102,9 @@ func NewPlayItemGui(rendered *types.PlayItemRendered) *PlayItemGui {
 					adder,
 				),
 				nil,
-				playBar,
+				container.NewPadded(
+					playBar,
+				),
 			),
 		),
 	)

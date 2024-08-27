@@ -2,6 +2,7 @@ package playlist
 
 import (
 	"fyne.io/fyne/v2/theme"
+	"github.com/eduardolat/goeasyi18n"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/constants"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
@@ -46,23 +47,35 @@ func (i *PlayItem) Render() *types.PlayItemRendered {
 		color = theme.ColorNamePlaceHolder
 	}
 
+	adder := i18n.T("wrapper_adder", goeasyi18n.Options{
+		Data: map[string]any{"Adder": i.Adder},
+	})
+	if i.Adder == "" {
+		adder = i18n.T("placeholder_unknown_adder")
+	}
+	if i.Adder == "Random" {
+		adder = i18n.T("placeholder_random_play")
+	}
+
 	i.dirty = false
 	return &types.PlayItemRendered{
 		ID:    i.ID,
 		Title: i.Title,
 		Group: i.Group,
-		Adder: i.Adder,
+		Adder: adder,
 
-		Status:           statusText,
-		StatusColor:      color,
-		Size:             sizeText,
+		Status:      statusText,
+		StatusColor: color,
+		Size:        sizeText,
+		Index:       i.Index,
+
 		DownloadProgress: i.Progress,
 		PlayProgress:     i.Now / float64(i.Duration),
 		PlayTimeText:     utils.PrettyTime(i.Now) + "/" + utils.PrettyTime(float64(i.Duration)),
 		ErrorText:        errorText,
-		Index:            i.Index,
-		IsDownloading:    i.PreloadStatus == constants.Downloading,
-		IsPlaying:        i.PlayStatus == constants.Playing,
+
+		IsDownloading: i.PreloadStatus == constants.Downloading,
+		IsPlaying:     i.PlayStatus == constants.Playing,
 	}
 }
 func (i *PlayItem) GetInfo() *types.PlayItemInfo {

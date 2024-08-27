@@ -171,6 +171,12 @@ func FindSongToPlay(id int) *PlayItem {
 	mutatingMutex.Lock()
 	defer mutatingMutex.Unlock()
 
+	for _, item := range currentPlaylist {
+		if item.ID == id {
+			return item
+		}
+	}
+
 	if item := createFromSongList(id); item != nil {
 		if temporaryItem != nil {
 			temporaryItem.Dispose()
