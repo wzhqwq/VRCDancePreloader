@@ -58,7 +58,11 @@ func main() {
 		}
 		logDir = filepath.Join(roaming, "..", "LocalLow", "VRChat", "VRChat")
 	}
-	watcher.Start(logDir)
+	err := watcher.Start(logDir)
+	if err != nil {
+		log.Println("Failed to start watcher:", err)
+		return
+	}
 
 	go proxy.Start(args.Port)
 	if args.GuiEnabled {

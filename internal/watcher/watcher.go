@@ -1,23 +1,25 @@
 package watcher
 
 import (
+	"errors"
 	"log"
 	"os"
 
 	"github.com/fsnotify/fsnotify"
 )
 
-var logWatcher *fsnotify.Watcher
 var dirWatcher *fsnotify.Watcher
 var seekStart int64
+var nowWatching string
+var logBase string
 
-func sniffActiveLog(logBase string) (string, error) {
+func sniffActiveLog() error {
 	// vrchat log format: output_log_2024-08-15_21-22-15.txt
 	// find the latest log
 	var latestFile os.FileInfo
 	logDir, err := os.ReadDir(logBase)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	for _, log := range logDir {
@@ -36,12 +38,13 @@ func sniffActiveLog(logBase string) (string, error) {
 	}
 
 	if latestFile == nil {
-		return "", nil
+		return errors.New("no active log found")
 	}
 
+	nowWatching = latestFile.Name()
 	log.Println("Found active log:", latestFile.Name())
 
-	return logBase + "/" + latestFile.Name(), nil
+	return nil
 }
 
 func processFile(path string) error {
@@ -55,53 +58,7 @@ func processFile(path string) error {
 	return err
 }
 
-func watchLog(logPath string) error {
-	// watch the log file for changes
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return err
-	}
-	defer watcher.Close()
-
-	err = watcher.Add(logPath)
-	if err != nil {
-		return err
-	}
-
-	logWatcher = watcher
-	defer func() {
-		logWatcher = nil
-	}()
-
-	log.Println("Watching log:", logPath)
-
-	seekStart = 0
-	if processFile(logPath) != nil {
-		return err
-	}
-	for {
-		select {
-		case event, ok := <-watcher.Events:
-			if !ok {
-				return nil
-			}
-
-			if event.Op&fsnotify.Write == fsnotify.Write {
-				if processFile(logPath) != nil {
-					return err
-				}
-			}
-		case err, ok := <-watcher.Errors:
-			if !ok {
-				return nil
-			}
-
-			return err
-		}
-	}
-}
-
-func watchDir(logBase string) error {
+func watch() error {
 	// watch the log directory for new log files
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -128,22 +85,25 @@ func watchDir(logBase string) error {
 				return nil
 			}
 
+			path := event.Name
+			info, err := os.Stat(path)
+			if err != nil || info.IsDir() || info.Name()[:10] != "output_log" {
+				continue
+			}
 			if event.Op&fsnotify.Create == fsnotify.Create {
-				path := event.Name
-				info, err := os.Stat(path)
-				if err != nil || info.IsDir() || info.Name()[:10] != "output_log" {
+				nowWatching = info.Name()
+				seekStart = 0
+				if processFile(path) != nil {
+					return err
+				}
+			}
+			if event.Op&fsnotify.Write == fsnotify.Write {
+				if nowWatching != info.Name() {
 					continue
 				}
-
-				if logWatcher != nil {
-					logWatcher.Close()
+				if processFile(path) != nil {
+					return err
 				}
-				go func() {
-					err = watchLog(path)
-					if err != nil {
-						log.Println(err)
-					}
-				}()
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
@@ -155,22 +115,20 @@ func watchDir(logBase string) error {
 	}
 }
 
-func Start(logBase string) error {
+func Start(base string) error {
+	logBase = base
 	// start watching the log directory
-	logPath, err := sniffActiveLog(logBase)
+	err := sniffActiveLog()
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		err = watchLog(logPath)
-		if err != nil {
-			log.Println(err)
-		}
-	}()
+	if processFile(logBase+"/"+nowWatching) != nil {
+		return err
+	}
 
 	go func() {
-		err = watchDir(logBase)
+		err = watch()
 		if err != nil {
 			log.Println(err)
 		}
@@ -181,10 +139,6 @@ func Start(logBase string) error {
 
 func Stop() {
 	// stop watching the log directory
-	if logWatcher != nil {
-		logWatcher.Close()
-	}
-
 	if dirWatcher != nil {
 		dirWatcher.Close()
 	}
