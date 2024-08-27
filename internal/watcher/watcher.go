@@ -4,22 +4,22 @@ import (
 	"errors"
 	"log"
 	"os"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
 
 var dirWatcher *fsnotify.Watcher
-var seekStart int64
-var nowWatching string
+var watchingFile *os.File
 var logBase string
 
-func sniffActiveLog() error {
+func sniffActiveLog() (string, error) {
 	// vrchat log format: output_log_2024-08-15_21-22-15.txt
 	// find the latest log
 	var latestFile os.FileInfo
 	logDir, err := os.ReadDir(logBase)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	for _, log := range logDir {
@@ -38,24 +38,33 @@ func sniffActiveLog() error {
 	}
 
 	if latestFile == nil {
-		return errors.New("no active log found")
+		return "", errors.New("no active log found")
 	}
 
-	nowWatching = latestFile.Name()
 	log.Println("Found active log:", latestFile.Name())
 
-	return nil
+	return logBase + "/" + latestFile.Name(), nil
 }
 
-func processFile(path string) error {
+func keepTrackUntilClose(path string) error {
 	file, err := os.Open(path)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	watchingFile = file
 
-	seekStart, err = ReadNewLines(file, seekStart)
-	return err
+	go func() {
+		seekStart := int64(0)
+		for {
+			seekStart, err = ReadNewLines(file, seekStart)
+			if err != nil && err.Error() != "EOF" {
+				return
+			}
+			<-time.After(1 * time.Second)
+		}
+	}()
+
+	return nil
 }
 
 func watch() error {
@@ -91,19 +100,10 @@ func watch() error {
 				continue
 			}
 			if event.Op&fsnotify.Create == fsnotify.Create {
-				nowWatching = info.Name()
-				seekStart = 0
-				if processFile(path) != nil {
-					return err
+				if watchingFile != nil {
+					watchingFile.Close()
 				}
-			}
-			if event.Op&fsnotify.Write == fsnotify.Write {
-				if nowWatching != info.Name() {
-					continue
-				}
-				if processFile(path) != nil {
-					return err
-				}
+				keepTrackUntilClose(path)
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
@@ -118,13 +118,11 @@ func watch() error {
 func Start(base string) error {
 	logBase = base
 	// start watching the log directory
-	err := sniffActiveLog()
-	if err != nil {
-		return err
-	}
-
-	if processFile(logBase+"/"+nowWatching) != nil {
-		return err
+	path, err := sniffActiveLog()
+	if err == nil {
+		if keepTrackUntilClose(path) != nil {
+			return err
+		}
 	}
 
 	go func() {
@@ -141,5 +139,8 @@ func Stop() {
 	// stop watching the log directory
 	if dirWatcher != nil {
 		dirWatcher.Close()
+	}
+	if watchingFile != nil {
+		watchingFile.Close()
 	}
 }
