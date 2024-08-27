@@ -1,6 +1,8 @@
 package gui
 
 import (
+	"time"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
@@ -44,20 +46,29 @@ func (p *PlayListGui) drawFromChannels() {
 		case items := <-addPlayItemCh:
 			for _, item := range items {
 				r := item.Render()
-				p.items[r.ID] = NewPlayItemGui(r)
-				p.content.Add(p.items[r.ID].Card)
+				g := NewPlayItemGui(r)
+				p.items[r.ID] = g
+				p.content.Add(g.Card)
+				p.content.Refresh()
+				g.SlideIn()
+			}
+		case items := <-removePlayItemCh:
+			for _, item := range items {
+				i := item.GetInfo()
+				if g, ok := p.items[i.ID]; ok {
+					delete(p.items, i.ID)
+					go func() {
+						g.SlideOut()
+						<-time.After(300 * time.Millisecond)
+						p.content.Remove(g.Card)
+					}()
+				}
 			}
 		case item := <-updatePlayItemCh:
 			if g, ok := p.items[item.GetInfo().ID]; ok {
 				g.Update(item.Render())
 			} else {
 				updatePlayItemCh <- item
-			}
-		case items := <-removePlayItemCh:
-			for _, item := range items {
-				i := item.GetInfo()
-				p.content.Remove(p.items[i.ID].Card)
-				delete(p.items, i.ID)
 			}
 		}
 	}

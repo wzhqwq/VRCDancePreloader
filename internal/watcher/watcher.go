@@ -44,6 +44,17 @@ func sniffActiveLog(logBase string) (string, error) {
 	return logBase + "/" + latestFile.Name(), nil
 }
 
+func processFile(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	seekStart, err = ReadNewLines(file, seekStart)
+	return err
+}
+
 func watchLog(logPath string) error {
 	// watch the log file for changes
 	watcher, err := fsnotify.NewWatcher()
@@ -65,13 +76,7 @@ func watchLog(logPath string) error {
 	log.Println("Watching log:", logPath)
 
 	seekStart = 0
-	file, err := os.Open(logPath)
-	if err != nil {
-		return err
-	}
-
-	seekStart, err = ReadNewLines(file, seekStart)
-	if err != nil {
+	if processFile(logPath) != nil {
 		return err
 	}
 	for {
@@ -82,15 +87,7 @@ func watchLog(logPath string) error {
 			}
 
 			if event.Op&fsnotify.Write == fsnotify.Write {
-				// read the new lines from the log
-				// process the new lines
-				file, err := os.Open(logPath)
-				if err != nil {
-					return err
-				}
-
-				seekStart, err = ReadNewLines(file, seekStart)
-				if err != nil {
+				if processFile(logPath) != nil {
 					return err
 				}
 			}

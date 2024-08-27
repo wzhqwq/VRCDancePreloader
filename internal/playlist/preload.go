@@ -32,9 +32,9 @@ func PrintPlaylist() {
 	t.AppendHeader(table.Row{i18n.T("key_id"), i18n.T("key_title"), i18n.T("key_status")})
 	t.AppendRows(lo.Map(currentPlaylist, func(item *PlayItem, _ int) table.Row {
 		if item.ID >= 0 {
-			return table.Row{item.ID, item.Title, i18n.T("status_" + string(item.Status))}
+			return table.Row{item.ID, item.Title, i18n.T("status_" + string(item.PreloadStatus))}
 		}
-		return table.Row{i18n.T("placeholder_custom_song"), item.Title, item.Status}
+		return table.Row{i18n.T("placeholder_custom_song"), item.Title, item.PreloadStatus}
 	}))
 	t.Render()
 }
@@ -45,14 +45,14 @@ func PreloadPlaylist() {
 		if scanned >= maxPreload {
 			break
 		}
-		switch item.Status {
-		case constants.Playing, constants.Ended:
-			continue
+		switch item.PreloadStatus {
 		case constants.Pending:
 			go item.Download()
 		case constants.Failed:
-			item.UpdateStatus(constants.Pending)
+			item.UpdatePreloadStatus(constants.Pending)
 		}
-		scanned++
+		if item.PlayStatus == constants.Pending {
+			scanned++
+		}
 	}
 }

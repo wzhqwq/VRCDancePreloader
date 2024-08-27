@@ -9,12 +9,14 @@ import (
 
 type PlayItemI interface {
 	UpdateProgress(downloaded int64)
-	UpdateStatus(status constants.Status)
+	UpdatePreloadStatus(status constants.Status)
+	UpdatePlayStatus(status constants.Status)
 	UpdateIndex(index int)
 	UpdateSize(size int64)
 
 	Download()
 	ToReader() (io.ReadSeekCloser, error)
+	Play(now float64)
 
 	Render() *PlayItemRendered
 	GetInfo() *PlayItemInfo
@@ -41,11 +43,14 @@ type PlayItemRendered struct {
 	Adder string
 
 	// dynamic
-	Status        string
-	StatusColor   fyne.ThemeColorName
-	Size          string
-	Progress      float64
-	Index         int
-	ErrorText     string
-	IsDownloading bool
+	Status           string
+	StatusColor      fyne.ThemeColorName
+	Size             string
+	DownloadProgress float64
+	Index            int
+	ErrorText        string
+	IsDownloading    bool
+	IsPlaying        bool
+	PlayProgress     float64
+	PlayTimeText     string
 }

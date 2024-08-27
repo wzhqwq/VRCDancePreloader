@@ -6,7 +6,7 @@ import (
 	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
 )
 
-var updatePlayItemCh chan types.PlayItemI = make(chan types.PlayItemI, 10)
+var updatePlayItemCh chan types.PlayItemI = make(chan types.PlayItemI, 100)
 var addPlayItemCh chan []types.PlayItemI = make(chan []types.PlayItemI, 1)
 var removePlayItemCh chan []types.PlayItemI = make(chan []types.PlayItemI, 1)
 

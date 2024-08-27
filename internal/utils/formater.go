@@ -15,3 +15,7 @@ func PrettyByteSize(b int64) string {
 	}
 	return fmt.Sprintf("%.1fYiB", bf)
 }
+
+func PrettyTime(s float64) string {
+	return fmt.Sprintf("%02d:%02d", int(s)/60, int(s)%60)
+}

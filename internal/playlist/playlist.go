@@ -145,7 +145,6 @@ func createFromSongList(id int) *PlayItem {
 			"",
 			song.ID,
 			song.End,
-			-1,
 		)
 	}
 	return nil
@@ -153,19 +152,18 @@ func createFromSongList(id int) *PlayItem {
 func CreateFromQueueItem(item types.QueueItem) *PlayItem {
 	if temporaryItem != nil && temporaryItem.ID == item.SongNum {
 		temporaryItem.Adder = item.PlayerName
-		temporaryItem.URL = item.URL
 		item := temporaryItem
 		temporaryItem = nil
 		return item
 	}
 
-	return NewPlayItem(item.VideoName,
+	return NewPlayItem(
+		item.VideoName,
 		item.Group,
 		item.PlayerName,
 		item.URL,
 		item.SongNum,
 		item.Length,
-		-1,
 	)
 }
 
@@ -173,17 +171,6 @@ func FindSongToPlay(id int) *PlayItem {
 	mutatingMutex.Lock()
 	defer mutatingMutex.Unlock()
 
-	for index, item := range currentPlaylist {
-		if item.ID == id {
-			item.UpdateStatus(constants.Playing)
-			for i := 0; i < index; i++ {
-				if currentPlaylist[i].Status == constants.Playing {
-					currentPlaylist[i].UpdateStatus(constants.Ended)
-				}
-			}
-			return item
-		}
-	}
 	if item := createFromSongList(id); item != nil {
 		if temporaryItem != nil {
 			temporaryItem.Dispose()
@@ -205,4 +192,19 @@ func PlaySong(id int) (io.ReadSeekCloser, error) {
 		return nil, err
 	}
 	return reader, nil
+}
+
+func MarkURLPlaying(url string, now float64) {
+	mutatingMutex.Lock()
+	defer mutatingMutex.Unlock()
+
+	for index, item := range currentPlaylist {
+		if item.URL == url {
+			item.Play(now)
+			for i := 0; i < index; i++ {
+				currentPlaylist[i].UpdatePlayStatus(constants.Ended)
+			}
+			return
+		}
+	}
 }

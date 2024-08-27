@@ -40,7 +40,7 @@ func (ds *DownloadState) Write(p []byte) (int, error) {
 }
 
 func progressiveDownload(body io.ReadCloser, file *os.File, ds *DownloadState) error {
-	ds.Item.UpdateStatus(constants.Downloading)
+	ds.Item.UpdatePreloadStatus(constants.Downloading)
 
 	downloadCh <- ds.Item.GetInfo().ID
 	defer func() {
@@ -103,7 +103,7 @@ func Download(item types.PlayItemI) error {
 	}()
 
 	// download the file
-	item.UpdateStatus(constants.Requesting)
+	item.UpdatePreloadStatus(constants.Requesting)
 	resp, err := http.Get(i.URL)
 	if err != nil {
 		return err

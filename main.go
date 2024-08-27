@@ -46,8 +46,8 @@ func main() {
 	}()
 
 	i18n.Init()
-	cache.InitCache("./cache", args.CacheDiskMax)
-	playlist.Init(args.PreloadMax, args.DownloadMax)
+	cache.InitCache("./cache", args.CacheDiskMax*1024*1024, args.DownloadMax)
+	playlist.Init(args.PreloadMax)
 
 	logDir := args.VrChatDir
 	if logDir == "" {

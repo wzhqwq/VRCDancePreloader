@@ -27,6 +27,9 @@ type PlayItemGui struct {
 	ErrorText   *canvas.Text
 	StatusText  *canvas.Text
 	SizeText    *canvas.Text
+	PlayBar     *PlayBar
+
+	RunningAnimation *fyne.Animation
 }
 
 func NewPlayItemGui(rendered *types.PlayItemRendered) *PlayItemGui {
@@ -37,7 +40,11 @@ func NewPlayItemGui(rendered *types.PlayItemRendered) *PlayItemGui {
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
 	// ID
-	id := canvas.NewText(fmt.Sprintf("#%d", rendered.ID), color.Gray{128})
+	idText := fmt.Sprintf("#%d", rendered.ID)
+	if rendered.ID < 0 {
+		idText = i18n.T("placeholder_custom_song")
+	}
+	id := canvas.NewText(idText, color.Gray{128})
 	id.Alignment = fyne.TextAlignTrailing
 	id.TextSize = 12
 
@@ -69,26 +76,36 @@ func NewPlayItemGui(rendered *types.PlayItemRendered) *PlayItemGui {
 	errorText := canvas.NewText(rendered.ErrorText, theme.Color(theme.ColorNameError))
 	errorText.TextSize = 12
 
+	// Play Bar
+	playBar := NewPlayBar()
+
 	cardContent := container.NewVBox(
 		container.NewHBox(
 			title,
 			layout.NewSpacer(),
 			id,
 		),
-		container.NewHBox(
+		container.NewBorder(
+			nil,
+			nil,
+			nil,
 			container.NewVBox(
-				group,
-				adder,
+				progressBar,
+				sizeText,
+			),
+			container.NewBorder(
+				nil,
 				container.NewHBox(
 					statusText,
 					layout.NewSpacer(),
 					errorText,
 				),
-			),
-			layout.NewSpacer(),
-			container.NewVBox(
-				progressBar,
-				sizeText,
+				container.NewVBox(
+					group,
+					adder,
+				),
+				nil,
+				playBar,
 			),
 		),
 	)
@@ -108,6 +125,7 @@ func NewPlayItemGui(rendered *types.PlayItemRendered) *PlayItemGui {
 		StatusText:  statusText,
 		ErrorText:   errorText,
 		SizeText:    sizeText,
+		PlayBar:     playBar,
 	}
 	gui.Update(rendered)
 
@@ -120,16 +138,17 @@ func (p *PlayItemGui) Update(rendered *types.PlayItemRendered) {
 	}
 
 	if p.Index != rendered.Index {
-		canvas.NewPositionAnimation(
+		p.RunningAnimation = canvas.NewPositionAnimation(
 			calculatePosition(p.Index),
 			calculatePosition(rendered.Index),
 			300*time.Millisecond,
 			p.Card.Move,
-		).Start()
+		)
+		p.RunningAnimation.Start()
 		p.Index = rendered.Index
 	}
 
-	p.Progress.Set(rendered.Progress)
+	p.Progress.Set(rendered.DownloadProgress)
 	if p.StatusText.Text != rendered.Status {
 		p.StatusText.Text = rendered.Status
 		p.StatusText.Color = theme.Color(rendered.StatusColor)
@@ -154,6 +173,36 @@ func (p *PlayItemGui) Update(rendered *types.PlayItemRendered) {
 	} else {
 		p.ProgressBar.Hide()
 	}
+	if rendered.IsPlaying {
+		p.PlayBar.Show()
+		p.PlayBar.Progress = float32(rendered.PlayProgress)
+		p.PlayBar.Text = rendered.PlayTimeText
+		p.PlayBar.Refresh()
+	} else {
+		p.PlayBar.Hide()
+	}
+}
+
+func (p *PlayItemGui) SlideIn() {
+	canvas.NewPositionAnimation(
+		fyne.NewPos(p.Card.Size().Width, p.Card.Position().Y),
+		calculatePosition(p.Index),
+		300*time.Millisecond,
+		func(pos fyne.Position) {
+			p.Card.Move(pos)
+		},
+	).Start()
+}
+func (p *PlayItemGui) SlideOut() {
+	if p.RunningAnimation != nil {
+		p.RunningAnimation.Stop()
+	}
+	canvas.NewPositionAnimation(
+		p.Card.Position(),
+		fyne.NewPos(-p.Card.Size().Width, p.Card.Position().Y),
+		300*time.Millisecond,
+		p.Card.Move,
+	).Start()
 }
 
 func calculatePosition(index int) fyne.Position {
