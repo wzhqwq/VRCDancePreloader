@@ -6,36 +6,25 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
 )
 
-// sone structure: {"id":2911,"group":1,"volume":0.84,"name":"La Respuesta","flip":false,"start":0,"end":229,"skipRandom":false,"originalUrl":["https://www.youtube.com/watch?v=7L0LyVAHyxA"]}
-type Song struct {
-	ID          int      `json:"id"`
-	Group       int      `json:"group"`
-	Volume      float64  `json:"volume"`
-	Name        string   `json:"name"`
-	Flip        bool     `json:"flip"`
-	Start       int      `json:"start"`
-	End         int      `json:"end"`
-	SkipRandom  bool     `json:"skipRandom"`
-	OriginalURL []string `json:"originalUrl"`
-}
-
-var songMap map[int]Song
+var songMap map[int]types.Song
 var songGroups []string
 var savedResponse []byte
 var songLoaded chan struct{} = make(chan struct{}, 1)
 
-func FindSong(id int) (*Song, bool) {
+func FindSong(id int) (*types.Song, bool) {
 	song, ok := songMap[id]
 	return &song, ok
 }
 
 // SongsResponse: {"updatedAt":1723639203299,"songs":[]}
 type SongsResponse struct {
-	UpdatedAt int      `json:"updatedAt"`
-	Groups    []string `json:"groups"`
-	Songs     []Song   `json:"songs"`
+	UpdatedAt int          `json:"updatedAt"`
+	Groups    []string     `json:"groups"`
+	Songs     []types.Song `json:"songs"`
 }
 
 func loadSongs() error {
@@ -61,7 +50,7 @@ func loadSongs() error {
 
 	log.Printf("loaded %d songs\n", len(data.Songs))
 
-	songMap = make(map[int]Song)
+	songMap = make(map[int]types.Song)
 	for _, song := range data.Songs {
 		songMap[song.ID] = song
 	}

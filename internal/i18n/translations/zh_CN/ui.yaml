@@ -4,6 +4,8 @@
   Default: "自选歌曲"
 - Key: placeholder_unknown_size
   Default: "未知大小"
+- Key: placeholder_random_play
+  Default: "随机播放"
 
 - Key: key_id
   Default: "ID"

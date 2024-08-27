@@ -57,12 +57,19 @@ func (i *PlayItem) Render() *types.PlayItemRendered {
 		adder = i18n.T("placeholder_random_play")
 	}
 
+	originalVideoURL := i.URL
+	if i, ok := songMap[i.ID]; ok && len(i.OriginalURL) > 0 {
+		originalVideoURL = i.OriginalURL[0]
+	}
+
 	i.dirty = false
 	return &types.PlayItemRendered{
 		ID:    i.ID,
 		Title: i.Title,
 		Group: i.Group,
 		Adder: adder,
+
+		OriginalVideoURL: originalVideoURL,
 
 		Status:      statusText,
 		StatusColor: color,

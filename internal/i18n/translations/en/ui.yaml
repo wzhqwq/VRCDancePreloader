@@ -4,6 +4,8 @@
   Default: "Custom Song"
 - Key: placeholder_unknown_size
   Default: "Unknown Size"
+- Key: placeholder_random_play
+  Default: "Random Play"
 
 - Key: key_id
   Default: "ID"

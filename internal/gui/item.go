@@ -9,7 +9,6 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
@@ -74,6 +73,9 @@ func NewPlayItemGui(rendered *types.PlayItemRendered) *PlayItemGui {
 	// Play Bar
 	playBar := NewPlayBar()
 
+	// Thumbnail
+	thumbnail := NewThumbnail(rendered.OriginalVideoURL)
+
 	cardContent := container.NewVBox(
 		container.NewBorder(
 			nil,
@@ -82,21 +84,11 @@ func NewPlayItemGui(rendered *types.PlayItemRendered) *PlayItemGui {
 			id,
 			title,
 		),
-		container.NewBorder(
-			nil,
-			nil,
-			nil,
-			container.NewVBox(
-				progressBar,
-				sizeText,
-			),
+		NewDynamicFrame(
+			thumbnail,
 			container.NewBorder(
 				nil,
-				container.NewHBox(
-					statusText,
-					layout.NewSpacer(),
-					errorText,
-				),
+				nil,
 				container.NewVBox(
 					group,
 					adder,
@@ -106,6 +98,12 @@ func NewPlayItemGui(rendered *types.PlayItemRendered) *PlayItemGui {
 					playBar,
 				),
 			),
+			container.NewVBox(
+				progressBar,
+				sizeText,
+			),
+			statusText,
+			errorText,
 		),
 	)
 	cardBackground := canvas.NewRectangle(theme.Color(theme.ColorNameHeaderBackground))

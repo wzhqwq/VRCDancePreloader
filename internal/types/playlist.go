@@ -42,6 +42,8 @@ type PlayItemRendered struct {
 	Group string
 	Adder string
 
+	OriginalVideoURL string
+
 	// dynamic
 	Status           string
 	StatusColor      fyne.ThemeColorName

@@ -66,6 +66,7 @@ func (p *PlayListGui) drawFromChannels() {
 			}
 		case item := <-updatePlayItemCh:
 			if g, ok := p.items[item.GetInfo().ID]; ok {
+				// log.Println("Updating", item.GetInfo().Title)
 				g.Update(item.Render())
 			} else {
 				updatePlayItemCh <- item
