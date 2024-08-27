@@ -61,70 +61,77 @@ func RestartPlaylist(items []*PlayItem) {
 	}
 	currentPlaylist = items
 	for index, item := range currentPlaylist {
-		item.UpdateIndex(index)
+		item.Index = index
 		gui.AddPlayItem(item)
 	}
 	CriticalUpdate()
 	log.Println("Restarted playlist")
 }
 
-func RemoveItem(id int) {
+func matchWithQueueItem(item *PlayItem, queueItem *types.QueueItem) bool {
+	if queueItem.SongNum == -1 {
+		return item.URL == queueItem.URL
+	}
+	return item.ID == queueItem.SongNum
+}
+
+func RemoveItem(queueData *types.QueueItem) {
 	mutatingMutex.Lock()
 	defer mutatingMutex.Unlock()
 	if currentPlaylist == nil {
 		return
 	}
 
-	removed := false
+	removedIndex := -1
 	for i, item := range currentPlaylist {
-		if item.ID == id {
+		if matchWithQueueItem(item, queueData) {
+			removedIndex = i
 			currentPlaylist = slices.Delete(currentPlaylist, i, i+1)
-			log.Println("Removed item", item.Title)
-			removed = true
 			item.Dispose()
 			gui.RemovePlayItem(item)
-		}
-		if removed {
-			item.UpdateIndex(item.Index - 1)
+			log.Println("Removed item", item.Title)
+			break
 		}
 	}
-
-	if removed {
+	if removedIndex != -1 {
+		for i := removedIndex; i < len(currentPlaylist); i++ {
+			currentPlaylist[i].UpdateIndex(i)
+		}
 		CriticalUpdate()
 	}
 }
 
-func InsertItem(item *PlayItem, beforeId int) {
+func InsertItem(item *PlayItem, before *types.QueueItem) {
 	mutatingMutex.Lock()
 	defer mutatingMutex.Unlock()
 	if currentPlaylist == nil {
 		return
 	}
 
-	if beforeId == -1 {
+	if before == nil {
 		item.Index = len(currentPlaylist)
 		currentPlaylist = append(currentPlaylist, item)
+		gui.AddPlayItem(item)
 		log.Println("Appended item", item.Title)
 
-		gui.AddPlayItem(item)
 		CriticalUpdate()
+		return
 	}
-	beforeIndex := -1
+	insertIndex := -1
 	for i, item := range currentPlaylist {
-		if item.ID == beforeId {
-			beforeIndex = i
+		if matchWithQueueItem(item, before) {
+			insertIndex = i
+			currentPlaylist = slices.Insert(currentPlaylist, insertIndex, item)
 			item.Index = i
-		}
-		if beforeIndex != -1 {
-			item.UpdateIndex(item.Index + 1)
+			gui.AddPlayItem(item)
+			log.Println("Inserted item", item.Title, "before", before.VideoName)
+			break
 		}
 	}
-
-	if beforeIndex != -1 {
-		currentPlaylist = slices.Insert(currentPlaylist, beforeIndex, item)
-		log.Println("Inserted item", item.Title, "before", beforeId)
-
-		gui.AddPlayItem(item)
+	if insertIndex != -1 {
+		for i := insertIndex; i < len(currentPlaylist); i++ {
+			currentPlaylist[i].UpdateIndex(i + 1)
+		}
 		CriticalUpdate()
 	}
 }

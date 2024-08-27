@@ -2,29 +2,18 @@ package watcher
 
 import (
 	"encoding/json"
-	"log"
 
 	"github.com/samber/lo"
 
 	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
 )
 
-var currentQueue []QueueItem = make([]QueueItem, 0)
+var currentQueue []types.QueueItem = make([]types.QueueItem, 0)
 
-// define a json structure named QueueItem
-// {"songNum": 363, "videoName": "Monster - Lady Gaga", "length": 261, "url": "", "playerName": "NekoYama_Shiro", "group": "Fitness Marshall"}
-type QueueItem struct {
-	SongNum    int    `json:"songNum"`
-	VideoName  string `json:"videoName"`
-	Length     int    `json:"length"`
-	URL        string `json:"url"`
-	PlayerName string `json:"playerName"`
-	Group      string `json:"group"`
-}
-
-func parseQueue(data []byte) ([]QueueItem, error) {
+func parseQueue(data []byte) ([]types.QueueItem, error) {
 	// parse the json data into a slice of QueueItem
-	var items []QueueItem
+	var items []types.QueueItem
 	err := json.Unmarshal(data, &items)
 	if err != nil {
 		return nil, err
@@ -33,7 +22,7 @@ func parseQueue(data []byte) ([]QueueItem, error) {
 	return items, nil
 }
 
-func diffQueues(old, new []QueueItem) {
+func diffQueues(old, new []types.QueueItem) {
 	// do the lcs
 	lengths := make([][]int, len(old)+1)
 	for i := 0; i <= len(old); i++ {
@@ -43,7 +32,11 @@ func diffQueues(old, new []QueueItem) {
 	// row 0 and column 0 are initialized to 0 already
 	for i := 0; i < len(old); i++ {
 		for j := 0; j < len(new); j++ {
-			if old[i].SongNum == new[j].SongNum {
+			match := old[i].SongNum == new[j].SongNum
+			if old[i].SongNum == -1 || new[j].SongNum == -1 {
+				match = old[i].URL == new[j].URL
+			}
+			if match {
 				lengths[i+1][j+1] = lengths[i][j] + 1
 			} else if lengths[i+1][j] > lengths[i][j+1] {
 				lengths[i+1][j+1] = lengths[i+1][j]
@@ -53,22 +46,13 @@ func diffQueues(old, new []QueueItem) {
 		}
 	}
 
-	log.Println("lcs:", lengths[len(old)][len(new)])
-
 	if lengths[len(old)][len(new)] == 0 {
 		// if the lcs is zero, then we consider it as a new queue
 		// clear the current queue
-		playlist.RestartPlaylist(lo.Map(new, func(item QueueItem, index int) *playlist.PlayItem {
-			return playlist.NewPlayItem(
-				item.VideoName,
-				item.Group,
-				item.PlayerName,
-				item.URL,
-				item.SongNum,
-				item.Length,
-				index,
-			)
-		}))
+		list := lo.Map(new, func(item types.QueueItem, _ int) *playlist.PlayItem {
+			return playlist.CreateFromQueueItem(item)
+		})
+		playlist.RestartPlaylist(list)
 		return
 	}
 
@@ -77,21 +61,14 @@ func diffQueues(old, new []QueueItem) {
 	for x > 0 || y > 0 {
 		if x > 0 && lengths[x][y] == lengths[x-1][y] {
 			x--
-			playlist.RemoveItem(old[x].SongNum)
+			playlist.RemoveItem(&old[x])
 		} else if y > 0 && lengths[x][y] == lengths[x][y-1] {
 			y--
-			newItem := playlist.NewPlayItem(new[y].VideoName,
-				new[y].Group,
-				new[y].PlayerName,
-				new[y].URL,
-				new[y].SongNum,
-				new[y].Length,
-				-1,
-			)
+			newItem := playlist.CreateFromQueueItem(new[y])
 			if x == len(old) {
-				playlist.InsertItem(newItem, -1)
+				playlist.InsertItem(newItem, nil)
 			} else {
-				playlist.InsertItem(newItem, old[x].SongNum)
+				playlist.InsertItem(newItem, &old[x])
 			}
 		} else if x > 0 && y > 0 {
 			x--
