@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"regexp"
 
 	"github.com/alexflint/go-arg"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
@@ -24,10 +25,22 @@ var args struct {
 	GuiEnabled   bool   `arg:"-g,--gui" default:"true" help:"enable GUI"`
 	PreloadMax   int    `arg:"--max-preload" default:"4" help:"maximum preload count"`
 	DownloadMax  int    `arg:"--max-download" default:"2" help:"maximum parallel download count"`
+	Proxy        string `arg:"--proxy" default:"" help:"proxy server, example: 127.0.0.1:7890, set for both http and https"`
 }
 
 func main() {
 	arg.MustParse(&args)
+
+	if args.Proxy != "" {
+		// check format
+		if regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}:\d+$`).MatchString(args.Proxy) {
+			os.Setenv("HTTP_PROXY", "http://"+args.Proxy)
+			os.Setenv("HTTPS_PROXY", "http://"+args.Proxy)
+		} else {
+			log.Println("Invalid proxy format, should be like host:port")
+			os.Exit(1)
+		}
+	}
 
 	osSignalCh := make(chan os.Signal, 1)
 
