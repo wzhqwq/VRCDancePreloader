@@ -21,7 +21,7 @@ func InitCache(path string, max int, maxParallel int) {
 
 	cachePath = path
 	maxSize = max
-	downloadCh = make(chan int, maxParallel)
+	dm = newDownloadManager(maxParallel)
 
 	go pw.Render()
 }

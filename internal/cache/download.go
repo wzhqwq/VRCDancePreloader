@@ -8,139 +8,140 @@ import (
 	"sync"
 
 	"github.com/jedib0t/go-pretty/v6/progress"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/constants"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
 )
 
 type DownloadState struct {
+	sync.Mutex
+
+	TotalSize  int64
 	Downloaded int64
-	Item       types.PlayItemI
-	Tracker    *progress.Tracker
-	Mutex      sync.Mutex
+	Done       bool
+	Pending    bool
+	Error      error
+
+	StateCh    chan *DownloadState
+	CancelCh   chan bool
+	PriorityCh chan int
+
+	tracker *progress.Tracker
 }
 
 var pw progress.Writer = progress.NewWriter()
 
-var downloadStateMap = make(map[int]*DownloadState)
-var stateMapMutex = sync.Mutex{}
-
-var downloadCh chan int
-var prioritizedID int
-
 func (ds *DownloadState) Write(p []byte) (int, error) {
-	if ds.Item.IsDisposed() {
+	select {
+	case <-ds.CancelCh:
 		return 0, io.EOF
+	default:
+		n := len(p)
+		ds.Downloaded += int64(n)
+		ds.tracker.Increment(int64(n))
+		ds.StateCh <- ds
+		return n, nil
 	}
-
-	n := len(p)
-	ds.Downloaded += int64(n)
-	ds.Item.UpdateProgress(ds.Downloaded)
-	ds.Tracker.Increment(int64(n))
-	return n, nil
+}
+func (ds *DownloadState) BlockIfPending() {
+	for {
+		select {
+		case p := <-ds.PriorityCh:
+			if dm.CanDownload(p) {
+				if ds.Pending {
+					ds.Pending = false
+					ds.StateCh <- ds
+				}
+				return
+			} else {
+				if !ds.Pending {
+					ds.Pending = true
+					ds.StateCh <- ds
+				}
+			}
+		}
+	}
+}
+func (ds *DownloadState) unlockAndUpdate() {
+	ds.Unlock()
+	ds.StateCh <- ds
 }
 
 func progressiveDownload(body io.ReadCloser, file *os.File, ds *DownloadState) error {
-	ds.Item.UpdatePreloadStatus(constants.Downloading)
-
-	downloadCh <- ds.Item.GetInfo().ID
-	defer func() {
-		<-downloadCh
-	}()
 	// Write the body to file, while showing progress of the download
 	_, err := io.Copy(file, io.TeeReader(body, ds))
 	if err != nil {
-		ds.Tracker.MarkAsErrored()
+		ds.tracker.MarkAsErrored()
 		return err
 	}
-	ds.Tracker.MarkAsDone()
+	ds.tracker.MarkAsDone()
 
 	return nil
 }
 
-func Download(item types.PlayItemI) error {
-	i := item.GetInfo()
-	// get mutex for the id
-	stateMapMutex.Lock()
-	ds, ok := downloadStateMap[i.ID]
-	if !ok {
-		pt := &progress.Tracker{
-			Message: fmt.Sprintf("Downloading %s", i.Title),
-			Total:   int64(i.Size),
-			Units:   progress.UnitsBytes,
+func Download(id int, url string) *DownloadState {
+	ds := dm.CreateOrGetState(id)
+	go func() {
+		ds.Lock()
+		defer ds.unlockAndUpdate()
+
+		if ds.Done {
+			return
 		}
-		pw.AppendTracker(pt)
+
+		// open temp file
+		tempFile := openTempFile(id)
+		if tempFile == nil {
+			ds.Error = fmt.Errorf("failed to open temp_%d.mp4", id)
+			return
+		}
 		defer func() {
-			pt.MarkAsDone()
+			tempFile.Close()
+			os.Remove(tempFile.Name())
 		}()
 
-		ds = &DownloadState{
-			Item:    item,
-			Tracker: pt,
-			Mutex:   sync.Mutex{},
+		// download the file
+		resp, err := http.Get(url)
+		if err != nil {
+			ds.Error = err
+			return
 		}
-		downloadStateMap[i.ID] = ds
-	}
-	stateMapMutex.Unlock()
+		defer resp.Body.Close()
+		// get size of the file to be downloaded
+		ds.TotalSize = resp.ContentLength
+		ds.StateCh <- ds
 
-	// lock the mutex to force single download
-	ds.Mutex.Lock()
-	defer ds.Mutex.Unlock()
+		if ds.tracker == nil {
+			pt := &progress.Tracker{
+				Message: fmt.Sprintf("Downloading %s", url),
+				Total:   int64(ds.TotalSize),
+				Units:   progress.UnitsBytes,
+			}
+			pw.AppendTracker(pt)
+			ds.tracker = pt
+		}
 
-	// check if file is already downloaded
-	if size := getCacheSize(i.ID); size > 0 {
-		item.UpdateSize(size)
-		return nil
-	}
+		// download
+		err = progressiveDownload(resp.Body, tempFile, ds)
+		if err != nil {
+			ds.Error = err
+			return
+		}
 
-	// open temp file
-	tempFile := openTempFile(i.ID)
-	if tempFile == nil {
-		return fmt.Errorf("failed to open temp_%d.mp4", i.ID)
-	}
-	defer func() {
-		tempFile.Close()
-		os.Remove(tempFile.Name())
+		// copy to file
+		_, err = tempFile.Seek(0, 0)
+		if err != nil {
+			ds.Error = err
+			return
+		}
+		file := OpenCache(id)
+		if file == nil {
+			ds.Error = fmt.Errorf("failed to open %d.mp4", id)
+			return
+		}
+		io.Copy(file, tempFile)
+		closeCache(id)
+
+		ds.Done = true
+		dm.UpdatePriorities()
 	}()
 
-	// download the file
-	item.UpdatePreloadStatus(constants.Requesting)
-	resp, err := http.Get(i.URL)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	// get size of the file to be downloaded
-	item.UpdateSize(resp.ContentLength)
-
-	// download
-	err = progressiveDownload(resp.Body, tempFile, ds)
-	if err != nil {
-		return err
-	}
-
-	// copy to file
-	_, err = tempFile.Seek(0, 0)
-	if err != nil {
-		return err
-	}
-	file := OpenCache(i.ID)
-	if file == nil {
-		return fmt.Errorf("failed to open %d.mp4", i.ID)
-	}
-	io.Copy(file, tempFile)
-
-	// close and reopen
-	closeCache(i.ID)
-	OpenCache(i.ID)
-
-	item.UpdateProgress(i.Size)
-
-	delete(downloadStateMap, i.ID)
-
-	return nil
-}
-
-func Prioritize(id int) {
-	prioritizedID = id
+	return ds
 }
