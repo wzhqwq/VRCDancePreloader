@@ -13,17 +13,15 @@ import (
 type DownloadState struct {
 	sync.Mutex
 
-	TotalSize  int64
-	Downloaded int64
-	Done       bool
-	Pending    bool
-	Error      error
+	TotalSize      int64
+	DownloadedSize int64
+	Done           bool
+	Pending        bool
+	Error          error
 
 	StateCh    chan *DownloadState
 	CancelCh   chan bool
 	PriorityCh chan int
-
-	tracker *progress.Tracker
 }
 
 var pw progress.Writer = progress.NewWriter()
@@ -33,23 +31,25 @@ func (ds *DownloadState) Write(p []byte) (int, error) {
 	case <-ds.CancelCh:
 		return 0, io.EOF
 	default:
+		ds.BlockIfPending()
 		n := len(p)
-		ds.Downloaded += int64(n)
-		ds.tracker.Increment(int64(n))
+		ds.DownloadedSize += int64(n)
 		ds.StateCh <- ds
 		return n, nil
 	}
 }
-func (ds *DownloadState) BlockIfPending() {
+func (ds *DownloadState) BlockIfPending() bool {
 	for {
 		select {
+		case <-ds.CancelCh:
+			return false
 		case p := <-ds.PriorityCh:
 			if dm.CanDownload(p) {
 				if ds.Pending {
 					ds.Pending = false
 					ds.StateCh <- ds
 				}
-				return
+				return true
 			} else {
 				if !ds.Pending {
 					ds.Pending = true
@@ -68,19 +68,19 @@ func progressiveDownload(body io.ReadCloser, file *os.File, ds *DownloadState) e
 	// Write the body to file, while showing progress of the download
 	_, err := io.Copy(file, io.TeeReader(body, ds))
 	if err != nil {
-		ds.tracker.MarkAsErrored()
 		return err
 	}
-	ds.tracker.MarkAsDone()
 
 	return nil
 }
 
-func Download(id int, url string) *DownloadState {
+func Download(id, url string) *DownloadState {
 	ds := dm.CreateOrGetState(id)
 	go func() {
 		ds.Lock()
 		defer ds.unlockAndUpdate()
+
+		ds.Error = nil
 
 		if ds.Done {
 			return
@@ -89,7 +89,7 @@ func Download(id int, url string) *DownloadState {
 		// open temp file
 		tempFile := openTempFile(id)
 		if tempFile == nil {
-			ds.Error = fmt.Errorf("failed to open temp_%d.mp4", id)
+			ds.Error = fmt.Errorf("failed to open %s.mp4.dl", id)
 			return
 		}
 		defer func() {
@@ -106,17 +106,9 @@ func Download(id int, url string) *DownloadState {
 		defer resp.Body.Close()
 		// get size of the file to be downloaded
 		ds.TotalSize = resp.ContentLength
+		// TODO: Remove after implementing resuming download halfway
+		ds.DownloadedSize = 0
 		ds.StateCh <- ds
-
-		if ds.tracker == nil {
-			pt := &progress.Tracker{
-				Message: fmt.Sprintf("Downloading %s", url),
-				Total:   int64(ds.TotalSize),
-				Units:   progress.UnitsBytes,
-			}
-			pw.AppendTracker(pt)
-			ds.tracker = pt
-		}
 
 		// download
 		err = progressiveDownload(resp.Body, tempFile, ds)
@@ -133,7 +125,7 @@ func Download(id int, url string) *DownloadState {
 		}
 		file := OpenCache(id)
 		if file == nil {
-			ds.Error = fmt.Errorf("failed to open %d.mp4", id)
+			ds.Error = fmt.Errorf("failed to open %s.mp4", id)
 			return
 		}
 		io.Copy(file, tempFile)

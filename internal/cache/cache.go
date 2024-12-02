@@ -3,12 +3,11 @@ package cache
 import (
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 )
 
-var fileMap = make(map[int]*os.File)
+var fileMap = make(map[string]*os.File)
 var fileMapMutex = &sync.Mutex{}
 
 var cachePath string
@@ -29,7 +28,7 @@ func InitCache(path string, max int, maxParallel int) {
 func StopCache() {
 }
 
-func OpenCache(id int) *os.File {
+func OpenCache(id string) *os.File {
 	fileMapMutex.Lock()
 	defer fileMapMutex.Unlock()
 
@@ -44,7 +43,7 @@ func OpenCache(id int) *os.File {
 
 	return nil
 }
-func closeCache(id int) {
+func closeCache(id string) {
 	fileMapMutex.Lock()
 	defer fileMapMutex.Unlock()
 
@@ -54,12 +53,12 @@ func closeCache(id int) {
 	}
 }
 
-func DetachCache(id int) {
+func DetachCache(id string) {
 	closeCache(id)
 	CleanUpCache()
 }
 
-func RemoveCache(id int) {
+func RemoveCache(id string) {
 	fileMapMutex.Lock()
 	defer fileMapMutex.Unlock()
 
@@ -95,9 +94,8 @@ func CleanUpCache() {
 			break
 		}
 
-		idStr := strings.Split(file.Name(), ".")[0]
-		id, err := strconv.Atoi(idStr)
-		if err == nil && fileMap[id] != nil {
+		id := strings.Split(file.Name(), ".")[0]
+		if fileMap[id] != nil {
 			continue
 		}
 

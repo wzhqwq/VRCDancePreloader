@@ -4,8 +4,8 @@ import "sync"
 
 type downloadManager struct {
 	sync.Mutex
-	stateMap    map[int]*DownloadState
-	queue       []int
+	stateMap    map[string]*DownloadState
+	queue       []string
 	maxParallel int
 }
 
@@ -13,12 +13,12 @@ var dm *downloadManager = nil
 
 func newDownloadManager(maxParallel int) *downloadManager {
 	return &downloadManager{
-		stateMap:    make(map[int]*DownloadState),
-		queue:       make([]int, 0),
+		stateMap:    make(map[string]*DownloadState),
+		queue:       make([]string, 0),
 		maxParallel: maxParallel,
 	}
 }
-func (dm *downloadManager) CreateOrGetState(id int) *DownloadState {
+func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 	dm.Lock()
 	ds, exists := dm.stateMap[id]
 	if !exists {
@@ -32,7 +32,7 @@ func (dm *downloadManager) CreateOrGetState(id int) *DownloadState {
 		// check if file is already downloaded
 		if size := getCacheSize(id); size > 0 {
 			ds.TotalSize = size
-			ds.Downloaded = size
+			ds.DownloadedSize = size
 			ds.Done = true
 		}
 		dm.stateMap[id] = ds
@@ -44,7 +44,7 @@ func (dm *downloadManager) CreateOrGetState(id int) *DownloadState {
 	}
 	return ds
 }
-func (dm *downloadManager) CancelDownload(id int) {
+func (dm *downloadManager) CancelDownload(id string) {
 	dm.Lock()
 	defer dm.unlockAndUpdate()
 	ds, ok := dm.stateMap[id]
@@ -80,7 +80,7 @@ func (dm *downloadManager) SetMaxParallel(max int) {
 	dm.maxParallel = max
 	dm.UpdatePriorities()
 }
-func (dm *downloadManager) Prioritize(id int) {
+func (dm *downloadManager) Prioritize(id string) {
 	dm.Lock()
 	defer dm.unlockAndUpdate()
 	if _, ok := dm.stateMap[id]; ok {
@@ -93,7 +93,7 @@ func (dm *downloadManager) Prioritize(id int) {
 		}
 		if index != -1 {
 			dm.queue = append(dm.queue[:index], dm.queue[index+1:]...)
-			dm.queue = append([]int{id}, dm.queue...)
+			dm.queue = append([]string{id}, dm.queue...)
 		}
 	}
 }
