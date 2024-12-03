@@ -91,7 +91,8 @@ func Download(id, url string) *DownloadState {
 			return
 		}
 
-		// Otherwise we start downloading
+		// Otherwise we start downloading, the total size is unknown
+		ds.TotalSize = 0
 		ds.BlockIfPending()
 
 		// Open temp file
