@@ -6,11 +6,11 @@ import (
 	"log"
 )
 
-var pypySongMap map[int]PyPyDanceSong
+var pyPySongMap map[int]PyPyDanceSong
 var songGroups []string
 
-func FindSong(id int) (*PyPyDanceSong, bool) {
-	song, ok := pypySongMap[id]
+func FindPyPySong(id int) (*PyPyDanceSong, bool) {
+	song, ok := pyPySongMap[id]
 	return &song, ok
 }
 
@@ -29,9 +29,9 @@ func ProcessSongList(resp []byte) error {
 
 	log.Printf("loaded %d songs\n", len(data.Songs))
 
-	pypySongMap = make(map[int]PyPyDanceSong)
+	pyPySongMap = make(map[int]PyPyDanceSong)
 	for _, song := range data.Songs {
-		pypySongMap[song.ID] = song
+		pyPySongMap[song.ID] = song
 	}
 	songGroups = data.Groups
 

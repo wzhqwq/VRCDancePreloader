@@ -28,11 +28,14 @@ type PreloadedSong struct {
 
 	// diagnostic states
 	PreloadError error
+
+	// event
+	em EventManager
 }
 
 // constructors
-func CreatePreloadedOfficialSong(id int) *PreloadedSong {
-	song, ok := raw_song.FindSong(id)
+func CreatePreloadedPyPySong(id int) *PreloadedSong {
+	song, ok := raw_song.FindPyPySong(id)
 	if !ok {
 		return nil
 	}
@@ -51,7 +54,7 @@ func CreatePreloadedCustomSong(title, url string) *PreloadedSong {
 		sm: SongStateMachine{
 			Status: Initial,
 		},
-		CustomSong: raw_song.NewCustomSong(title, url),
+		CustomSong: raw_song.FindOrCreateCustomSong(title, url),
 	}
 	ret.sm.PreloadedSong = ret
 	return ret
@@ -94,7 +97,10 @@ func (ps *PreloadedSong) GetId() string {
 	}
 	return ""
 }
-func (ps *PreloadedSong) GetSongRSSync() io.ReadSeekCloser {
-	ps.sm.WaitForCompleteSong()
-	return cache.OpenCache(ps.GetId())
+func (ps *PreloadedSong) GetSongRSSync() (io.ReadSeekCloser, error) {
+	err := ps.sm.WaitForCompleteSong()
+	if err != nil {
+		return nil, err
+	}
+	return cache.OpenCache(ps.GetId()), nil
 }

@@ -16,9 +16,9 @@ type CustomSong struct {
 	ThumbnailUrl string
 }
 
-func NewCustomSong(title, url string) *CustomSong {
+func NewCustomSong(title, url string) CustomSong {
 	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
-		return &CustomSong{
+		return CustomSong{
 			Name:         title,
 			Url:          url,
 			UniqueId:     fmt.Sprintf("yt_%s", id),
@@ -26,7 +26,7 @@ func NewCustomSong(title, url string) *CustomSong {
 		}
 	}
 	uniqueIdIncrement++
-	return &CustomSong{
+	return CustomSong{
 		Name:         title,
 		Url:          url,
 		UniqueId:     fmt.Sprintf("custom_%d", uniqueIdIncrement),
@@ -35,6 +35,25 @@ func NewCustomSong(title, url string) *CustomSong {
 }
 
 func FindCustomSong(url string) (*CustomSong, bool) {
-	song, ok := customSongMap[url]
+	key := url
+	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
+		key = fmt.Sprintf("yt_%s", id)
+	}
+	song, ok := customSongMap[key]
 	return &song, ok
+}
+
+func FindOrCreateCustomSong(title, url string) *CustomSong {
+	if song, ok := FindCustomSong(url); ok {
+		return song
+	}
+	song := NewCustomSong(title, url)
+
+	key := url
+	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
+		key = fmt.Sprintf("yt_%s", id)
+	}
+	customSongMap[key] = song
+
+	return &song
 }

@@ -59,32 +59,32 @@ func (sm *SongStateMachine) StartDownloadLoop() error {
 		case <-ds.StateCh:
 			if ds.Done {
 				sm.Status = Downloaded
-				// TODO: Status update callback
+				sm.PreloadedSong.notifySubscribers(StatusChange)
 				return nil
 			}
 			if ds.Error != nil {
 				sm.Status = Failed
-				// TODO: Status update callback
+				sm.PreloadedSong.notifySubscribers(StatusChange)
 				return ds.Error
 			}
 			if ds.Pending && sm.Status != Pending {
 				sm.Status = Pending
-				// TODO: Status update callback
+				sm.PreloadedSong.notifySubscribers(StatusChange)
 				continue
 			}
 			if ds.TotalSize == 0 && sm.Status != Requesting {
 				sm.Status = Requesting
-				// TODO: Status update callback
+				sm.PreloadedSong.notifySubscribers(StatusChange)
 				continue
 			}
 			// Otherwise, it's downloading
 			if sm.Status != Downloading {
 				sm.Status = Downloading
-				// TODO: Status update callback
+				sm.PreloadedSong.notifySubscribers(StatusChange)
 			}
 			sm.PreloadedSong.TotalSize = ds.TotalSize
 			sm.PreloadedSong.DownloadedSize = ds.DownloadedSize
-			// TODO: Download progress update callback
+			sm.PreloadedSong.notifySubscribers(ProgressChange)
 		}
 	}
 }
