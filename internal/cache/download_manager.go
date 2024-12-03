@@ -29,7 +29,8 @@ func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 
 			Pending: true,
 		}
-		// check if file is already downloaded
+		// Check if file is already downloaded
+		// NOTE: The cache file is either completely written to disk, or never written at all
 		if size := getCacheSize(id); size > 0 {
 			ds.TotalSize = size
 			ds.DownloadedSize = size
@@ -38,10 +39,15 @@ func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 		dm.stateMap[id] = ds
 		dm.queue = append(dm.queue, id)
 	}
+
+	// NOTE: We need to unlock here early to prevent deadlock
 	dm.Unlock()
+
+	// Update priorities if the state is new
 	if !exists {
 		dm.UpdatePriorities()
 	}
+
 	return ds
 }
 func (dm *downloadManager) CancelDownload(id string) {
