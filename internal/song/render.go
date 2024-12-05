@@ -87,14 +87,20 @@ func (ps *PreloadedSong) GetError() string {
 // TimeInfo, only change during play
 
 type PreloadedSongTimeInfo struct {
-	Progress float64
-	Text     string
+	Progress  float64
+	Text      string
+	IsPlaying bool
 }
 
 func (ps *PreloadedSong) GetTimeInfo() PreloadedSongTimeInfo {
+	text := utils.PrettyTime(ps.Duration)
+	if ps.sm.PlayStatus == Playing {
+		text = fmt.Sprintf("%s / %s", utils.PrettyTime(ps.TimePassed), text)
+	}
 	return PreloadedSongTimeInfo{
-		Progress: float64(ps.TimePassed) / float64(ps.Duration),
-		Text:     fmt.Sprintf("%s / %s", utils.PrettyTime(ps.TimePassed), utils.PrettyTime(ps.Duration)),
+		Progress:  float64(ps.TimePassed) / float64(ps.Duration),
+		Text:      text,
+		IsPlaying: ps.sm.PlayStatus == Playing,
 	}
 }
 
@@ -108,7 +114,7 @@ type PreloadedSongStatusInfo struct {
 func (ps *PreloadedSong) GetStatusInfo() PreloadedSongStatusInfo {
 	var status string
 	var color fyne.ThemeColorName
-	switch ps.sm.Status {
+	switch ps.sm.DownloadStatus {
 	case Initial:
 		status = i18n.T("status_initial")
 		color = theme.ColorNamePlaceHolder

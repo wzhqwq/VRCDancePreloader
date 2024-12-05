@@ -161,3 +161,7 @@ func Download(id, url string) *DownloadState {
 
 	return ds
 }
+
+func CancelDownload(id string) {
+	dm.CancelDownload(id)
+}

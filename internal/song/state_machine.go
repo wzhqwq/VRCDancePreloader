@@ -1,34 +1,47 @@
 package song
 
 import (
+	"fmt"
+	"math"
+	"time"
+
 	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
 )
 
-type SongSMStatus string
+type SongDownloadStatus string
 
 const (
 	// Initial is the initial state of every song
-	Initial SongSMStatus = "initial"
+	Initial SongDownloadStatus = "initial"
 	// Pending is when the song is waiting for the download to start,
 	// either because previous songs are still downloading
 	// or it's queue-jumped by a higher priority song
-	Pending SongSMStatus = "pending"
+	Pending SongDownloadStatus = "pending"
 	// Requesting is when the song is requesting the download
-	Requesting SongSMStatus = "requesting"
+	Requesting SongDownloadStatus = "requesting"
 	// Downloading is when the song is downloading
-	Downloading SongSMStatus = "downloading"
+	Downloading SongDownloadStatus = "downloading"
 	// Downloaded is when the song is downloaded to the disk
-	Downloaded SongSMStatus = "downloaded"
+	Downloaded SongDownloadStatus = "downloaded"
 	// Failed is when the song failed to download, will be retried
-	Failed SongSMStatus = "failed"
+	Failed SongDownloadStatus = "failed"
 	// Removed is when the song is removed from the playlist
-	Removed SongSMStatus = "removed"
+	Removed SongDownloadStatus = "removed"
+)
+
+type SongPlayStatus string
+
+const (
+	Queued  SongPlayStatus = "queued"
+	Playing SongPlayStatus = "playing"
+	Ended   SongPlayStatus = "ended"
 )
 
 // SongStateMachine is the state machine for a song
 type SongStateMachine struct {
-	Status SongSMStatus
+	DownloadStatus SongDownloadStatus
+	PlayStatus     SongPlayStatus
 
 	PreloadedSong *PreloadedSong
 
@@ -37,11 +50,14 @@ type SongStateMachine struct {
 }
 
 func (sm *SongStateMachine) IsDownloadLoopStarted() bool {
-	return sm.Status == Pending || sm.Status == Requesting || sm.Status == Downloading
+	return sm.DownloadStatus == Pending || sm.DownloadStatus == Requesting || sm.DownloadStatus == Downloading
+}
+func (sm *SongStateMachine) IsPlayingLoopStarted() bool {
+	return sm.PlayStatus == Playing
 }
 
 func (sm *SongStateMachine) WaitForCompleteSong() error {
-	if sm.Status == Downloaded {
+	if sm.DownloadStatus == Downloaded {
 		return nil
 	}
 	if sm.IsDownloadLoopStarted() {
@@ -58,28 +74,32 @@ func (sm *SongStateMachine) StartDownloadLoop() error {
 		select {
 		case <-ds.StateCh:
 			if ds.Done {
-				sm.Status = Downloaded
+				sm.DownloadStatus = Downloaded
 				sm.PreloadedSong.notifySubscribers(StatusChange)
 				return nil
 			}
 			if ds.Error != nil {
-				sm.Status = Failed
+				sm.DownloadStatus = Failed
 				sm.PreloadedSong.notifySubscribers(StatusChange)
 				return ds.Error
 			}
-			if ds.Pending && sm.Status != Pending {
-				sm.Status = Pending
+			if ds.Pending && sm.DownloadStatus != Pending {
+				sm.DownloadStatus = Pending
 				sm.PreloadedSong.notifySubscribers(StatusChange)
 				continue
 			}
-			if ds.TotalSize == 0 && sm.Status != Requesting {
-				sm.Status = Requesting
+			if ds.TotalSize == 0 && sm.DownloadStatus != Requesting {
+				sm.DownloadStatus = Requesting
 				sm.PreloadedSong.notifySubscribers(StatusChange)
 				continue
 			}
 			// Otherwise, it's downloading
-			if sm.Status != Downloading {
-				sm.Status = Downloading
+			if sm.DownloadStatus == Removed {
+				cache.CancelDownload(sm.PreloadedSong.GetId())
+				return fmt.Errorf("download removed")
+			}
+			if sm.DownloadStatus != Downloading {
+				sm.DownloadStatus = Downloading
 				sm.PreloadedSong.notifySubscribers(StatusChange)
 			}
 			sm.PreloadedSong.TotalSize = ds.TotalSize
@@ -89,6 +109,43 @@ func (sm *SongStateMachine) StartDownloadLoop() error {
 	}
 }
 
-func (sm *SongStateMachine) StartPlayingLoop() {
+func (sm *SongStateMachine) PlaySongStartFrom(offset float64) {
+	if sm.PlayStatus == Ended {
+		return
+	}
+	sm.PreloadedSong.TimePassed = offset
+	if sm.PlayStatus == Queued {
+		go sm.StartPlayingLoop()
+	} else {
+		sm.PreloadedSong.notifySubscribers(TimeChange)
+	}
+}
 
+func (sm *SongStateMachine) StartPlayingLoop() {
+	sm.PlayStatus = Playing
+	sm.PreloadedSong.notifySubscribers(TimeChange)
+	for {
+		if sm.PlayStatus != Playing {
+			break
+		}
+		nextTime := math.Floor(sm.PreloadedSong.TimePassed+0.1) + 1.0
+		<-time.After(time.Duration(nextTime-sm.PreloadedSong.TimePassed) * time.Second)
+
+		if nextTime >= sm.PreloadedSong.Duration {
+			sm.PlayStatus = Ended
+			break
+		} else {
+			sm.PreloadedSong.TimePassed = nextTime
+			sm.PreloadedSong.notifySubscribers(TimeChange)
+		}
+	}
+	sm.PreloadedSong.notifySubscribers(TimeChange)
+}
+
+func (sm *SongStateMachine) RemoveFromList() {
+	sm.DownloadStatus = Removed
+	if sm.PlayStatus == Playing {
+		sm.PlayStatus = Ended
+	}
+	sm.PreloadedSong.notifySubscribers(StatusChange)
 }

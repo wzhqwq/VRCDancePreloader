@@ -41,7 +41,7 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 	}
 	ret := &PreloadedSong{
 		sm: SongStateMachine{
-			Status: Initial,
+			DownloadStatus: Initial,
 		},
 		PyPySong: song,
 	}
@@ -52,7 +52,7 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 func CreatePreloadedCustomSong(title, url string) *PreloadedSong {
 	ret := &PreloadedSong{
 		sm: SongStateMachine{
-			Status: Initial,
+			DownloadStatus: Initial,
 		},
 		CustomSong: raw_song.FindOrCreateCustomSong(title, url),
 	}
