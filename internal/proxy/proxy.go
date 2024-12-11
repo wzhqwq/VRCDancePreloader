@@ -35,7 +35,7 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 		}
 
 		log.Println("Intercepted video request:", id)
-		reader, err := playlist.PlaySong(id)
+		reader, err := playlist.RequestPyPySong(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return true

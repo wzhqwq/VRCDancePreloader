@@ -6,6 +6,7 @@ import (
 
 	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/song/raw_song"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
 )
 
@@ -103,4 +104,37 @@ func (ps *PreloadedSong) GetSongRSSync() (io.ReadSeekCloser, error) {
 		return nil, err
 	}
 	return cache.OpenCache(ps.GetId()), nil
+}
+
+// compare
+func (ps *PreloadedSong) MatchWithQueueItem(queueItem *types.QueueItem) bool {
+	if queueItem.SongNum == -1 {
+		return ps.CustomSong != nil && ps.CustomSong.MatchUrl(queueItem.URL)
+	}
+	return ps.PyPySong != nil && ps.PyPySong.ID == queueItem.SongNum
+}
+func (ps *PreloadedSong) MatchWithCustomUrl(url string) bool {
+	if ps.CustomSong == nil {
+		return false
+	}
+	return ps.CustomSong.MatchUrl(url)
+}
+func (ps *PreloadedSong) MatchWithPyPyId(id int) bool {
+	if ps.PyPySong == nil {
+		return false
+	}
+	return ps.PyPySong.ID == id
+}
+
+// actions
+func (ps *PreloadedSong) PlaySongStartFrom(offset float64) {
+	ps.sm.PlaySongStartFrom(offset)
+}
+func (ps *PreloadedSong) PreloadSong() {
+	if ps.sm.DownloadStatus == Initial || ps.sm.DownloadStatus == Failed {
+		go ps.sm.WaitForCompleteSong()
+	}
+}
+func (ps *PreloadedSong) RemoveFromList() {
+	ps.sm.RemoveFromList()
 }

@@ -3,8 +3,6 @@ package watcher
 import (
 	"encoding/json"
 
-	"github.com/samber/lo"
-
 	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
 )
@@ -49,10 +47,7 @@ func diffQueues(old, new []types.QueueItem) {
 	if lengths[len(old)][len(new)] == 0 {
 		// if the lcs is zero, then we consider it as a new queue
 		// clear the current queue
-		list := lo.Map(new, func(item types.QueueItem, _ int) *playlist.PlayItem {
-			return playlist.CreateFromQueueItem(item)
-		})
-		playlist.RestartPlaylist(list)
+		playlist.ClearAndSetQueue(new)
 		return
 	}
 
@@ -64,11 +59,10 @@ func diffQueues(old, new []types.QueueItem) {
 			playlist.RemoveItem(&old[x])
 		} else if y > 0 && lengths[x][y] == lengths[x][y-1] {
 			y--
-			newItem := playlist.CreateFromQueueItem(new[y])
 			if x == len(old) {
-				playlist.InsertItem(newItem, nil)
+				playlist.InsertItem(new[y], nil)
 			} else {
-				playlist.InsertItem(newItem, &old[x])
+				playlist.InsertItem(new[y], &old[x])
 			}
 		} else if x > 0 && y > 0 {
 			x--

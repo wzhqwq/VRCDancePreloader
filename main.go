@@ -52,7 +52,7 @@ func main() {
 
 		proxy.Stop()
 		watcher.Stop()
-		playlist.Stop()
+		playlist.StopPlayList()
 		cache.CleanUpCache()
 		log.Println("Gracefully stopped")
 		os.Exit(0)

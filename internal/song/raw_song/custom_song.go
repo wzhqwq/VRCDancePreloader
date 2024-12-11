@@ -34,6 +34,13 @@ func NewCustomSong(title, url string) CustomSong {
 	}
 }
 
+func (cs *CustomSong) MatchUrl(url string) bool {
+	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
+		return cs.UniqueId == fmt.Sprintf("yt_%s", id)
+	}
+	return cs.Url == url
+}
+
 func FindCustomSong(url string) (*CustomSong, bool) {
 	key := url
 	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
@@ -49,11 +56,7 @@ func FindOrCreateCustomSong(title, url string) *CustomSong {
 	}
 	song := NewCustomSong(title, url)
 
-	key := url
-	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
-		key = fmt.Sprintf("yt_%s", id)
-	}
-	customSongMap[key] = song
+	customSongMap[song.UniqueId] = song
 
 	return &song
 }

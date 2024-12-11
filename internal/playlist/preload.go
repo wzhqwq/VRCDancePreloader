@@ -1,58 +1,19 @@
 package playlist
 
-import (
-	"os"
-
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/samber/lo"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/constants"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
-)
-
-var criticalUpdateCh = make(chan struct{}, 1)
-
-func CriticalUpdate() {
+func (pl *PlayList) CriticalUpdate() {
 	select {
-	case criticalUpdateCh <- struct{}{}:
+	case pl.criticalUpdateCh <- struct{}{}:
 	default:
 	}
 }
 
-func keepCriticalUpdate() {
-	for {
-		<-criticalUpdateCh
-		PrintPlaylist()
-		PreloadPlaylist()
-	}
-}
-
-func PrintPlaylist() {
-	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{i18n.T("key_id"), i18n.T("key_title"), i18n.T("key_status")})
-	t.AppendRows(lo.Map(currentPlaylist, func(item *PlayItem, _ int) table.Row {
-		if item.ID >= 0 {
-			return table.Row{item.ID, item.Title, i18n.T("status_" + string(item.PreloadStatus))}
-		}
-		return table.Row{i18n.T("placeholder_custom_song"), item.Title, item.PreloadStatus}
-	}))
-	t.Render()
-}
-
-func PreloadPlaylist() {
+func (pl *PlayList) Preload() {
 	scanned := 0
-	for _, item := range currentPlaylist {
-		if scanned >= maxPreload {
+	for _, item := range pl.Items {
+		if scanned > pl.maxPreload {
 			break
 		}
-		switch item.PreloadStatus {
-		case constants.Pending:
-			go item.Download()
-		case constants.Failed:
-			item.UpdatePreloadStatus(constants.Pending)
-		}
-		if item.PlayStatus == constants.Pending {
-			scanned++
-		}
+		item.PreloadSong()
+		scanned++
 	}
 }

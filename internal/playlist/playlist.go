@@ -1,216 +1,76 @@
 package playlist
 
 import (
-	"errors"
-	"io"
-	"log"
-	"slices"
 	"sync"
-	"time"
 
-	"github.com/wzhqwq/PyPyDancePreloader/internal/constants"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/gui"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
 )
 
-var currentPlaylist []*PlayItem
-var temporaryItem *PlayItem
+type PlayList struct {
+	sync.Mutex
+	Items []*song.PreloadedSong
+
+	criticalUpdateCh chan struct{}
+	maxPreload       int
+
+	// event
+	em EventManager
+}
+
+var currentPlaylist *PlayList
+var temporaryItem *song.PreloadedSong
 var mutatingMutex = &sync.Mutex{}
 
-var maxPreload int
-
-func Init(maxPreload_ int) {
-	err := loadSongs()
-	if err != nil {
-		log.Println("Failed to load songs:", err)
-		panic(err)
+func newPlayList(maxPreload int) *PlayList {
+	return &PlayList{
+		Items:            make([]*song.PreloadedSong, 0),
+		criticalUpdateCh: make(chan struct{}, 1),
+		maxPreload:       maxPreload,
 	}
-
-	maxPreload = maxPreload_
-	currentPlaylist = make([]*PlayItem, 0)
-
-	go keepCriticalUpdate()
 }
 
-func Stop() {
-	for _, item := range currentPlaylist {
-		item.Dispose()
-	}
-	currentPlaylist = nil
-	<-time.After(1 * time.Second)
+func Init(maxPreload int) {
+	currentPlaylist = newPlayList(maxPreload)
+	currentPlaylist.Start()
 }
 
-func GetSongsResponse() []byte {
-	if savedResponse == nil {
-		<-songLoaded
-	}
-	return savedResponse
-}
-
-func RestartPlaylist(items []*PlayItem) {
-	mutatingMutex.Lock()
-	defer mutatingMutex.Unlock()
-	if currentPlaylist == nil {
-		return
-	}
-
-	for _, item := range currentPlaylist {
-		item.Dispose()
-		gui.RemovePlayItem(item)
-	}
-	currentPlaylist = items
-	for index, item := range currentPlaylist {
-		item.Index = index
-		gui.AddPlayItem(item)
-	}
-	CriticalUpdate()
-	log.Println("Restarted playlist")
-}
-
-func matchWithQueueItem(item *PlayItem, queueItem *types.QueueItem) bool {
-	if queueItem.SongNum == -1 {
-		return item.URL == queueItem.URL
-	}
-	return item.ID == queueItem.SongNum
-}
-
-func RemoveItem(queueData *types.QueueItem) {
-	mutatingMutex.Lock()
-	defer mutatingMutex.Unlock()
-	if currentPlaylist == nil {
-		return
-	}
-
-	removedIndex := -1
-	for i, item := range currentPlaylist {
-		if matchWithQueueItem(item, queueData) {
-			removedIndex = i
-			currentPlaylist = slices.Delete(currentPlaylist, i, i+1)
-			item.Dispose()
-			gui.RemovePlayItem(item)
-			log.Println("Removed item", item.Title)
-			break
+func (pl *PlayList) Start() {
+	go func() {
+		for {
+			<-pl.criticalUpdateCh
+			pl.Preload()
 		}
-	}
-	if removedIndex != -1 {
-		for i := removedIndex; i < len(currentPlaylist); i++ {
-			currentPlaylist[i].UpdateIndex(i)
-		}
-		CriticalUpdate()
-	}
+	}()
 }
 
-func InsertItem(item *PlayItem, before *types.QueueItem) {
-	mutatingMutex.Lock()
-	defer mutatingMutex.Unlock()
-	if currentPlaylist == nil {
-		return
-	}
+func (pl *PlayList) StopAll() {
+	pl.Lock()
+	defer pl.Unlock()
 
-	if before == nil {
-		item.Index = len(currentPlaylist)
-		currentPlaylist = append(currentPlaylist, item)
-		gui.AddPlayItem(item)
-		log.Println("Appended item", item.Title)
-
-		CriticalUpdate()
-		return
+	for _, item := range pl.Items {
+		item.RemoveFromList()
 	}
-	insertIndex := -1
-	for i, item := range currentPlaylist {
-		if matchWithQueueItem(item, before) {
-			insertIndex = i
-			currentPlaylist = slices.Insert(currentPlaylist, insertIndex, item)
-			item.Index = i
-			gui.AddPlayItem(item)
-			log.Println("Inserted item", item.Title, "before", before.VideoName)
-			break
-		}
-	}
-	if insertIndex != -1 {
-		for i := insertIndex; i < len(currentPlaylist); i++ {
-			currentPlaylist[i].UpdateIndex(i + 1)
-		}
-		CriticalUpdate()
-	}
+	pl.Items = make([]*song.PreloadedSong, 0)
+	pl.notifyChange(ItemsChange)
 }
 
-func createFromSongList(id int) *PlayItem {
-	if song, ok := songMap[id]; ok {
-		return NewPlayItem(
-			song.Name,
-			songGroups[song.Group],
-			i18n.T("placeholder_unknown_adder"),
-			"",
-			song.ID,
-			song.End,
-		)
-	}
-	return nil
-}
-func CreateFromQueueItem(item types.QueueItem) *PlayItem {
-	if temporaryItem != nil && temporaryItem.ID == item.SongNum {
-		temporaryItem.Adder = item.PlayerName
-		item := temporaryItem
-		temporaryItem = nil
-		return item
-	}
+func (pl *PlayList) SyncWithTime(url string, now float64) {
+	pl.Lock()
+	defer pl.Unlock()
 
-	return NewPlayItem(
-		item.VideoName,
-		item.Group,
-		item.PlayerName,
-		item.URL,
-		item.SongNum,
-		item.Length,
-	)
-}
-
-func FindSongToPlay(id int) *PlayItem {
-	mutatingMutex.Lock()
-	defer mutatingMutex.Unlock()
-
-	for _, item := range currentPlaylist {
-		if item.ID == id {
-			return item
-		}
+	var item *song.PreloadedSong
+	if id, ok := utils.CheckPyPyUrl(url); ok {
+		item = pl.findPyPySong(id)
+	} else {
+		item = pl.findCustomSong(url)
 	}
-
-	if item := createFromSongList(id); item != nil {
-		if temporaryItem != nil {
-			temporaryItem.Dispose()
-		}
-		temporaryItem = item
-		return item
-	}
-	return nil
-}
-
-func PlaySong(id int) (io.ReadSeekCloser, error) {
-	item := FindSongToPlay(id)
-	if item == nil {
-		return nil, errors.New("Song not found")
-	}
-
-	reader, err := item.ToReader()
-	if err != nil {
-		return nil, err
-	}
-	return reader, nil
+	item.PlaySongStartFrom(now)
 }
 
 func MarkURLPlaying(url string, now float64) {
-	mutatingMutex.Lock()
-	defer mutatingMutex.Unlock()
-
-	for index, item := range currentPlaylist {
-		if item.URL == url {
-			item.Play(now)
-			for i := 0; i < index; i++ {
-				currentPlaylist[i].UpdatePlayStatus(constants.Ended)
-			}
-			return
-		}
+	if currentPlaylist == nil {
+		return
 	}
+	currentPlaylist.SyncWithTime(url, now)
 }

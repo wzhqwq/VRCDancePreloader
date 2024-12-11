@@ -15,7 +15,7 @@ type EventManager struct {
 	Subscribers []chan SongChangeType
 }
 
-func (ps *PreloadedSong) AddSubscriber() chan SongChangeType {
+func (ps *PreloadedSong) SubscribeEvent() chan SongChangeType {
 	ps.em.Lock()
 	defer ps.em.Unlock()
 	channel := make(chan SongChangeType, 10)

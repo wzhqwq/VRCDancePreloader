@@ -5,6 +5,9 @@ import (
 	"regexp"
 )
 
+func GetStandardYoutubeURL(videoID string) string {
+	return fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
+}
 func GetYoutubeMQThumbnailURL(videoID string) string {
 	return fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", videoID)
 }
