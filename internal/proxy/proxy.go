@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/elazarl/goproxy"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
 )
 
@@ -49,7 +50,7 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 func handleSongListRequest(w http.ResponseWriter, req *http.Request) bool {
 	if req.URL.Path == "/api/v2/songs" {
 		log.Println("Intercepted song list request")
-		bodyBytes := playlist.GetSongsResponse()
+		bodyBytes := cache.GetSongListBytes()
 		// w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Content-Length", strconv.Itoa(len(bodyBytes)))
@@ -115,6 +116,10 @@ func Start(port string) {
 	if err := runningServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("HTTP server error: %v", err)
 	}
+}
+
+func SelfCheck() {
+	// check for dial loop
 }
 
 func Stop() {

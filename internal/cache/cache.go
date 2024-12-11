@@ -22,7 +22,7 @@ func InitCache(path string, max int, maxParallel int) {
 	maxSize = max
 	dm = newDownloadManager(maxParallel)
 
-	go pw.Render()
+	loadSongs()
 }
 
 func StopCache() {

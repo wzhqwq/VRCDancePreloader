@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"os"
 	"sync"
-
-	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
 type DownloadState struct {
@@ -26,8 +24,6 @@ type DownloadState struct {
 	CancelCh   chan bool
 	PriorityCh chan int
 }
-
-var pw progress.Writer = progress.NewWriter()
 
 func (ds *DownloadState) Write(p []byte) (int, error) {
 	select {
