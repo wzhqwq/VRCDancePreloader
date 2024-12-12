@@ -10,6 +10,7 @@ import (
 	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/proxy"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/song_ui/tui"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/watcher"
 
 	"os"
@@ -53,6 +54,7 @@ func main() {
 		proxy.Stop()
 		watcher.Stop()
 		playlist.StopPlayList()
+		tui.Stop()
 		cache.CleanUpCache()
 		log.Println("Gracefully stopped")
 		os.Exit(0)
@@ -78,6 +80,7 @@ func main() {
 	}
 
 	go proxy.Start(args.Port)
+	tui.Start()
 	if args.GuiEnabled {
 		gui.InitGui()
 		gui.MainLoop(osSignalCh)

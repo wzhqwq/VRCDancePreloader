@@ -66,14 +66,14 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 // ProgressInfo, only change during download
 
 type PreloadedSongProgressInfo struct {
-	Progress        float64
-	DownloadedBytes string
+	Progress         float64
+	DownloadedPretty string
 }
 
 func (ps *PreloadedSong) GetProgressInfo() PreloadedSongProgressInfo {
 	return PreloadedSongProgressInfo{
-		Progress:        float64(ps.DownloadedSize) / float64(ps.TotalSize),
-		DownloadedBytes: utils.PrettyByteSize(ps.DownloadedSize),
+		Progress:         float64(ps.DownloadedSize) / float64(ps.TotalSize),
+		DownloadedPretty: utils.PrettyByteSize(ps.DownloadedSize),
 	}
 }
 

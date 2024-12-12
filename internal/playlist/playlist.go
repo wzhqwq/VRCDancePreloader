@@ -20,7 +20,6 @@ type PlayList struct {
 
 var currentPlaylist *PlayList
 var temporaryItem *song.PreloadedSong
-var mutatingMutex = &sync.Mutex{}
 
 func newPlayList(maxPreload int) *PlayList {
 	return &PlayList{
@@ -28,11 +27,6 @@ func newPlayList(maxPreload int) *PlayList {
 		criticalUpdateCh: make(chan struct{}, 1),
 		maxPreload:       maxPreload,
 	}
-}
-
-func Init(maxPreload int) {
-	currentPlaylist = newPlayList(maxPreload)
-	currentPlaylist.Start()
 }
 
 func (pl *PlayList) Start() {

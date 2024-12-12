@@ -30,8 +30,8 @@ func (pl *PlayList) RemoveItem(queueData *types.QueueItem) {
 }
 
 func (pl *PlayList) InsertItem(item *song.PreloadedSong, before *types.QueueItem) {
-	mutatingMutex.Lock()
-	defer mutatingMutex.Unlock()
+	pl.Lock()
+	defer pl.Unlock()
 
 	if before == nil {
 		pl.Items = append(pl.Items, item)
@@ -59,8 +59,8 @@ func (pl *PlayList) InsertItem(item *song.PreloadedSong, before *types.QueueItem
 }
 
 func (pl *PlayList) FromList(items []*song.PreloadedSong) {
-	mutatingMutex.Lock()
-	defer mutatingMutex.Unlock()
+	pl.Lock()
+	defer pl.Unlock()
 	if pl.Items == nil {
 		return
 	}
@@ -114,6 +114,7 @@ func ClearAndSetQueue(items []types.QueueItem) {
 	}
 
 	currentPlaylist = newPlayList(maxPreload)
+	notifyNewList(currentPlaylist)
 	list := lo.Map(items, func(item types.QueueItem, _ int) *song.PreloadedSong {
 		return createFromQueueItem(item)
 	})

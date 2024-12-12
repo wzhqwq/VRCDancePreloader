@@ -6,6 +6,24 @@ import (
 	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
 )
 
+var newListSubscribers []chan *PlayList
+
+func SubscribeNewListEvent() chan *PlayList {
+	channel := make(chan *PlayList)
+	newListSubscribers = append(newListSubscribers, channel)
+	return channel
+}
+func notifyNewList(pl *PlayList) {
+	for _, sub := range newListSubscribers {
+		select {
+		case sub <- pl:
+		default:
+			<-sub
+			sub <- pl
+		}
+	}
+}
+
 type PlayListChangeType string
 
 const (

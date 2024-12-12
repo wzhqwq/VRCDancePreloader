@@ -105,6 +105,9 @@ func (ps *PreloadedSong) GetSongRSSync() (io.ReadSeekCloser, error) {
 	}
 	return cache.OpenCache(ps.GetId()), nil
 }
+func (ps *PreloadedSong) GetPreloadStatus() SongDownloadStatus {
+	return ps.sm.DownloadStatus
+}
 
 // compare
 func (ps *PreloadedSong) MatchWithQueueItem(queueItem *types.QueueItem) bool {
