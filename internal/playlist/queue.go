@@ -80,9 +80,11 @@ func createFromQueueItem(item types.QueueItem) *song.PreloadedSong {
 		newSong = temporaryItem
 		temporaryItem = nil
 	} else {
-		if item.SongNum == -1 {
+		if item.SongNum < 0 {
 			// Custom Song
 			newSong = song.CreatePreloadedCustomSong(item.VideoName, item.URL)
+		} else if item.SongNum == 0 {
+			newSong = song.CreateRandomPlaySong()
 		} else {
 			// PyPyDance Song
 			newSong = song.CreatePreloadedPyPySong(item.SongNum)

@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"sync"
 
@@ -18,12 +17,14 @@ var currentTui *PlayListTui
 var stopCh chan struct{}
 
 type PlayListTui struct {
-	sync.Mutex
 	pw      progress.Writer
 	pl      *playlist.PlayList
 	items   []*SongTui
 	StopCh  chan struct{}
 	itemMap map[string]*SongTui
+
+	stdoutMutex sync.Mutex
+	mapMutex    sync.Mutex
 }
 type SongTui struct {
 	pt        *progress.Tracker
@@ -40,6 +41,9 @@ func NewPlayListTui(pl *playlist.PlayList) *PlayListTui {
 		items:   make([]*SongTui, 0),
 		StopCh:  make(chan struct{}),
 		itemMap: make(map[string]*SongTui),
+
+		stdoutMutex: sync.Mutex{},
+		mapMutex:    sync.Mutex{},
 	}
 }
 
@@ -51,40 +55,54 @@ func (plt *PlayListTui) NewSongTui(ps *song.PreloadedSong) *SongTui {
 	}
 }
 
-func (st *PlayListTui) RenderLoop() {
-	changeCh := st.pl.SubscribeChangeEvent()
-	newItemCh := st.pl.SubscribeNewItemEvent()
+func (plt *PlayListTui) RenderLoop() {
+	plt.refreshItems()
+	changeCh := plt.pl.SubscribeChangeEvent()
 	for {
 		select {
-		case <-st.StopCh:
-			for _, item := range st.items {
+		case <-plt.StopCh:
+			for _, item := range plt.items {
 				item.StopCh <- struct{}{}
 			}
 			return
 		case change := <-changeCh:
 			switch change {
 			case playlist.ItemsChange:
-				st.items = lo.Map(st.pl.Items, func(ps *song.PreloadedSong, _ int) *SongTui {
-					if item, ok := st.itemMap[ps.GetInfo().ID]; ok {
-						return item
-					}
-					// Never reach here
-					log.Println("An unexpected behavior: new item in playlist but not in itemMap")
-					return nil
-				})
-				st.Print()
+				plt.refreshItems()
 			}
-		case newItem := <-newItemCh:
-			newTui := st.NewSongTui(newItem)
-			st.itemMap[newItem.GetInfo().ID] = newTui
-			go newTui.RenderLoop()
 		}
 	}
 }
 
+func (plt *PlayListTui) refreshItems() {
+	plt.mapMutex.Lock()
+	defer func() {
+		plt.mapMutex.Unlock()
+		plt.Print()
+	}()
+
+	plt.items = lo.Map(plt.pl.Items, func(ps *song.PreloadedSong, _ int) *SongTui {
+		if item, ok := plt.itemMap[ps.GetId()]; ok {
+			return item
+		}
+		newTui := plt.NewSongTui(ps)
+		plt.itemMap[ps.GetId()] = newTui
+		go newTui.RenderLoop()
+		return newTui
+	})
+}
+
+func (plt *PlayListTui) removeFromMap(id string) {
+	plt.mapMutex.Lock()
+	defer plt.mapMutex.Unlock()
+	delete(plt.itemMap, id)
+}
+
 func (plt *PlayListTui) Print() {
-	plt.Lock()
-	defer plt.Unlock()
+	plt.stdoutMutex.Lock()
+	plt.mapMutex.Lock()
+	defer plt.mapMutex.Unlock()
+	defer plt.stdoutMutex.Unlock()
 
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
@@ -109,9 +127,9 @@ func (st *SongTui) RenderLoop() {
 		case event := <-ch:
 			switch event {
 			case song.ProgressChange:
-				st.plt.Lock()
-				st.pt.SetValue(int64(st.ps.DownloadedSize))
-				st.plt.Unlock()
+				st.plt.stdoutMutex.Lock()
+				st.pt.SetValue(st.ps.DownloadedSize)
+				st.plt.stdoutMutex.Unlock()
 			case song.StatusChange:
 				switch st.ps.GetPreloadStatus() {
 				case song.Downloading:
@@ -130,12 +148,13 @@ func (st *SongTui) RenderLoop() {
 					st.pt.MarkAsErrored()
 					st.pt = nil
 				case song.Removed:
-					st.plt.itemMap[st.ps.GetInfo().ID] = nil
+					st.plt.removeFromMap(st.ps.GetId())
 					return
 				}
 				st.plt.Print()
 			case song.TimeChange:
 				st.IsPlaying = st.ps.GetTimeInfo().IsPlaying
+				//fmt.Printf("Song %s at %s\n", st.ps.GetInfo().Title, st.ps.GetTimeInfo().Text)
 			}
 		}
 	}
@@ -143,6 +162,7 @@ func (st *SongTui) RenderLoop() {
 
 func Start() {
 	ch := playlist.SubscribeNewListEvent()
+	stopCh = make(chan struct{})
 	go func() {
 		for {
 			select {
@@ -156,6 +176,7 @@ func Start() {
 					currentTui.StopCh <- struct{}{}
 				}
 				currentTui = NewPlayListTui(pl)
+				go currentTui.RenderLoop()
 			}
 		}
 	}()

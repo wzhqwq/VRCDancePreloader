@@ -26,7 +26,7 @@ var args struct {
 	Port         string `arg:"-p,--port" default:"7653" help:"port to listen on"`
 	CacheDiskMax int    `arg:"-c,--cache" default:"100" help:"maximum disk cache size(MB)"`
 	VrChatDir    string `arg:"-d,--vrchat-dir" default:"" help:"VRChat directory"`
-	GuiEnabled   bool   `arg:"-g,--gui" default:"true" help:"enable GUI"`
+	GuiEnabled   bool   `arg:"-g,--gui" default:"false" help:"enable GUI"`
 	PreloadMax   int    `arg:"--max-preload" default:"4" help:"maximum preload count"`
 	DownloadMax  int    `arg:"--max-download" default:"2" help:"maximum parallel download count"`
 	Proxy        string `arg:"--proxy" default:"" help:"proxy server, example: 127.0.0.1:7890, set for both http and https"`
@@ -75,10 +75,15 @@ func main() {
 	go func() {
 		<-osSignalCh
 
+		log.Println("Stopping proxy")
 		proxy.Stop()
+		log.Println("Stopping watcher")
 		watcher.Stop()
+		log.Println("Stopping playlist")
 		playlist.StopPlayList()
+		log.Println("Stopping tui")
 		tui.Stop()
+		log.Println("Stopping cache")
 		cache.CleanUpCache()
 		log.Println("Gracefully stopped")
 		os.Exit(0)
@@ -86,7 +91,10 @@ func main() {
 
 	i18n.Init()
 	cache.InitCache("./cache", args.CacheDiskMax*1024*1024, args.DownloadMax)
+	defer cache.CleanUpCache()
+
 	playlist.Init(args.PreloadMax)
+	defer playlist.StopPlayList()
 
 	logDir := args.VrChatDir
 	if logDir == "" {
@@ -102,9 +110,14 @@ func main() {
 		log.Println("Failed to start watcher:", err)
 		return
 	}
+	defer watcher.Stop()
 
 	go proxy.Start(args.Port)
+	defer proxy.Stop()
+
 	tui.Start()
+	defer tui.Stop()
+
 	if args.GuiEnabled {
 		gui.InitGui()
 		gui.MainLoop(osSignalCh)

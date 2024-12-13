@@ -1,21 +1,21 @@
 package playlist
 
 import (
-	"sync"
-
 	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
 )
 
 type PlayList struct {
-	sync.Mutex
+	//sync.Mutex
+	utils.LoggingMutex
+
 	Items []*song.PreloadedSong
 
 	criticalUpdateCh chan struct{}
 	maxPreload       int
 
 	// event
-	em EventManager
+	em *EventManager
 }
 
 var currentPlaylist *PlayList
@@ -26,6 +26,7 @@ func newPlayList(maxPreload int) *PlayList {
 		Items:            make([]*song.PreloadedSong, 0),
 		criticalUpdateCh: make(chan struct{}, 1),
 		maxPreload:       maxPreload,
+		em:               NewEventManager(),
 	}
 }
 
@@ -50,9 +51,6 @@ func (pl *PlayList) StopAll() {
 }
 
 func (pl *PlayList) SyncWithTime(url string, now float64) {
-	pl.Lock()
-	defer pl.Unlock()
-
 	var item *song.PreloadedSong
 	if id, ok := utils.CheckPyPyUrl(url); ok {
 		item = pl.findPyPySong(id)

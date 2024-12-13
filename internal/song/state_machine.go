@@ -3,60 +3,74 @@ package song
 import (
 	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
 )
 
-type SongDownloadStatus string
+type DownloadStatus string
 
 const (
 	// Initial is the initial state of every song
-	Initial SongDownloadStatus = "initial"
+	Initial DownloadStatus = "initial"
 	// Pending is when the song is waiting for the download to start,
 	// either because previous songs are still downloading
 	// or it's queue-jumped by a higher priority song
-	Pending SongDownloadStatus = "pending"
+	Pending DownloadStatus = "pending"
 	// Requesting is when the song is requesting the download
-	Requesting SongDownloadStatus = "requesting"
+	Requesting DownloadStatus = "requesting"
 	// Downloading is when the song is downloading
-	Downloading SongDownloadStatus = "downloading"
+	Downloading DownloadStatus = "downloading"
 	// Downloaded is when the song is downloaded to the disk
-	Downloaded SongDownloadStatus = "downloaded"
+	Downloaded DownloadStatus = "downloaded"
 	// Failed is when the song failed to download, will be retried
-	Failed SongDownloadStatus = "failed"
+	Failed DownloadStatus = "failed"
 	// Removed is when the song is removed from the playlist
-	Removed SongDownloadStatus = "removed"
+	Removed DownloadStatus = "removed"
 )
 
-type SongPlayStatus string
+type PlayStatus string
 
 const (
-	Queued  SongPlayStatus = "queued"
-	Playing SongPlayStatus = "playing"
-	Ended   SongPlayStatus = "ended"
+	Queued  PlayStatus = "queued"
+	Playing PlayStatus = "playing"
+	Ended   PlayStatus = "ended"
 )
 
-// SongStateMachine is the state machine for a song
-type SongStateMachine struct {
-	DownloadStatus SongDownloadStatus
-	PlayStatus     SongPlayStatus
+// StateMachine is the state machine for a song
+type StateMachine struct {
+	DownloadStatus DownloadStatus
+	PlayStatus     PlayStatus
 
 	PreloadedSong *PreloadedSong
 
 	// waiter
 	songWaiting utils.FinishingBroadcaster
+
+	// locks
+	timeMutex sync.Mutex
 }
 
-func (sm *SongStateMachine) IsDownloadLoopStarted() bool {
+func NewSongStateMachine() *StateMachine {
+	return &StateMachine{
+		DownloadStatus: Initial,
+		PlayStatus:     Queued,
+		PreloadedSong:  nil,
+		songWaiting:    utils.FinishingBroadcaster{},
+		timeMutex:      sync.Mutex{},
+	}
+}
+
+func (sm *StateMachine) IsDownloadLoopStarted() bool {
 	return sm.DownloadStatus == Pending || sm.DownloadStatus == Requesting || sm.DownloadStatus == Downloading
 }
-func (sm *SongStateMachine) IsPlayingLoopStarted() bool {
+func (sm *StateMachine) IsPlayingLoopStarted() bool {
 	return sm.PlayStatus == Playing
 }
 
-func (sm *SongStateMachine) WaitForCompleteSong() error {
+func (sm *StateMachine) WaitForCompleteSong() error {
 	if sm.DownloadStatus == Downloaded {
 		return nil
 	}
@@ -67,7 +81,7 @@ func (sm *SongStateMachine) WaitForCompleteSong() error {
 	return sm.StartDownloadLoop()
 }
 
-func (sm *SongStateMachine) StartDownloadLoop() error {
+func (sm *StateMachine) StartDownloadLoop() error {
 	ds := cache.Download(sm.PreloadedSong.GetId(), sm.PreloadedSong.GetDownloadUrl())
 
 	for {
@@ -109,11 +123,15 @@ func (sm *SongStateMachine) StartDownloadLoop() error {
 	}
 }
 
-func (sm *SongStateMachine) PlaySongStartFrom(offset float64) {
+func (sm *StateMachine) PlaySongStartFrom(offset float64) {
 	if sm.PlayStatus == Ended {
 		return
 	}
+
+	sm.timeMutex.Lock()
 	sm.PreloadedSong.TimePassed = offset
+	sm.timeMutex.Unlock()
+
 	if sm.PlayStatus == Queued {
 		go sm.StartPlayingLoop()
 	} else {
@@ -121,28 +139,33 @@ func (sm *SongStateMachine) PlaySongStartFrom(offset float64) {
 	}
 }
 
-func (sm *SongStateMachine) StartPlayingLoop() {
+func (sm *StateMachine) StartPlayingLoop() {
 	sm.PlayStatus = Playing
 	sm.PreloadedSong.notifySubscribers(TimeChange)
 	for {
 		if sm.PlayStatus != Playing {
 			break
 		}
+
+		sm.timeMutex.Lock()
 		nextTime := math.Floor(sm.PreloadedSong.TimePassed+0.1) + 1.0
-		<-time.After(time.Duration(nextTime-sm.PreloadedSong.TimePassed) * time.Second)
+		deltaSeconds := nextTime - sm.PreloadedSong.TimePassed
+		sm.PreloadedSong.TimePassed = nextTime
+		sm.timeMutex.Unlock()
+
+		<-time.After(time.Duration(deltaSeconds) * time.Second)
 
 		if nextTime >= sm.PreloadedSong.Duration {
 			sm.PlayStatus = Ended
 			break
 		} else {
-			sm.PreloadedSong.TimePassed = nextTime
 			sm.PreloadedSong.notifySubscribers(TimeChange)
 		}
 	}
 	sm.PreloadedSong.notifySubscribers(TimeChange)
 }
 
-func (sm *SongStateMachine) RemoveFromList() {
+func (sm *StateMachine) RemoveFromList() {
 	sm.DownloadStatus = Removed
 	if sm.PlayStatus == Playing {
 		sm.PlayStatus = Ended

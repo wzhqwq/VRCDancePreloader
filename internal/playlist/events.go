@@ -24,30 +24,37 @@ func notifyNewList(pl *PlayList) {
 	}
 }
 
-type PlayListChangeType string
+type ChangeType string
 
 const (
-	ItemsChange PlayListChangeType = "items"
+	ItemsChange ChangeType = "items"
 )
 
 type EventManager struct {
 	sync.Mutex
-	ChangeSubscribers  []chan PlayListChangeType
+	ChangeSubscribers  []chan ChangeType
 	NewItemSubscribers []chan *song.PreloadedSong
 }
 
-func (ps *PlayList) SubscribeChangeEvent() chan PlayListChangeType {
-	ps.em.Lock()
-	defer ps.em.Unlock()
-	channel := make(chan PlayListChangeType, 10)
-	ps.em.ChangeSubscribers = append(ps.em.ChangeSubscribers, channel)
+func NewEventManager() *EventManager {
+	return &EventManager{
+		ChangeSubscribers:  []chan ChangeType{},
+		NewItemSubscribers: []chan *song.PreloadedSong{},
+	}
+}
+
+func (pl *PlayList) SubscribeChangeEvent() chan ChangeType {
+	pl.em.Lock()
+	defer pl.em.Unlock()
+	channel := make(chan ChangeType, 10)
+	pl.em.ChangeSubscribers = append(pl.em.ChangeSubscribers, channel)
 	return channel
 }
 
-func (ps *PlayList) notifyChange(changeType PlayListChangeType) {
-	ps.em.Lock()
-	defer ps.em.Unlock()
-	for _, sub := range ps.em.ChangeSubscribers {
+func (pl *PlayList) notifyChange(changeType ChangeType) {
+	pl.em.Lock()
+	defer pl.em.Unlock()
+	for _, sub := range pl.em.ChangeSubscribers {
 		select {
 		case sub <- changeType:
 		default:
@@ -55,18 +62,18 @@ func (ps *PlayList) notifyChange(changeType PlayListChangeType) {
 	}
 }
 
-func (ps *PlayList) SubscribeNewItemEvent() chan *song.PreloadedSong {
-	ps.em.Lock()
-	defer ps.em.Unlock()
+func (pl *PlayList) SubscribeNewItemEvent() chan *song.PreloadedSong {
+	pl.em.Lock()
+	defer pl.em.Unlock()
 	channel := make(chan *song.PreloadedSong, 10)
-	ps.em.NewItemSubscribers = append(ps.em.NewItemSubscribers, channel)
+	pl.em.NewItemSubscribers = append(pl.em.NewItemSubscribers, channel)
 	return channel
 }
 
-func (ps *PlayList) notifyNewItem(item *song.PreloadedSong) {
-	ps.em.Lock()
-	defer ps.em.Unlock()
-	for _, sub := range ps.em.NewItemSubscribers {
+func (pl *PlayList) notifyNewItem(item *song.PreloadedSong) {
+	pl.em.Lock()
+	defer pl.em.Unlock()
+	for _, sub := range pl.em.NewItemSubscribers {
 		select {
 		case sub <- item:
 		default:
