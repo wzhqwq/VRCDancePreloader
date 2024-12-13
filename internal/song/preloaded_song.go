@@ -11,13 +11,13 @@ import (
 )
 
 type PreloadedSong struct {
-	sm         SongStateMachine
+	sm         *SongStateMachine
 	PyPySong   *raw_song.PyPyDanceSong
 	CustomSong *raw_song.CustomSong
 
 	// constant
-	Adder string
-	Order int
+	Adder      string
+	RandomPlay bool
 
 	// play progress states
 	Duration   float64
@@ -31,7 +31,7 @@ type PreloadedSong struct {
 	PreloadError error
 
 	// event
-	em EventManager
+	em *EventManager
 }
 
 // constructors
@@ -41,10 +41,12 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 		return nil
 	}
 	ret := &PreloadedSong{
-		sm: SongStateMachine{
-			DownloadStatus: Initial,
-		},
+		sm: NewSongStateMachine(),
+
+		Duration: float64(song.End),
 		PyPySong: song,
+
+		em: NewEventManager(),
 	}
 	ret.sm.PreloadedSong = ret
 	return ret
@@ -52,10 +54,23 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 
 func CreatePreloadedCustomSong(title, url string) *PreloadedSong {
 	ret := &PreloadedSong{
-		sm: SongStateMachine{
-			DownloadStatus: Initial,
-		},
+		sm: NewSongStateMachine(),
+
 		CustomSong: raw_song.FindOrCreateCustomSong(title, url),
+
+		em: NewEventManager(),
+	}
+	ret.sm.PreloadedSong = ret
+	return ret
+}
+
+func CreateRandomPlaySong() *PreloadedSong {
+	ret := &PreloadedSong{
+		RandomPlay: true,
+
+		sm: NewSongStateMachine(),
+
+		em: NewEventManager(),
 	}
 	ret.sm.PreloadedSong = ret
 	return ret

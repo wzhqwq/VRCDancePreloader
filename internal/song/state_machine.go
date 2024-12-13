@@ -3,6 +3,7 @@ package song
 import (
 	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
@@ -47,6 +48,19 @@ type SongStateMachine struct {
 
 	// waiter
 	songWaiting utils.FinishingBroadcaster
+
+	// locks
+	timeMutex sync.Mutex
+}
+
+func NewSongStateMachine() *SongStateMachine {
+	return &SongStateMachine{
+		DownloadStatus: Initial,
+		PlayStatus:     Queued,
+		PreloadedSong:  nil,
+		songWaiting:    utils.FinishingBroadcaster{},
+		timeMutex:      sync.Mutex{},
+	}
 }
 
 func (sm *SongStateMachine) IsDownloadLoopStarted() bool {
@@ -113,7 +127,11 @@ func (sm *SongStateMachine) PlaySongStartFrom(offset float64) {
 	if sm.PlayStatus == Ended {
 		return
 	}
+
+	sm.timeMutex.Lock()
 	sm.PreloadedSong.TimePassed = offset
+	sm.timeMutex.Unlock()
+
 	if sm.PlayStatus == Queued {
 		go sm.StartPlayingLoop()
 	} else {
@@ -128,14 +146,19 @@ func (sm *SongStateMachine) StartPlayingLoop() {
 		if sm.PlayStatus != Playing {
 			break
 		}
+
+		sm.timeMutex.Lock()
 		nextTime := math.Floor(sm.PreloadedSong.TimePassed+0.1) + 1.0
-		<-time.After(time.Duration(nextTime-sm.PreloadedSong.TimePassed) * time.Second)
+		deltaSeconds := nextTime - sm.PreloadedSong.TimePassed
+		sm.PreloadedSong.TimePassed = nextTime
+		sm.timeMutex.Unlock()
+
+		<-time.After(time.Duration(deltaSeconds) * time.Second)
 
 		if nextTime >= sm.PreloadedSong.Duration {
 			sm.PlayStatus = Ended
 			break
 		} else {
-			sm.PreloadedSong.TimePassed = nextTime
 			sm.PreloadedSong.notifySubscribers(TimeChange)
 		}
 	}

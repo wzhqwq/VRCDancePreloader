@@ -103,7 +103,10 @@ func watch() error {
 				if watchingFile != nil {
 					watchingFile.Close()
 				}
-				keepTrackUntilClose(path)
+				err = keepTrackUntilClose(path)
+				if err != nil {
+					return err
+				}
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
@@ -116,6 +119,12 @@ func watch() error {
 }
 
 func Start(base string) error {
+	// check if the log directory exists first
+	_, err := os.Stat(base)
+	if err != nil {
+		return err
+	}
+
 	logBase = base
 	// start watching the log directory
 	path, err := sniffActiveLog()
@@ -128,7 +137,7 @@ func Start(base string) error {
 	go func() {
 		err = watch()
 		if err != nil {
-			log.Println(err)
+			log.Panic(err)
 		}
 	}()
 

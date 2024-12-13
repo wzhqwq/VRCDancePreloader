@@ -6,8 +6,8 @@ import (
 	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
 )
 
-var customSongMap map[string]CustomSong
-var uniqueIdIncrement int = 0
+var customSongMap = make(map[string]CustomSong)
+var uniqueIdIncrement = 0
 
 type CustomSong struct {
 	Name         string

@@ -36,6 +36,13 @@ type EventManager struct {
 	NewItemSubscribers []chan *song.PreloadedSong
 }
 
+func NewEventManager() *EventManager {
+	return &EventManager{
+		ChangeSubscribers:  []chan PlayListChangeType{},
+		NewItemSubscribers: []chan *song.PreloadedSong{},
+	}
+}
+
 func (ps *PlayList) SubscribeChangeEvent() chan PlayListChangeType {
 	ps.em.Lock()
 	defer ps.em.Unlock()
