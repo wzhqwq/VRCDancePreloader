@@ -11,7 +11,7 @@ import (
 )
 
 type PreloadedSong struct {
-	sm         *SongStateMachine
+	sm         *StateMachine
 	PyPySong   *raw_song.PyPyDanceSong
 	CustomSong *raw_song.CustomSong
 
@@ -120,7 +120,7 @@ func (ps *PreloadedSong) GetSongRSSync() (io.ReadSeekCloser, error) {
 	}
 	return cache.OpenCache(ps.GetId()), nil
 }
-func (ps *PreloadedSong) GetPreloadStatus() SongDownloadStatus {
+func (ps *PreloadedSong) GetPreloadStatus() DownloadStatus {
 	return ps.sm.DownloadStatus
 }
 
