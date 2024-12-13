@@ -18,6 +18,9 @@ type CustomSong struct {
 
 func NewCustomSong(title, url string) CustomSong {
 	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
+		if title == id || title == "" {
+			title = utils.GetYoutubeTitle(id)
+		}
 		return CustomSong{
 			Name:         title,
 			Url:          url,

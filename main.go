@@ -11,7 +11,10 @@ import (
 	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/proxy"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/song_ui/tui"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/watcher"
+
+	"gopkg.in/yaml.v3"
 
 	"os"
 	"os/signal"
@@ -29,6 +32,10 @@ var args struct {
 	Proxy        string `arg:"--proxy" default:"" help:"proxy server, example: 127.0.0.1:7890, set for both http and https"`
 }
 
+var keyConfig struct {
+	Youtube string `yaml:"youtube"`
+}
+
 func main() {
 	arg.MustParse(&args)
 
@@ -42,6 +49,23 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	// load key config (if exists)
+	keyConfigFile, err := os.Open("keys.yaml")
+	if err == nil {
+		decoder := yaml.NewDecoder(keyConfigFile)
+		err = decoder.Decode(&keyConfig)
+		if err != nil {
+			log.Println("Failed to load key config:", err)
+		}
+		keyConfigFile.Close()
+	}
+	if keyConfig.Youtube != "" {
+		utils.SetYoutubeApiKey(keyConfig.Youtube)
+	} else {
+		log.Println("[Warning] Youtube API key not set, so the title of Youtube songs might not display correctly")
+	}
+	os.Exit(0)
 
 	osSignalCh := make(chan os.Signal, 1)
 
@@ -73,7 +97,7 @@ func main() {
 		}
 		logDir = filepath.Join(roaming, "..", "LocalLow", "VRChat", "VRChat")
 	}
-	err := watcher.Start(logDir)
+	err = watcher.Start(logDir)
 	if err != nil {
 		log.Println("Failed to start watcher:", err)
 		return
