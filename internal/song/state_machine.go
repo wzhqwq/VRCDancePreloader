@@ -44,7 +44,7 @@ type StateMachine struct {
 	DownloadStatus DownloadStatus
 	PlayStatus     PlayStatus
 
-	PreloadedSong *PreloadedSong
+	ps *PreloadedSong
 
 	// waiter
 	songWaiting utils.FinishingBroadcaster
@@ -57,7 +57,7 @@ func NewSongStateMachine() *StateMachine {
 	return &StateMachine{
 		DownloadStatus: Initial,
 		PlayStatus:     Queued,
-		PreloadedSong:  nil,
+		ps:             nil,
 		songWaiting:    utils.FinishingBroadcaster{},
 		timeMutex:      sync.Mutex{},
 	}
@@ -71,54 +71,73 @@ func (sm *StateMachine) IsPlayingLoopStarted() bool {
 }
 
 func (sm *StateMachine) WaitForCompleteSong() error {
+	sm.StartDownload()
+	sm.Prioritize()
+	sm.songWaiting.WaitForFinishing()
 	if sm.DownloadStatus == Downloaded {
 		return nil
 	}
-	if sm.IsDownloadLoopStarted() {
-		sm.songWaiting.WaitForFinishing()
-		return nil
+	if sm.DownloadStatus == Removed {
+		return fmt.Errorf("download removed")
 	}
-	return sm.StartDownloadLoop()
+	return sm.ps.PreloadError
+}
+func (sm *StateMachine) StartDownload() {
+	if sm.DownloadStatus == Downloaded {
+		return
+	}
+	if !sm.IsDownloadLoopStarted() {
+		sm.DownloadStatus = Pending
+		sm.ps.notifySubscribers(StatusChange)
+
+		ds := cache.Download(sm.ps.GetId(), sm.ps.GetDownloadUrl())
+		go sm.StartDownloadLoop(ds)
+	}
+}
+func (sm *StateMachine) Prioritize() {
+	if sm.IsPlayingLoopStarted() {
+		cache.Prioritize(sm.ps.GetId())
+	}
 }
 
-func (sm *StateMachine) StartDownloadLoop() error {
-	ds := cache.Download(sm.PreloadedSong.GetId(), sm.PreloadedSong.GetDownloadUrl())
-
+func (sm *StateMachine) StartDownloadLoop(ds *cache.DownloadState) {
+	defer sm.songWaiting.Finish()
 	for {
 		select {
 		case <-ds.StateCh:
 			if ds.Done {
 				sm.DownloadStatus = Downloaded
-				sm.PreloadedSong.notifySubscribers(StatusChange)
-				return nil
+				sm.ps.notifySubscribers(StatusChange)
+				return
 			}
 			if ds.Error != nil {
 				sm.DownloadStatus = Failed
-				sm.PreloadedSong.notifySubscribers(StatusChange)
-				return ds.Error
+				sm.ps.PreloadError = ds.Error
+				sm.ps.notifySubscribers(StatusChange)
+				return
 			}
 			if ds.Pending && sm.DownloadStatus != Pending {
 				sm.DownloadStatus = Pending
-				sm.PreloadedSong.notifySubscribers(StatusChange)
+				sm.ps.notifySubscribers(StatusChange)
 				continue
 			}
 			if ds.TotalSize == 0 && sm.DownloadStatus != Requesting {
 				sm.DownloadStatus = Requesting
-				sm.PreloadedSong.notifySubscribers(StatusChange)
+				sm.ps.notifySubscribers(StatusChange)
 				continue
 			}
 			// Otherwise, it's downloading
 			if sm.DownloadStatus == Removed {
-				cache.CancelDownload(sm.PreloadedSong.GetId())
-				return fmt.Errorf("download removed")
+				cache.CancelDownload(sm.ps.GetId())
+				return
 			}
 			if sm.DownloadStatus != Downloading {
 				sm.DownloadStatus = Downloading
-				sm.PreloadedSong.notifySubscribers(StatusChange)
+				sm.ps.notifySubscribers(StatusChange)
 			}
-			sm.PreloadedSong.TotalSize = ds.TotalSize
-			sm.PreloadedSong.DownloadedSize = ds.DownloadedSize
-			sm.PreloadedSong.notifySubscribers(ProgressChange)
+			sm.ps.TotalSize = ds.TotalSize
+			sm.ps.DownloadedSize = ds.DownloadedSize
+			sm.ps.notifySubscribers(ProgressChange)
 		}
 	}
 }
@@ -129,40 +148,40 @@ func (sm *StateMachine) PlaySongStartFrom(offset float64) {
 	}
 
 	sm.timeMutex.Lock()
-	sm.PreloadedSong.TimePassed = offset
+	sm.ps.TimePassed = offset
 	sm.timeMutex.Unlock()
 
 	if sm.PlayStatus == Queued {
 		go sm.StartPlayingLoop()
 	} else {
-		sm.PreloadedSong.notifySubscribers(TimeChange)
+		sm.ps.notifySubscribers(TimeChange)
 	}
 }
 
 func (sm *StateMachine) StartPlayingLoop() {
 	sm.PlayStatus = Playing
-	sm.PreloadedSong.notifySubscribers(TimeChange)
+	sm.ps.notifySubscribers(TimeChange)
 	for {
 		if sm.PlayStatus != Playing {
 			break
 		}
 
 		sm.timeMutex.Lock()
-		nextTime := math.Floor(sm.PreloadedSong.TimePassed+0.1) + 1.0
-		deltaSeconds := nextTime - sm.PreloadedSong.TimePassed
-		sm.PreloadedSong.TimePassed = nextTime
+		nextTime := math.Floor(sm.ps.TimePassed+0.1) + 1.0
+		deltaSeconds := nextTime - sm.ps.TimePassed
+		sm.ps.TimePassed = nextTime
 		sm.timeMutex.Unlock()
 
 		<-time.After(time.Duration(deltaSeconds) * time.Second)
 
-		if nextTime >= sm.PreloadedSong.Duration {
+		if nextTime >= sm.ps.Duration {
 			sm.PlayStatus = Ended
 			break
 		} else {
-			sm.PreloadedSong.notifySubscribers(TimeChange)
+			sm.ps.notifySubscribers(TimeChange)
 		}
 	}
-	sm.PreloadedSong.notifySubscribers(TimeChange)
+	sm.ps.notifySubscribers(TimeChange)
 }
 
 func (sm *StateMachine) RemoveFromList() {
@@ -170,5 +189,5 @@ func (sm *StateMachine) RemoveFromList() {
 	if sm.PlayStatus == Playing {
 		sm.PlayStatus = Ended
 	}
-	sm.PreloadedSong.notifySubscribers(StatusChange)
+	sm.ps.notifySubscribers(StatusChange)
 }

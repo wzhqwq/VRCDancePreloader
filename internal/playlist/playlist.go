@@ -3,11 +3,12 @@ package playlist
 import (
 	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
+	"sync"
 )
 
 type PlayList struct {
-	//sync.Mutex
-	utils.LoggingMutex
+	sync.Mutex
+	//utils.LoggingMutex
 
 	Items []*song.PreloadedSong
 
@@ -32,6 +33,7 @@ func newPlayList(maxPreload int) *PlayList {
 
 func (pl *PlayList) Start() {
 	go func() {
+		pl.Preload()
 		for {
 			<-pl.criticalUpdateCh
 			pl.Preload()

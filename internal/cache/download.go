@@ -3,6 +3,7 @@ package cache
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -48,13 +49,17 @@ func (ds *DownloadState) BlockIfPending() bool {
 					ds.Pending = false
 					ds.StateCh <- ds
 				}
+				log.Printf("Url %s now can continue download\n", ds.FinalURL)
 				return true
 			} else {
+				log.Printf("Url %s is now pending, priority %d\n", ds.FinalURL, p)
 				if !ds.Pending {
 					ds.Pending = true
 					ds.StateCh <- ds
 				}
 			}
+		default:
+			return true
 		}
 	}
 }
@@ -145,7 +150,16 @@ func Download(id, url string) *DownloadState {
 			ds.Error = fmt.Errorf("failed to open %s.mp4", id)
 			return
 		}
-		io.Copy(file, tempFile)
+		_, err = tempFile.Seek(0, 0)
+		if err != nil {
+			ds.Error = err
+			return
+		}
+		_, err = io.Copy(file, tempFile)
+		if err != nil {
+			ds.Error = err
+			return
+		}
 
 		// Close the cache file so that all data is written to disk
 		closeCache(id)
@@ -160,4 +174,8 @@ func Download(id, url string) *DownloadState {
 
 func CancelDownload(id string) {
 	dm.CancelDownload(id)
+}
+
+func Prioritize(id string) {
+	dm.Prioritize(id)
 }

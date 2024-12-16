@@ -35,6 +35,7 @@ type PreloadedSong struct {
 }
 
 // constructors
+
 func CreatePreloadedPyPySong(id int) *PreloadedSong {
 	song, ok := raw_song.FindPyPySong(id)
 	if !ok {
@@ -48,7 +49,7 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 
 		em: NewEventManager(),
 	}
-	ret.sm.PreloadedSong = ret
+	ret.sm.ps = ret
 	return ret
 }
 
@@ -60,7 +61,7 @@ func CreatePreloadedCustomSong(title, url string) *PreloadedSong {
 
 		em: NewEventManager(),
 	}
-	ret.sm.PreloadedSong = ret
+	ret.sm.ps = ret
 	return ret
 }
 
@@ -72,11 +73,12 @@ func CreateRandomPlaySong() *PreloadedSong {
 
 		em: NewEventManager(),
 	}
-	ret.sm.PreloadedSong = ret
+	ret.sm.ps = ret
 	return ret
 }
 
 // getters
+
 func (ps *PreloadedSong) GetOriginalUrl() string {
 	if ps.PyPySong != nil && len(ps.PyPySong.OriginalURL) > 0 {
 		return ps.PyPySong.OriginalURL[0]
@@ -125,6 +127,7 @@ func (ps *PreloadedSong) GetPreloadStatus() DownloadStatus {
 }
 
 // compare
+
 func (ps *PreloadedSong) MatchWithQueueItem(queueItem *types.QueueItem) bool {
 	if queueItem.SongNum == -1 {
 		return ps.CustomSong != nil && ps.CustomSong.MatchUrl(queueItem.URL)
@@ -145,12 +148,18 @@ func (ps *PreloadedSong) MatchWithPyPyId(id int) bool {
 }
 
 // actions
+
 func (ps *PreloadedSong) PlaySongStartFrom(offset float64) {
 	ps.sm.PlaySongStartFrom(offset)
 }
 func (ps *PreloadedSong) PreloadSong() {
 	if ps.sm.DownloadStatus == Initial || ps.sm.DownloadStatus == Failed {
-		go ps.sm.WaitForCompleteSong()
+		ps.sm.StartDownload()
+	}
+}
+func (ps *PreloadedSong) PrioritizeSong() {
+	if ps.sm.DownloadStatus == Pending {
+		ps.sm.Prioritize()
 	}
 }
 func (ps *PreloadedSong) RemoveFromList() {

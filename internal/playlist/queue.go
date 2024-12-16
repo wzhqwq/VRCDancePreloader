@@ -121,5 +121,6 @@ func ClearAndSetQueue(items []types.QueueItem) {
 		return createFromQueueItem(item)
 	})
 	currentPlaylist.FromList(list)
+	currentPlaylist.Start()
 	log.Println("Restarted playlist")
 }

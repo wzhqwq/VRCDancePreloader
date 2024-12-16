@@ -14,6 +14,9 @@ func (pl *PlayList) Preload() {
 			break
 		}
 		item.PreloadSong()
+		if scanned <= 1 {
+			item.PrioritizeSong()
+		}
 		scanned++
 	}
 }

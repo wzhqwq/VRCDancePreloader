@@ -1,9 +1,13 @@
 package cache
 
-import "sync"
+import (
+	"sync"
+)
 
 type downloadManager struct {
 	sync.Mutex
+	//utils.LoggingMutex
+
 	stateMap    map[string]*DownloadState
 	queue       []string
 	maxParallel int
@@ -24,8 +28,8 @@ func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 	if !exists {
 		ds = &DownloadState{
 			StateCh:    make(chan *DownloadState, 10),
-			CancelCh:   make(chan bool),
-			PriorityCh: make(chan int),
+			CancelCh:   make(chan bool, 10),
+			PriorityCh: make(chan int, 10),
 
 			Pending: true,
 		}
@@ -71,8 +75,10 @@ func (dm *downloadManager) UpdatePriorities() {
 		if !ok || ds.Done {
 			dm.queue = append(dm.queue[:i], dm.queue[i+1:]...)
 			i--
+		} else {
+			//log.Printf("Priority of %s: %d\n", dm.queue[i], i)
+			ds.PriorityCh <- i
 		}
-		ds.PriorityCh <- i
 	}
 }
 func (dm *downloadManager) CanDownload(priority int) bool {

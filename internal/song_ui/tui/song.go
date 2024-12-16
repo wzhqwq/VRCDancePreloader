@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"sync"
 
@@ -58,6 +59,10 @@ func (plt *PlayListTui) NewSongTui(ps *song.PreloadedSong) *SongTui {
 func (plt *PlayListTui) RenderLoop() {
 	plt.refreshItems()
 	changeCh := plt.pl.SubscribeChangeEvent()
+
+	go plt.pw.Render()
+	defer plt.pw.Stop()
+
 	for {
 		select {
 		case <-plt.StopCh:
@@ -142,11 +147,16 @@ func (st *SongTui) RenderLoop() {
 						st.plt.pw.AppendTracker(st.pt)
 					}
 				case song.Downloaded:
-					st.pt.MarkAsDone()
-					st.pt = nil
+					if st.pt != nil {
+						st.pt.MarkAsDone()
+						st.pt = nil
+					}
 				case song.Failed:
-					st.pt.MarkAsErrored()
-					st.pt = nil
+					if st.pt != nil {
+						st.pt.MarkAsErrored()
+						log.Printf("Preload %s error: %s\n", st.ps.GetId(), st.ps.PreloadError.Error())
+						st.pt = nil
+					}
 				case song.Removed:
 					st.plt.removeFromMap(st.ps.GetId())
 					return

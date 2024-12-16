@@ -65,7 +65,6 @@ func main() {
 	} else {
 		log.Println("[Warning] Youtube API key not set, so the title of Youtube songs might not display correctly")
 	}
-	os.Exit(0)
 
 	osSignalCh := make(chan os.Signal, 1)
 
