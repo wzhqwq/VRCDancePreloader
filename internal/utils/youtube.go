@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"time"
 
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
@@ -46,7 +47,9 @@ func GetYoutubeTitle(videoID string) string {
 	if youtubeApiKey == "" {
 		return fmt.Sprintf("Youtube %s", videoID)
 	}
-	svc, err := youtube.NewService(context.Background(), option.WithAPIKey(youtubeApiKey))
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	svc, err := youtube.NewService(ctx, option.WithAPIKey(youtubeApiKey))
 	if err != nil {
 		return fmt.Sprintf("Youtube %s", videoID)
 	}
