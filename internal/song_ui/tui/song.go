@@ -26,6 +26,8 @@ type PlayListTui struct {
 
 	stdoutMutex sync.Mutex
 	mapMutex    sync.Mutex
+
+	lastStatus map[string]string
 }
 type SongTui struct {
 	pt        *progress.Tracker
@@ -45,6 +47,8 @@ func NewPlayListTui(pl *playlist.PlayList) *PlayListTui {
 
 		stdoutMutex: sync.Mutex{},
 		mapMutex:    sync.Mutex{},
+
+		lastStatus: make(map[string]string),
 	}
 }
 
@@ -109,15 +113,30 @@ func (plt *PlayListTui) Print() {
 	defer plt.mapMutex.Unlock()
 	defer plt.stdoutMutex.Unlock()
 
+	allTheSame := true
+	statusMap := map[string]string{}
+	for _, item := range plt.items {
+		status := item.ps.GetStatusInfo().Status
+		id := item.ps.GetId()
+		statusMap[id] = status
+		if lastStatus, ok := plt.lastStatus[id]; !ok || lastStatus != status {
+			allTheSame = false
+		}
+	}
+	if allTheSame {
+		return
+	}
+	plt.lastStatus = statusMap
+
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{i18n.T("key_id"), i18n.T("key_title"), i18n.T("key_status")})
+	t.AppendHeader(table.Row{i18n.T("key_id"), i18n.T("key_status"), i18n.T("key_title")})
 	t.AppendRows(lo.Map(plt.items, func(item *SongTui, _ int) table.Row {
 		info := item.ps.GetInfo()
 		return table.Row{
 			info.ID,
+			plt.lastStatus[info.ID],
 			info.Title,
-			item.ps.GetStatusInfo().Status,
 		}
 	}))
 	t.Render()
@@ -133,7 +152,9 @@ func (st *SongTui) RenderLoop() {
 			switch event {
 			case song.ProgressChange:
 				st.plt.stdoutMutex.Lock()
-				st.pt.SetValue(st.ps.DownloadedSize)
+				if st.pt != nil {
+					st.pt.SetValue(st.ps.DownloadedSize)
+				}
 				st.plt.stdoutMutex.Unlock()
 			case song.StatusChange:
 				switch st.ps.GetPreloadStatus() {

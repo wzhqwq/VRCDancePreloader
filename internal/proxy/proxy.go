@@ -38,8 +38,10 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 		reader, err := playlist.RequestPyPySong(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
+			log.Println("Failed to request playlist:", err)
 			return true
 		}
+		log.Println("Requested video downloaded:", id)
 
 		http.ServeContent(w, req, "video.mp4", time.Now(), reader)
 		return true

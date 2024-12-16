@@ -6,7 +6,6 @@ import (
 
 	"github.com/alexflint/go-arg"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/gui"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/proxy"
@@ -89,7 +88,11 @@ func main() {
 	}()
 
 	i18n.Init()
-	cache.InitCache("./cache", args.CacheDiskMax*1024*1024, args.DownloadMax)
+	err = cache.InitCache("./cache", args.CacheDiskMax*1024*1024, args.DownloadMax)
+	if err != nil {
+		log.Println("Failed to init cache:", err)
+		return
+	}
 	defer cache.CleanUpCache()
 
 	playlist.Init(args.PreloadMax)
@@ -117,10 +120,13 @@ func main() {
 	tui.Start()
 	defer tui.Stop()
 
-	if args.GuiEnabled {
-		gui.InitGui()
-		gui.MainLoop(osSignalCh)
-	}
+	//if args.GuiEnabled {
+	//	gui.InitGui()
+	//	gui.MainLoop(osSignalCh)
+	//}
+	//for {
+	//	select {}
+	//}
 	for {
 		select {}
 	}

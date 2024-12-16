@@ -13,7 +13,7 @@ var fileMapMutex = &sync.Mutex{}
 var cachePath string
 var maxSize int
 
-func InitCache(path string, max int, maxParallel int) {
+func InitCache(path string, max int, maxParallel int) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		os.Mkdir(path, 0777)
 	}
@@ -22,7 +22,11 @@ func InitCache(path string, max int, maxParallel int) {
 	maxSize = max
 	dm = newDownloadManager(maxParallel)
 
-	loadSongs()
+	err := loadSongs()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func StopCache() {
