@@ -27,3 +27,6 @@
 
 - Key: wrapper_adder
   Default: "Requested by {{.Adder}}"
+
+- Key: app_name
+  Default: "VRC Dancing Room Preloader"

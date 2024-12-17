@@ -1,26 +1,19 @@
 package gui
 
 import (
-	"os"
-	"syscall"
-
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/window_app"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
 )
 
-var a fyne.App
-
-func InitGui() {
-	a = app.New()
-	a.Settings().SetTheme(&cTheme{})
+func Start() {
+	window_app.InitFyne()
 	MainWindow()
 }
 
 func MainWindow() {
-	w := a.NewWindow("Hello")
+	w := window_app.NewWindow(i18n.T("app_name"))
 
 	pl := NewPlayListGui()
 	go pl.drawFromChannels()
@@ -33,9 +26,4 @@ func MainWindow() {
 	w.SetPadded(false)
 
 	w.Show()
-}
-
-func MainLoop(closeCh chan os.Signal) {
-	a.Run()
-	closeCh <- syscall.SIGINT
 }

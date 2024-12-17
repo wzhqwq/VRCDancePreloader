@@ -1,4 +1,4 @@
-package gui
+package widgets
 
 import (
 	"image/color"
@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/window_app"
 )
 
 type EllipseText struct {
@@ -83,7 +84,7 @@ func (p *ellipseTextRenderer) findProperSlice() string {
 	}
 }
 func (p *ellipseTextRenderer) calculateSize(text string) float32 {
-	size, _ := a.Driver().RenderedTextSize(text, p.e.TextSize, p.e.TextStyle, nil)
+	size, _ := window_app.Driver().RenderedTextSize(text, p.e.TextSize, p.e.TextStyle, nil)
 	return size.Width
 }
 
