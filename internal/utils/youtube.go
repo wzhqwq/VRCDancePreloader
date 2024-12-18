@@ -1,20 +1,9 @@
 package utils
 
 import (
-	"context"
 	"fmt"
 	"regexp"
-	"time"
-
-	"google.golang.org/api/option"
-	"google.golang.org/api/youtube/v3"
 )
-
-var youtubeApiKey string
-
-func SetYoutubeApiKey(key string) {
-	youtubeApiKey = key
-}
 
 func GetStandardYoutubeURL(videoID string) string {
 	return fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
@@ -41,27 +30,4 @@ func CheckYoutubeURL(url string) (string, bool) {
 	}
 
 	return "", false
-}
-
-func GetYoutubeTitle(videoID string) string {
-	if youtubeApiKey == "" {
-		return fmt.Sprintf("Youtube %s", videoID)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	svc, err := youtube.NewService(ctx, option.WithAPIKey(youtubeApiKey))
-	if err != nil {
-		return fmt.Sprintf("Youtube %s", videoID)
-	}
-	call := svc.Videos.List([]string{"snippet"}).Id(videoID)
-	resp, err := call.Do()
-	if err != nil {
-		fmt.Println("Youtube API Error: ", err)
-		return fmt.Sprintf("Youtube %s", videoID)
-	}
-	if len(resp.Items) == 0 {
-		fmt.Println("No items")
-		return fmt.Sprintf("Youtube %s", videoID)
-	}
-	return resp.Items[0].Snippet.Title
 }

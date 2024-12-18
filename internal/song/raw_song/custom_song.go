@@ -2,6 +2,7 @@ package raw_song
 
 import (
 	"fmt"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/third_party_api"
 	"strings"
 
 	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
@@ -20,7 +21,7 @@ type CustomSong struct {
 func NewCustomSong(title, url string) CustomSong {
 	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
 		if title == "" || strings.Contains(title, id) {
-			title = utils.GetYoutubeTitle(id)
+			title = third_party_api.GetYoutubeTitle(id)
 		}
 		return CustomSong{
 			Name:         title,

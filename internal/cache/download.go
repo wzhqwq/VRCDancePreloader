@@ -2,9 +2,9 @@ package cache
 
 import (
 	"fmt"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"sync"
 )
@@ -111,7 +111,7 @@ func Download(id, url string) *DownloadState {
 		if ds.FinalURL != "" {
 			url = ds.FinalURL
 		}
-		resp, err := http.Get(url)
+		resp, err := requesting.RequestVideo(url)
 		if err != nil {
 			ds.Error = err
 			return
