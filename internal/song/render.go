@@ -78,9 +78,20 @@ type PreloadedSongProgressInfo struct {
 }
 
 func (ps *PreloadedSong) GetProgressInfo() PreloadedSongProgressInfo {
+	text := i18n.T("placeholder_unknown_size")
+	if ps.sm.DownloadStatus == Downloading {
+		text = fmt.Sprintf(
+			"%s / %s",
+			utils.PrettyByteSize(ps.DownloadedSize),
+			utils.PrettyByteSize(ps.TotalSize),
+		)
+	}
+	if ps.sm.DownloadStatus == Downloaded {
+		text = utils.PrettyByteSize(ps.TotalSize)
+	}
 	return PreloadedSongProgressInfo{
 		Progress:         float64(ps.DownloadedSize) / float64(ps.TotalSize),
-		DownloadedPretty: utils.PrettyByteSize(ps.DownloadedSize),
+		DownloadedPretty: text,
 		IsDownloading:    ps.sm.DownloadStatus == Downloading,
 	}
 }

@@ -26,6 +26,7 @@ var args struct {
 	Port       string `arg:"-p,--port" default:"7653" help:"port to listen on"`
 	VrChatDir  string `arg:"-d,--vrchat-dir" default:"" help:"VRChat directory"`
 	GuiEnabled bool   `arg:"-g,--gui" default:"false" help:"enable GUI"`
+	TuiEnabled bool   `arg:"-t,--tui" default:"false" help:"enable TUI"`
 }
 
 func processKeyConfig() {
@@ -59,22 +60,7 @@ func main() {
 	// listen for SIGINT and SIGTERM
 	signal.Notify(osSignalCh, syscall.SIGINT, syscall.SIGTERM)
 
-	go func() {
-		<-osSignalCh
-
-		log.Println("Stopping proxy")
-		proxy.Stop()
-		log.Println("Stopping watcher")
-		watcher.Stop()
-		log.Println("Stopping playlist")
-		playlist.StopPlayList()
-		log.Println("Stopping tui")
-		tui.Stop()
-		log.Println("Stopping cache")
-		cache.CleanUpCache()
-		log.Println("Gracefully stopped")
-		os.Exit(0)
-	}()
+	defer log.Println("Gracefully stopped")
 
 	i18n.Init()
 
@@ -83,11 +69,27 @@ func main() {
 		log.Println("Failed to init cache:", err)
 		return
 	}
-	defer cache.CleanUpCache()
+	defer func() {
+		log.Println("Cleaning up cache")
+		cache.CleanUpCache()
+	}()
 
+	select {
+	case <-osSignalCh:
+		return
+	default:
+	}
 	playlist.Init(limits.MaxPreload)
-	defer playlist.StopPlayList()
+	defer func() {
+		log.Println("Stopping playlist")
+		playlist.StopPlayList()
+	}()
 
+	select {
+	case <-osSignalCh:
+		return
+	default:
+	}
 	logDir := args.VrChatDir
 	if logDir == "" {
 		roaming, err := os.UserConfigDir()
@@ -102,22 +104,54 @@ func main() {
 		log.Println("Failed to start watcher:", err)
 		return
 	}
-	defer watcher.Stop()
+	defer func() {
+		log.Println("Stopping log watcher")
+		watcher.Stop()
+	}()
 
+	select {
+	case <-osSignalCh:
+		return
+	default:
+	}
 	go proxy.Start(args.Port)
-	defer proxy.Stop()
+	defer func() {
+		log.Println("Stopping proxy")
+		proxy.Stop()
+	}()
 
-	tui.Start()
-	defer tui.Stop()
+	if args.TuiEnabled {
+		select {
+		case <-osSignalCh:
+			return
+		default:
+		}
+		tui.Start()
+		defer func() {
+			log.Println("Stopping TUI")
+			tui.Stop()
+		}()
+	}
 
 	if args.GuiEnabled {
+		select {
+		case <-osSignalCh:
+			return
+		default:
+		}
 		gui.Start()
-		defer gui.Stop()
+		defer func() {
+			log.Println("Stopping GUI")
+			gui.Stop()
+		}()
 
+		go func() {
+			<-osSignalCh
+			log.Println("Quitting...")
+			window_app.Quit()
+		}()
 		window_app.MainLoop()
 	} else {
-		for {
-			select {}
-		}
+		<-osSignalCh
 	}
 }

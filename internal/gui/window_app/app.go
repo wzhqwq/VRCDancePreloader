@@ -15,6 +15,9 @@ func InitFyne() {
 func MainLoop() {
 	a.Run()
 }
+func Quit() {
+	a.Quit()
+}
 
 func NewWindow(title string) fyne.Window {
 	return a.NewWindow(title)

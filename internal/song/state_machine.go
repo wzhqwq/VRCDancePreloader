@@ -107,6 +107,9 @@ func (sm *StateMachine) StartDownloadLoop(ds *cache.DownloadState) {
 		case <-ds.StateCh:
 			if ds.Done {
 				sm.DownloadStatus = Downloaded
+				sm.ps.TotalSize = ds.TotalSize
+				sm.ps.DownloadedSize = ds.DownloadedSize
+				sm.ps.notifySubscribers(ProgressChange)
 				sm.ps.notifySubscribers(StatusChange)
 				return
 			}
