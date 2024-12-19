@@ -68,12 +68,14 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 type PreloadedSongProgressInfo struct {
 	Progress         float64
 	DownloadedPretty string
+	IsDownloading    bool
 }
 
 func (ps *PreloadedSong) GetProgressInfo() PreloadedSongProgressInfo {
 	return PreloadedSongProgressInfo{
 		Progress:         float64(ps.DownloadedSize) / float64(ps.TotalSize),
 		DownloadedPretty: utils.PrettyByteSize(ps.DownloadedSize),
+		IsDownloading:    ps.sm.DownloadStatus == Downloading,
 	}
 }
 
@@ -109,33 +111,26 @@ func (ps *PreloadedSong) GetTimeInfo() PreloadedSongTimeInfo {
 type PreloadedSongStatusInfo struct {
 	Status string
 	Color  fyne.ThemeColorName
+
+	PreloadError error
 }
 
 func (ps *PreloadedSong) GetStatusInfo() PreloadedSongStatusInfo {
-	var status string
 	var color fyne.ThemeColorName
 	switch ps.sm.DownloadStatus {
-	case Initial:
-		status = i18n.T("status_initial")
+	case Initial, Pending, Removed:
 		color = theme.ColorNamePlaceHolder
-	case Pending:
-		status = i18n.T("status_pending")
-		color = theme.ColorNamePlaceHolder
-	case Requesting:
-		status = i18n.T("status_requesting")
-		color = theme.ColorNamePrimary
-	case Downloading:
-		status = i18n.T("status_downloading")
+	case Requesting, Downloading:
 		color = theme.ColorNamePrimary
 	case Downloaded:
-		status = i18n.T("status_downloaded")
 		color = theme.ColorNameSuccess
 	case Failed:
-		status = i18n.T("status_failed")
 		color = theme.ColorNameError
 	}
 	return PreloadedSongStatusInfo{
-		Status: status,
+		Status: i18n.T(fmt.Sprintf("status_%s", ps.sm.DownloadStatus)),
 		Color:  color,
+
+		PreloadError: ps.PreloadError,
 	}
 }

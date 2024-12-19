@@ -14,9 +14,9 @@ type PlayListTui struct {
 	pl *playlist.PlayList
 	t  *SongTable
 
-	items   []*SongTui
+	items   []*ItemTui
 	StopCh  chan struct{}
-	itemMap map[string]*SongTui
+	itemMap map[string]*ItemTui
 
 	stdoutMutex sync.Mutex
 	mapMutex    sync.Mutex
@@ -28,20 +28,12 @@ func NewPlayListTui(pl *playlist.PlayList) *PlayListTui {
 		pl: pl,
 		t:  NewSongTable(),
 
-		items:   make([]*SongTui, 0),
+		items:   make([]*ItemTui, 0),
 		StopCh:  make(chan struct{}),
-		itemMap: make(map[string]*SongTui),
+		itemMap: make(map[string]*ItemTui),
 
 		stdoutMutex: sync.Mutex{},
 		mapMutex:    sync.Mutex{},
-	}
-}
-
-func (plt *PlayListTui) NewSongTui(ps *song.PreloadedSong) *SongTui {
-	return &SongTui{
-		ps:     ps,
-		plt:    plt,
-		StopCh: make(chan struct{}),
 	}
 }
 
@@ -75,11 +67,11 @@ func (plt *PlayListTui) refreshItems() {
 		plt.Print()
 	}()
 
-	plt.items = lo.Map(plt.pl.Items, func(ps *song.PreloadedSong, _ int) *SongTui {
+	plt.items = lo.Map(plt.pl.Items, func(ps *song.PreloadedSong, _ int) *ItemTui {
 		if item, ok := plt.itemMap[ps.GetId()]; ok {
 			return item
 		}
-		newTui := plt.NewSongTui(ps)
+		newTui := NewSongTui(ps, plt)
 		plt.itemMap[ps.GetId()] = newTui
 		go newTui.RenderLoop()
 		return newTui

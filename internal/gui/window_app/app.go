@@ -1,9 +1,6 @@
 package window_app
 
 import (
-	"os"
-	"syscall"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 )
@@ -15,9 +12,8 @@ func InitFyne() {
 	a.Settings().SetTheme(&cTheme{})
 }
 
-func MainLoop(closeCh chan os.Signal) {
+func MainLoop() {
 	a.Run()
-	closeCh <- syscall.SIGINT
 }
 
 func NewWindow(title string) fyne.Window {

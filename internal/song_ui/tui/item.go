@@ -8,7 +8,7 @@ import (
 	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
 )
 
-type SongTui struct {
+type ItemTui struct {
 	pt        *progress.Tracker
 	ps        *song.PreloadedSong
 	plt       *PlayListTui
@@ -16,50 +16,58 @@ type SongTui struct {
 	StopCh    chan struct{}
 }
 
-func (st *SongTui) RenderLoop() {
-	ch := st.ps.SubscribeEvent()
+func NewSongTui(ps *song.PreloadedSong, plt *PlayListTui) *ItemTui {
+	return &ItemTui{
+		ps:     ps,
+		plt:    plt,
+		StopCh: make(chan struct{}),
+	}
+}
+
+func (it *ItemTui) RenderLoop() {
+	ch := it.ps.SubscribeEvent()
 	for {
 		select {
-		case <-st.StopCh:
+		case <-it.StopCh:
 			return
 		case event := <-ch:
 			switch event {
 			case song.ProgressChange:
-				st.plt.stdoutMutex.Lock()
-				if st.pt != nil {
-					st.pt.SetValue(st.ps.DownloadedSize)
+				it.plt.stdoutMutex.Lock()
+				if it.pt != nil {
+					it.pt.SetValue(it.ps.DownloadedSize)
 				}
-				st.plt.stdoutMutex.Unlock()
+				it.plt.stdoutMutex.Unlock()
 			case song.StatusChange:
-				switch st.ps.GetPreloadStatus() {
+				switch it.ps.GetPreloadStatus() {
 				case song.Downloading:
-					if st.pt == nil {
-						st.pt = &progress.Tracker{
-							Message: fmt.Sprintf("Downloading %s", st.ps.GetInfo().Title),
-							Total:   int64(st.ps.TotalSize),
+					if it.pt == nil {
+						it.pt = &progress.Tracker{
+							Message: fmt.Sprintf("Downloading %s", it.ps.GetInfo().Title),
+							Total:   int64(it.ps.TotalSize),
 							Units:   progress.UnitsBytes,
 						}
-						st.plt.pw.AppendTracker(st.pt)
+						it.plt.pw.AppendTracker(it.pt)
 					}
 				case song.Downloaded:
-					if st.pt != nil {
-						st.pt.MarkAsDone()
-						st.pt = nil
+					if it.pt != nil {
+						it.pt.MarkAsDone()
+						it.pt = nil
 					}
 				case song.Failed:
-					if st.pt != nil {
-						st.pt.MarkAsErrored()
-						log.Printf("Preload %s error: %s\n", st.ps.GetId(), st.ps.PreloadError.Error())
-						st.pt = nil
+					if it.pt != nil {
+						it.pt.MarkAsErrored()
+						log.Printf("Preload %s error: %s\n", it.ps.GetId(), it.ps.PreloadError.Error())
+						it.pt = nil
 					}
 				case song.Removed:
-					st.plt.removeFromMap(st.ps.GetId())
+					it.plt.removeFromMap(it.ps.GetId())
 					return
 				}
-				st.plt.Print()
+				it.plt.Print()
 			case song.TimeChange:
-				st.IsPlaying = st.ps.GetTimeInfo().IsPlaying
-				//fmt.Printf("Song %s at %s\n", st.ps.GetInfo().Title, st.ps.GetTimeInfo().Text)
+				it.IsPlaying = it.ps.GetTimeInfo().IsPlaying
+				//fmt.Printf("Song %s at %s\n", it.ps.GetInfo().Title, it.ps.GetTimeInfo().Text)
 			}
 		}
 	}

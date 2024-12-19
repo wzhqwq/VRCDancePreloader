@@ -22,7 +22,7 @@ func NewSongTable() *SongTable {
 	}
 }
 
-func (st *SongTable) Print(items []*SongTui) {
+func (st *SongTable) Print(items []*ItemTui) {
 	allTheSame := true
 	statusMap := map[string]string{}
 	for _, item := range items {
@@ -41,7 +41,7 @@ func (st *SongTable) Print(items []*SongTui) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{i18n.T("key_id"), i18n.T("key_status"), i18n.T("key_title")})
-	t.AppendRows(lo.Map(items, func(item *SongTui, _ int) table.Row {
+	t.AppendRows(lo.Map(items, func(item *ItemTui, _ int) table.Row {
 		info := item.ps.GetInfo()
 		return table.Row{
 			info.ID,

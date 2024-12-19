@@ -1,17 +1,20 @@
 package main
 
 import (
+	"log"
+
 	"github.com/alexflint/go-arg"
 	"github.com/wzhqwq/PyPyDancePreloader/config"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/window_app"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/proxy"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/song_ui/gui"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/song_ui/tui"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/third_party_api"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/watcher"
-	"log"
 
 	"os"
 	"os/signal"
@@ -107,13 +110,12 @@ func main() {
 	tui.Start()
 	defer tui.Stop()
 
-	//if args.GuiEnabled {
-	//	gui.InitGui()
-	//	gui.MainLoop(osSignalCh)
-	//}
-	//for {
-	//	select {}
-	//}
+	if args.GuiEnabled {
+		gui.Start()
+		defer gui.Stop()
+
+		window_app.MainLoop()
+	}
 	for {
 		select {}
 	}

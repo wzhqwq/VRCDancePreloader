@@ -9,20 +9,11 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
 )
 
-func GetThumbnailURL(videoURL string) string {
-	youtubeID, isYoutube := utils.CheckYoutubeURL(videoURL)
-	if isYoutube {
-		return utils.GetYoutubeMQThumbnailURL(youtubeID)
-	}
-
-	return "https://via.placeholder.com/150"
-}
-func GetThumbnailImage(videoURL string) fyne.Resource {
-	log.Println("Get: ", GetThumbnailURL(videoURL))
-	resp, err := http.Get(GetThumbnailURL(videoURL))
+func GetThumbnailImage(url string) fyne.Resource {
+	log.Println("Get: ", url)
+	resp, err := http.Get(url)
 	if err != nil {
 		log.Println("Failed to get thumbnail:", err)
 		return nil
@@ -40,12 +31,12 @@ func GetThumbnailImage(videoURL string) fyne.Resource {
 
 type Thumbnail struct {
 	widget.BaseWidget
-	VideoURL string
+	ThumbnailURL string
 }
 
 type thumbnailRenderer struct {
-	image    *canvas.Image
-	videoURL string
+	image        *canvas.Image
+	thumbnailURL string
 
 	t *Thumbnail
 }
@@ -68,15 +59,15 @@ func (r *thumbnailRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *thumbnailRenderer) Refresh() {
-	if r.t.VideoURL != r.videoURL {
+	if r.t.ThumbnailURL != r.thumbnailURL {
 		r.LoadImage()
 	}
 }
 
 func (r *thumbnailRenderer) LoadImage() {
-	r.videoURL = r.t.VideoURL
+	r.thumbnailURL = r.t.ThumbnailURL
 	go func() {
-		image := GetThumbnailImage(r.t.VideoURL)
+		image := GetThumbnailImage(r.t.ThumbnailURL)
 		if image == nil {
 			return
 		}
@@ -101,8 +92,8 @@ func (t *Thumbnail) CreateRenderer() fyne.WidgetRenderer {
 	return r
 }
 
-func NewThumbnail(videoURL string) *Thumbnail {
+func NewThumbnail(thumbnailURL string) *Thumbnail {
 	return &Thumbnail{
-		VideoURL: videoURL,
+		ThumbnailURL: thumbnailURL,
 	}
 }
