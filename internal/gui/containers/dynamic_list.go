@@ -1,113 +1,172 @@
 package containers
 
 import (
+	"fyne.io/fyne/v2/widget"
 	"math"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 )
 
-type DynamicListLayout struct {
+type DynamicList struct {
+	widget.BaseWidget
+
 	minWidth float32
-
-	Order   []string
-	ItemMap map[string]*DynamicListItem
+	order    []string
+	itemMap  map[string]*DynamicListItem
 }
 
-func (dl *DynamicListLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
+func (dl *DynamicList) AddItem(item *DynamicListItem) {
+	dl.itemMap[item.ID] = item
+}
+func (dl *DynamicList) RemoveItem(id string) {
+	item := dl.itemMap[id]
+	if item == nil {
+		return
+	}
+	delete(dl.itemMap, id)
+}
+func (dl *DynamicList) SetOrder(order []string) {
+	dl.order = order
+	dl.Refresh()
+}
+func (dl *DynamicList) CreateRenderer() fyne.WidgetRenderer {
+	return &DynamicListRenderer{
+		dl: dl,
+	}
+}
+
+type DynamicListRenderer struct {
+	dl *DynamicList
+}
+
+func (dlr *DynamicListRenderer) MinSize() fyne.Size {
 	totalHeight := float32(0)
-	for _, o := range objects {
-		totalHeight += o.MinSize().Height + theme.Padding()
+	for _, item := range dlr.dl.itemMap {
+		totalHeight += item.MinSize().Height + theme.Padding()
 	}
-	return fyne.NewSize(dl.minWidth+theme.Padding()*2, totalHeight+theme.Padding())
+	return fyne.NewSize(dlr.dl.minWidth+theme.Padding()*2, totalHeight+theme.Padding())
 }
-func (dl *DynamicListLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
-	for _, o := range objects {
-		o.Resize(fyne.NewSize(size.Width, o.MinSize().Height))
-	}
-	accY := float32(0)
-	for _, id := range dl.Order {
-		if o, ok := dl.ItemMap[id]; ok {
-			o.MoveY(accY)
+func (dlr *DynamicListRenderer) Layout(size fyne.Size) {
+	accY := theme.Padding()
+	for _, id := range dlr.dl.order {
+		if o, ok := dlr.dl.itemMap[id]; ok {
+			o.Resize(fyne.NewSize(size.Width-theme.Padding()*2, o.MinSize().Height))
+			if o.isRemoving {
+				continue
+			}
+			if o.isNew {
+				o.isNew = false
+				o.goalY = accY
+				o.Move(fyne.NewPos(theme.Padding(), accY))
+			} else {
+				o.SlideY(accY)
+			}
 			accY += o.MinSize().Height + theme.Padding()
 		}
 	}
 }
-
-type DynamicList struct {
-	fyne.Container
-	dlLayout *DynamicListLayout
-}
-
-func (dl *DynamicList) AddItem(item *DynamicListItem) {
-	dl.Add(item)
-	dl.dlLayout.ItemMap[item.ID] = item
-	item.Move(fyne.NewPos(theme.Padding(), 0))
-}
-func (dl *DynamicList) RemoveItem(id string) {
-	item := dl.dlLayout.ItemMap[id]
-	if item == nil {
-		return
+func (dlr *DynamicListRenderer) Refresh() {
+	for _, item := range dlr.dl.itemMap {
+		item.Refresh()
 	}
-	dl.Remove(item)
-	delete(dl.dlLayout.ItemMap, id)
 }
-func (dl *DynamicList) SetOrder(order []string) {
-	dl.dlLayout.Order = order
-	dl.Refresh()
+func (dlr *DynamicListRenderer) Objects() []fyne.CanvasObject {
+	var objs []fyne.CanvasObject
+	for _, id := range dlr.dl.order {
+		if o, ok := dlr.dl.itemMap[id]; ok {
+			objs = append(objs, o)
+		}
+	}
+	return objs
+}
+func (dlr *DynamicListRenderer) Destroy() {
+	// TODO
 }
 
 func NewDynamicList(minWidth float32) *DynamicList {
-	layout := &DynamicListLayout{
-		minWidth: minWidth,
-
-		Order:   []string{},
-		ItemMap: map[string]*DynamicListItem{},
-	}
 	dl := &DynamicList{
-		Container: fyne.Container{
-			Objects: []fyne.CanvasObject{},
-			Layout:  layout,
-		},
-		dlLayout: layout,
+		minWidth: minWidth,
+		order:    []string{},
+		itemMap:  map[string]*DynamicListItem{},
 	}
+	dl.ExtendBaseWidget(dl)
 	return dl
 }
 
 type DynamicListItem struct {
-	fyne.Container
-	ID               string
+	widget.BaseWidget
+	ID     string
+	object fyne.CanvasObject
+
+	isNew      bool
+	isRemoving bool
+
+	goalY float32
+
 	runningAnimation *fyne.Animation
 }
 
-func (dli *DynamicListItem) MoveY(y float32) {
+func (dli *DynamicListItem) CreateRenderer() fyne.WidgetRenderer {
+	return &DynamicListItemRenderer{
+		dli: dli,
+	}
+}
+
+func (dli *DynamicListItem) SlideY(y float32) {
 	if dli.Hidden {
 		return
 	}
-	if math.Abs(float64(dli.Position().Y-y)) < 1e-3 {
+	if math.Abs(float64(dli.goalY-y)) < 1e-3 {
 		return
 	}
+	dli.goalY = y
 	if dli.runningAnimation != nil {
 		dli.runningAnimation.Stop()
 	}
 	dli.runningAnimation = canvas.NewPositionAnimation(
 		dli.Position(),
 		fyne.NewPos(dli.Position().X, y),
-		500*time.Millisecond,
+		300*time.Millisecond,
 		dli.Move,
 	)
 	dli.runningAnimation.Start()
 }
 
-func NewDynamicListItem(ID string, objects ...fyne.CanvasObject) *DynamicListItem {
-	return &DynamicListItem{
-		Container: fyne.Container{
-			Objects: objects,
-			Layout:  layout.NewVBoxLayout(),
-		},
-		ID: ID,
+func (dli *DynamicListItem) MarkRemoving() {
+	dli.isRemoving = true
+}
+
+func NewDynamicListItem(ID string, object fyne.CanvasObject) *DynamicListItem {
+	dli := &DynamicListItem{
+		ID:     ID,
+		object: object,
+
+		isNew:      true,
+		isRemoving: false,
 	}
+	dli.ExtendBaseWidget(dli)
+	return dli
+}
+
+type DynamicListItemRenderer struct {
+	dli *DynamicListItem
+}
+
+func (ir *DynamicListItemRenderer) MinSize() fyne.Size {
+	return ir.dli.object.MinSize()
+}
+func (ir *DynamicListItemRenderer) Layout(size fyne.Size) {
+	ir.dli.object.Resize(size)
+}
+func (ir *DynamicListItemRenderer) Refresh() {
+	ir.dli.object.Refresh()
+}
+func (ir *DynamicListItemRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{ir.dli.object}
+}
+func (ir *DynamicListItemRenderer) Destroy() {
+	// TODO
 }

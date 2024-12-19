@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/containers"
 	"image/color"
 	"time"
 
@@ -17,6 +18,8 @@ import (
 type ItemGui struct {
 	ps  *song.PreloadedSong
 	plg *PlayListGui
+
+	listItem *containers.DynamicListItem
 
 	Progress binding.Float
 
@@ -108,10 +111,13 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 	cardBackground := canvas.NewRectangle(theme.Color(theme.ColorNameHeaderBackground))
 	cardBackground.CornerRadius = theme.Padding() * 2
 	card := container.NewStack(cardBackground, container.NewPadded(cardContent))
+	card.Hide()
 
 	ig := ItemGui{
 		ps:  ps,
 		plg: plg,
+
+		listItem: containers.NewDynamicListItem(ps.GetId(), card),
 
 		Progress: bProgress,
 
@@ -138,10 +144,9 @@ func (ig *ItemGui) UpdateStatus() {
 	ig.StatusText.Color = theme.Color(status.Color)
 	ig.StatusText.Refresh()
 
-	ig.ErrorText.Text = status.PreloadError.Error()
-	ig.ErrorText.Refresh()
-
 	if status.PreloadError != nil {
+		ig.ErrorText.Text = status.PreloadError.Error()
+		ig.ErrorText.Refresh()
 		ig.ErrorText.Show()
 	} else {
 		ig.ErrorText.Hide()
@@ -175,9 +180,11 @@ func (ig *ItemGui) UpdateTime() {
 }
 
 func (ig *ItemGui) SlideIn() {
+	ig.Card.Move(fyne.NewPos(ig.Card.Size().Width, 0))
+	ig.Card.Show()
 	ig.RunningAnimation = canvas.NewPositionAnimation(
-		fyne.NewPos(ig.Card.Size().Width, ig.Card.Position().Y),
-		ig.Card.Position(),
+		fyne.NewPos(ig.Card.Size().Width, 0),
+		fyne.NewPos(0, 0),
 		300*time.Millisecond,
 		func(pos fyne.Position) {
 			ig.Card.Move(pos)
@@ -190,8 +197,8 @@ func (ig *ItemGui) SlideOut() {
 		ig.RunningAnimation.Stop()
 	}
 	canvas.NewPositionAnimation(
-		ig.Card.Position(),
-		fyne.NewPos(-ig.Card.Size().Width, ig.Card.Position().Y),
+		fyne.NewPos(0, 0),
+		fyne.NewPos(-ig.Card.Size().Width, 0),
 		300*time.Millisecond,
 		ig.Card.Move,
 	).Start()
@@ -210,6 +217,7 @@ func (ig *ItemGui) RenderLoop() {
 				switch ig.ps.GetPreloadStatus() {
 				case song.Removed:
 					ig.SlideOut()
+					ig.listItem.MarkRemoving()
 					go func() {
 						time.Sleep(300 * time.Millisecond)
 						ig.plg.removeFromMap(ig.ps.GetId())

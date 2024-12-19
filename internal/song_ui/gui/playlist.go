@@ -2,6 +2,7 @@ package gui
 
 import (
 	"sync"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -69,6 +70,7 @@ func (plg *PlayListGui) refreshItems() {
 		plg.list.SetOrder(lo.Map(plg.items, func(item *ItemGui, _ int) string {
 			return item.ps.GetId()
 		}))
+		plg.Container.Refresh()
 	}()
 
 	plg.items = lo.Map(plg.pl.Items, func(ps *song.PreloadedSong, _ int) *ItemGui {
@@ -77,9 +79,12 @@ func (plg *PlayListGui) refreshItems() {
 		}
 		newGui := NewItemGui(ps, plg)
 		plg.itemMap[ps.GetId()] = newGui
-		plg.list.AddItem(containers.NewDynamicListItem(ps.GetId(), newGui.Card))
-		newGui.SlideIn()
-		go newGui.RenderLoop()
+		plg.list.AddItem(newGui.listItem)
+		go func() {
+			time.Sleep(200 * time.Millisecond)
+			newGui.SlideIn()
+			newGui.RenderLoop()
+		}()
 		return newGui
 	})
 }

@@ -70,7 +70,17 @@ func CreateRandomPlaySong() *PreloadedSong {
 		RandomPlay: true,
 
 		sm: NewSongStateMachine(),
+		em: NewEventManager(),
+	}
+	ret.sm.ps = ret
+	return ret
+}
 
+func CreateEmptySong() *PreloadedSong {
+	ret := &PreloadedSong{
+		RandomPlay: false,
+
+		sm: NewSongStateMachine(),
 		em: NewEventManager(),
 	}
 	ret.sm.ps = ret
@@ -113,7 +123,10 @@ func (ps *PreloadedSong) GetId() string {
 	if ps.CustomSong != nil {
 		return ps.CustomSong.UniqueId
 	}
-	return ""
+	if ps.RandomPlay {
+		return "random_play"
+	}
+	return "empty_song"
 }
 func (ps *PreloadedSong) GetSongRSSync() (io.ReadSeekCloser, error) {
 	err := ps.sm.WaitForCompleteSong()
@@ -153,6 +166,9 @@ func (ps *PreloadedSong) PlaySongStartFrom(offset float64) {
 	ps.sm.PlaySongStartFrom(offset)
 }
 func (ps *PreloadedSong) PreloadSong() {
+	if ps.GetDownloadUrl() == "" {
+		return
+	}
 	if ps.sm.DownloadStatus == Initial || ps.sm.DownloadStatus == Failed {
 		ps.sm.StartDownload()
 	}

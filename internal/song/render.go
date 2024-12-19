@@ -60,7 +60,13 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 			ThumbnailURL: ps.GetThumbnailUrl(),
 		}
 	}
-	return PreloadedSongInfo{}
+	title := "empty"
+	if ps.RandomPlay {
+		title = "random_play"
+	}
+	return PreloadedSongInfo{
+		Title: title,
+	}
 }
 
 // ProgressInfo, only change during download

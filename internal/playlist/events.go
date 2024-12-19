@@ -9,8 +9,11 @@ import (
 var newListSubscribers []chan *PlayList
 
 func SubscribeNewListEvent() chan *PlayList {
-	channel := make(chan *PlayList)
+	channel := make(chan *PlayList, 10)
 	newListSubscribers = append(newListSubscribers, channel)
+	if currentPlaylist != nil {
+		channel <- currentPlaylist
+	}
 	return channel
 }
 func notifyNewList(pl *PlayList) {

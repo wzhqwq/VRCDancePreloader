@@ -115,8 +115,9 @@ func main() {
 		defer gui.Stop()
 
 		window_app.MainLoop()
-	}
-	for {
-		select {}
+	} else {
+		for {
+			select {}
+		}
 	}
 }
