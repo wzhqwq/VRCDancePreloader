@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 func GetStandardYoutubeURL(videoID string) string {
@@ -30,4 +31,8 @@ func CheckYoutubeURL(url string) (string, bool) {
 	}
 
 	return "", false
+}
+
+func CheckYoutubeThumbnailURL(url string) bool {
+	return strings.Contains(url, "i.ytimg.com")
 }

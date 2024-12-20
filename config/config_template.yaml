@@ -2,6 +2,7 @@ proxy:
   "jd.pypy.moe": ""
   youtube-video: ""
   youtube-api: ""
+  youtube-image: ""
 keys:
   youtube-api: ""
 limits:

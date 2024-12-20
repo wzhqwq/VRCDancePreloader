@@ -22,6 +22,7 @@ type ProxyConfig struct {
 	Pypy         string `yaml:"jd.pypy.moe"`
 	YoutubeVideo string `yaml:"youtube-video"`
 	YoutubeApi   string `yaml:"youtube-api"`
+	YoutubeImage string `yaml:"youtube-image"`
 }
 
 var config struct {

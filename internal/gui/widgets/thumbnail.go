@@ -1,19 +1,18 @@
 package widgets
 
 import (
-	"io"
-	"log"
-	"net/http"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
+	"io"
+	"log"
 )
 
 func GetThumbnailImage(url string) fyne.Resource {
 	log.Println("Get: ", url)
-	resp, err := http.Get(url)
+	resp, err := requesting.RequestThumbnail(url)
 	if err != nil {
 		log.Println("Failed to get thumbnail:", err)
 		return nil
@@ -32,12 +31,31 @@ func GetThumbnailImage(url string) fyne.Resource {
 type Thumbnail struct {
 	widget.BaseWidget
 	ThumbnailURL string
+	image        *canvas.Image
+}
+
+func NewThumbnail(thumbnailURL string) *Thumbnail {
+	image := canvas.NewImageFromResource(theme.MediaVideoIcon())
+	image.FillMode = canvas.ImageFillContain
+
+	t := &Thumbnail{
+		ThumbnailURL: thumbnailURL,
+		image:        image,
+	}
+	t.ExtendBaseWidget(t)
+
+	go t.LoadImage()
+
+	return t
+}
+
+func (t *Thumbnail) CreateRenderer() fyne.WidgetRenderer {
+	return &thumbnailRenderer{
+		t: t,
+	}
 }
 
 type thumbnailRenderer struct {
-	image        *canvas.Image
-	thumbnailURL string
-
 	t *Thumbnail
 }
 
@@ -47,53 +65,31 @@ func (r *thumbnailRenderer) MinSize() fyne.Size {
 
 func (r *thumbnailRenderer) Layout(size fyne.Size) {
 	if size.Width < 40 {
-		r.image.Hide()
+		r.t.image.Hide()
 	} else {
-		r.image.Show()
-		r.image.Resize(size)
+		r.t.image.Show()
+		r.t.image.Resize(size)
 	}
-}
-
-func (r *thumbnailRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.image}
 }
 
 func (r *thumbnailRenderer) Refresh() {
-	if r.t.ThumbnailURL != r.thumbnailURL {
-		r.LoadImage()
-	}
+	r.t.image.Refresh()
 }
 
-func (r *thumbnailRenderer) LoadImage() {
-	r.thumbnailURL = r.t.ThumbnailURL
+func (r *thumbnailRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.t.image}
+}
+
+func (t *Thumbnail) LoadImage() {
 	go func() {
-		image := GetThumbnailImage(r.t.ThumbnailURL)
+		image := GetThumbnailImage(t.ThumbnailURL)
 		if image == nil {
 			return
 		}
-		r.image.Resource = image
-		r.image.Refresh()
+		t.image.Resource = image
+		t.image.Refresh()
 	}()
 }
 
 func (r *thumbnailRenderer) Destroy() {
-}
-
-func (t *Thumbnail) CreateRenderer() fyne.WidgetRenderer {
-	t.ExtendBaseWidget(t)
-	image := canvas.NewImageFromResource(theme.MediaVideoIcon())
-	image.FillMode = canvas.ImageFillContain
-	r := &thumbnailRenderer{
-		image: image,
-		t:     t,
-	}
-	r.LoadImage()
-
-	return r
-}
-
-func NewThumbnail(thumbnailURL string) *Thumbnail {
-	return &Thumbnail{
-		ThumbnailURL: thumbnailURL,
-	}
 }

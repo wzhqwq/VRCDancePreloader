@@ -10,6 +10,7 @@ import (
 var pypyClient *http.Client
 var youtubeVideoClient *http.Client
 var youtubeApiClient *http.Client
+var youtubeImageClient *http.Client
 
 func createProxyClient(proxyURL string) *http.Client {
 	proxy, err := url.Parse(proxyURL)
@@ -24,6 +25,7 @@ func createProxyClient(proxyURL string) *http.Client {
 }
 
 func InitPypyClient(proxyUrl string) {
+	log.Printf("Testing PyPyDance client")
 	if proxyUrl != "" {
 		pypyClient = createProxyClient(proxyUrl)
 		_, err := pypyClient.Head(utils.GetPyPyVideoUrl(1))
@@ -40,22 +42,24 @@ func InitPypyClient(proxyUrl string) {
 }
 
 func InitYoutubeVideoClient(proxyUrl string) {
+	log.Printf("Testing Youtube video client")
 	if proxyUrl != "" {
 		youtubeVideoClient = createProxyClient(proxyUrl)
-		_, err := youtubeVideoClient.Head("https://www.youtube.com")
+		_, err := youtubeVideoClient.Head(utils.GetStandardYoutubeURL("qylu4Ajh6k8"))
 		if err != nil {
 			log.Fatalf("Cannot connect to Youtube video service through provided proxy: %v", err)
 		}
 		return
 	}
 	youtubeVideoClient = &http.Client{}
-	_, err := youtubeVideoClient.Head("https://www.youtube.com")
+	_, err := youtubeVideoClient.Head(utils.GetStandardYoutubeURL("qylu4Ajh6k8"))
 	if err != nil {
 		log.Fatalf("Cannot connect to Youtube video service, maybe you should configure proxy: %v", err)
 	}
 }
 
 func InitYoutubeApiClient(proxyUrl string) {
+	log.Printf("Testing Youtube API client")
 	if proxyUrl != "" {
 		youtubeApiClient = createProxyClient(proxyUrl)
 		_, err := youtubeApiClient.Head("https://youtube.googleapis.com/")
@@ -65,8 +69,25 @@ func InitYoutubeApiClient(proxyUrl string) {
 		return
 	}
 	youtubeApiClient = &http.Client{}
-	_, err := youtubeApiClient.Head("https://www.youtube.com")
+	_, err := youtubeApiClient.Head("https://youtube.googleapis.com/")
 	if err != nil {
 		log.Fatalf("Cannot connect to Youtube API service, maybe you should configure proxy: %v", err)
+	}
+}
+
+func InitYoutubeImageClient(proxyUrl string) {
+	log.Printf("Testing Youtube image client")
+	if proxyUrl != "" {
+		youtubeImageClient = createProxyClient(proxyUrl)
+		_, err := youtubeImageClient.Head(utils.GetYoutubeMQThumbnailURL("qylu4Ajh6k8"))
+		if err != nil {
+			log.Fatalf("Cannot connect to Youtube image service through provided proxy: %v", err)
+		}
+		return
+	}
+	youtubeImageClient = &http.Client{}
+	_, err := youtubeImageClient.Head(utils.GetYoutubeMQThumbnailURL("qylu4Ajh6k8"))
+	if err != nil {
+		log.Fatalf("Cannot connect to Youtube image service, maybe you should configure proxy: %v", err)
 	}
 }

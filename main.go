@@ -43,6 +43,7 @@ func processProxyConfig() {
 	keyConfig := config.GetKeyConfig()
 	requesting.InitPypyClient(proxyConfig.Pypy)
 	requesting.InitYoutubeVideoClient(proxyConfig.YoutubeVideo)
+	requesting.InitYoutubeImageClient(proxyConfig.YoutubeImage)
 	if keyConfig.Youtube != "" {
 		requesting.InitYoutubeApiClient(proxyConfig.YoutubeApi)
 	}

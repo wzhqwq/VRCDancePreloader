@@ -1,6 +1,9 @@
 package utils
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 func GetPyPyVideoUrl(id int) string {
 	return fmt.Sprintf("http://jd.pypy.moe/api/v1/videos/%d.mp4", id)
@@ -23,4 +26,8 @@ func CheckPyPyUrl(url string) (int, bool) {
 	}
 
 	return 0, false
+}
+
+func CheckPyPyThumbnailUrl(url string) bool {
+	return strings.Contains(url, "jd.pypy.moe")
 }
