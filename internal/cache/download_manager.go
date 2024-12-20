@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"log"
 	"sync"
 )
 
@@ -27,6 +28,8 @@ func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 	ds, exists := dm.stateMap[id]
 	if !exists {
 		ds = &DownloadState{
+			ID: id,
+
 			StateCh:    make(chan *DownloadState, 10),
 			CancelCh:   make(chan bool, 10),
 			PriorityCh: make(chan int, 10),
@@ -76,7 +79,7 @@ func (dm *downloadManager) UpdatePriorities() {
 			dm.queue = append(dm.queue[:i], dm.queue[i+1:]...)
 			i--
 		} else {
-			//log.Printf("Priority of %s: %d\n", dm.queue[i], i)
+			log.Printf("Priority of %s: %d\n", dm.queue[i], i)
 			ds.PriorityCh <- i
 		}
 	}

@@ -2,15 +2,18 @@ package cache
 
 import (
 	"fmt"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
 	"io"
 	"log"
 	"os"
 	"sync"
+
+	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
 )
 
 type DownloadState struct {
 	sync.Mutex
+
+	ID string
 
 	TotalSize      int64
 	DownloadedSize int64
@@ -39,6 +42,25 @@ func (ds *DownloadState) Write(p []byte) (int, error) {
 	}
 }
 func (ds *DownloadState) BlockIfPending() bool {
+	select {
+	case p := <-ds.PriorityCh:
+		if dm.CanDownload(p) {
+			if ds.Pending {
+				ds.Pending = false
+				ds.StateCh <- ds
+			}
+			log.Printf("%s now can continue download\n", ds.ID)
+			return true
+		} else {
+			log.Printf("%s is now pending, priority %d\n", ds.ID, p)
+			if !ds.Pending {
+				ds.Pending = true
+				ds.StateCh <- ds
+			}
+		}
+	default:
+		return true
+	}
 	for {
 		select {
 		case <-ds.CancelCh:
@@ -49,17 +71,15 @@ func (ds *DownloadState) BlockIfPending() bool {
 					ds.Pending = false
 					ds.StateCh <- ds
 				}
-				log.Printf("Url %s now can continue download\n", ds.FinalURL)
+				log.Printf("%s now can continue download\n", ds.ID)
 				return true
 			} else {
-				log.Printf("Url %s is now pending, priority %d\n", ds.FinalURL, p)
+				log.Printf("%s is now pending, priority %d\n", ds.ID, p)
 				if !ds.Pending {
 					ds.Pending = true
 					ds.StateCh <- ds
 				}
 			}
-		default:
-			return true
 		}
 	}
 }
