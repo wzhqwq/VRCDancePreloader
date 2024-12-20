@@ -24,6 +24,7 @@ type ItemGui struct {
 	Progress binding.Float
 
 	Card        *fyne.Container
+	Background  *canvas.Rectangle
 	ProgressBar *widget.ProgressBar
 	ErrorText   *canvas.Text
 	StatusText  *canvas.Text
@@ -74,42 +75,35 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 
 	// Play Bar
 	playBar := widgets.NewPlayBar()
+	playBar.Hide()
 
 	// Thumbnail
 	thumbnail := widgets.NewThumbnail(info.ThumbnailURL)
 
-	cardContent := container.NewVBox(
-		container.NewBorder(
-			nil,
-			nil,
-			nil,
-			id,
+	cardContent := container.NewPadded(
+		container.NewVBox(
 			title,
-		),
-		NewDynamicFrame(
-			thumbnail,
-			container.NewBorder(
-				nil,
-				nil,
+			NewDynamicFrame(
+				thumbnail,
 				container.NewVBox(
 					group,
 					adder,
 				),
-				nil,
-				container.NewPadded(
-					playBar,
+				container.NewVBox(
+					id,
+					progressBar,
+					sizeText,
 				),
+				statusText,
+				errorText,
 			),
-			container.NewVBox(
-				progressBar,
-				sizeText,
-			),
-			statusText,
-			errorText,
+			playBar,
 		),
 	)
 	cardBackground := canvas.NewRectangle(theme.Color(theme.ColorNameHeaderBackground))
 	cardBackground.CornerRadius = theme.Padding() * 2
+	cardBackground.StrokeWidth = 2
+	cardBackground.StrokeColor = theme.Color(theme.ColorNameSeparator)
 	card := container.NewStack(cardBackground, container.NewPadded(cardContent))
 	card.Hide()
 
@@ -117,11 +111,12 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 		ps:  ps,
 		plg: plg,
 
-		listItem: containers.NewDynamicListItem(ps.GetId(), card),
+		listItem: containers.NewDynamicListItem(ps.GetId(), plg.list, card),
 
 		Progress: bProgress,
 
 		Card:        card,
+		Background:  cardBackground,
 		ProgressBar: progressBar,
 		StatusText:  statusText,
 		ErrorText:   errorText,
@@ -173,9 +168,33 @@ func (ig *ItemGui) UpdateTime() {
 	ig.PlayBar.Refresh()
 
 	if timeInfo.IsPlaying {
-		ig.PlayBar.Show()
+		if !ig.PlayBar.Visible() {
+			ig.PlayBar.Show()
+			canvas.NewColorRGBAAnimation(
+				theme.Color(theme.ColorNameSeparator),
+				theme.Color(theme.ColorNamePrimary),
+				500*time.Millisecond,
+				func(c color.Color) {
+					ig.Background.StrokeColor = c
+					ig.Background.Refresh()
+				},
+			).Start()
+			ig.listItem.NotifyUpdateMinSize()
+		}
 	} else {
-		ig.PlayBar.Hide()
+		if ig.PlayBar.Visible() {
+			ig.PlayBar.Hide()
+			canvas.NewColorRGBAAnimation(
+				theme.Color(theme.ColorNamePrimary),
+				theme.Color(theme.ColorNameSeparator),
+				500*time.Millisecond,
+				func(c color.Color) {
+					ig.Background.StrokeColor = c
+					ig.Background.Refresh()
+				},
+			).Start()
+			ig.listItem.NotifyUpdateMinSize()
+		}
 	}
 }
 
@@ -186,9 +205,7 @@ func (ig *ItemGui) SlideIn() {
 		fyne.NewPos(ig.Card.Size().Width, 0),
 		fyne.NewPos(0, 0),
 		300*time.Millisecond,
-		func(pos fyne.Position) {
-			ig.Card.Move(pos)
-		},
+		ig.Card.Move,
 	)
 	ig.RunningAnimation.Start()
 }

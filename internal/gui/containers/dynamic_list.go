@@ -100,6 +100,7 @@ type DynamicListItem struct {
 	widget.BaseWidget
 	ID     string
 	object fyne.CanvasObject
+	dl     *DynamicList
 
 	isNew      bool
 	isRemoving bool
@@ -139,10 +140,15 @@ func (dli *DynamicListItem) MarkRemoving() {
 	dli.isRemoving = true
 }
 
-func NewDynamicListItem(ID string, object fyne.CanvasObject) *DynamicListItem {
+func (dli *DynamicListItem) NotifyUpdateMinSize() {
+	dli.dl.Refresh()
+}
+
+func NewDynamicListItem(ID string, dl *DynamicList, object fyne.CanvasObject) *DynamicListItem {
 	dli := &DynamicListItem{
 		ID:     ID,
 		object: object,
+		dl:     dl,
 
 		isNew:      true,
 		isRemoving: false,
