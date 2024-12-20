@@ -9,53 +9,41 @@ import (
 	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
 )
 
-func (pl *PlayList) RemoveItem(queueData *types.QueueItem) {
+func (pl *PlayList) RemoveItem(index int) {
 	pl.Lock()
 	defer pl.Unlock()
 
-	removedIndex := -1
-	for i, item := range pl.Items {
-		if item.MatchWithQueueItem(queueData) {
-			removedIndex = i
-			pl.Items = slices.Delete(pl.Items, i, i+1)
-			item.RemoveFromList()
-			log.Println("Removed item", item.GetInfo().Title)
-			break
-		}
-	}
-	if removedIndex != -1 {
-		pl.notifyChange(ItemsChange)
-		pl.CriticalUpdate()
-	}
-}
-
-func (pl *PlayList) InsertItem(item *song.PreloadedSong, before *types.QueueItem) {
-	pl.Lock()
-	defer pl.Unlock()
-
-	if before == nil {
-		pl.Items = append(pl.Items, item)
-		pl.notifyNewItem(item)
-		pl.notifyChange(ItemsChange)
-		log.Println("Appended item", item.GetInfo().Title)
-
-		pl.CriticalUpdate()
+	if index >= len(pl.Items) {
 		return
 	}
-	insertIndex := -1
-	for i, item := range pl.Items {
-		if item.MatchWithQueueItem(before) {
-			insertIndex = i
-			pl.Items = slices.Insert(pl.Items, insertIndex, item)
-			pl.notifyNewItem(item)
-			log.Println("Inserted item", item.GetInfo().Title, "before", before.VideoName)
-			break
-		}
+
+	item := pl.Items[index]
+	pl.Items = slices.Delete(pl.Items, index, index+1)
+
+	item.RemoveFromList()
+	log.Println("Removed item", item.GetInfo().Title)
+
+	pl.notifyChange(ItemsChange)
+	pl.CriticalUpdate()
+}
+
+func (pl *PlayList) InsertItem(item *song.PreloadedSong, beforeIndex int) {
+	pl.Lock()
+	defer pl.Unlock()
+
+	if beforeIndex == -1 {
+		pl.Items = append(pl.Items, item)
+		log.Println("Appended item", item.GetInfo().Title)
+	} else if beforeIndex < len(pl.Items) {
+		pl.Items = slices.Insert(pl.Items, beforeIndex, item)
+		log.Println("Inserted item", item.GetInfo().Title, "before", beforeIndex)
+	} else {
+		return
 	}
-	if insertIndex != -1 {
-		pl.notifyChange(ItemsChange)
-		pl.CriticalUpdate()
-	}
+
+	pl.notifyNewItem(item)
+	pl.notifyChange(ItemsChange)
+	pl.CriticalUpdate()
 }
 
 func (pl *PlayList) FromList(items []*song.PreloadedSong) {
@@ -96,17 +84,17 @@ func createFromQueueItem(item types.QueueItem) *song.PreloadedSong {
 	return newSong
 }
 
-func RemoveItem(queueData *types.QueueItem) {
+func RemoveItem(index int) {
 	if currentPlaylist == nil {
 		return
 	}
-	currentPlaylist.RemoveItem(queueData)
+	currentPlaylist.RemoveItem(index)
 }
-func InsertItem(item types.QueueItem, before *types.QueueItem) {
+func InsertItem(item types.QueueItem, beforeIndex int) {
 	if currentPlaylist == nil {
 		return
 	}
-	currentPlaylist.InsertItem(createFromQueueItem(item), before)
+	currentPlaylist.InsertItem(createFromQueueItem(item), beforeIndex)
 }
 func ClearAndSetQueue(items []types.QueueItem) {
 	maxPreload := 2
@@ -123,4 +111,11 @@ func ClearAndSetQueue(items []types.QueueItem) {
 	currentPlaylist.FromList(list)
 	currentPlaylist.Start()
 	log.Println("Restarted playlist")
+}
+
+func GetQueue() []*song.PreloadedSong {
+	if currentPlaylist == nil {
+		return nil
+	}
+	return currentPlaylist.Items
 }

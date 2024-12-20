@@ -142,7 +142,7 @@ func (ps *PreloadedSong) GetPreloadStatus() DownloadStatus {
 // compare
 
 func (ps *PreloadedSong) MatchWithQueueItem(queueItem *types.QueueItem) bool {
-	if queueItem.SongNum == -1 {
+	if queueItem.SongNum < 0 {
 		return ps.CustomSong != nil && ps.CustomSong.MatchUrl(queueItem.URL)
 	}
 	return ps.PyPySong != nil && ps.PyPySong.ID == queueItem.SongNum
