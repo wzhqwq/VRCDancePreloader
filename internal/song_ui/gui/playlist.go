@@ -40,6 +40,8 @@ func NewPlayListGui(pl *playlist.PlayList) *PlayListGui {
 		list:    list,
 
 		pl: pl,
+
+		StopCh: make(chan struct{}),
 	}
 }
 

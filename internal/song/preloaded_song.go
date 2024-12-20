@@ -145,6 +145,9 @@ func (ps *PreloadedSong) MatchWithQueueItem(queueItem *types.QueueItem) bool {
 	if queueItem.SongNum < 0 {
 		return ps.CustomSong != nil && ps.CustomSong.MatchUrl(queueItem.URL)
 	}
+	if queueItem.SongNum == 0 {
+		return ps.PyPySong == nil && ps.CustomSong == nil && !ps.RandomPlay
+	}
 	return ps.PyPySong != nil && ps.PyPySong.ID == queueItem.SongNum
 }
 func (ps *PreloadedSong) MatchWithCustomUrl(url string) bool {

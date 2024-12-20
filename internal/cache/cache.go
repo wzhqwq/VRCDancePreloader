@@ -2,6 +2,7 @@ package cache
 
 import (
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -29,9 +30,6 @@ func InitCache(path string, max int, maxParallel int) error {
 	return nil
 }
 
-func StopCache() {
-}
-
 func OpenCache(id string) *os.File {
 	fileMapMutex.Lock()
 	defer fileMapMutex.Unlock()
@@ -57,22 +55,6 @@ func closeCache(id string) {
 	}
 }
 
-func DetachCache(id string) {
-	closeCache(id)
-	CleanUpCache()
-}
-
-func RemoveCache(id string) {
-	fileMapMutex.Lock()
-	defer fileMapMutex.Unlock()
-
-	if file, ok := fileMap[id]; ok {
-		file.Close()
-		delete(fileMap, id)
-		os.Remove(getCacheFileName(id))
-	}
-}
-
 func CleanUpCache() {
 	// remove files from cache until total size is less than maxSize
 	entries, err := os.ReadDir(cachePath)
@@ -83,6 +65,9 @@ func CleanUpCache() {
 	files := make([]os.FileInfo, len(entries))
 	totalSize := 0
 	for i, entry := range entries {
+		if strings.Contains(entry.Name(), "mp4.dl") {
+			os.Remove(filepath.Join(cachePath, entry.Name()))
+		}
 		files[i], _ = entry.Info()
 		totalSize += int(files[i].Size())
 	}
@@ -103,7 +88,7 @@ func CleanUpCache() {
 			continue
 		}
 
-		os.Remove(cachePath + "/" + file.Name())
+		os.Remove(filepath.Join(cachePath, file.Name()))
 		totalSize -= int(file.Size())
 	}
 }
