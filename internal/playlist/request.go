@@ -36,6 +36,7 @@ func (pl *PlayList) findCustomSong(url string) *song.PreloadedSong {
 func RequestPyPySong(id int) (io.ReadSeekCloser, error) {
 	item := currentPlaylist.findPyPySong(id)
 	return item.GetSongRSSync()
+	//return item.GetSongRSAsync()
 }
 
 func RequestYoutubeSong(id string) (io.ReadSeekCloser, error) {

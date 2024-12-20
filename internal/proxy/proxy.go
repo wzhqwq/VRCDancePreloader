@@ -83,6 +83,7 @@ func handleConnect(req *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
 			if handleVideoRequest(rw, req) || handleSongListRequest(rw, req) {
 				continue
 			}
+			log.Println("Mismatched:", req.URL.Path)
 			rw.WriteHeader(http.StatusNotFound)
 			rw.Write([]byte("Not found"))
 		}

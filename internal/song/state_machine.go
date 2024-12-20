@@ -82,6 +82,61 @@ func (sm *StateMachine) WaitForCompleteSong() error {
 	}
 	return sm.ps.PreloadError
 }
+func (sm *StateMachine) SubscribePartialDownload(closeCh chan struct{}) (int64, chan int64, error) {
+	availableSizeCh := make(chan int64, 10)
+
+	eventCh := sm.ps.SubscribeEvent()
+	sm.WaitForSong(closeCh, eventCh)
+
+	switch sm.DownloadStatus {
+	case Removed:
+		return 0, nil, fmt.Errorf("download removed")
+	case Failed:
+		return 0, nil, sm.ps.PreloadError
+	}
+
+	availableSizeCh <- sm.ps.DownloadedSize
+	go func() {
+		for {
+			select {
+			case event := <-eventCh:
+				switch event {
+				case StatusChange:
+					switch sm.DownloadStatus {
+					case Downloaded:
+						availableSizeCh <- sm.ps.DownloadedSize
+						return
+					case Removed, Failed:
+						availableSizeCh <- -1
+						return
+					}
+				case ProgressChange:
+					availableSizeCh <- sm.ps.DownloadedSize
+				}
+			case <-closeCh:
+				return
+			}
+		}
+	}()
+
+	return sm.ps.TotalSize, availableSizeCh, nil
+}
+func (sm *StateMachine) WaitForSong(closeCh chan struct{}, eventCh chan ChangeType) {
+	sm.StartDownload()
+	sm.Prioritize()
+	if sm.DownloadStatus == Pending || sm.DownloadStatus == Requesting {
+		for {
+			select {
+			case <-closeCh:
+				return
+			case <-eventCh:
+				if sm.DownloadStatus != Pending && sm.DownloadStatus != Requesting {
+					return
+				}
+			}
+		}
+	}
+}
 func (sm *StateMachine) StartDownload() {
 	if sm.DownloadStatus == Downloaded {
 		return

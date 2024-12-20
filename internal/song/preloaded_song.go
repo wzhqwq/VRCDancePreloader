@@ -2,9 +2,6 @@ package song
 
 import (
 	"fmt"
-	"io"
-
-	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
@@ -127,13 +124,6 @@ func (ps *PreloadedSong) GetId() string {
 		return "random_play"
 	}
 	return "empty_song"
-}
-func (ps *PreloadedSong) GetSongRSSync() (io.ReadSeekCloser, error) {
-	err := ps.sm.WaitForCompleteSong()
-	if err != nil {
-		return nil, err
-	}
-	return cache.OpenCache(ps.GetId()), nil
 }
 func (ps *PreloadedSong) GetPreloadStatus() DownloadStatus {
 	return ps.sm.DownloadStatus
