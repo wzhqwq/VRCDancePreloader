@@ -32,7 +32,7 @@ type DownloadState struct {
 func (ds *DownloadState) Write(p []byte) (int, error) {
 	select {
 	case <-ds.CancelCh:
-		return 0, io.EOF
+		return 0, io.ErrClosedPipe
 	default:
 		ds.BlockIfPending()
 		n := len(p)
@@ -88,10 +88,11 @@ func (ds *DownloadState) unlockAndNotify() {
 	ds.StateCh <- ds
 }
 
-func progressiveDownload(body io.ReadCloser, file *os.File, ds *DownloadState) error {
+func (ds *DownloadState) progressiveDownload(body io.ReadCloser, file *os.File) error {
 	// Write the body to file, while showing progress of the download
 	_, err := io.Copy(file, io.TeeReader(body, ds))
 	if err != nil {
+		log.Println(err.Error())
 		return err
 	}
 
@@ -157,9 +158,10 @@ func Download(id, url string) *DownloadState {
 		ds.StateCh <- ds
 
 		// Copy the body to the file, which will also update the download progress
-		err = progressiveDownload(resp.Body, tempFile, ds)
+		err = ds.progressiveDownload(resp.Body, tempFile)
 		if err != nil {
 			ds.Error = err
+			log.Println("progressiveDownload error")
 			return
 		}
 
@@ -198,4 +200,8 @@ func CancelDownload(id string) {
 
 func Prioritize(id string) {
 	dm.Prioritize(id)
+}
+
+func StopAllAndWait() {
+	dm.CancelAllAndWait()
 }

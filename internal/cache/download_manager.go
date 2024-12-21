@@ -112,3 +112,13 @@ func (dm *downloadManager) Prioritize(id string) {
 		}
 	}
 }
+
+func (dm *downloadManager) CancelAllAndWait() {
+	dm.Lock()
+	defer dm.Unlock()
+	for _, ds := range dm.stateMap {
+		close(ds.CancelCh)
+		ds.Lock()
+		ds.Unlock()
+	}
+}

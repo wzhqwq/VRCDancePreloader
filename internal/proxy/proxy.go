@@ -95,6 +95,9 @@ func handleRequest(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *ht
 		if handleSongListRequest(rw, req) {
 			return req, rw.ToResponse(req)
 		}
+		if handleVideoRequest(rw, req) {
+			return req, rw.ToResponse(req)
+		}
 	}
 	return req, nil
 }

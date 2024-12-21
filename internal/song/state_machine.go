@@ -186,7 +186,6 @@ func (sm *StateMachine) StartDownloadLoop(ds *cache.DownloadState) {
 			}
 			// Otherwise, it's downloading
 			if sm.DownloadStatus == Removed {
-				cache.CancelDownload(sm.ps.GetId())
 				return
 			}
 			if sm.DownloadStatus != Downloading {
@@ -248,4 +247,5 @@ func (sm *StateMachine) RemoveFromList() {
 		sm.PlayStatus = Ended
 	}
 	sm.ps.notifySubscribers(StatusChange)
+	cache.CancelDownload(sm.ps.GetId())
 }

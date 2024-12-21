@@ -71,6 +71,8 @@ func main() {
 		return
 	}
 	defer func() {
+		log.Println("Stopping all downloading tasks")
+		cache.StopAllAndWait()
 		log.Println("Cleaning up cache")
 		cache.CleanUpCache()
 	}()
