@@ -2,11 +2,11 @@ package song
 
 import (
 	"fmt"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/download"
 	"math"
 	"sync"
 	"time"
 
-	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
 )
 
@@ -29,6 +29,8 @@ const (
 	Failed DownloadStatus = "failed"
 	// Removed is when the song is removed from the playlist
 	Removed DownloadStatus = "removed"
+	// NotAvailable means the song cannot be cached by now
+	NotAvailable DownloadStatus = "na"
 )
 
 type PlayStatus string
@@ -47,7 +49,7 @@ type StateMachine struct {
 	ps *PreloadedSong
 
 	// waiter
-	songWaiting utils.FinishingBroadcaster
+	songWaiting *utils.FinishingBroadcaster
 
 	// locks
 	timeMutex sync.Mutex
@@ -58,13 +60,16 @@ func NewSongStateMachine() *StateMachine {
 		DownloadStatus: Initial,
 		PlayStatus:     Queued,
 		ps:             nil,
-		songWaiting:    utils.FinishingBroadcaster{},
+		songWaiting:    utils.NewBroadcaster(),
 		timeMutex:      sync.Mutex{},
 	}
 }
 
 func (sm *StateMachine) IsDownloadLoopStarted() bool {
 	return sm.DownloadStatus == Pending || sm.DownloadStatus == Requesting || sm.DownloadStatus == Downloading
+}
+func (sm *StateMachine) IsDownloadNeeded() bool {
+	return sm.DownloadStatus != Downloaded && sm.DownloadStatus != Removed && sm.DownloadStatus != NotAvailable
 }
 func (sm *StateMachine) IsPlayingLoopStarted() bool {
 	return sm.PlayStatus == Playing
@@ -74,88 +79,53 @@ func (sm *StateMachine) WaitForCompleteSong() error {
 	sm.StartDownload()
 	sm.Prioritize()
 	sm.songWaiting.WaitForFinishing()
-	if sm.DownloadStatus == Downloaded {
-		return nil
-	}
-	if sm.DownloadStatus == Removed {
-		return fmt.Errorf("download removed")
-	}
-	return sm.ps.PreloadError
-}
-func (sm *StateMachine) SubscribePartialDownload(closeCh chan struct{}) (int64, chan int64, error) {
-	availableSizeCh := make(chan int64, 10)
-
-	eventCh := sm.ps.SubscribeEvent()
-	sm.WaitForSong(closeCh, eventCh)
 
 	switch sm.DownloadStatus {
 	case Removed:
-		return 0, nil, fmt.Errorf("download removed")
+		return fmt.Errorf("download removed")
 	case Failed:
-		return 0, nil, sm.ps.PreloadError
+		return sm.ps.PreloadError
+	default:
+		return nil
 	}
-
-	availableSizeCh <- sm.ps.DownloadedSize
-	go func() {
-		for {
-			select {
-			case event := <-eventCh:
-				switch event {
-				case StatusChange:
-					switch sm.DownloadStatus {
-					case Downloaded:
-						availableSizeCh <- sm.ps.DownloadedSize
-						return
-					case Removed, Failed:
-						availableSizeCh <- -1
-						return
-					}
-				case ProgressChange:
-					availableSizeCh <- sm.ps.DownloadedSize
-				}
-			case <-closeCh:
-				return
-			}
-		}
-	}()
-
-	return sm.ps.TotalSize, availableSizeCh, nil
 }
-func (sm *StateMachine) WaitForSong(closeCh chan struct{}, eventCh chan ChangeType) {
+func (sm *StateMachine) WaitForSong() error {
 	sm.StartDownload()
 	sm.Prioritize()
-	if sm.DownloadStatus == Pending || sm.DownloadStatus == Requesting {
-		for {
-			select {
-			case <-closeCh:
-				return
-			case <-eventCh:
-				if sm.DownloadStatus != Pending && sm.DownloadStatus != Requesting {
-					return
-				}
-			}
-		}
+
+	switch sm.DownloadStatus {
+	case Removed:
+		return fmt.Errorf("download removed")
+	case Failed:
+		return sm.ps.PreloadError
+	default:
+		return nil
 	}
 }
 func (sm *StateMachine) StartDownload() {
-	if sm.DownloadStatus == Downloaded {
+	if !sm.IsDownloadNeeded() {
 		return
 	}
 	if !sm.IsDownloadLoopStarted() {
 		sm.DownloadStatus = Pending
 		sm.ps.notifySubscribers(StatusChange)
 
-		ds := cache.Download(sm.ps.GetId(), sm.ps.GetDownloadUrl())
+		ds := download.Download(sm.ps.GetId())
+		if ds == nil {
+			sm.DownloadStatus = NotAvailable
+			sm.ps.notifySubscribers(StatusChange)
+			return
+		}
 		go sm.StartDownloadLoop(ds)
 	}
 }
 func (sm *StateMachine) Prioritize() {
 	if sm.IsPlayingLoopStarted() {
-		cache.Prioritize(sm.ps.GetId())
+		download.Prioritize(sm.ps.GetId())
 	}
 }
 
-func (sm *StateMachine) StartDownloadLoop(ds *cache.DownloadState) {
+func (sm *StateMachine) StartDownloadLoop(ds *download.DownloadState) {
 	defer sm.songWaiting.Finish()
 	for {
 		select {
@@ -247,5 +217,5 @@ func (sm *StateMachine) RemoveFromList() {
 		sm.PlayStatus = Ended
 	}
 	sm.ps.notifySubscribers(StatusChange)
-	cache.CancelDownload(sm.ps.GetId())
+	download.CancelDownload(sm.ps.GetId())
 }

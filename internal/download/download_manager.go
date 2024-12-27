@@ -1,6 +1,7 @@
-package cache
+package download
 
 import (
+	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
 	"log"
 	"sync"
 )
@@ -14,8 +15,6 @@ type downloadManager struct {
 	maxParallel int
 }
 
-var dm *downloadManager = nil
-
 func newDownloadManager(maxParallel int) *downloadManager {
 	return &downloadManager{
 		stateMap:    make(map[string]*DownloadState),
@@ -25,10 +24,18 @@ func newDownloadManager(maxParallel int) *downloadManager {
 }
 func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 	dm.Lock()
+	defer dm.unlockAndUpdate()
+
 	ds, exists := dm.stateMap[id]
 	if !exists {
+		cacheEntry, err := cache.OpenCacheEntry(id)
+		if err != nil {
+			return nil
+		}
 		ds = &DownloadState{
 			ID: id,
+
+			cacheEntry: cacheEntry,
 
 			StateCh:    make(chan *DownloadState, 10),
 			CancelCh:   make(chan bool, 10),
@@ -38,21 +45,13 @@ func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 		}
 		// Check if file is already downloaded
 		// NOTE: The cache file is either completely written to disk, or never written at all
-		if size := getCacheSize(id); size > 0 {
-			ds.TotalSize = size
-			ds.DownloadedSize = size
+		if cacheEntry.IsComplete() {
+			ds.TotalSize = cacheEntry.TotalLen()
+			ds.DownloadedSize = cacheEntry.TotalLen()
 			ds.Done = true
 		}
 		dm.stateMap[id] = ds
 		dm.queue = append(dm.queue, id)
-	}
-
-	// NOTE: We need to unlock here early to prevent deadlock
-	dm.Unlock()
-
-	// Update priorities if the state is new
-	if !exists {
-		dm.UpdatePriorities()
 	}
 
 	return ds

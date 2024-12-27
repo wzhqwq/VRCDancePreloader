@@ -34,14 +34,19 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 			return true
 		}
 
-		log.Println("Intercepted video request:", id)
+		rangeHeader := req.Header.Get("Range")
+		if rangeHeader == "" {
+			log.Printf("Intercepted pypy video %d full request", id)
+		} else {
+			log.Printf("Intercepted pypy video %d range: %s", id, rangeHeader)
+		}
 		reader, err := playlist.RequestPyPySong(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			log.Println("Failed to request playlist:", err)
 			return true
 		}
-		log.Println("Requested video downloaded:", id)
+		log.Printf("Requested pypy video %d is available", id)
 
 		http.ServeContent(w, req, "video.mp4", time.Now(), reader)
 		return true

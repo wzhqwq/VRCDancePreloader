@@ -1,19 +1,18 @@
-package cache
+package download
 
 import (
-	"fmt"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
 	"io"
 	"log"
-	"os"
 	"sync"
-
-	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
 )
 
 type DownloadState struct {
 	sync.Mutex
 
 	ID string
+
+	cacheEntry cache.Entry
 
 	TotalSize      int64
 	DownloadedSize int64
@@ -88,9 +87,9 @@ func (ds *DownloadState) unlockAndNotify() {
 	ds.StateCh <- ds
 }
 
-func (ds *DownloadState) progressiveDownload(body io.ReadCloser, file *os.File) error {
+func (ds *DownloadState) progressiveDownload(body io.ReadCloser, writer io.Writer) error {
 	// Write the body to file, while showing progress of the download
-	_, err := io.Copy(file, io.TeeReader(body, ds))
+	_, err := io.Copy(writer, io.TeeReader(body, ds))
 	if err != nil {
 		log.Println(err.Error())
 		return err
@@ -99,8 +98,11 @@ func (ds *DownloadState) progressiveDownload(body io.ReadCloser, file *os.File) 
 	return nil
 }
 
-func Download(id, url string) *DownloadState {
+func Download(id string) *DownloadState {
 	ds := dm.CreateOrGetState(id)
+	if ds == nil {
+		return nil
+	}
 	go func() {
 		// Lock the state so that there is always only one download happening
 		ds.Lock()
@@ -117,74 +119,36 @@ func Download(id, url string) *DownloadState {
 		ds.TotalSize = 0
 		ds.BlockIfPending()
 
-		// Open temp file
-		tempFile := openTempFile(id)
-		if tempFile == nil {
-			ds.Error = fmt.Errorf("failed to open %s.mp4.dl", id)
-			return
-		}
-		defer func() {
-			tempFile.Close()
-			os.Remove(tempFile.Name())
-		}()
+		entry := ds.cacheEntry
+		ds.TotalSize = entry.TotalLen()
 
-		// Download the file
-		if ds.FinalURL != "" {
-			url = ds.FinalURL
-		}
-		resp, err := requesting.RequestVideo(url)
+		body, err := entry.GetDownloadBody()
 		if err != nil {
 			ds.Error = err
+			log.Println("Start Downloading error")
 			return
 		}
-		defer resp.Body.Close()
+		defer body.Close()
 
-		// Save the size of the file to be downloaded
-		ds.TotalSize = resp.ContentLength
-		if resp.Header.Get("Location") != "" {
-			// Save the final URL if it's redirected
-			ds.FinalURL = resp.Header.Get("Location")
-		}
-
-		// TODO: Replace them after implementing resuming download halfway
-		_, err = tempFile.Seek(0, 0)
-		if err != nil {
-			ds.Error = err
-			return
-		}
 		ds.DownloadedSize = 0
 
 		// Notify about the total size and that the request header is done
 		ds.StateCh <- ds
 
 		// Copy the body to the file, which will also update the download progress
-		err = ds.progressiveDownload(resp.Body, tempFile)
+		err = ds.progressiveDownload(body, entry)
 		if err != nil {
 			ds.Error = err
-			log.Println("progressiveDownload error")
+			log.Println("Downloading error")
 			return
 		}
 
-		// Copy the temp file to the cache file
-		// If the progress can be stopped gracefully, the temp file could be deleted
-		file := OpenCache(id)
-		if file == nil {
-			ds.Error = fmt.Errorf("failed to open %s.mp4", id)
-			return
-		}
-		_, err = tempFile.Seek(0, 0)
+		err = entry.Save()
 		if err != nil {
 			ds.Error = err
+			log.Println("Saving error")
 			return
 		}
-		_, err = io.Copy(file, tempFile)
-		if err != nil {
-			ds.Error = err
-			return
-		}
-
-		// Close the cache file so that all data is written to disk
-		closeCache(id)
 
 		// Mark the download as done and update the priorities
 		ds.Done = true
@@ -192,16 +156,4 @@ func Download(id, url string) *DownloadState {
 	}()
 
 	return ds
-}
-
-func CancelDownload(id string) {
-	dm.CancelDownload(id)
-}
-
-func Prioritize(id string) {
-	dm.Prioritize(id)
-}
-
-func StopAllAndWait() {
-	dm.CancelAllAndWait()
 }

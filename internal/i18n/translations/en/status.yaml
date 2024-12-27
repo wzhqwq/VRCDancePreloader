@@ -16,5 +16,5 @@
   Default: "Video Playing"
 - Key: status_ended
   Default: "Video Ended"
-- Key: status_ignored
-  Default: "URL Ignored"
+- Key: status_na
+  Default: "Not Supported"

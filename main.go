@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/wzhqwq/PyPyDancePreloader/internal/download"
 	"log"
 
 	"github.com/alexflint/go-arg"
@@ -23,10 +24,18 @@ import (
 )
 
 var args struct {
-	Port       string `arg:"-p,--port" default:"7653" help:"port to listen on"`
-	VrChatDir  string `arg:"-d,--vrchat-dir" default:"" help:"VRChat directory"`
-	GuiEnabled bool   `arg:"-g,--gui" default:"false" help:"enable GUI"`
-	TuiEnabled bool   `arg:"-t,--tui" default:"false" help:"enable TUI"`
+	Port string `arg:"-p,--port" default:"7653" help:"port to listen on"`
+
+	VrChatDir string `arg:"-d,--vrchat-dir" default:"" help:"VRChat directory"`
+
+	GuiEnabled bool `arg:"-g,--gui" default:"false" help:"enable GUI"`
+	TuiEnabled bool `arg:"-t,--tui" default:"false" help:"enable TUI"`
+
+	SkipClientTest bool `arg:"--skip-client-test" default:"false" help:"skip client connectivity test"`
+
+	// experimental
+
+	AsyncDownload bool `arg:"-a,--async-download" default:"false" help:"experimental, allow preloader to respond partial data during downloading, which is useful in random play"`
 }
 
 func processKeyConfig() {
@@ -51,30 +60,42 @@ func processProxyConfig() {
 
 func main() {
 	arg.MustParse(&args)
+
+	// Apply argument config
+	requesting.SetSkipTest(args.SkipClientTest)
+	playlist.SetAsyncDownload(args.AsyncDownload)
+
+	// Apply config.yaml
 	config.LoadConfig()
 	processKeyConfig()
 	processProxyConfig()
 	limits := config.GetLimitConfig()
 
+	// Listen for interrupt
 	osSignalCh := make(chan os.Signal, 1)
-
-	// listen for SIGINT and SIGTERM
 	signal.Notify(osSignalCh, syscall.SIGINT, syscall.SIGTERM)
 
+	// The ending note
 	defer log.Println("Gracefully stopped")
 
 	i18n.Init()
 
-	err := cache.InitCache("./cache", limits.MaxCache*1024*1024, limits.MaxDownload)
+	err := cache.InitSongList()
 	if err != nil {
 		log.Println("Failed to init cache:", err)
 		return
 	}
+
+	cache.SetupCache("./cache", limits.MaxCache*1024*1024)
 	defer func() {
-		log.Println("Stopping all downloading tasks")
-		cache.StopAllAndWait()
 		log.Println("Cleaning up cache")
 		cache.CleanUpCache()
+	}()
+
+	download.InitDownloadManager(limits.MaxDownload)
+	defer func() {
+		log.Println("Stopping all downloading tasks")
+		download.StopAllAndWait()
 	}()
 
 	select {

@@ -81,6 +81,7 @@ func CreateEmptySong() *PreloadedSong {
 		em: NewEventManager(),
 	}
 	ret.sm.ps = ret
+	ret.sm.DownloadStatus = NotAvailable
 	return ret
 }
 

@@ -7,6 +7,12 @@ import (
 	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
 )
 
+var asyncDownload = false
+
+func SetAsyncDownload(async bool) {
+	asyncDownload = async
+}
+
 func (pl *PlayList) findPyPySong(id int) *song.PreloadedSong {
 	pl.Lock()
 	defer pl.Unlock()
@@ -35,9 +41,14 @@ func (pl *PlayList) findCustomSong(url string) *song.PreloadedSong {
 
 func RequestPyPySong(id int) (io.ReadSeekCloser, error) {
 	item := currentPlaylist.findPyPySong(id)
-	return item.GetSongRSSync()
-	//return item.GetSongRSAsync()
+	if asyncDownload {
+		return item.GetSongRSAsync()
+	} else {
+		return item.GetSongRSSync()
+	}
 }
+
+// TODO
 
 func RequestYoutubeSong(id string) (io.ReadSeekCloser, error) {
 	item := currentPlaylist.findCustomSong(utils.GetStandardYoutubeURL(id))

@@ -5,54 +5,27 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 )
-
-var fileMap = make(map[string]*os.File)
-var fileMapMutex = &sync.Mutex{}
 
 var cachePath string
 var maxSize int
+var cacheMap = NewCacheMap()
 
-func InitCache(path string, max int, maxParallel int) error {
+func SetupCache(path string, max int) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		os.Mkdir(path, 0777)
 	}
 
 	cachePath = path
 	maxSize = max
-	dm = newDownloadManager(maxParallel)
+}
 
+func InitSongList() error {
 	err := loadSongs()
 	if err != nil {
 		return err
 	}
 	return nil
-}
-
-func OpenCache(id string) *os.File {
-	fileMapMutex.Lock()
-	defer fileMapMutex.Unlock()
-
-	if file, ok := fileMap[id]; ok {
-		return file
-	}
-
-	if file := openCacheFS(id); file != nil {
-		fileMap[id] = file
-		return file
-	}
-
-	return nil
-}
-func closeCache(id string) {
-	fileMapMutex.Lock()
-	defer fileMapMutex.Unlock()
-
-	if file, ok := fileMap[id]; ok {
-		file.Close()
-		delete(fileMap, id)
-	}
 }
 
 func CleanUpCache() {
@@ -65,9 +38,6 @@ func CleanUpCache() {
 	files := make([]os.FileInfo, len(entries))
 	totalSize := 0
 	for i, entry := range entries {
-		if strings.Contains(entry.Name(), "mp4.dl") {
-			os.Remove(filepath.Join(cachePath, entry.Name()))
-		}
 		files[i], _ = entry.Info()
 		totalSize += int(files[i].Size())
 	}
@@ -84,11 +54,19 @@ func CleanUpCache() {
 		}
 
 		id := strings.Split(file.Name(), ".")[0]
-		if fileMap[id] != nil {
+		if cacheMap.IsActive(id) {
 			continue
 		}
 
 		os.Remove(filepath.Join(cachePath, file.Name()))
 		totalSize -= int(file.Size())
 	}
+}
+
+func OpenCacheEntry(id string) (Entry, error) {
+	return cacheMap.Open(id)
+}
+
+func CloseCacheEntry(id string) {
+	cacheMap.Close(id)
 }
