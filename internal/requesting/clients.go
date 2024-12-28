@@ -38,9 +38,9 @@ func testClient(client *http.Client, testUrl, serviceName string) {
 	_, err := client.Head(testUrl)
 	if err != nil {
 		if client.Transport == nil {
-			log.Fatalf("Cannot connect to %s service, maybe you should configure proxy: %v", serviceName, err)
+			log.Printf("[Warning] Cannot connect to %s service, maybe you should configure proxy: %v", serviceName, err)
 		} else {
-			log.Fatalf("Cannot connect to %s service through provided proxy: %v", serviceName, err)
+			log.Printf("[Warning] Cannot connect to %s service through provided proxy: %v", serviceName, err)
 		}
 	}
 }

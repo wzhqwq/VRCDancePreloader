@@ -44,7 +44,6 @@ func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 			Pending: true,
 		}
 		// Check if file is already downloaded
-		// NOTE: The cache file is either completely written to disk, or never written at all
 		if cacheEntry.IsComplete() {
 			ds.TotalSize = cacheEntry.TotalLen()
 			ds.DownloadedSize = cacheEntry.TotalLen()

@@ -160,7 +160,7 @@ func (ps *PreloadedSong) PlaySongStartFrom(offset float64) {
 	ps.sm.PlaySongStartFrom(offset)
 }
 func (ps *PreloadedSong) PreloadSong() {
-	if ps.GetDownloadUrl() == "" {
+	if ps.sm.DownloadStatus == NotAvailable {
 		return
 	}
 	if ps.sm.DownloadStatus == Initial || ps.sm.DownloadStatus == Failed {

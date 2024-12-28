@@ -6,16 +6,6 @@ import (
 	"net/http"
 )
 
-func RequestVideo(url string) (resp *http.Response, err error) {
-	if _, ok := utils.CheckPyPyUrl(url); ok {
-		return pypyClient.Get(url)
-	}
-	if _, ok := utils.CheckYoutubeURL(url); ok {
-		return youtubeVideoClient.Get(url)
-	}
-	return http.Get(url)
-}
-
 type mixedTransport struct {
 	clientWithProxy *http.Client
 	Key             string

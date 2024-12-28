@@ -1,7 +1,7 @@
 package cache
 
 import (
-	"errors"
+	"fmt"
 	"sync"
 )
 
@@ -24,7 +24,7 @@ func (cm *CacheMap) Open(id string) (Entry, error) {
 	if !ok {
 		e = OpenEntry(id)
 		if e == nil {
-			return nil, errors.New("cannot create entry")
+			return nil, fmt.Errorf("%s not supported", id)
 		}
 		cm.cache[id] = e
 	}

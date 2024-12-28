@@ -2,6 +2,7 @@ package song
 
 import (
 	"fmt"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/download"
 	"math"
 	"sync"
@@ -218,4 +219,5 @@ func (sm *StateMachine) RemoveFromList() {
 	}
 	sm.ps.notifySubscribers(StatusChange)
 	download.CancelDownload(sm.ps.GetId())
+	cache.CloseCacheEntry(sm.ps.GetId())
 }

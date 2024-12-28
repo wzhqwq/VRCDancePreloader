@@ -8,14 +8,13 @@ import (
 	"strings"
 )
 
-func OpenEntry(id string) Entry {
-	var e Entry
+func NewEntry(id string) Entry {
 	if strings.Contains(id, "pypy_") {
 		num, err := strconv.Atoi(strings.Split(id, "pypy_")[1])
 		if err != nil {
 			panic(err)
 		}
-		e = &PyPyEntry{
+		return &PyPyEntry{
 			BaseEntry: BaseEntry{
 				id:     id,
 				client: requesting.GetPyPyClient(),
@@ -24,12 +23,18 @@ func OpenEntry(id string) Entry {
 		}
 	}
 	// TODO youtube handler
+	return nil
+}
 
-	if e != nil {
-		err := e.Open()
-		if err != nil {
-			panic(err)
-		}
+func OpenEntry(id string) Entry {
+	e := NewEntry(id)
+	if e == nil {
+		return nil
+	}
+
+	err := e.Open()
+	if err != nil {
+		panic(err)
 	}
 	return e
 }
