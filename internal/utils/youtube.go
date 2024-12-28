@@ -3,8 +3,12 @@ package utils
 import (
 	"fmt"
 	"regexp"
+	"strings"
 )
 
+func GetStandardYoutubeURL(videoID string) string {
+	return fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
+}
 func GetYoutubeMQThumbnailURL(videoID string) string {
 	return fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", videoID)
 }
@@ -27,4 +31,8 @@ func CheckYoutubeURL(url string) (string, bool) {
 	}
 
 	return "", false
+}
+
+func CheckYoutubeThumbnailURL(url string) bool {
+	return strings.Contains(url, "i.ytimg.com")
 }

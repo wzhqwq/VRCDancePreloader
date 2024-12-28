@@ -1,15 +1,20 @@
 package main
 
 import (
+	"github.com/wzhqwq/PyPyDancePreloader/internal/download"
 	"log"
-	"regexp"
 
 	"github.com/alexflint/go-arg"
+	"github.com/wzhqwq/PyPyDancePreloader/config"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/gui"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/window_app"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/proxy"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/song_ui/gui"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/song_ui/tui"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/third_party_api"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/watcher"
 
 	"os"
@@ -18,50 +23,104 @@ import (
 	"syscall"
 )
 
+var build_gui_on = false
+
 var args struct {
-	Port         string `arg:"-p,--port" default:"7653" help:"port to listen on"`
-	CacheDiskMax int    `arg:"-c,--cache" default:"100" help:"maximum disk cache size(MB)"`
-	VrChatDir    string `arg:"-d,--vrchat-dir" default:"" help:"VRChat directory"`
-	GuiEnabled   bool   `arg:"-g,--gui" default:"true" help:"enable GUI"`
-	PreloadMax   int    `arg:"--max-preload" default:"4" help:"maximum preload count"`
-	DownloadMax  int    `arg:"--max-download" default:"2" help:"maximum parallel download count"`
-	Proxy        string `arg:"--proxy" default:"" help:"proxy server, example: 127.0.0.1:7890, set for both http and https"`
+	Port string `arg:"-p,--port" default:"7653" help:"port to listen on"`
+
+	VrChatDir string `arg:"-d,--vrchat-dir" default:"" help:"VRChat directory"`
+
+	GuiEnabled bool `arg:"-g,--gui" default:"false" help:"enable GUI"`
+	TuiEnabled bool `arg:"-t,--tui" default:"false" help:"enable TUI"`
+
+	SkipClientTest bool `arg:"--skip-client-test" default:"false" help:"skip client connectivity test"`
+
+	// experimental
+
+	AsyncDownload bool `arg:"-a,--async-download" default:"false" help:"experimental, allow preloader to respond partial data during downloading, which is useful in random play"`
+}
+
+func processKeyConfig() {
+	keyConfig := config.GetKeyConfig()
+	if keyConfig.Youtube != "" {
+		third_party_api.SetYoutubeApiKey(keyConfig.Youtube)
+	} else {
+		log.Println("[Warning] Youtube API key not set, so the title of Youtube songs might not display correctly")
+	}
+}
+
+func processProxyConfig() {
+	proxyConfig := config.GetProxyConfig()
+	keyConfig := config.GetKeyConfig()
+	requesting.InitPypyClient(proxyConfig.Pypy)
+	requesting.InitYoutubeVideoClient(proxyConfig.YoutubeVideo)
+	requesting.InitYoutubeImageClient(proxyConfig.YoutubeImage)
+	if keyConfig.Youtube != "" {
+		requesting.InitYoutubeApiClient(proxyConfig.YoutubeApi)
+	}
 }
 
 func main() {
 	arg.MustParse(&args)
 
-	if args.Proxy != "" {
-		// check format
-		if regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}:\d+$`).MatchString(args.Proxy) {
-			os.Setenv("HTTP_PROXY", "http://"+args.Proxy)
-			os.Setenv("HTTPS_PROXY", "http://"+args.Proxy)
-		} else {
-			log.Println("Invalid proxy format, should be like host:port")
-			os.Exit(1)
-		}
+	// Apply build tag
+	if build_gui_on {
+		args.GuiEnabled = true
 	}
 
-	osSignalCh := make(chan os.Signal, 1)
+	// Apply argument config
+	requesting.SetSkipTest(args.SkipClientTest)
+	playlist.SetAsyncDownload(args.AsyncDownload)
 
-	// listen for SIGINT and SIGTERM
+	// Apply config.yaml
+	config.LoadConfig()
+	processKeyConfig()
+	processProxyConfig()
+	limits := config.GetLimitConfig()
+
+	// Listen for interrupt
+	osSignalCh := make(chan os.Signal, 1)
 	signal.Notify(osSignalCh, syscall.SIGINT, syscall.SIGTERM)
 
-	go func() {
-		<-osSignalCh
-
-		proxy.Stop()
-		watcher.Stop()
-		playlist.Stop()
-		cache.CleanUpCache()
-		log.Println("Gracefully stopped")
-		os.Exit(0)
-	}()
+	// The ending note
+	defer log.Println("Gracefully stopped")
 
 	i18n.Init()
-	cache.InitCache("./cache", args.CacheDiskMax*1024*1024, args.DownloadMax)
-	playlist.Init(args.PreloadMax)
 
+	err := cache.InitSongList()
+	if err != nil {
+		log.Println("Failed to init cache:", err)
+		return
+	}
+
+	cache.SetupCache("./cache", limits.MaxCache*1024*1024)
+	defer func() {
+		log.Println("Cleaning up cache")
+		cache.CleanUpCache()
+	}()
+
+	download.InitDownloadManager(limits.MaxDownload)
+	defer func() {
+		log.Println("Stopping all downloading tasks")
+		download.StopAllAndWait()
+	}()
+
+	select {
+	case <-osSignalCh:
+		return
+	default:
+	}
+	playlist.Init(limits.MaxPreload)
+	defer func() {
+		log.Println("Stopping playlist")
+		playlist.StopPlayList()
+	}()
+
+	select {
+	case <-osSignalCh:
+		return
+	default:
+	}
 	logDir := args.VrChatDir
 	if logDir == "" {
 		roaming, err := os.UserConfigDir()
@@ -71,18 +130,59 @@ func main() {
 		}
 		logDir = filepath.Join(roaming, "..", "LocalLow", "VRChat", "VRChat")
 	}
-	err := watcher.Start(logDir)
+	err = watcher.Start(logDir)
 	if err != nil {
 		log.Println("Failed to start watcher:", err)
 		return
 	}
+	defer func() {
+		log.Println("Stopping log watcher")
+		watcher.Stop()
+	}()
 
-	go proxy.Start(args.Port)
-	if args.GuiEnabled {
-		gui.InitGui()
-		gui.MainLoop(osSignalCh)
+	select {
+	case <-osSignalCh:
+		return
+	default:
 	}
-	for {
-		select {}
+	go proxy.Start(args.Port)
+	defer func() {
+		log.Println("Stopping proxy")
+		proxy.Stop()
+	}()
+
+	if args.TuiEnabled {
+		select {
+		case <-osSignalCh:
+			return
+		default:
+		}
+		tui.Start()
+		defer func() {
+			log.Println("Stopping TUI")
+			tui.Stop()
+		}()
+	}
+
+	if args.GuiEnabled {
+		select {
+		case <-osSignalCh:
+			return
+		default:
+		}
+		gui.Start()
+		defer func() {
+			log.Println("Stopping GUI")
+			gui.Stop()
+		}()
+
+		go func() {
+			<-osSignalCh
+			log.Println("Quitting...")
+			window_app.Quit()
+		}()
+		window_app.MainLoop()
+	} else {
+		<-osSignalCh
 	}
 }

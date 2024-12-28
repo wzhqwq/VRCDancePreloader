@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/elazarl/goproxy"
+	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
 )
 
@@ -33,12 +34,19 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 			return true
 		}
 
-		log.Println("Intercepted video request:", id)
-		reader, err := playlist.PlaySong(id)
+		rangeHeader := req.Header.Get("Range")
+		if rangeHeader == "" {
+			log.Printf("Intercepted pypy video %d full request", id)
+		} else {
+			log.Printf("Intercepted pypy video %d range: %s", id, rangeHeader)
+		}
+		reader, err := playlist.RequestPyPySong(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
+			log.Println("Failed to request playlist:", err)
 			return true
 		}
+		log.Printf("Requested pypy video %d is available", id)
 
 		http.ServeContent(w, req, "video.mp4", time.Now(), reader)
 		return true
@@ -49,7 +57,7 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 func handleSongListRequest(w http.ResponseWriter, req *http.Request) bool {
 	if req.URL.Path == "/api/v2/songs" {
 		log.Println("Intercepted song list request")
-		bodyBytes := playlist.GetSongsResponse()
+		bodyBytes := cache.GetSongListBytes()
 		// w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Content-Length", strconv.Itoa(len(bodyBytes)))
@@ -80,6 +88,7 @@ func handleConnect(req *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
 			if handleVideoRequest(rw, req) || handleSongListRequest(rw, req) {
 				continue
 			}
+			log.Println("Mismatched:", req.URL.Path)
 			rw.WriteHeader(http.StatusNotFound)
 			rw.Write([]byte("Not found"))
 		}
@@ -89,6 +98,9 @@ func handleRequest(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *ht
 	if req.Method == http.MethodGet {
 		rw := NewRespWriterNoHeaderWritten()
 		if handleSongListRequest(rw, req) {
+			return req, rw.ToResponse(req)
+		}
+		if handleVideoRequest(rw, req) {
 			return req, rw.ToResponse(req)
 		}
 	}
@@ -115,6 +127,10 @@ func Start(port string) {
 	if err := runningServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("HTTP server error: %v", err)
 	}
+}
+
+func SelfCheck() {
+	// check for dial loop
 }
 
 func Stop() {

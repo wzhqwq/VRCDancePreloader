@@ -1,4 +1,4 @@
-package gui
+package window_app
 
 import (
 	"image/color"

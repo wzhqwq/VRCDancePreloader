@@ -1,3 +1,7 @@
+- Key: status_initial
+  Default: "Waiting For Preload"
+- Key: status_pending
+  Default: "Request Pending"
 - Key: status_requesting
   Default: "Requesting Video"
 - Key: status_downloading
@@ -6,11 +10,11 @@
   Default: "Video Downloaded"
 - Key: status_failed
   Default: "Preload Failed"
-- Key: status_pending
-  Default: "Preload Pending"
+- Key: status_removed
+  Default: "Video Ended"
 - Key: status_playing
   Default: "Video Playing"
 - Key: status_ended
   Default: "Video Ended"
-- Key: status_ignored
-  Default: "URL Ignored"
+- Key: status_na
+  Default: "Not Supported"

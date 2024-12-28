@@ -24,6 +24,9 @@ go.work.sum
 # env file
 .env
 
+# config
+config.yaml
+
 /cache/
 *.crt
 *.key

@@ -1,3 +1,7 @@
+- Key: status_initial
+  Default: "等待处理"
+- Key: status_pending
+  Default: "视频排队中"
 - Key: status_requesting
   Default: "请求视频中"
 - Key: status_downloading
@@ -6,11 +10,11 @@
   Default: "视频已下载"
 - Key: status_failed
   Default: "预加载失败"
-- Key: status_pending
-  Default: "等待预加载"
+- Key: status_removed
+  Default: "视频已结束"
 - Key: status_playing
   Default: "视频播放中"
 - Key: status_ended
   Default: "视频已结束"
-- Key: status_ignored
-  Default: "URL已忽略"
+- Key: status_na
+  Default: "不支持预加载"

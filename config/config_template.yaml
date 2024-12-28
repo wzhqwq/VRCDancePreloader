@@ -1,0 +1,12 @@
+proxy:
+  "jd.pypy.moe": ""
+  youtube-video: ""
+  youtube-api: ""
+  youtube-image: ""
+keys:
+  youtube-api: ""
+limits:
+  max-preload-count: 4
+  max-parallel-download-count: 2
+  # maximum disk cache size(MB)
+  max-cache: 300
