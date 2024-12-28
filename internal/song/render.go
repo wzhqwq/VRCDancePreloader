@@ -117,7 +117,7 @@ func (ps *PreloadedSong) GetTimeInfo() PreloadedSongTimeInfo {
 		text = fmt.Sprintf("%s / %s", utils.PrettyTime(ps.TimePassed), text)
 	}
 	return PreloadedSongTimeInfo{
-		Progress:  float64(ps.TimePassed) / float64(ps.Duration),
+		Progress:  ps.TimePassed / ps.Duration,
 		Text:      text,
 		IsPlaying: ps.sm.PlayStatus == Playing,
 	}
@@ -135,7 +135,7 @@ type PreloadedSongStatusInfo struct {
 func (ps *PreloadedSong) GetStatusInfo() PreloadedSongStatusInfo {
 	var color fyne.ThemeColorName
 	switch ps.sm.DownloadStatus {
-	case Initial, Pending, Removed:
+	case Initial, Pending, Removed, NotAvailable:
 		color = theme.ColorNamePlaceHolder
 	case Requesting, Downloading:
 		color = theme.ColorNamePrimary

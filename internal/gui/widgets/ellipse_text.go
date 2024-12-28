@@ -57,19 +57,20 @@ func (p *ellipseTextRenderer) findProperSlice() string {
 		return ""
 	}
 	maxWidth := p.width
-	if p.calculateSize(p.e.Text) <= maxWidth {
-		return p.e.Text
+	originalText := []rune(p.e.Text)
+	if p.calculateSize(string(originalText)) <= maxWidth {
+		return string(originalText)
 	}
-	text := p.e.Text
+	text := originalText
 	iter := 0
 	for {
-		width := p.calculateSize(text + "...")
+		width := p.calculateSize(string(text) + "...")
 		estimatedLen := int(float32(len(text)+3)*(maxWidth/width)) - 3
 		if width <= maxWidth {
 			if estimatedLen >= len(text)-1 || iter > 10 {
-				return text + "..."
+				return string(text) + "..."
 			}
-			text = p.e.Text[:estimatedLen]
+			text = originalText[:estimatedLen]
 		}
 		if width > maxWidth {
 			if estimatedLen <= 0 {
@@ -78,7 +79,7 @@ func (p *ellipseTextRenderer) findProperSlice() string {
 			if estimatedLen == len(text) {
 				estimatedLen--
 			}
-			text = p.e.Text[:estimatedLen]
+			text = originalText[:estimatedLen]
 		}
 		iter++
 	}

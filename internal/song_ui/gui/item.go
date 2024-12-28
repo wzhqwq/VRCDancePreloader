@@ -33,7 +33,8 @@ type ItemGui struct {
 
 	RunningAnimation *fyne.Animation
 
-	StopCh chan struct{}
+	StopCh   chan struct{}
+	changeCh chan song.ChangeType
 }
 
 func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
@@ -50,15 +51,15 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 
 	// Group
 	group := canvas.NewText(info.Group, theme.Color(theme.ColorNameForeground))
-	group.TextSize = 12
+	group.TextSize = 14
 
 	// Adder
 	adder := canvas.NewText(info.Adder, theme.Color(theme.ColorNamePlaceHolder))
-	adder.TextSize = 12
+	adder.TextSize = 14
 
 	// Status
 	statusText := canvas.NewText("", theme.Color(theme.ColorNamePlaceHolder))
-	statusText.TextSize = 14
+	statusText.TextSize = 16
 
 	// Progress bar
 	bProgress := binding.NewFloat()
@@ -123,7 +124,8 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 		SizeText:    sizeText,
 		PlayBar:     playBar,
 
-		StopCh: make(chan struct{}),
+		StopCh:   make(chan struct{}, 10),
+		changeCh: ps.SubscribeEvent(),
 	}
 	ig.UpdateStatus()
 	ig.UpdateProgress()
@@ -222,12 +224,11 @@ func (ig *ItemGui) SlideOut() {
 }
 
 func (ig *ItemGui) RenderLoop() {
-	ch := ig.ps.SubscribeEvent()
 	for {
 		select {
 		case <-ig.StopCh:
 			return
-		case event := <-ch:
+		case event := <-ig.changeCh:
 			switch event {
 			case song.StatusChange:
 				ig.UpdateStatus()

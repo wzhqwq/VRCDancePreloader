@@ -20,7 +20,9 @@ type PlayListGui struct {
 
 	items   []*ItemGui
 	itemMap map[string]*ItemGui
-	StopCh  chan struct{}
+
+	StopCh   chan struct{}
+	changeCh chan playlist.ChangeType
 
 	list *containers.DynamicList
 
@@ -41,13 +43,13 @@ func NewPlayListGui(pl *playlist.PlayList) *PlayListGui {
 
 		pl: pl,
 
-		StopCh: make(chan struct{}),
+		StopCh:   make(chan struct{}),
+		changeCh: pl.SubscribeChangeEvent(),
 	}
 }
 
 func (plg *PlayListGui) RenderLoop() {
 	plg.refreshItems()
-	changeCh := plg.pl.SubscribeChangeEvent()
 
 	for {
 		select {
@@ -56,7 +58,7 @@ func (plg *PlayListGui) RenderLoop() {
 				item.StopCh <- struct{}{}
 			}
 			return
-		case change := <-changeCh:
+		case change := <-plg.changeCh:
 			switch change {
 			case playlist.ItemsChange:
 				plg.refreshItems()
