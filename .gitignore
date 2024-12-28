@@ -24,9 +24,6 @@ go.work.sum
 # env file
 .env
 
-# secrets
-keys.yaml
-
 # config
 config.yaml
 

@@ -23,6 +23,8 @@ import (
 	"syscall"
 )
 
+var build_gui_on = false
+
 var args struct {
 	Port string `arg:"-p,--port" default:"7653" help:"port to listen on"`
 
@@ -60,6 +62,11 @@ func processProxyConfig() {
 
 func main() {
 	arg.MustParse(&args)
+
+	// Apply build tag
+	if build_gui_on {
+		args.GuiEnabled = true
+	}
 
 	// Apply argument config
 	requesting.SetSkipTest(args.SkipClientTest)
