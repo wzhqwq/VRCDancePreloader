@@ -1,11 +1,11 @@
 package main
 
 import (
+	"github.com/wzhqwq/PyPyDancePreloader/internal/config"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/download"
 	"log"
 
 	"github.com/alexflint/go-arg"
-	"github.com/wzhqwq/PyPyDancePreloader/config"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/window_app"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
