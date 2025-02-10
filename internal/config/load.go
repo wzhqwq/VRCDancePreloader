@@ -10,11 +10,6 @@ import (
 //go:embed config_template.yaml
 var templateConfigFileFS embed.FS
 
-type LimitConfig struct {
-	MaxPreload  int `yaml:"max-preload-count"`
-	MaxDownload int `yaml:"max-parallel-download-count"`
-	MaxCache    int `yaml:"max-cache"`
-}
 type KeyConfig struct {
 	Youtube string `yaml:"youtube-api"`
 }
@@ -24,11 +19,31 @@ type ProxyConfig struct {
 	YoutubeApi   string `yaml:"youtube-api"`
 	YoutubeImage string `yaml:"youtube-image"`
 }
+type YoutubeConfig struct {
+	EnableApi       bool `yaml:"enable-youtube-api"`
+	EnableThumbnail bool `yaml:"enable-youtube-thumbnail"`
+	EnableVideo     bool `yaml:"enable-youtube-video"`
+}
+type PreloadConfig struct {
+	MaxPreload int `yaml:"max-preload-count"`
+}
+type DownloadConfig struct {
+	MaxDownload int `yaml:"max-parallel-download-count"`
+}
+type CacheConfig struct {
+	Path          string   `yaml:"path"`
+	MaxCacheSize  int      `yaml:"max-cache-size"`
+	KeepFavorites bool     `yaml:"keep-favorites"`
+	Whitelist     []string `yaml:"whitelist"`
+}
 
 var config struct {
-	Proxy  ProxyConfig `yaml:"proxy"`
-	Limits LimitConfig `yaml:"limits"`
-	Keys   KeyConfig   `yaml:"keys"`
+	Proxy    ProxyConfig    `yaml:"proxy"`
+	Keys     KeyConfig      `yaml:"keys"`
+	Youtube  YoutubeConfig  `yaml:"youtube"`
+	Preload  PreloadConfig  `yaml:"preload"`
+	Download DownloadConfig `yaml:"download"`
+	Cache    CacheConfig    `yaml:"cache"`
 }
 
 func CreateIfNotExists() {
@@ -68,12 +83,18 @@ func LoadConfig() {
 	}
 }
 
-func GetLimitConfig() LimitConfig {
-	return config.Limits
+func GetKeyConfig() *KeyConfig {
+	return &config.Keys
 }
-func GetKeyConfig() KeyConfig {
-	return config.Keys
+func GetProxyConfig() *ProxyConfig {
+	return &config.Proxy
 }
-func GetProxyConfig() ProxyConfig {
-	return config.Proxy
+func GetPreloadConfig() *PreloadConfig {
+	return &config.Preload
+}
+func GetDownloadConfig() *DownloadConfig {
+	return &config.Download
+}
+func GetCacheConfig() *CacheConfig {
+	return &config.Cache
 }

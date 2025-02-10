@@ -14,7 +14,6 @@ import (
 	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/song_ui/gui"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/song_ui/tui"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/third_party_api"
 	"github.com/wzhqwq/PyPyDancePreloader/internal/watcher"
 
 	"os"
@@ -40,26 +39,6 @@ var args struct {
 	AsyncDownload bool `arg:"-a,--async-download" default:"false" help:"experimental, allow preloader to respond partial data during downloading, which is useful in random play"`
 }
 
-func processKeyConfig() {
-	keyConfig := config.GetKeyConfig()
-	if keyConfig.Youtube != "" {
-		third_party_api.SetYoutubeApiKey(keyConfig.Youtube)
-	} else {
-		log.Println("[Warning] Youtube API key not set, so the title of Youtube songs might not display correctly")
-	}
-}
-
-func processProxyConfig() {
-	proxyConfig := config.GetProxyConfig()
-	keyConfig := config.GetKeyConfig()
-	requesting.InitPypyClient(proxyConfig.Pypy)
-	requesting.InitYoutubeVideoClient(proxyConfig.YoutubeVideo)
-	requesting.InitYoutubeImageClient(proxyConfig.YoutubeImage)
-	if keyConfig.Youtube != "" {
-		requesting.InitYoutubeApiClient(proxyConfig.YoutubeApi)
-	}
-}
-
 func main() {
 	arg.MustParse(&args)
 
@@ -74,9 +53,8 @@ func main() {
 
 	// Apply config.yaml
 	config.LoadConfig()
-	processKeyConfig()
-	processProxyConfig()
-	limits := config.GetLimitConfig()
+	config.GetKeyConfig().Init()
+	config.GetProxyConfig().Init()
 
 	// Listen for interrupt
 	osSignalCh := make(chan os.Signal, 1)
@@ -89,17 +67,17 @@ func main() {
 
 	err := cache.InitSongList()
 	if err != nil {
-		log.Println("Failed to init cache:", err)
+		log.Println("Failed to fetch pypy song list:", err)
 		return
 	}
 
-	cache.SetupCache("./cache", limits.MaxCache*1024*1024)
+	config.GetCacheConfig().Init()
 	defer func() {
 		log.Println("Cleaning up cache")
 		cache.CleanUpCache()
 	}()
 
-	download.InitDownloadManager(limits.MaxDownload)
+	config.GetDownloadConfig().Init()
 	defer func() {
 		log.Println("Stopping all downloading tasks")
 		download.StopAllAndWait()
@@ -110,7 +88,7 @@ func main() {
 		return
 	default:
 	}
-	playlist.Init(limits.MaxPreload)
+	config.GetPreloadConfig().Init()
 	defer func() {
 		log.Println("Stopping playlist")
 		playlist.StopPlayList()

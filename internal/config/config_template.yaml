@@ -5,8 +5,16 @@ proxy:
   youtube-image: ""
 keys:
   youtube-api: ""
-limits:
+youtube:
+  enable-youtube-api: false
+  enable-youtube-thumbnail: false
+  enable-youtube-video: false
+preload:
   max-preload-count: 4
+download:
   max-parallel-download-count: 2
-  # maximum disk cache size(MB)
-  max-cache: 300
+cache:
+  path: "./cache"
+  max-cache-size: 300
+  keep-favorites: false
+  whitelist: []
