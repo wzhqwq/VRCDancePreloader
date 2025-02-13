@@ -8,9 +8,9 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"github.com/samber/lo"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/containers"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/containers"
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
 type PlayListGui struct {

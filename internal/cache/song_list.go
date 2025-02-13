@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song/raw_song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 )
 
 var savedResponse []byte

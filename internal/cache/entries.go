@@ -1,8 +1,8 @@
 package cache
 
 import (
-	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"io"
 	"strconv"
 	"strings"

@@ -2,10 +2,10 @@ package raw_song
 
 import (
 	"fmt"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/third_party_api"
+	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 	"strings"
 
-	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var customSongMap = make(map[string]CustomSong)

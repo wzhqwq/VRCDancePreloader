@@ -1,8 +1,8 @@
 package playlist
 
 import (
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"sync"
 )
 

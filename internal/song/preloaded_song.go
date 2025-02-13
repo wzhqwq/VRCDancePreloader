@@ -2,9 +2,9 @@ package song
 
 import (
 	"fmt"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song/raw_song"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/types"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type PreloadedSong struct {

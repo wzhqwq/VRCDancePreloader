@@ -5,8 +5,8 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/progress"
 	"github.com/samber/lo"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
 type PlayListTui struct {

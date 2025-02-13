@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 )
 
 var currentTui *PlayListTui

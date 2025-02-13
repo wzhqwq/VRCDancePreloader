@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/elazarl/goproxy"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 )
 
 var runningServer *http.Server

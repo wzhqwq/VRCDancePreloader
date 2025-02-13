@@ -2,13 +2,13 @@ package song
 
 import (
 	"fmt"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"math"
 	"sync"
 	"time"
 
-	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type DownloadStatus string

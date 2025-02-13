@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 )
 
 var receivedLogs = make([]string, 0)

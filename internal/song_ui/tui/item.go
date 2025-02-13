@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/jedib0t/go-pretty/v6/progress"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
 type ItemTui struct {

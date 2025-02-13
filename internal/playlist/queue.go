@@ -5,8 +5,8 @@ import (
 	"slices"
 
 	"github.com/samber/lo"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 )
 
 func (pl *PlayList) RemoveItem(index int) {

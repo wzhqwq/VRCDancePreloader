@@ -7,7 +7,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/window_app"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/window_app"
 )
 
 type EllipseText struct {

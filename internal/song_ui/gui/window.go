@@ -4,9 +4,10 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/window_app"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/config"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/window_app"
+	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 )
 
 var currentGui *PlayListGui
@@ -50,9 +51,13 @@ func MainWindow(playlistContainer fyne.CanvasObject) fyne.Window {
 	tabs := container.NewAppTabs(
 		container.NewTabItem(i18n.T("btn_playlist"), playlistContainer),
 		container.NewTabItem(i18n.T("btn_history"), widget.NewLabel("Not Implemented")),
+		container.NewTabItem(i18n.T("btn_favorites"), widget.NewLabel("Not Implemented")),
+		container.NewTabItem(i18n.T("btn_settings"), config.CreateSettingsContainer()),
 	)
 	w.SetContent(tabs)
 	w.SetPadded(false)
+
+	w.Resize(fyne.NewSize(350, 500))
 
 	w.Show()
 

@@ -3,7 +3,7 @@ package third_party_api
 import (
 	"context"
 	"fmt"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"google.golang.org/api/youtube/v3"
 	"time"
 )

@@ -5,7 +5,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"io"
 	"log"
 )

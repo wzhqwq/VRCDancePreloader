@@ -3,8 +3,8 @@ package playlist
 import (
 	"io"
 
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var asyncDownload = false

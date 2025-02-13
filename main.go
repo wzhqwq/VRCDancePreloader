@@ -1,20 +1,19 @@
 package main
 
 import (
-	"github.com/wzhqwq/PyPyDancePreloader/internal/config"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/config"
+	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"log"
 
 	"github.com/alexflint/go-arg"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/window_app"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/proxy"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song_ui/gui"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song_ui/tui"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/watcher"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/window_app"
+	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/proxy"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song_ui/gui"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song_ui/tui"
+	"github.com/wzhqwq/VRCDancePreloader/internal/watcher"
 
 	"os"
 	"os/signal"

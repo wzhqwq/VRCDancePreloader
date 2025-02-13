@@ -1,7 +1,7 @@
 package gui
 
 import (
-	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/containers"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/containers"
 	"image/color"
 	"time"
 
@@ -11,8 +11,8 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/gui/widgets"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
 type ItemGui struct {

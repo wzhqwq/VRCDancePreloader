@@ -6,8 +6,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 	"github.com/eduardolat/goeasyi18n"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 // Info, immutable
@@ -60,7 +60,7 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 			ThumbnailURL: ps.GetThumbnailUrl(),
 		}
 	}
-	title := "empty"
+	title := i18n.T("placeholder_empty_song")
 	if ps.RandomPlay {
 		title = "random_play"
 	}

@@ -3,7 +3,7 @@ package playlist
 import (
 	"sync"
 
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
 var newListSubscribers []chan *PlayList

@@ -1,4 +1,4 @@
-module github.com/wzhqwq/PyPyDancePreloader
+module github.com/wzhqwq/VRCDancePreloader
 
 go 1.23
 

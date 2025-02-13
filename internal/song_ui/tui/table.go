@@ -5,7 +5,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/samber/lo"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 )
 
 type SongTable struct {

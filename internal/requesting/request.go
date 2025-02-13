@@ -1,7 +1,7 @@
 package requesting
 
 import (
-	"github.com/wzhqwq/PyPyDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"google.golang.org/api/option"
 	"net/http"
 )

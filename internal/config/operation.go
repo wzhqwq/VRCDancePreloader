@@ -1,11 +1,12 @@
 package config
 
 import (
-	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/download"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/requesting"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/third_party_api"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 	"log"
 )
 

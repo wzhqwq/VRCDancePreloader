@@ -3,9 +3,9 @@ package watcher
 import (
 	"encoding/json"
 
-	"github.com/wzhqwq/PyPyDancePreloader/internal/playlist"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/song"
-	"github.com/wzhqwq/PyPyDancePreloader/internal/types"
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 )
 
 func parseQueue(data []byte) ([]types.QueueItem, error) {

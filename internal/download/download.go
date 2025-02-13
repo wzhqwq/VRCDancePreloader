@@ -1,7 +1,7 @@
 package download
 
 import (
-	"github.com/wzhqwq/PyPyDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"io"
 	"log"
 	"sync"
