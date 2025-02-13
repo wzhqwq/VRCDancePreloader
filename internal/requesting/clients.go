@@ -12,12 +12,6 @@ var youtubeVideoClient *http.Client
 var youtubeApiClient *http.Client
 var youtubeImageClient *http.Client
 
-var skipTest = false
-
-func SetSkipTest(b bool) {
-	skipTest = b
-}
-
 func createProxyClient(proxyURL string) *http.Client {
 	proxy, err := url.Parse(proxyURL)
 	if err != nil {
@@ -30,10 +24,7 @@ func createProxyClient(proxyURL string) *http.Client {
 	}
 }
 
-func testClient(client *http.Client, testUrl, serviceName string) {
-	if skipTest {
-		return
-	}
+func testClient(client *http.Client, testUrl, serviceName string) (bool, string) {
 	log.Printf("Testing %s client", serviceName)
 	_, err := client.Head(testUrl)
 	if err != nil {
@@ -42,7 +33,9 @@ func testClient(client *http.Client, testUrl, serviceName string) {
 		} else {
 			log.Printf("[Warning] Cannot connect to %s service through provided proxy: %v", serviceName, err)
 		}
+		return false, err.Error()
 	}
+	return true, ""
 }
 
 func InitPypyClient(proxyUrl string) {
@@ -51,7 +44,9 @@ func InitPypyClient(proxyUrl string) {
 	} else {
 		pypyClient = &http.Client{}
 	}
-	testClient(pypyClient, utils.GetPyPyVideoUrl(1), "PyPyDance")
+}
+func TestPypyClient() (bool, string) {
+	return testClient(pypyClient, utils.GetPyPyVideoUrl(1), "PyPyDance")
 }
 
 func InitYoutubeVideoClient(proxyUrl string) {
@@ -60,7 +55,9 @@ func InitYoutubeVideoClient(proxyUrl string) {
 	} else {
 		youtubeVideoClient = &http.Client{}
 	}
-	testClient(youtubeVideoClient, utils.GetStandardYoutubeURL("qylu4Ajh6k8"), "Youtube video")
+}
+func TestYoutubeVideoClient() (bool, string) {
+	return testClient(youtubeVideoClient, utils.GetStandardYoutubeURL("qylu4Ajh6k8"), "Youtube video")
 }
 
 func InitYoutubeApiClient(proxyUrl string) {
@@ -69,7 +66,9 @@ func InitYoutubeApiClient(proxyUrl string) {
 	} else {
 		youtubeApiClient = &http.Client{}
 	}
-	testClient(youtubeApiClient, "https://youtube.googleapis.com/", "Youtube API")
+}
+func TestYoutubeApiClient() (bool, string) {
+	return testClient(youtubeApiClient, "https://youtube.googleapis.com/", "Youtube API")
 }
 
 func InitYoutubeImageClient(proxyUrl string) {
@@ -78,7 +77,9 @@ func InitYoutubeImageClient(proxyUrl string) {
 	} else {
 		youtubeImageClient = &http.Client{}
 	}
-	testClient(youtubeImageClient, utils.GetYoutubeMQThumbnailURL("qylu4Ajh6k8"), "Youtube thumbnail")
+}
+func TestYoutubeImageClient() (bool, string) {
+	return testClient(youtubeImageClient, utils.GetYoutubeMQThumbnailURL("qylu4Ajh6k8"), "Youtube thumbnail")
 }
 
 func GetPyPyClient() *http.Client {

@@ -6,6 +6,8 @@
   Default: "未知大小"
 - Key: placeholder_random_play
   Default: "随机播放"
+- Key: placeholder_empty_song
+  Default: "没在播放"
 
 - Key: key_id
   Default: "ID"
@@ -24,9 +26,62 @@
   Default: "房间播放列表"
 - Key: btn_history
   Default: "播放历史"
+- Key: btn_favorites
+  Default: "收藏夹"
+- Key: btn_settings
+  Default: "设置"
 
 - Key: wrapper_adder
   Default: "由{{.Adder}}点歌"
 
 - Key: app_name
   Default: "VRC跳舞房预加载器"
+
+- Key: label_proxy
+  Default: "代理服务器"
+- Key: label_keys
+  Default: "API密钥"
+- Key: label_youtube
+  Default: "YouTube加载功能"
+- Key: label_preload
+  Default: "预加载设置"
+- Key: label_download
+  Default: "下载设置"
+- Key: label_cache
+  Default: "缓存设置"
+
+- Key: label_pypy_proxy
+  Default: "PyPyDance API代理服务器"
+- Key: label_yt_video_proxy
+  Default: "YouTube视频代理服务器"
+- Key: label_yt_api_proxy
+  Default: "YouTube API代理服务器"
+- Key: label_yt_image_proxy
+  Default: "YouTube视频缩略图代理服务器"
+- Key: label_yt_api_key
+  Default: "YouTube的API key"
+- Key: label_yt_api_enable
+  Default: "允许通过YouTube API读取视频信息"
+- Key: label_yt_thumbnail_enable
+  Default: "允许获取YouTube视频缩略图"
+- Key: label_yt_video_enable
+  Default: "允许通过ytdlp预加载YouTube视频"
+- Key: label_max_preload_count
+  Default: "预加载最大数量 (包括当前播放视频)"
+- Key: label_max_parallel_download_count
+  Default: "最大并行下载数量"
+- Key: label_cache_path
+  Default: "缓存路径"
+- Key: label_max_cache_size
+  Default: "缓存最大大小"
+- Key: label_keep_favorites
+  Default: "清理缓存时保留收藏夹视频"
+- Key: label_cache_whitelist
+  Default: "缓存清理白名单"
+
+- Key: tip_connectivity_test_pass
+  Default: "连接测试通过"
+- Key: btn_testing
+  Default: "测试中..."
+- Key: btn_test
+  Default: "测试"

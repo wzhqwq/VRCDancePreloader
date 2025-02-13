@@ -6,6 +6,8 @@
   Default: "Unknown Size"
 - Key: placeholder_random_play
   Default: "Random Play"
+- Key: placeholder_empty_song
+  Default: "Not Playing"
 
 - Key: key_id
   Default: "ID"
@@ -24,9 +26,62 @@
   Default: "Room Playlist"
 - Key: btn_history
   Default: "Play History"
+- Key: btn_favorites
+  Default: "Favorites"
+- Key: btn_settings
+  Default: "Settings"
 
 - Key: wrapper_adder
   Default: "Requested by {{.Adder}}"
 
 - Key: app_name
   Default: "VRC Dancing Room Preloader"
+
+- Key: label_proxy
+  Default: "Proxy server"
+- Key: label_keys
+  Default: "API keys"
+- Key: label_youtube
+  Default: "YouTube features"
+- Key: label_preload
+  Default: "Preload settings"
+- Key: label_download
+  Default: "Download settings"
+- Key: label_cache
+  Default: "Cache settings"
+
+- Key: label_pypy_proxy
+  Default: "Proxy server for PyPyDance API"
+- Key: label_yt_video_proxy
+  Default: "Proxy server for YouTube video"
+- Key: label_yt_api_proxy
+  Default: "Proxy server for YouTube API"
+- Key: label_yt_image_proxy
+  Default: "Proxy server for YouTube video thumbnail"
+- Key: label_yt_api_key
+  Default: "YouTube API key"
+- Key: label_yt_api_enable
+  Default: "Enable read YouTube video info using YouTube API"
+- Key: label_yt_thumbnail_enable
+  Default: "Enable display thumbnail for YouTube video"
+- Key: label_yt_video_enable
+  Default: "Enable preload YouTube video using ytdlp"
+- Key: label_max_preload_count
+  Default: "Maximal preload count (including current playing)"
+- Key: label_max_parallel_download_count
+  Default: "Maximal concurrent download tasks"
+- Key: label_cache_path
+  Default: "Video Cache path"
+- Key: label_max_cache_size
+  Default: "Maximal cache size"
+- Key: label_keep_favorites
+  Default: "Keep favorite videos in cache when cleaning"
+- Key: label_cache_whitelist
+  Default: "Always keep these videos in cache when cleaning"
+
+- Key: tip_connectivity_test_pass
+  Default: "Connection test passed"
+- Key: btn_testing
+  Default: "Testing..."
+- Key: btn_test
+  Default: "Test"

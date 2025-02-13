@@ -47,8 +47,10 @@ func main() {
 	}
 
 	// Apply argument config
-	requesting.SetSkipTest(args.SkipClientTest)
+	config.SetSkipTest(args.SkipClientTest)
 	playlist.SetAsyncDownload(args.AsyncDownload)
+
+	i18n.Init()
 
 	// Apply config.yaml
 	config.LoadConfig()
@@ -61,8 +63,6 @@ func main() {
 
 	// The ending note
 	defer log.Println("Gracefully stopped")
-
-	i18n.Init()
 
 	err := cache.InitSongList()
 	if err != nil {

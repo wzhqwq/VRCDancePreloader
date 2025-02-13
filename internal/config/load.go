@@ -5,6 +5,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
+	"sync"
 )
 
 //go:embed config_template.yaml
@@ -14,10 +15,12 @@ type KeyConfig struct {
 	Youtube string `yaml:"youtube-api"`
 }
 type ProxyConfig struct {
-	Pypy         string `yaml:"jd.pypy.moe"`
+	Pypy         string `yaml:"pypydance-api"`
 	YoutubeVideo string `yaml:"youtube-video"`
 	YoutubeApi   string `yaml:"youtube-api"`
 	YoutubeImage string `yaml:"youtube-image"`
+
+	ProxyControllers map[string]*ProxyController `yaml:"-"`
 }
 type YoutubeConfig struct {
 	EnableApi       bool `yaml:"enable-youtube-api"`
@@ -45,6 +48,8 @@ var config struct {
 	Download DownloadConfig `yaml:"download"`
 	Cache    CacheConfig    `yaml:"cache"`
 }
+
+var configMutex = sync.Mutex{}
 
 func CreateIfNotExists() {
 	if _, err := os.Stat("config.yaml"); os.IsNotExist(err) {
@@ -80,6 +85,23 @@ func LoadConfig() {
 	err = decoder.Decode(&config)
 	if err != nil {
 		log.Fatalf("Failed to parse config.yaml: %s", err)
+	}
+}
+
+func SaveConfig() {
+	configMutex.Lock()
+	defer configMutex.Unlock()
+
+	configFile, err := os.OpenFile("config.yaml", os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatalf("open config.yaml error: %s", err)
+	}
+	defer configFile.Close()
+
+	encoder := yaml.NewEncoder(configFile)
+	err = encoder.Encode(&config)
+	if err != nil {
+		log.Fatalf("Failed to save config.yaml: %s", err)
 	}
 }
 
