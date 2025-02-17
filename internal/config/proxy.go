@@ -104,6 +104,7 @@ func NewProxyInput(controller *ProxyController, label string) *ProxyInput {
 	t.TestBtn = widget.NewButton(i18n.T("btn_test"), func() {
 		controller.Test()
 	})
+	t.SaveBtn.Importance = widget.HighImportance
 	t.StatusIcon = NewIconWithMessage(nil)
 	t.StatusIcon.Refresh()
 	t.OnSave = func() {
@@ -122,10 +123,10 @@ func NewProxyInput(controller *ProxyController, label string) *ProxyInput {
 func (i *ProxyInput) UpdateStatus() {
 	switch i.Controller.Status {
 	case ProxyStatusOk:
-		i.StatusIcon.SetIcon(theme.ConfirmIcon())
+		i.StatusIcon.SetIcon(theme.NewColoredResource(theme.ConfirmIcon(), theme.ColorNameSuccess))
 		i.StatusIcon.SetMessage(i.Controller.Message, theme.Color(theme.ColorNameSuccess))
 	case ProxyStatusError:
-		i.StatusIcon.SetIcon(theme.WarningIcon())
+		i.StatusIcon.SetIcon(theme.NewColoredResource(theme.WarningIcon(), theme.ColorNameError))
 		i.StatusIcon.SetMessage(i.Controller.Message, theme.Color(theme.ColorNameError))
 	case ProxyStatusTesting:
 		i.StatusIcon.SetIcon(nil)

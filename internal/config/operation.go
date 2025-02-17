@@ -98,7 +98,7 @@ func (dc *DownloadConfig) Init() {
 }
 
 func (cc *CacheConfig) Init() {
-	cache.SetupCache(cc.Path, cc.MaxCacheSize)
+	cache.SetupCache(cc.Path, cc.MaxCacheSize*1024*1024)
 }
 
 func (dc *DbConfig) Init() error {

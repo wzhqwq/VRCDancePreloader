@@ -47,6 +47,7 @@ func NewInputWithSave(value, label string) *InputWithSave {
 		log.Println("Save")
 		t.SetValue(inputWidget.Text)
 	})
+	t.SaveBtn.Importance = widget.HighImportance
 
 	t.ExtendBaseWidget(t)
 
