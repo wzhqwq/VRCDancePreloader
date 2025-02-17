@@ -39,6 +39,9 @@ type CacheConfig struct {
 	KeepFavorites bool     `yaml:"keep-favorites"`
 	Whitelist     []string `yaml:"whitelist"`
 }
+type DbConfig struct {
+	Path string `yaml:"path"`
+}
 
 var config struct {
 	Proxy    ProxyConfig    `yaml:"proxy"`
@@ -47,6 +50,7 @@ var config struct {
 	Preload  PreloadConfig  `yaml:"preload"`
 	Download DownloadConfig `yaml:"download"`
 	Cache    CacheConfig    `yaml:"cache"`
+	Db       DbConfig       `yaml:"db"`
 }
 
 var configMutex = sync.Mutex{}
@@ -119,4 +123,7 @@ func GetDownloadConfig() *DownloadConfig {
 }
 func GetCacheConfig() *CacheConfig {
 	return &config.Cache
+}
+func GetDbConfig() *DbConfig {
+	return &config.Db
 }

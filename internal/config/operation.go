@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
@@ -98,4 +99,8 @@ func (dc *DownloadConfig) Init() {
 
 func (cc *CacheConfig) Init() {
 	cache.SetupCache(cc.Path, cc.MaxCacheSize)
+}
+
+func (dc *DbConfig) Init() error {
+	return persistence.InitDB(dc.Path)
 }

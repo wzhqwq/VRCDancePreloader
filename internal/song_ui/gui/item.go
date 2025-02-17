@@ -44,6 +44,11 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 	title.TextSize = 16
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
+	// Favorite button
+	favoriteBtn := widgets.NewFavoriteBtn(info.ID, info.Title)
+
+	titleBar := container.NewBorder(nil, nil, nil, favoriteBtn, title)
+
 	// ID
 	id := canvas.NewText(info.ID, color.Gray{128})
 	id.Alignment = fyne.TextAlignTrailing
@@ -74,30 +79,32 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 	errorText := canvas.NewText("", theme.Color(theme.ColorNameError))
 	errorText.TextSize = 12
 
+	// Thumbnail
+	thumbnail := widgets.NewThumbnail(info.ThumbnailURL)
+
+	content := NewDynamicFrame(
+		thumbnail,
+		container.NewVBox(
+			group,
+			adder,
+		),
+		container.NewVBox(
+			id,
+			progressBar,
+			sizeText,
+		),
+		statusText,
+		errorText,
+	)
+
 	// Play Bar
 	playBar := widgets.NewPlayBar()
 	playBar.Hide()
 
-	// Thumbnail
-	thumbnail := widgets.NewThumbnail(info.ThumbnailURL)
-
 	cardContent := container.NewPadded(
 		container.NewVBox(
-			title,
-			NewDynamicFrame(
-				thumbnail,
-				container.NewVBox(
-					group,
-					adder,
-				),
-				container.NewVBox(
-					id,
-					progressBar,
-					sizeText,
-				),
-				statusText,
-				errorText,
-			),
+			titleBar,
+			content,
 			playBar,
 		),
 	)

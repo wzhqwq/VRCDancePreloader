@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"log"
 
 	"github.com/alexflint/go-arg"
@@ -69,6 +70,16 @@ func main() {
 		log.Println("Failed to fetch pypy song list:", err)
 		return
 	}
+
+	err = config.GetDbConfig().Init()
+	if err != nil {
+		log.Println("Failed to init database:", err)
+		return
+	}
+	defer func() {
+		log.Println("Closing database")
+		persistence.CloseDB()
+	}()
 
 	config.GetCacheConfig().Init()
 	defer func() {

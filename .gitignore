@@ -30,3 +30,4 @@ config.yaml
 /cache/
 *.crt
 *.key
+*.db
