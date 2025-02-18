@@ -47,7 +47,7 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 	// Favorite button
 	favoriteBtn := widgets.NewFavoriteBtn(info.ID, info.Title)
 
-	titleBar := container.NewBorder(nil, nil, nil, favoriteBtn, title)
+	titleBar := container.NewPadded(container.NewBorder(nil, nil, nil, favoriteBtn, title))
 
 	// ID
 	id := canvas.NewText(info.ID, color.Gray{128})
@@ -82,7 +82,7 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 	// Thumbnail
 	thumbnail := widgets.NewThumbnail(info.ThumbnailURL)
 
-	content := NewDynamicFrame(
+	content := widgets.NewDynamicFrame(
 		thumbnail,
 		container.NewVBox(
 			group,
@@ -112,7 +112,7 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 	cardBackground.CornerRadius = theme.Padding() * 2
 	cardBackground.StrokeWidth = 2
 	cardBackground.StrokeColor = theme.Color(theme.ColorNameSeparator)
-	card := container.NewStack(cardBackground, container.NewPadded(cardContent))
+	card := container.NewStack(cardBackground, cardContent)
 	card.Hide()
 
 	ig := ItemGui{

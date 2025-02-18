@@ -160,9 +160,9 @@ func (f *Favorites) ListFavorites(page, pageSize int, sortBy string, ascending b
 	// load from db
 	var query string
 	if ascending {
-		query = "SELECT id, title, like, skill, is_favorite FROM favorite ORDER BY ? LIMIT ? OFFSET ?"
+		query = "SELECT id, title, like, skill, is_favorite FROM favorite WHERE is_favorite=true ORDER BY ? LIMIT ? OFFSET ?"
 	} else {
-		query = "SELECT id, title, like, skill, is_favorite FROM favorite ORDER BY ? DESC LIMIT ? OFFSET ?"
+		query = "SELECT id, title, like, skill, is_favorite FROM favorite WHERE is_favorite=true ORDER BY ? DESC LIMIT ? OFFSET ?"
 	}
 	rows, err := DB.Query(query, sortBy, pageSize, page*pageSize)
 	if err != nil {

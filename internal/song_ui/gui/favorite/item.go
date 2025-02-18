@@ -5,9 +5,14 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"image/color"
+	url2 "net/url"
+	"regexp"
+	"strconv"
 )
 
 type ItemGui struct {
@@ -23,16 +28,58 @@ func NewItemGui(entry *persistence.FavoriteEntry) *ItemGui {
 	// Favorite button
 	favoriteBtn := widgets.NewFavoriteBtn(entry.ID, entry.Title)
 
-	titleBar := container.NewBorder(nil, nil, nil, favoriteBtn, title)
+	titleBar := container.NewPadded(container.NewBorder(nil, nil, nil, favoriteBtn, title))
 
 	// ID
 	id := canvas.NewText(entry.ID, color.Gray{128})
 	id.Alignment = fyne.TextAlignTrailing
 	id.TextSize = 12
 
-	cardContent := container.NewPadded(
+	// Info
+	info := container.NewVBox()
+
+	likeRate := widgets.NewRate(entry.Like, "like", "heart")
+	likeRate.OnChanged = func(score int) {
+		entry.UpdateLike(score)
+	}
+	info.Add(likeRate)
+
+	skillRate := widgets.NewRate(entry.Skill, "skill", "collection")
+	skillRate.OnChanged = func(score int) {
+		entry.UpdateSkill(score)
+	}
+	info.Add(skillRate)
+
+	videoUrl := ""
+	thumbnailUrl := ""
+
+	if regexp.MustCompile(`^pypy_`).MatchString(entry.ID) {
+		pypyId, err := strconv.Atoi(entry.ID[5:])
+		if err == nil {
+			thumbnailUrl = utils.GetPyPyThumbnailUrl(pypyId)
+			videoUrl = utils.GetPyPyVideoUrl(pypyId)
+		}
+	}
+
+	if videoUrl != "" {
+		url, err := url2.Parse(videoUrl)
+		if err == nil {
+			info.Add(widget.NewHyperlink(videoUrl, url))
+		}
+	}
+
+	thumbnail := widgets.NewThumbnail(thumbnailUrl)
+
+	cardContent := container.NewVBox(
 		container.NewVBox(
 			titleBar,
+		),
+		widgets.NewDynamicFrame(
+			thumbnail,
+			info,
+			nil,
+			nil,
+			nil,
 		),
 	)
 	cardBackground := canvas.NewRectangle(theme.Color(theme.ColorNameHeaderBackground))
