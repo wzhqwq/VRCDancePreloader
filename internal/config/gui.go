@@ -24,7 +24,7 @@ func CreateSettingsContainer() fyne.CanvasObject {
 		createCacheSettingsContent(),
 	)
 	scroll := container.NewVScroll(wholeContent)
-	scroll.SetMinSize(fyne.NewSize(400, 300))
+	scroll.SetMinSize(fyne.NewSize(300, 300))
 	scroll.Refresh()
 	return scroll
 }
@@ -148,7 +148,7 @@ func createCacheSettingsContent() fyne.CanvasObject {
 		config.Preload.MaxPreload, _ = strconv.Atoi(pathInput.Value)
 		SaveConfig()
 	}
-	maxCacheInput.BeforeSaveItems = []fyne.CanvasObject{widget.NewLabel("MB")}
+	maxCacheInput.InputAppendItems = []fyne.CanvasObject{widget.NewLabel("MB")}
 	wholeContent.Add(maxCacheInput)
 
 	return wholeContent

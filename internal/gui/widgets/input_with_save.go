@@ -6,7 +6,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"log"
+	"strings"
 )
 
 type InputWithSave struct {
@@ -17,59 +17,71 @@ type InputWithSave struct {
 	InputWidget *widget.Entry
 	SaveBtn     *widget.Button
 
-	BeforeSaveItems []fyne.CanvasObject
-	AfterSaveItems  []fyne.CanvasObject
+	InputAppendItems []fyne.CanvasObject
+	AfterSaveItems   []fyne.CanvasObject
 
 	ForceDigits bool
+	Dirty       bool
 
 	OnSave func()
 }
 
 func NewInputWithSave(value, label string) *InputWithSave {
-	inputWidget := widget.NewEntry()
-	inputWidget.SetText(value)
-	inputWidget.Wrapping = fyne.TextWrapOff
-	inputWidget.Scroll = container.ScrollNone
-	inputWidget.Refresh()
-	labelText := canvas.NewText(label, theme.Color(theme.ColorNamePlaceHolder))
-	labelText.TextSize = 12
-
 	t := &InputWithSave{
 		Value: value,
-
-		Label:       labelText,
-		InputWidget: inputWidget,
 
 		OnSave: func() {},
 	}
 
-	t.SaveBtn = widget.NewButtonWithIcon("", theme.DocumentSaveIcon(), func() {
-		log.Println("Save")
-		t.SetValue(inputWidget.Text)
-	})
-	t.SaveBtn.Importance = widget.HighImportance
+	t.Initialize(value, label)
 
 	t.ExtendBaseWidget(t)
 
 	return t
 }
 
-func (i *InputWithSave) Extend(value, label string) {
-	i.Value = value
-
+func (i *InputWithSave) Initialize(value, label string) {
 	i.Label = canvas.NewText(label, theme.Color(theme.ColorNamePlaceHolder))
 	i.Label.Text = label
 	i.Label.TextSize = 12
+
 	i.InputWidget = widget.NewEntry()
 	i.InputWidget.SetText(value)
 	i.InputWidget.Wrapping = fyne.TextWrapOff
 	i.InputWidget.Scroll = container.ScrollNone
 	i.InputWidget.Refresh()
+	i.InputWidget.OnChanged = func(s string) {
+		newDirty := strings.Compare(i.Value, s) != 0
+		if newDirty != i.Dirty {
+			i.Dirty = newDirty
+			if i.Dirty {
+				i.SaveBtn.Show()
+				for _, item := range i.AfterSaveItems {
+					item.Hide()
+				}
+			} else {
+				i.SaveBtn.Hide()
+				for _, item := range i.AfterSaveItems {
+					item.Show()
+				}
+			}
+		}
+	}
+	i.InputWidget.OnSubmitted = func(s string) {
+		i.SetValue(i.InputWidget.Text)
+	}
 
 	i.SaveBtn = widget.NewButtonWithIcon("", theme.DocumentSaveIcon(), func() {
-		log.Println("Save")
 		i.SetValue(i.InputWidget.Text)
 	})
+	i.SaveBtn.Importance = widget.HighImportance
+	i.SaveBtn.Hide()
+}
+
+func (i *InputWithSave) Extend(value, label string) {
+	i.Value = value
+
+	i.Initialize(value, label)
 }
 
 func (i *InputWithSave) SetValue(value string) {
@@ -78,6 +90,12 @@ func (i *InputWithSave) SetValue(value string) {
 	}
 	i.Value = value
 	i.OnSave()
+	i.Dirty = false
+	i.SaveBtn.Hide()
+	for _, item := range i.AfterSaveItems {
+		item.Show()
+	}
+	i.Refresh()
 }
 
 func (i *InputWithSave) CreateRenderer() fyne.WidgetRenderer {
@@ -102,27 +120,29 @@ func (r *inputWithSaveRenderer) Layout(size fyne.Size) {
 	buttonY := labelHeight + inputHeight/2
 	rightWidth := theme.Padding()
 
-	for i := len(r.i.AfterSaveItems) - 1; i >= 0; i-- {
-		item := r.i.AfterSaveItems[i]
-		rightWidth += item.MinSize().Width
-		item.Move(fyne.NewPos(size.Width-rightWidth, buttonY-item.MinSize().Height/2))
-		item.Resize(item.MinSize())
+	if r.i.Dirty {
+		rightWidth += r.i.SaveBtn.MinSize().Width
+		r.i.SaveBtn.Move(fyne.NewPos(size.Width-rightWidth, buttonY-r.i.SaveBtn.MinSize().Height/2))
+		r.i.SaveBtn.Resize(r.i.SaveBtn.MinSize())
 		rightWidth += theme.Padding()
+	} else {
+		for i := len(r.i.AfterSaveItems) - 1; i >= 0; i-- {
+			item := r.i.AfterSaveItems[i]
+			rightWidth += item.MinSize().Width
+			item.Move(fyne.NewPos(size.Width-rightWidth, buttonY-item.MinSize().Height/2))
+			item.Resize(item.MinSize())
+			rightWidth += theme.Padding()
+		}
 	}
 
-	rightWidth += r.i.SaveBtn.MinSize().Width
-	r.i.SaveBtn.Move(fyne.NewPos(size.Width-rightWidth, buttonY-r.i.SaveBtn.MinSize().Height/2))
-	r.i.SaveBtn.Resize(r.i.SaveBtn.MinSize())
-	rightWidth += theme.Padding()
+	appendItemRight := rightWidth + theme.Padding()
 
-	rightWidthBefore := rightWidth + theme.Padding()
-
-	for i := len(r.i.BeforeSaveItems) - 1; i >= 0; i-- {
-		item := r.i.BeforeSaveItems[i]
-		rightWidthBefore += item.MinSize().Width
-		item.Move(fyne.NewPos(size.Width-rightWidthBefore, buttonY-item.MinSize().Height/2))
+	for i := len(r.i.InputAppendItems) - 1; i >= 0; i-- {
+		item := r.i.InputAppendItems[i]
+		appendItemRight += item.MinSize().Width
+		item.Move(fyne.NewPos(size.Width-appendItemRight, buttonY-item.MinSize().Height/2))
 		item.Resize(item.MinSize())
-		rightWidthBefore += theme.Padding()
+		appendItemRight += theme.Padding()
 	}
 
 	r.i.InputWidget.Move(fyne.NewPos(theme.Padding(), labelHeight))
@@ -130,14 +150,12 @@ func (r *inputWithSaveRenderer) Layout(size fyne.Size) {
 }
 
 func (r *inputWithSaveRenderer) Refresh() {
-	r.i.InputWidget.SetText(r.i.Value)
-	r.i.InputWidget.Refresh()
-	r.i.SaveBtn.Refresh()
+	r.Layout(r.i.Size())
 }
 
 func (r *inputWithSaveRenderer) Objects() []fyne.CanvasObject {
 	objects := []fyne.CanvasObject{r.i.Label, r.i.InputWidget, r.i.SaveBtn}
-	objects = append(objects, r.i.BeforeSaveItems...)
+	objects = append(objects, r.i.InputAppendItems...)
 	objects = append(objects, r.i.AfterSaveItems...)
 	return objects
 }

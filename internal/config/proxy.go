@@ -98,23 +98,23 @@ func NewProxyInput(controller *ProxyController, label string) *ProxyInput {
 		Controller:    controller,
 	}
 
-	t.Extend(controller.Value, label)
+	t.StatusIcon = NewIconWithMessage(nil)
+	t.StatusIcon.Refresh()
+	t.InputAppendItems = []fyne.CanvasObject{container.NewPadded(t.StatusIcon)}
 
-	controller.Input = t
 	t.TestBtn = widget.NewButton(i18n.T("btn_test"), func() {
 		controller.Test()
 	})
-	t.SaveBtn.Importance = widget.HighImportance
-	t.StatusIcon = NewIconWithMessage(nil)
-	t.StatusIcon.Refresh()
+	t.AfterSaveItems = []fyne.CanvasObject{t.TestBtn}
+
+	t.UpdateStatus()
+
+	controller.Input = t
 	t.OnSave = func() {
 		controller.Save(t.Value)
 	}
 
-	t.BeforeSaveItems = []fyne.CanvasObject{container.NewPadded(t.StatusIcon)}
-	t.AfterSaveItems = []fyne.CanvasObject{t.TestBtn}
-	t.UpdateStatus()
-
+	t.Extend(controller.Value, label)
 	t.ExtendBaseWidget(t)
 
 	return t
