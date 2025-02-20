@@ -7,10 +7,10 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"image/color"
-	url2 "net/url"
 	"regexp"
 	"strconv"
 )
@@ -38,35 +38,41 @@ func NewItemGui(entry *persistence.FavoriteEntry) *ItemGui {
 	// Info
 	info := container.NewVBox()
 
-	likeRate := widgets.NewRate(entry.Like, "like", "heart")
+	likeRate := widgets.NewRate(entry.Like, i18n.T("label_like_score"), "heart")
 	likeRate.OnChanged = func(score int) {
 		entry.UpdateLike(score)
 	}
 	info.Add(likeRate)
 
-	skillRate := widgets.NewRate(entry.Skill, "skill", "collection")
+	skillRate := widgets.NewRate(entry.Skill, i18n.T("label_skill_score"), "collection")
 	skillRate.OnChanged = func(score int) {
 		entry.UpdateSkill(score)
 	}
 	info.Add(skillRate)
 
-	videoUrl := ""
+	syncToPypyCheckbox := widget.NewCheck(i18n.T("label_sync_to_pypy"), func(b bool) {
+		entry.UpdateSyncToPypy(b)
+	})
+	syncToPypyCheckbox.SetChecked(entry.InPypy)
+	info.Add(syncToPypyCheckbox)
+
+	//videoUrl := ""
 	thumbnailUrl := ""
 
 	if regexp.MustCompile(`^pypy_`).MatchString(entry.ID) {
 		pypyId, err := strconv.Atoi(entry.ID[5:])
 		if err == nil {
 			thumbnailUrl = utils.GetPyPyThumbnailUrl(pypyId)
-			videoUrl = utils.GetPyPyVideoUrl(pypyId)
+			//videoUrl = utils.GetPyPyVideoUrl(pypyId)
 		}
 	}
 
-	if videoUrl != "" {
-		url, err := url2.Parse(videoUrl)
-		if err == nil {
-			info.Add(widget.NewHyperlink(videoUrl, url))
-		}
-	}
+	//if videoUrl != "" {
+	//	url, err := url2.Parse(videoUrl)
+	//	if err == nil {
+	//		info.Add(widget.NewHyperlink(videoUrl, url))
+	//	}
+	//}
 
 	thumbnail := widgets.NewThumbnail(thumbnailUrl)
 

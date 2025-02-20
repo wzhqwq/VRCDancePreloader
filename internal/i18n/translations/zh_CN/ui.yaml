@@ -85,3 +85,21 @@
   Default: "测试中..."
 - Key: btn_test
   Default: "测试"
+
+- Key: label_like_score
+  Default: "喜欢"
+- Key: label_skill_score
+  Default: "熟练度"
+- Key: label_sync_to_pypy
+  Default: "同步到PyPyDance收藏列表"
+
+- Key: option_sort_by_id
+  Default: "按ID排序"
+- Key: option_sort_by_like
+  Default: "按喜欢排序"
+- Key: option_sort_by_skill
+  Default: "按熟练度排序"
+- Key: option_order_asc
+  Default: "升序"
+- Key: option_order_desc
+  Default: "降序"

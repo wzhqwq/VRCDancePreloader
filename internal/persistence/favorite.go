@@ -18,13 +18,15 @@ CREATE TABLE IF NOT EXISTS favorite (
     	like INTEGER,
     	skill INTEGER,
                                     
-    	is_favorite BOOLEAN
+    	is_favorite BOOLEAN,
+        in_pypy BOOLEAN
 );
 `
 var favoriteTableIndicesSQLs = []string{
 	"CREATE INDEX IF NOT EXISTS idx_favorite_is_favorite ON favorite (is_favorite)",
 	"CREATE INDEX IF NOT EXISTS idx_favorite_like ON favorite (like)",
 	"CREATE INDEX IF NOT EXISTS idx_favorite_skill ON favorite (skill)",
+	"CREATE INDEX IF NOT EXISTS idx_favorite_in_pypy ON favorite (in_pypy)",
 }
 
 type Favorites struct {
@@ -36,8 +38,8 @@ type Favorites struct {
 
 func (f *Favorites) addEntry(entry *FavoriteEntry) {
 	// save to db
-	query := "INSERT INTO favorite (id, title, like, skill, is_favorite) VALUES (?, ?, ?, ?, ?)"
-	_, err := DB.Exec(query, entry.ID, entry.Title, entry.Like, entry.Skill, entry.IsFavorite)
+	query := "INSERT INTO favorite (id, title, like, skill, is_favorite, in_pypy) VALUES (?, ?, ?, ?, ?, ?)"
+	_, err := DB.Exec(query, entry.ID, entry.Title, entry.Like, entry.Skill, entry.IsFavorite, entry.InPypy)
 	if err != nil {
 		log.Printf("failed to save favorite entry: %v", err)
 		return
@@ -48,10 +50,10 @@ func (f *Favorites) addEntry(entry *FavoriteEntry) {
 
 func (f *Favorites) getEntry(id string) *FavoriteEntry {
 	// load from db
-	row := DB.QueryRow("SELECT id, title, like, skill, is_favorite FROM favorite WHERE id = ?", id)
+	row := DB.QueryRow("SELECT id, title, like, skill, is_favorite, in_pypy FROM favorite WHERE id = ?", id)
 
 	var entry FavoriteEntry
-	err := row.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite)
+	err := row.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite, &entry.InPypy)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
@@ -87,11 +89,14 @@ func (f *Favorites) SetFavorite(id, title string) {
 	} else {
 		// create new entry
 		entry = &FavoriteEntry{
-			ID:         id,
-			Title:      title,
-			Like:       0,
-			Skill:      0,
+			ID:    id,
+			Title: title,
+
+			Like:  0,
+			Skill: 0,
+
 			IsFavorite: true,
+			InPypy:     true,
 		}
 		f.addEntry(entry)
 	}
@@ -159,12 +164,12 @@ func (f *Favorites) ListFavorites(page, pageSize int, sortBy string, ascending b
 
 	// load from db
 	var query string
-	if ascending {
-		query = "SELECT id, title, like, skill, is_favorite FROM favorite WHERE is_favorite=true ORDER BY ? LIMIT ? OFFSET ?"
-	} else {
-		query = "SELECT id, title, like, skill, is_favorite FROM favorite WHERE is_favorite=true ORDER BY ? DESC LIMIT ? OFFSET ?"
+	orderBy := "ORDER BY `" + sortBy + "`"
+	if !ascending {
+		orderBy += " DESC"
 	}
-	rows, err := DB.Query(query, sortBy, pageSize, page*pageSize)
+	query = "SELECT id, title, like, skill, is_favorite, in_pypy FROM favorite WHERE is_favorite=true " + orderBy + " LIMIT ? OFFSET ?"
+	rows, err := DB.Query(query, pageSize, page*pageSize)
 	if err != nil {
 		log.Printf("failed to load favorite entries: %v", err)
 		return nil
@@ -174,7 +179,7 @@ func (f *Favorites) ListFavorites(page, pageSize int, sortBy string, ascending b
 	var entries []*FavoriteEntry
 	for rows.Next() {
 		var entry FavoriteEntry
-		err = rows.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite)
+		err = rows.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite, &entry.InPypy)
 		if err != nil {
 			log.Printf("failed to scan favorite entry: %v", err)
 			return nil
@@ -184,6 +189,21 @@ func (f *Favorites) ListFavorites(page, pageSize int, sortBy string, ascending b
 	}
 
 	return entries
+}
+
+func (f *Favorites) CalculateTotalPages(pageSize int) int {
+	f.Lock()
+	defer f.Unlock()
+
+	// load from db
+	var total int
+	err := DB.QueryRow("SELECT COUNT(*) FROM favorite WHERE is_favorite=true").Scan(&total)
+	if err != nil {
+		log.Printf("failed to load favorite entries: %v", err)
+		return 0
+	}
+
+	return (total + pageSize - 1) / pageSize
 }
 
 func (f *Favorites) UpdateFavorite(entry *FavoriteEntry) {
@@ -203,7 +223,8 @@ func (f *Favorites) ToPyPyFavorites() string {
 	defer f.Unlock()
 
 	// load from db
-	rows, err := DB.Query("SELECT id FROM favorite WHERE is_favorite = ? AND id LIKE ?", true, "pypy_%")
+	query := "SELECT id FROM favorite WHERE is_favorite = ? AND in_pypy = ? AND id LIKE ?"
+	rows, err := DB.Query(query, true, true, "pypy_%")
 	if err != nil {
 		log.Printf("failed to load favorite entries: %v", err)
 		return ""
@@ -233,6 +254,7 @@ type FavoriteEntry struct {
 	Skill int
 
 	IsFavorite bool
+	InPypy     bool
 }
 
 func (e *FavoriteEntry) UpdateLike(like int) {
@@ -241,6 +263,10 @@ func (e *FavoriteEntry) UpdateLike(like int) {
 }
 func (e *FavoriteEntry) UpdateSkill(skill int) {
 	e.Skill = skill
+	currentFavorite.UpdateFavorite(e)
+}
+func (e *FavoriteEntry) UpdateSyncToPypy(b bool) {
+	e.InPypy = b
 	currentFavorite.UpdateFavorite(e)
 }
 func (e *FavoriteEntry) SetFavorite() {

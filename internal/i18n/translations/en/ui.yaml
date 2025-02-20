@@ -85,3 +85,21 @@
   Default: "Testing..."
 - Key: btn_test
   Default: "Test"
+
+- Key: label_like_score
+  Default: "Like"
+- Key: label_skill_score
+  Default: "Skill"
+- Key: label_sync_to_pypy
+  Default: "Sync to PyPyDance Favorites"
+
+- Key: option_sort_by_id
+  Default: "Sort by ID"
+- Key: option_sort_by_like
+  Default: "Sort by Like"
+- Key: option_sort_by_skill
+  Default: "Sort by Skill"
+- Key: option_order_asc
+  Default: "Ascending"
+- Key: option_order_desc
+  Default: "Descending"
