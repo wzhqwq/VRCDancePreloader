@@ -9,15 +9,22 @@ import (
 
 var cachePath string
 var maxSize int
+var keepFavorites bool
 var cacheMap = NewCacheMap()
 
-func SetupCache(path string, max int) {
+func SetupCache(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		os.Mkdir(path, 0777)
 	}
 
 	cachePath = path
-	maxSize = max
+}
+
+func SetMaxSize(size int) {
+	maxSize = size
+}
+func SetKeepFavorites(b bool) {
+	keepFavorites = b
 }
 
 func InitSongList() error {

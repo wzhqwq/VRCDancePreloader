@@ -17,3 +17,7 @@ func Prioritize(id string) {
 func StopAllAndWait() {
 	dm.CancelAllAndWait()
 }
+
+func SetMaxParallel(n int) {
+	dm.SetMaxParallel(n)
+}

@@ -13,3 +13,12 @@ func StopPlayList() {
 	currentPlaylist.StopAll()
 	currentPlaylist = nil
 }
+
+func SetMaxPreload(maxPreload int) {
+	if currentPlaylist == nil {
+		return
+	}
+	currentPlaylist.Lock()
+	defer currentPlaylist.Unlock()
+	currentPlaylist.maxPreload = maxPreload
+}

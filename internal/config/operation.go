@@ -93,12 +93,38 @@ func (pc *PreloadConfig) Init() {
 	playlist.Init(pc.MaxPreload)
 }
 
+func (pc *PreloadConfig) UpdateMaxPreload(max int) {
+	pc.MaxPreload = max
+	playlist.SetMaxPreload(max)
+	SaveConfig()
+}
+
 func (dc *DownloadConfig) Init() {
 	download.InitDownloadManager(dc.MaxDownload)
 }
 
+func (dc *DownloadConfig) UpdateMaxDownload(max int) {
+	dc.MaxDownload = max
+	download.SetMaxParallel(max)
+	SaveConfig()
+}
+
 func (cc *CacheConfig) Init() {
-	cache.SetupCache(cc.Path, cc.MaxCacheSize*1024*1024)
+	cache.SetupCache(cc.Path)
+	cache.SetMaxSize(cc.MaxCacheSize * 1024 * 1024)
+	cache.SetKeepFavorites(cc.KeepFavorites)
+}
+
+func (cc *CacheConfig) UpdateMaxSize(sizeInMb int) {
+	cc.MaxCacheSize = sizeInMb
+	cache.SetMaxSize(sizeInMb * 1024 * 1024)
+	SaveConfig()
+}
+
+func (cc *CacheConfig) UpdateKeepFavorites(b bool) {
+	cc.KeepFavorites = b
+	cache.SetKeepFavorites(b)
+	SaveConfig()
 }
 
 func (dc *DbConfig) Init() error {

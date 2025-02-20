@@ -107,8 +107,11 @@ func createPreloadSettingsContent() fyne.CanvasObject {
 	maxPreloadInput := widgets.NewInputWithSave(strconv.Itoa(config.Preload.MaxPreload), i18n.T("label_max_preload_count"))
 	maxPreloadInput.ForceDigits = true
 	maxPreloadInput.OnSave = func() {
-		config.Preload.MaxPreload, _ = strconv.Atoi(maxPreloadInput.Value)
-		SaveConfig()
+		count, err := strconv.Atoi(maxPreloadInput.Value)
+		if err != nil {
+			return
+		}
+		config.Preload.UpdateMaxPreload(count)
 	}
 	wholeContent.Add(maxPreloadInput)
 
@@ -122,8 +125,11 @@ func createDownloadSettingsContent() fyne.CanvasObject {
 	maxDownloadInput := widgets.NewInputWithSave(strconv.Itoa(config.Download.MaxDownload), i18n.T("label_max_parallel_download_count"))
 	maxDownloadInput.ForceDigits = true
 	maxDownloadInput.OnSave = func() {
-		config.Download.MaxDownload, _ = strconv.Atoi(maxDownloadInput.Value)
-		SaveConfig()
+		count, err := strconv.Atoi(maxDownloadInput.Value)
+		if err != nil {
+			return
+		}
+		config.Download.UpdateMaxDownload(count)
 	}
 	wholeContent.Add(maxDownloadInput)
 
@@ -134,22 +140,31 @@ func createCacheSettingsContent() fyne.CanvasObject {
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_cache")))
 
-	pathInput := widgets.NewInputWithSave(config.Cache.Path, i18n.T("label_cache_path"))
-	pathInput.ForceDigits = true
-	pathInput.OnSave = func() {
-		config.Cache.Path = pathInput.Value
-		SaveConfig()
-	}
-	wholeContent.Add(pathInput)
+	//pathInput := widgets.NewInputWithSave(config.Cache.Path, i18n.T("label_cache_path"))
+	//pathInput.ForceDigits = true
+	//pathInput.OnSave = func() {
+	//	config.Cache.Path = pathInput.Value
+	//	SaveConfig()
+	//}
+	//wholeContent.Add(pathInput)
 
 	maxCacheInput := widgets.NewInputWithSave(strconv.Itoa(config.Cache.MaxCacheSize), i18n.T("label_max_cache_size"))
 	maxCacheInput.ForceDigits = true
 	maxCacheInput.OnSave = func() {
-		config.Preload.MaxPreload, _ = strconv.Atoi(pathInput.Value)
-		SaveConfig()
+		size, err := strconv.Atoi(maxCacheInput.Value)
+		if err != nil {
+			return
+		}
+		config.Cache.UpdateMaxSize(size)
 	}
 	maxCacheInput.InputAppendItems = []fyne.CanvasObject{widget.NewLabel("MB")}
 	wholeContent.Add(maxCacheInput)
+
+	keepFavoriteCheck := widget.NewCheck(i18n.T("label_keep_favorites"), func(b bool) {
+		config.Cache.UpdateKeepFavorites(b)
+	})
+	keepFavoriteCheck.Checked = config.Cache.KeepFavorites
+	wholeContent.Add(keepFavoriteCheck)
 
 	return wholeContent
 }
