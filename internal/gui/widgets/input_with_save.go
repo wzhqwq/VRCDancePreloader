@@ -27,20 +27,18 @@ type InputWithSave struct {
 }
 
 func NewInputWithSave(value, label string) *InputWithSave {
-	t := &InputWithSave{
-		Value: value,
+	t := &InputWithSave{}
 
-		OnSave: func() {},
-	}
-
-	t.Initialize(value, label)
+	t.Extend(value, label)
 
 	t.ExtendBaseWidget(t)
 
 	return t
 }
 
-func (i *InputWithSave) Initialize(value, label string) {
+func (i *InputWithSave) Extend(value, label string) {
+	i.Value = value
+
 	i.Label = canvas.NewText(label, theme.Color(theme.ColorNamePlaceHolder))
 	i.Label.Text = label
 	i.Label.TextSize = 12
@@ -78,19 +76,29 @@ func (i *InputWithSave) Initialize(value, label string) {
 	i.SaveBtn.Hide()
 }
 
-func (i *InputWithSave) Extend(value, label string) {
-	i.Value = value
-
-	i.Initialize(value, label)
-}
-
 func (i *InputWithSave) SetValue(value string) {
 	if value == i.Value {
 		return
 	}
+
+	value = strings.Trim(value, " ")
+	if i.ForceDigits {
+		// remove non-digits
+		value = strings.Map(func(r rune) rune {
+			if r >= '0' && r <= '9' {
+				return r
+			}
+			return -1
+		}, value)
+	}
+
 	i.Value = value
-	i.OnSave()
+	i.InputWidget.SetText(value)
+	if i.OnSave != nil {
+		i.OnSave()
+	}
 	i.Dirty = false
+
 	i.SaveBtn.Hide()
 	for _, item := range i.AfterSaveItems {
 		item.Show()

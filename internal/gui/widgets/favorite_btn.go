@@ -1,15 +1,12 @@
 package widgets
 
 import (
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 )
 
 type FavoriteBtn struct {
-	widget.Icon
-	fyne.Tappable
+	PaddedIconBtn
 
 	ID    string
 	Title string
@@ -27,6 +24,17 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 
 		eventCh: persistence.GetFavorite().SubscribeEvent(),
 	}
+	b.Extend(nil)
+
+	b.OnClick = func() {
+		b.SetFavorite(!b.isFavorite)
+		if b.isFavorite {
+			persistence.GetFavorite().SetFavorite(b.ID, b.Title)
+		} else {
+			persistence.GetFavorite().UnsetFavorite(b.ID)
+		}
+	}
+
 	b.ExtendBaseWidget(b)
 
 	b.SetFavorite(persistence.GetFavorite().IsFavorite(id))
@@ -44,15 +52,6 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 	return b
 }
 
-func (b *FavoriteBtn) Tapped(_ *fyne.PointEvent) {
-	b.SetFavorite(!b.isFavorite)
-	if b.isFavorite {
-		persistence.GetFavorite().SetFavorite(b.ID, b.Title)
-	} else {
-		persistence.GetFavorite().UnsetFavorite(b.ID)
-	}
-}
-
 func (b *FavoriteBtn) Destroy() {
 	close(b.eventCh)
 	close(b.closeCh)
@@ -61,9 +60,9 @@ func (b *FavoriteBtn) Destroy() {
 func (b *FavoriteBtn) SetFavorite(f bool) {
 	b.isFavorite = f
 	if f {
-		b.Resource = icons.GetIcon("collection-fill")
+		b.SetIcon(icons.GetIcon("collection-fill"))
 	} else {
-		b.Resource = icons.GetIcon("collection-grey")
+		b.SetIcon(icons.GetIcon("collection-grey"))
 	}
 	b.Refresh()
 }

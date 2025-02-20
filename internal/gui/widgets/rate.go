@@ -54,7 +54,7 @@ func (r *Rate) SetScore(score int) {
 }
 
 func (r *Rate) Tapped(e *fyne.PointEvent) {
-	position := int((e.Position.X - 40) / 24)
+	position := int((e.Position.X - 60) / 24)
 	if position > 4 {
 		return
 	}
@@ -78,7 +78,7 @@ type rateRenderer struct {
 }
 
 func (r *rateRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(160, 24)
+	return fyne.NewSize(180, 24)
 }
 
 func (r *rateRenderer) Layout(size fyne.Size) {
@@ -86,10 +86,10 @@ func (r *rateRenderer) Layout(size fyne.Size) {
 	labelSize := r.r.Label.MinSize()
 
 	r.r.Label.Resize(labelSize)
-	r.r.Label.Move(fyne.NewPos(36-labelSize.Width, (24-labelSize.Height)/2))
+	r.r.Label.Move(fyne.NewPos(56-labelSize.Width, (24-labelSize.Height)/2))
 	for i := 0; i < 5; i++ {
 		r.r.Icons[i].Resize(iconSize)
-		r.r.Icons[i].Move(fyne.NewPos(float32(43+i*24), 3))
+		r.r.Icons[i].Move(fyne.NewPos(float32(63+i*24), 3))
 	}
 }
 
