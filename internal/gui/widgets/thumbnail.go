@@ -8,9 +8,21 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"io"
 	"log"
+	"time"
 )
 
+type cachedResource struct {
+	res  fyne.Resource
+	time time.Time
+}
+
+var imageMap = make(map[string]*cachedResource)
+var gcChan = make(chan struct{}, 1)
+
 func GetThumbnailImage(url string) fyne.Resource {
+	if cache, ok := imageMap[url]; ok {
+		return cache.res
+	}
 	log.Println("Get: ", url)
 	resp, err := requesting.RequestThumbnail(url)
 	if err != nil {
@@ -25,7 +37,42 @@ func GetThumbnailImage(url string) fyne.Resource {
 		return nil
 	}
 
-	return fyne.NewStaticResource("thumbnail", data)
+	image := fyne.NewStaticResource("thumbnail", data)
+	imageMap[url] = &cachedResource{
+		res:  image,
+		time: time.Now(),
+	}
+
+	select {
+	case gcChan <- struct{}{}:
+		go func() {
+			keys := make([]string, 0, len(imageMap))
+			for k := range imageMap {
+				keys = append(keys, k)
+			}
+			remaining := len(keys)
+			for _, k := range keys {
+				if time.Since(imageMap[k].time) > time.Minute*10 {
+					delete(imageMap, k)
+				}
+				remaining--
+			}
+			if remaining > 20 {
+				keys = make([]string, 0, len(imageMap))
+				for k := range imageMap {
+					keys = append(keys, k)
+				}
+				keys = keys[remaining:]
+				for _, k := range keys {
+					delete(imageMap, k)
+				}
+			}
+			<-gcChan
+		}()
+	default:
+	}
+
+	return image
 }
 
 type Thumbnail struct {
