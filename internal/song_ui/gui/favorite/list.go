@@ -130,7 +130,7 @@ func (fg *FavoritesGui) refreshItems() {
 	entries := persistence.GetFavorite().ListFavorites(fg.Pagination.CurrentPage-1, pageSize, sortBy, ascending)
 	fg.List.RemoveAll()
 	for _, entry := range entries {
-		fg.List.Add(NewItemGui(entry).Card)
+		fg.List.Add(NewItemGui(entry))
 	}
 	fg.List.Refresh()
 	fg.Container.Refresh()
