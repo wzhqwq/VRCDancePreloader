@@ -21,4 +21,5 @@ func SetMaxPreload(maxPreload int) {
 	currentPlaylist.Lock()
 	defer currentPlaylist.Unlock()
 	currentPlaylist.maxPreload = maxPreload
+	currentPlaylist.CriticalUpdate()
 }

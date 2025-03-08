@@ -77,6 +77,8 @@ func (plg *PlayListGui) refreshItems() {
 		plg.Container.Refresh()
 	}()
 
+	plg.pl.Lock()
+	defer plg.pl.Unlock()
 	plg.items = lo.Map(plg.pl.Items, func(ps *song.PreloadedSong, _ int) *ItemGui {
 		if item, ok := plg.itemMap[ps.GetId()]; ok {
 			return item

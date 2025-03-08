@@ -78,12 +78,12 @@ func processLine(line []byte) {
 		return
 	}
 
-	matches := regexp.MustCompile(`\[PyPyDanceQueue\] (\[.*\])$`).FindSubmatch(line)
+	matches := regexp.MustCompile(`\[PyPyDanceQueue] (\[.*])`).FindSubmatch(line)
 	if len(matches) > 1 {
 		receivedLogs = append(receivedLogs, string(matches[1]))
 	}
 	// VideoPlay(PyPyDance) "http://jd.pypy.moe/api/v1/videos/3338.mp4",220,220
-	matches = regexp.MustCompile(`VideoPlay\(PyPyDance\) "(.*)",([\.\d]+),([\.\d]+)`).FindSubmatch(line)
+	matches = regexp.MustCompile(`VideoPlay\(PyPyDance\) "(.*)",([.\d]+),([.\d]+)`).FindSubmatch(line)
 	if len(matches) > 1 {
 		url := string(matches[1])
 		now := string(matches[2])
