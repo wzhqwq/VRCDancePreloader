@@ -8,6 +8,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"io"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -17,9 +18,13 @@ type cachedResource struct {
 }
 
 var imageMap = make(map[string]*cachedResource)
+var imageMapMutex = sync.Mutex{}
 var gcChan = make(chan struct{}, 1)
 
 func GetThumbnailImage(url string) fyne.Resource {
+	imageMapMutex.Lock()
+	defer imageMapMutex.Unlock()
+
 	if cache, ok := imageMap[url]; ok {
 		return cache.res
 	}
@@ -42,10 +47,14 @@ func GetThumbnailImage(url string) fyne.Resource {
 		res:  image,
 		time: time.Now(),
 	}
+	//log.Println("Added to image cache: ", url)
 
 	select {
 	case gcChan <- struct{}{}:
 		go func() {
+			imageMapMutex.Lock()
+			defer imageMapMutex.Unlock()
+
 			keys := make([]string, 0, len(imageMap))
 			for k := range imageMap {
 				keys = append(keys, k)
@@ -54,6 +63,7 @@ func GetThumbnailImage(url string) fyne.Resource {
 			for _, k := range keys {
 				if time.Since(imageMap[k].time) > time.Minute*10 {
 					delete(imageMap, k)
+					//log.Println("Removed from image cache due to timeout: ", k)
 				}
 				remaining--
 			}
@@ -65,6 +75,7 @@ func GetThumbnailImage(url string) fyne.Resource {
 				keys = keys[remaining:]
 				for _, k := range keys {
 					delete(imageMap, k)
+					//log.Println("Removed from image cache due to size limit: ", k)
 				}
 			}
 			<-gcChan
@@ -91,7 +102,7 @@ func NewThumbnail(thumbnailURL string) *Thumbnail {
 	}
 	t.ExtendBaseWidget(t)
 
-	go t.LoadImage()
+	t.LoadImage()
 
 	return t
 }
@@ -120,7 +131,7 @@ func (r *thumbnailRenderer) Layout(size fyne.Size) {
 }
 
 func (r *thumbnailRenderer) Refresh() {
-	r.t.image.Refresh()
+	r.t.LoadImage()
 }
 
 func (r *thumbnailRenderer) Objects() []fyne.CanvasObject {
