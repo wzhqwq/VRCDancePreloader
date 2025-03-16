@@ -39,6 +39,7 @@ func (cm *CacheMap) Close(id string) {
 	}
 	e.Close()
 	delete(cm.cache, id)
+	CleanUpCache()
 }
 func (cm *CacheMap) IsActive(id string) bool {
 	cm.Lock()

@@ -111,13 +111,13 @@ func (dc *DownloadConfig) UpdateMaxDownload(max int) {
 
 func (cc *CacheConfig) Init() {
 	cache.SetupCache(cc.Path)
-	cache.SetMaxSize(cc.MaxCacheSize * 1024 * 1024)
+	cache.SetMaxSize(int64(cc.MaxCacheSize) * 1024 * 1024)
 	cache.SetKeepFavorites(cc.KeepFavorites)
 }
 
 func (cc *CacheConfig) UpdateMaxSize(sizeInMb int) {
 	cc.MaxCacheSize = sizeInMb
-	cache.SetMaxSize(sizeInMb * 1024 * 1024)
+	cache.SetMaxSize(int64(sizeInMb) * 1024 * 1024)
 	SaveConfig()
 }
 

@@ -52,6 +52,9 @@ func GetThumbnailImage(url string) fyne.Resource {
 	select {
 	case gcChan <- struct{}{}:
 		go func() {
+			defer func() {
+				<-gcChan
+			}()
 			imageMapMutex.Lock()
 			defer imageMapMutex.Unlock()
 
@@ -78,7 +81,6 @@ func GetThumbnailImage(url string) fyne.Resource {
 					//log.Println("Removed from image cache due to size limit: ", k)
 				}
 			}
-			<-gcChan
 		}()
 	default:
 	}
@@ -140,6 +142,9 @@ func (r *thumbnailRenderer) Objects() []fyne.CanvasObject {
 
 func (t *Thumbnail) LoadImage() {
 	go func() {
+		if t.ThumbnailURL == "" {
+			return
+		}
 		image := GetThumbnailImage(t.ThumbnailURL)
 		if image == nil {
 			return

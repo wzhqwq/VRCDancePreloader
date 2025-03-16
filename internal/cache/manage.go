@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -8,9 +10,10 @@ import (
 )
 
 var cachePath string
-var maxSize int
+var maxSize int64
 var keepFavorites bool
 var cacheMap = NewCacheMap()
+var cleanUpChan = make(chan struct{}, 1)
 
 func SetupCache(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -20,8 +23,9 @@ func SetupCache(path string) {
 	cachePath = path
 }
 
-func SetMaxSize(size int) {
+func SetMaxSize(size int64) {
 	maxSize = size
+	CleanUpCache()
 }
 func SetKeepFavorites(b bool) {
 	keepFavorites = b
@@ -36,37 +40,61 @@ func InitSongList() error {
 }
 
 func CleanUpCache() {
-	// remove files from cache until total size is less than maxSize
-	entries, err := os.ReadDir(cachePath)
-	if err != nil {
-		return
-	}
+	// Only one cleanup operation can be running at a time
+	select {
+	case cleanUpChan <- struct{}{}:
+		go func() {
+			log.Println("Cleaning up cache ...")
+			defer func() {
+				log.Println("Cleaned up cache")
+				<-cleanUpChan
+			}()
 
-	files := make([]os.FileInfo, len(entries))
-	totalSize := 0
-	for i, entry := range entries {
-		files[i], _ = entry.Info()
-		totalSize += int(files[i].Size())
-	}
+			// remove files from cache until total size is less than maxSize
+			entries, err := os.ReadDir(cachePath)
+			if err != nil {
+				return
+			}
 
-	// sort entries by last modified time
-	sort.Slice(files, func(i, j int) bool {
-		return files[i].ModTime().Before(files[j].ModTime())
-	})
+			files := make([]os.FileInfo, len(entries))
+			totalSize := int64(0)
+			for i, entry := range entries {
+				files[i], _ = entry.Info()
+				totalSize += files[i].Size()
+			}
+			if totalSize <= maxSize {
+				return
+			}
 
-	// remove files until total size is less than maxSize
-	for _, file := range files {
-		if totalSize < maxSize {
-			break
-		}
+			// sort entries by last modified time
+			sort.Slice(files, func(i, j int) bool {
+				return files[i].ModTime().Before(files[j].ModTime())
+			})
 
-		id := strings.Split(file.Name(), ".")[0]
-		if cacheMap.IsActive(id) {
-			continue
-		}
+			favorites := persistence.GetFavorite()
 
-		os.Remove(filepath.Join(cachePath, file.Name()))
-		totalSize -= int(file.Size())
+			// remove files until total size is less than maxSize
+			for _, file := range files {
+				if totalSize < maxSize {
+					break
+				}
+
+				id := strings.Split(file.Name(), ".")[0]
+				if cacheMap.IsActive(id) {
+					continue
+				}
+				if keepFavorites && favorites.IsFavorite(id) {
+					continue
+				}
+
+				err := os.Remove(filepath.Join(cachePath, file.Name()))
+				if err != nil {
+					log.Println("[Warning] Failed to remove ", file.Name(), ":", err)
+				}
+				totalSize -= file.Size()
+			}
+		}()
+	default:
 	}
 }
 
