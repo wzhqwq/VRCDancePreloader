@@ -1,14 +1,13 @@
 package gui
 
 import (
+	"fyne.io/fyne/v2/container"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/containers"
 	"image/color"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
@@ -16,20 +15,27 @@ import (
 )
 
 type ItemGui struct {
+	widget.BaseWidget
+
 	ps  *song.PreloadedSong
 	plg *PlayListGui
 
 	listItem *containers.DynamicListItem
 
-	Progress binding.Float
+	// static UI
+	Background *canvas.Rectangle
+	InfoLeft   fyne.CanvasObject
+	InfoRight  fyne.CanvasObject
+	InfoBottom fyne.CanvasObject
 
-	Card        *fyne.Container
-	Background  *canvas.Rectangle
 	ProgressBar *widget.ProgressBar
 	ErrorText   *canvas.Text
 	StatusText  *canvas.Text
 	SizeText    *canvas.Text
 	PlayBar     *widgets.PlayBar
+	FavoriteBtn *widgets.FavoriteBtn
+	TitleWidget *widgets.EllipseText
+	Thumbnail   *widgets.Thumbnail
 
 	RunningAnimation *fyne.Animation
 
@@ -44,16 +50,6 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 	title.TextSize = 16
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	// Favorite button
-	favoriteBtn := widgets.NewFavoriteBtn(info.ID, info.Title)
-
-	titleBar := container.NewPadded(container.NewBorder(nil, nil, nil, favoriteBtn, title))
-
-	// ID
-	id := canvas.NewText(info.ID, color.Gray{128})
-	id.Alignment = fyne.TextAlignTrailing
-	id.TextSize = 12
-
 	// Group
 	group := canvas.NewText(info.Group, theme.Color(theme.ColorNameForeground))
 	group.TextSize = 14
@@ -62,83 +58,68 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 	adder := canvas.NewText(info.Adder, theme.Color(theme.ColorNamePlaceHolder))
 	adder.TextSize = 14
 
-	// Status
-	statusText := canvas.NewText("", theme.Color(theme.ColorNamePlaceHolder))
-	statusText.TextSize = 16
+	// ID
+	id := canvas.NewText(info.ID, color.Gray{128})
+	id.Alignment = fyne.TextAlignTrailing
+	id.TextSize = 12
 
-	// Progress bar
-	bProgress := binding.NewFloat()
-	progressBar := widget.NewProgressBarWithData(bProgress)
+	// Progress
+	progress := widget.NewProgressBar()
 
 	// Size
 	sizeText := canvas.NewText("", theme.Color(theme.ColorNameForeground))
 	sizeText.Alignment = fyne.TextAlignTrailing
-	sizeText.TextSize = 12
+	sizeText.TextSize = 10
+
+	// Status
+	statusText := canvas.NewText("", theme.Color(theme.ColorNamePlaceHolder))
+	statusText.TextSize = 16
 
 	// Error message
 	errorText := canvas.NewText("", theme.Color(theme.ColorNameError))
 	errorText.TextSize = 12
 
-	// Thumbnail
-	thumbnail := widgets.NewThumbnail(info.ThumbnailURL)
-
-	content := widgets.NewDynamicFrame(
-		thumbnail,
-		container.NewVBox(
-			group,
-			adder,
-		),
-		container.NewVBox(
-			id,
-			progressBar,
-			sizeText,
-		),
-		statusText,
-		errorText,
-	)
-
-	// Play Bar
+	// Play bar
 	playBar := widgets.NewPlayBar()
-	playBar.Hide()
 
-	cardContent := container.NewPadded(
-		container.NewVBox(
-			titleBar,
-			content,
-			playBar,
-		),
-	)
 	cardBackground := canvas.NewRectangle(theme.Color(theme.ColorNameHeaderBackground))
 	cardBackground.CornerRadius = theme.Padding() * 2
 	cardBackground.StrokeWidth = 2
 	cardBackground.StrokeColor = theme.Color(theme.ColorNameSeparator)
-	card := container.NewStack(cardBackground, cardContent)
-	card.Hide()
+	if ps.GetTimeInfo().IsPlaying {
+		cardBackground.StrokeColor = theme.Color(theme.ColorNamePrimary)
+	}
 
-	ig := ItemGui{
+	ig := &ItemGui{
 		ps:  ps,
 		plg: plg,
 
-		listItem: containers.NewDynamicListItem(ps.GetId(), plg.list, card),
+		Background: cardBackground,
+		InfoLeft:   container.NewVBox(group, adder, statusText),
+		InfoRight:  container.NewVBox(id, progress, sizeText),
+		InfoBottom: container.NewVBox(errorText, playBar),
 
-		Progress: bProgress,
-
-		Card:        card,
-		Background:  cardBackground,
-		ProgressBar: progressBar,
+		ProgressBar: progress,
 		StatusText:  statusText,
 		ErrorText:   errorText,
 		SizeText:    sizeText,
 		PlayBar:     playBar,
+		FavoriteBtn: widgets.NewFavoriteBtn(info.ID, info.Title),
+		Thumbnail:   widgets.NewThumbnail(info.ThumbnailURL),
+		TitleWidget: title,
 
 		StopCh:   make(chan struct{}, 10),
 		changeCh: ps.SubscribeEvent(),
 	}
+	ig.listItem = containers.NewDynamicListItem(ps.GetId(), plg.list, ig)
+
+	ig.ExtendBaseWidget(ig)
+
 	ig.UpdateStatus()
 	ig.UpdateProgress()
 	ig.UpdateTime()
 
-	return &ig
+	return ig
 }
 
 func (ig *ItemGui) UpdateStatus() {
@@ -159,7 +140,7 @@ func (ig *ItemGui) UpdateStatus() {
 func (ig *ItemGui) UpdateProgress() {
 	progress := ig.ps.GetProgressInfo()
 
-	ig.Progress.Set(progress.Progress)
+	ig.ProgressBar.SetValue(progress.Progress)
 	ig.SizeText.Text = progress.DownloadedPretty
 	ig.SizeText.Refresh()
 
@@ -208,13 +189,13 @@ func (ig *ItemGui) UpdateTime() {
 }
 
 func (ig *ItemGui) SlideIn() {
-	ig.Card.Move(fyne.NewPos(ig.Card.Size().Width, 0))
-	ig.Card.Show()
+	ig.Move(fyne.NewPos(ig.Size().Width, 0))
+	ig.Show()
 	ig.RunningAnimation = canvas.NewPositionAnimation(
-		fyne.NewPos(ig.Card.Size().Width, 0),
+		fyne.NewPos(ig.Size().Width, 0),
 		fyne.NewPos(0, 0),
 		300*time.Millisecond,
-		ig.Card.Move,
+		ig.Move,
 	)
 	ig.RunningAnimation.Start()
 }
@@ -224,9 +205,9 @@ func (ig *ItemGui) SlideOut() {
 	}
 	canvas.NewPositionAnimation(
 		fyne.NewPos(0, 0),
-		fyne.NewPos(-ig.Card.Size().Width, 0),
+		fyne.NewPos(-ig.Size().Width, 0),
 		300*time.Millisecond,
-		ig.Card.Move,
+		ig.Move,
 	).Start()
 }
 
@@ -256,4 +237,106 @@ func (ig *ItemGui) RenderLoop() {
 			}
 		}
 	}
+}
+
+func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
+	return &ItemRenderer{
+		ig: ig,
+	}
+}
+
+var playItemMinWidth float32 = 260
+var playItemThumbnailShow float32 = 300
+var playItemThumbnailStartWidth float32 = 60
+var playItemThumbnailMaxWidth float32 = 120
+var topHeight float32 = 30
+
+type ItemRenderer struct {
+	ig *ItemGui
+}
+
+func (r *ItemRenderer) MinSize() fyne.Size {
+	p := theme.Padding()
+	totalHeight := topHeight + p
+	totalHeight += r.ig.InfoLeft.MinSize().Height + p
+	bottomHeight := r.ig.InfoBottom.MinSize().Height
+	if bottomHeight > 0 {
+		totalHeight += bottomHeight + p
+	}
+	return fyne.NewSize(playItemMinWidth, totalHeight)
+}
+
+func (r *ItemRenderer) Layout(size fyne.Size) {
+	r.ig.Background.Resize(size)
+	r.ig.Background.Move(fyne.NewPos(0, 0))
+	p := theme.Padding()
+
+	// Top layout: title and favorite button
+	btnSize := r.ig.FavoriteBtn.MinSize().Height
+	btnP := (topHeight - btnSize) / 2
+	favoriteX := size.Width - btnSize - btnP
+	r.ig.FavoriteBtn.Resize(fyne.NewSize(btnSize, btnSize))
+	r.ig.FavoriteBtn.Move(fyne.NewPos(favoriteX, btnP))
+
+	titleWidth := favoriteX - p - btnP
+	titleHeight := r.ig.TitleWidget.MinSize().Height
+	r.ig.TitleWidget.Resize(fyne.NewSize(titleWidth, titleHeight))
+	r.ig.TitleWidget.Move(fyne.NewPos(p, (topHeight-titleHeight)/2))
+
+	// Bottom layout: play bar or error message
+	bottomHeight := r.ig.InfoBottom.MinSize().Height
+	bottomY := size.Height - bottomHeight - p
+	r.ig.InfoBottom.Resize(fyne.NewSize(size.Width-p*2, bottomHeight))
+	r.ig.InfoBottom.Move(fyne.NewPos(p, bottomY))
+
+	// Center layout
+	centerY := topHeight + p
+	centerHeight := bottomY - centerY
+
+	// right layout: id, progress, size
+	rightInfoX := size.Width - r.ig.InfoRight.MinSize().Width - p
+	r.ig.InfoRight.Resize(fyne.NewSize(r.ig.InfoRight.MinSize().Width, centerHeight))
+	r.ig.InfoRight.Move(fyne.NewPos(rightInfoX, topHeight))
+
+	// left layout: thumbnail(if possible), group, adder, status
+	leftInfoX := p
+	if size.Width > playItemThumbnailShow {
+		thumbnailWidth := playItemThumbnailStartWidth + size.Width - playItemThumbnailShow
+		if thumbnailWidth > playItemThumbnailMaxWidth {
+			thumbnailWidth = playItemThumbnailMaxWidth
+		}
+
+		r.ig.Thumbnail.Resize(fyne.NewSize(thumbnailWidth, centerHeight))
+		r.ig.Thumbnail.Move(fyne.NewPos(leftInfoX, topHeight))
+
+		leftInfoX += thumbnailWidth + p
+	} else {
+		r.ig.Thumbnail.Resize(fyne.NewSize(0, centerHeight))
+	}
+
+	r.ig.InfoLeft.Resize(fyne.NewSize(rightInfoX-leftInfoX, centerHeight))
+	r.ig.InfoLeft.Move(fyne.NewPos(leftInfoX, topHeight))
+}
+
+func (r *ItemRenderer) Refresh() {
+
+}
+
+func (r *ItemRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{
+		r.ig.Background,
+
+		r.ig.TitleWidget,
+		r.ig.FavoriteBtn,
+
+		r.ig.InfoBottom,
+
+		r.ig.Thumbnail,
+		r.ig.InfoLeft,
+		r.ig.InfoRight,
+	}
+}
+
+func (r *ItemRenderer) Destroy() {
+	r.ig.StopCh <- struct{}{}
 }

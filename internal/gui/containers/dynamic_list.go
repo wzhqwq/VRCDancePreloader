@@ -75,10 +75,8 @@ func (dlr *DynamicListRenderer) Refresh() {
 }
 func (dlr *DynamicListRenderer) Objects() []fyne.CanvasObject {
 	var objs []fyne.CanvasObject
-	for _, id := range dlr.dl.order {
-		if o, ok := dlr.dl.itemMap[id]; ok {
-			objs = append(objs, o)
-		}
+	for _, item := range dlr.dl.itemMap {
+		objs = append(objs, item)
 	}
 	return objs
 }
