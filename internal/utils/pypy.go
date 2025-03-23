@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -30,4 +31,17 @@ func CheckPyPyUrl(url string) (int, bool) {
 
 func CheckPyPyThumbnailUrl(url string) bool {
 	return strings.Contains(url, "jd.pypy.moe")
+}
+
+func CheckIdIsPyPy(id string) (int, bool) {
+	if !strings.Contains(id, "pypy_") {
+		return 0, false
+	}
+
+	num, err := strconv.Atoi(strings.Split(id, "pypy_")[1])
+	if err != nil {
+		return 0, false
+	}
+
+	return num, true
 }

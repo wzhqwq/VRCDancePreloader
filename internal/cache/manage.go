@@ -98,6 +98,54 @@ func CleanUpCache() {
 	}
 }
 
+func GetLocalCacheInfos() []persistence.CacheFileInfo {
+	entries, err := os.ReadDir(cachePath)
+	if err != nil {
+		return nil
+	}
+
+	var infos []persistence.CacheFileInfo
+	for _, entry := range entries {
+		id := strings.Split(entry.Name(), ".")[0]
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		infos = append(infos, persistence.CacheFileInfo{
+			ID:       id,
+			Size:     info.Size(),
+			IsActive: cacheMap.IsActive(id),
+		})
+	}
+
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].Size > infos[j].Size
+	})
+
+	return infos
+}
+
+func RemoveLocalCacheById(id string) error {
+	if cacheMap.IsActive(id) {
+		return nil
+	}
+	videoPath := filepath.Join(cachePath, id+".mp4")
+	videoDlPath := filepath.Join(cachePath, id+".mp4.dl")
+	if _, err := os.Stat(videoPath); err == nil {
+		err := os.Remove(videoPath)
+		if err != nil {
+			return err
+		}
+	}
+	if _, err := os.Stat(videoDlPath); err == nil {
+		err := os.Remove(videoDlPath)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func OpenCacheEntry(id string) (Entry, error) {
 	return cacheMap.Open(id)
 }

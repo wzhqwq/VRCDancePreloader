@@ -6,3 +6,11 @@ CREATE TABLE IF NOT EXISTS allow_list (
     		size INTEGER
 );
 `
+
+type CacheFileInfo struct {
+	ID   string
+	Size int64
+
+	// not in database
+	IsActive bool
+}

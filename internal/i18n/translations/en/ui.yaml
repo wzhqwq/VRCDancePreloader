@@ -76,8 +76,17 @@
   Default: "Maximal cache size"
 - Key: label_keep_favorites
   Default: "Keep favorite videos in cache when cleaning"
+- Key: btn_manage_cache
+  Default: "Manage Cache..."
+
+- Key: label_cache_local
+  Default: "Local Cache"
 - Key: label_cache_whitelist
-  Default: "Always keep these videos in cache when cleaning"
+  Default: "Always keep in cache"
+- Key: label_cache_in_use
+  Default: "In Use"
+- Key: label_cache_is_favorite
+  Default: "Favorite"
 
 - Key: tip_connectivity_test_pass
   Default: "Connection test passed"

@@ -4,6 +4,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/cache_gui"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"strconv"
@@ -165,6 +166,11 @@ func createCacheSettingsContent() fyne.CanvasObject {
 	})
 	keepFavoriteCheck.Checked = config.Cache.KeepFavorites
 	wholeContent.Add(keepFavoriteCheck)
+
+	manageBtn := widget.NewButton(i18n.T("btn_manage_cache"), func() {
+		cache_gui.OpenCacheWindow()
+	})
+	wholeContent.Add(container.NewPadded(manageBtn))
 
 	return wholeContent
 }

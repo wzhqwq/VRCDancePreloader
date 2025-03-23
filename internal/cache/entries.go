@@ -4,16 +4,10 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"io"
-	"strconv"
-	"strings"
 )
 
 func NewEntry(id string) Entry {
-	if strings.Contains(id, "pypy_") {
-		num, err := strconv.Atoi(strings.Split(id, "pypy_")[1])
-		if err != nil {
-			panic(err)
-		}
+	if num, ok := utils.CheckIdIsPyPy(id); ok {
 		return &PyPyEntry{
 			BaseEntry: BaseEntry{
 				id:     id,

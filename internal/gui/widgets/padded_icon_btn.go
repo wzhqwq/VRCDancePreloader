@@ -16,13 +16,16 @@ type PaddedIconBtn struct {
 	Icon       *widget.Icon
 	Background *canvas.Rectangle
 
-	padding float32
+	padding       float32
+	minSquareSize float32
 
 	OnClick func()
 }
 
 func NewPaddedIconBtn(icon fyne.Resource) *PaddedIconBtn {
-	b := &PaddedIconBtn{}
+	b := &PaddedIconBtn{
+		minSquareSize: 24,
+	}
 
 	b.Extend(icon)
 
@@ -44,6 +47,11 @@ func (b *PaddedIconBtn) SetIcon(icon fyne.Resource) {
 
 func (b *PaddedIconBtn) SetPadding(padding float32) {
 	b.padding = padding
+	b.Refresh()
+}
+
+func (b *PaddedIconBtn) SetMinSquareSize(size float32) {
+	b.minSquareSize = size
 	b.Refresh()
 }
 
@@ -75,7 +83,7 @@ type paddedIconBtnRenderer struct {
 }
 
 func (r *paddedIconBtnRenderer) MinSize() fyne.Size {
-	return fyne.NewSquareSize(24)
+	return fyne.NewSquareSize(r.btn.minSquareSize)
 }
 func (r *paddedIconBtnRenderer) Layout(size fyne.Size) {
 	r.btn.Background.Resize(size)

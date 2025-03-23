@@ -76,8 +76,17 @@
   Default: "缓存最大大小"
 - Key: label_keep_favorites
   Default: "清理缓存时保留收藏夹视频"
+- Key: btn_manage_cache
+  Default: "管理缓存..."
+
+- Key: label_cache_local
+  Default: "本地缓存"
 - Key: label_cache_whitelist
-  Default: "缓存清理白名单"
+  Default: "白名单"
+- Key: label_cache_in_use
+  Default: "使用中"
+- Key: label_cache_is_favorite
+  Default: "已经收藏"
 
 - Key: tip_connectivity_test_pass
   Default: "连接测试通过"
