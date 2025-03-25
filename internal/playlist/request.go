@@ -7,7 +7,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var asyncDownload = false
+var asyncDownload = true
 
 func SetAsyncDownload(async bool) {
 	asyncDownload = async

@@ -34,9 +34,9 @@ var args struct {
 
 	SkipClientTest bool `arg:"--skip-client-test" default:"false" help:"skip client connectivity test"`
 
-	// experimental
+	// switches
 
-	AsyncDownload bool `arg:"-a,--async-download" default:"false" help:"experimental, allow preloader to respond partial data during downloading, which is useful in random play"`
+	DisableAsyncDownload bool `arg:"--disable-async-download" default:"false" help:"disable async download"`
 }
 
 func main() {
@@ -49,7 +49,9 @@ func main() {
 
 	// Apply argument config
 	config.SetSkipTest(args.SkipClientTest)
-	playlist.SetAsyncDownload(args.AsyncDownload)
+	if args.DisableAsyncDownload {
+		playlist.SetAsyncDownload(false)
+	}
 
 	i18n.Init()
 
