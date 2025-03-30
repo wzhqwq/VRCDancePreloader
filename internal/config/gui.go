@@ -141,13 +141,12 @@ func createCacheSettingsContent() fyne.CanvasObject {
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_cache")))
 
-	//pathInput := widgets.NewInputWithSave(config.Cache.Path, i18n.T("label_cache_path"))
-	//pathInput.ForceDigits = true
-	//pathInput.OnSave = func() {
-	//	config.Cache.Path = pathInput.Value
-	//	SaveConfig()
-	//}
-	//wholeContent.Add(pathInput)
+	pathInput := widgets.NewInputWithSave(config.Cache.Path, i18n.T("label_cache_path"))
+	pathInput.OnSave = func() {
+		config.Cache.Path = pathInput.Value
+		SaveConfig()
+	}
+	wholeContent.Add(pathInput)
 
 	maxCacheInput := widgets.NewInputWithSave(strconv.Itoa(config.Cache.MaxCacheSize), i18n.T("label_max_cache_size"))
 	maxCacheInput.ForceDigits = true

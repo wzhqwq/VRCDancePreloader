@@ -35,6 +35,7 @@ func InitDB(dbFilePath string) error {
 	}
 
 	InitFavorites()
+	InitAllowList()
 	return nil
 }
 

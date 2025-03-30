@@ -85,8 +85,8 @@ func main() {
 
 	config.GetCacheConfig().Init()
 	defer func() {
-		log.Println("Cleaning up cache")
-		cache.CleanUpCache()
+		log.Println("Stopping cache")
+		cache.StopCache()
 	}()
 
 	config.GetDownloadConfig().Init()

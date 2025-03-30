@@ -1,12 +1,22 @@
 package cache
 
 import (
+	"github.com/fsnotify/fsnotify"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/types"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
+)
+
+const (
+	AllCacheFileRegex      = `^((?:pypy_|yt_).+)(?:\.mp4|\.mp4\.dl)$`
+	CompleteCacheFileRegex = `^((?:pypy_|yt_).+)\.mp4$`
+	PartialCacheFileRegex  = `^((?:pypy_|yt_).+)\.mp4\.dl$`
 )
 
 var cachePath string
@@ -15,12 +25,29 @@ var keepFavorites bool
 var cacheMap = NewCacheMap()
 var cleanUpChan = make(chan struct{}, 1)
 
+var localFileEm = utils.NewStringEventManager()
+var dirWatcher *fsnotify.Watcher
+
 func SetupCache(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		os.Mkdir(path, 0777)
 	}
 
 	cachePath = path
+
+	go func() {
+		err := watchCacheDir()
+		if err != nil {
+			log.Println("[Error] Failed to watch cache directory:", err)
+		}
+	}()
+}
+
+func StopCache() {
+	if dirWatcher != nil {
+		dirWatcher.Close()
+	}
+	CleanUpCache()
 }
 
 func SetMaxSize(size int64) {
@@ -71,8 +98,6 @@ func CleanUpCache() {
 				return files[i].ModTime().Before(files[j].ModTime())
 			})
 
-			favorites := persistence.GetFavorite()
-
 			// remove files until total size is less than maxSize
 			for _, file := range files {
 				if totalSize < maxSize {
@@ -83,7 +108,10 @@ func CleanUpCache() {
 				if cacheMap.IsActive(id) {
 					continue
 				}
-				if keepFavorites && favorites.IsFavorite(id) {
+				if keepFavorites && persistence.IsFavorite(id) {
+					continue
+				}
+				if persistence.IsInAllowList(id) {
 					continue
 				}
 
@@ -98,20 +126,20 @@ func CleanUpCache() {
 	}
 }
 
-func GetLocalCacheInfos() []persistence.CacheFileInfo {
+func GetLocalCacheInfos() []types.CacheFileInfo {
 	entries, err := os.ReadDir(cachePath)
 	if err != nil {
 		return nil
 	}
 
-	var infos []persistence.CacheFileInfo
+	var infos []types.CacheFileInfo
 	for _, entry := range entries {
 		id := strings.Split(entry.Name(), ".")[0]
 		info, err := entry.Info()
 		if err != nil {
 			continue
 		}
-		infos = append(infos, persistence.CacheFileInfo{
+		infos = append(infos, types.CacheFileInfo{
 			ID:       id,
 			Size:     info.Size(),
 			IsActive: cacheMap.IsActive(id),
@@ -152,4 +180,58 @@ func OpenCacheEntry(id string) (Entry, error) {
 
 func CloseCacheEntry(id string) {
 	cacheMap.Close(id)
+	localFileEm.NotifySubscribers("*" + id)
+}
+
+func SubscribeLocalFileEvent() chan string {
+	return localFileEm.SubscribeEvent()
+}
+
+func watchCacheDir() error {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+	defer watcher.Close()
+
+	err = watcher.Add(cachePath)
+	if err != nil {
+		return err
+	}
+
+	dirWatcher = watcher
+	defer func() {
+		dirWatcher = nil
+	}()
+
+	log.Println("Watching directory:", cachePath)
+
+	for {
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return nil
+			}
+
+			path := event.Name
+			fileName := filepath.Base(path)
+			matches := regexp.MustCompile(AllCacheFileRegex).FindStringSubmatch(fileName)
+			if len(matches) == 0 {
+				continue
+			}
+			id := matches[1]
+			if event.Op.Has(fsnotify.Write) {
+				localFileEm.NotifySubscribers("+" + id)
+			}
+			if event.Op.Has(fsnotify.Remove) {
+				localFileEm.NotifySubscribers("-" + id)
+			}
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return nil
+			}
+
+			return err
+		}
+	}
 }

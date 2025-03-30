@@ -11,6 +11,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
 )
@@ -18,16 +19,19 @@ import (
 type LocalFileGui struct {
 	widget.BaseWidget
 
+	IsInAllowList bool
+	Info          types.CacheFileInfo
+
 	Title     *widgets.EllipseText
 	Infos     fyne.CanvasObject
 	Separator *widget.Separator
 
-	Buttons fyne.CanvasObject
+	Buttons *fyne.Container
 }
 
-func NewLocalFileGui(id string, size int64, isActive bool) *LocalFileGui {
-	title := id + ".mp4"
-	if pypyId, ok := utils.CheckIdIsPyPy(id); ok {
+func NewLocalFileGui(info types.CacheFileInfo, isInAllowList bool) *LocalFileGui {
+	title := info.ID + ".mp4"
+	if pypyId, ok := utils.CheckIdIsPyPy(info.ID); ok {
 		if song, ok := raw_song.FindPyPySong(pypyId); ok {
 			title = song.Name
 		}
@@ -36,54 +40,80 @@ func NewLocalFileGui(id string, size int64, isActive bool) *LocalFileGui {
 	titleWidget := widgets.NewEllipseText(title, theme.Color(theme.ColorNameForeground))
 	titleWidget.TextSize = 16
 
-	sizeWidget := canvas.NewText(utils.PrettyByteSize(size), theme.Color(theme.ColorNamePlaceHolder))
+	sizeWidget := canvas.NewText(utils.PrettyByteSize(info.Size), theme.Color(theme.ColorNamePlaceHolder))
 	sizeWidget.TextSize = 12
 
 	infos := container.NewHBox(
 		sizeWidget,
 	)
 
-	if persistence.GetFavorite().IsFavorite(id) {
+	if persistence.IsFavorite(info.ID) {
 		favoriteLabel := canvas.NewText(i18n.T("label_cache_is_favorite"), theme.Color(theme.ColorNamePrimary))
 		favoriteLabel.TextSize = 12
 		infos.Add(favoriteLabel)
 	}
 
-	buttons := container.NewHBox()
+	if !isInAllowList && persistence.IsInAllowList(info.ID) {
+		allowedLabel := canvas.NewText(i18n.T("label_cache_is_preserved"), theme.Color(theme.ColorNamePrimary))
+		allowedLabel.TextSize = 12
+		infos.Add(allowedLabel)
+	}
 
-	if isActive {
+	if info.IsActive {
 		activeLabel := canvas.NewText(i18n.T("label_cache_in_use"), theme.Color(theme.ColorNameError))
 		activeLabel.TextSize = 12
 		infos.Add(activeLabel)
-	} else {
-		deleteBtn := widgets.NewPaddedIconBtn(theme.DeleteIcon())
-		deleteBtn.SetMinSquareSize(30)
-		deleteBtn.OnClick = func() {
-			err := cache.RemoveLocalCacheById(id)
-			if err != nil {
-				log.Println(err)
-			}
-		}
-		buttons.Add(deleteBtn)
 	}
-
-	addAllowListBtn := widgets.NewPaddedIconBtn(theme.NavigateNextIcon())
-	addAllowListBtn.SetMinSquareSize(30)
-	addAllowListBtn.OnClick = func() {
-		// TODO add to allow list
-	}
-	buttons.Add(addAllowListBtn)
 
 	g := &LocalFileGui{
+		Info:          info,
+		IsInAllowList: isInAllowList,
+
 		Title:     titleWidget,
 		Infos:     infos,
-		Buttons:   buttons,
+		Buttons:   container.NewHBox(),
 		Separator: widget.NewSeparator(),
 	}
 
 	g.ExtendBaseWidget(g)
 
+	g.RefreshButtons()
+
 	return g
+}
+
+func (g *LocalFileGui) RefreshButtons() {
+	g.Buttons.RemoveAll()
+	if g.IsInAllowList {
+		removeFromListBtn := widgets.NewPaddedIconBtn(theme.WindowCloseIcon())
+		removeFromListBtn.SetMinSquareSize(30)
+		removeFromListBtn.OnClick = func() {
+			persistence.RemoveFromAllowList(g.Info.ID)
+		}
+		g.Buttons.Add(removeFromListBtn)
+	} else {
+		if !g.Info.IsActive {
+			deleteBtn := widgets.NewPaddedIconBtn(theme.DeleteIcon())
+			deleteBtn.SetMinSquareSize(30)
+			deleteBtn.OnClick = func() {
+				err := cache.RemoveLocalCacheById(g.Info.ID)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+			g.Buttons.Add(deleteBtn)
+		}
+
+		if !persistence.IsInAllowList(g.Info.ID) {
+			addAllowListBtn := widgets.NewPaddedIconBtn(theme.NavigateNextIcon())
+			addAllowListBtn.SetMinSquareSize(30)
+			addAllowListBtn.OnClick = func() {
+				persistence.AddToAllowList(g.Info.ID, g.Info.Size)
+				g.RefreshButtons()
+			}
+			g.Buttons.Add(addAllowListBtn)
+		}
+	}
 }
 
 func (g *LocalFileGui) CreateRenderer() fyne.WidgetRenderer {

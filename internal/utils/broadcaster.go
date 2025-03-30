@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/samber/lo"
 	"sync"
 )
 
@@ -46,4 +47,36 @@ func (fb *FinishingBroadcaster) Finish() {
 	}
 	fb.waiters = make([]*SingleWaiter, 0)
 	fb.finished = true
+}
+
+type StringEventManager struct {
+	sync.Mutex
+	subscribers []chan string
+}
+
+func NewStringEventManager() *StringEventManager {
+	return &StringEventManager{
+		subscribers: make([]chan string, 0),
+	}
+}
+
+func (em *StringEventManager) SubscribeEvent() chan string {
+	em.Lock()
+	defer em.Unlock()
+	channel := make(chan string, 10)
+	em.subscribers = append(em.subscribers, channel)
+	return channel
+}
+
+func (em *StringEventManager) NotifySubscribers(payload string) {
+	em.Lock()
+	defer em.Unlock()
+	em.subscribers = lo.Filter(em.subscribers, func(c chan string, _ int) bool {
+		select {
+		case c <- payload:
+			return true
+		default:
+			return false
+		}
+	})
 }

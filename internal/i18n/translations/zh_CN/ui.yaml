@@ -71,7 +71,7 @@
 - Key: label_max_parallel_download_count
   Default: "最大并行下载数量"
 - Key: label_cache_path
-  Default: "缓存路径"
+  Default: "缓存路径（重启后修改生效）"
 - Key: label_max_cache_size
   Default: "缓存最大大小"
 - Key: label_keep_favorites
@@ -81,12 +81,14 @@
 
 - Key: label_cache_local
   Default: "本地缓存"
-- Key: label_cache_whitelist
-  Default: "白名单"
+- Key: label_cache_allow_list
+  Default: "缓存清理白名单"
 - Key: label_cache_in_use
   Default: "使用中"
 - Key: label_cache_is_favorite
   Default: "已经收藏"
+- Key: label_cache_is_preserved
+  Default: "在白名单里"
 
 - Key: tip_connectivity_test_pass
   Default: "连接测试通过"

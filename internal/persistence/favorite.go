@@ -3,6 +3,7 @@ package persistence
 import (
 	"database/sql"
 	"errors"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
 	"strings"
 	"sync"
@@ -10,7 +11,7 @@ import (
 
 var currentFavorite *Favorites
 
-var favoriteTableSQL = `
+const favoriteTableSQL = `
 CREATE TABLE IF NOT EXISTS favorite (
     	id TEXT PRIMARY KEY,
     	title TEXT,
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS favorite (
         in_pypy BOOLEAN
 );
 `
+
 var favoriteTableIndicesSQLs = []string{
 	"CREATE INDEX IF NOT EXISTS idx_favorite_is_favorite ON favorite (is_favorite)",
 	"CREATE INDEX IF NOT EXISTS idx_favorite_like ON favorite (like)",
@@ -33,7 +35,7 @@ type Favorites struct {
 	sync.Mutex
 	Entries map[string]struct{}
 
-	em *FavoriteEventManager
+	em *utils.StringEventManager
 }
 
 func (f *Favorites) addEntry(entry *FavoriteEntry) {
@@ -279,11 +281,15 @@ func (e *FavoriteEntry) UnsetFavorite() {
 func InitFavorites() {
 	currentFavorite = &Favorites{
 		Entries: make(map[string]struct{}),
-		em:      NewFavoriteEventManager(),
+		em:      utils.NewStringEventManager(),
 	}
 	currentFavorite.LoadEntries()
 }
 
 func GetFavorite() *Favorites {
 	return currentFavorite
+}
+
+func IsFavorite(id string) bool {
+	return currentFavorite.IsFavorite(id)
 }

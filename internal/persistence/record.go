@@ -7,7 +7,7 @@ import (
 
 var currentRecord *DanceRecord
 
-var danceRecordTableSQL = `
+const danceRecordTableSQL = `
 CREATE TABLE IF NOT EXISTS dance_record (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		start_time TEXT,

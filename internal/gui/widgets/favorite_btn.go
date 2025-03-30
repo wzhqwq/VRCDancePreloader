@@ -37,12 +37,12 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 
 	b.ExtendBaseWidget(b)
 
-	b.SetFavorite(persistence.GetFavorite().IsFavorite(id))
+	b.SetFavorite(persistence.IsFavorite(id))
 	go func() {
 		for {
 			select {
 			case <-b.eventCh:
-				b.SetFavorite(persistence.GetFavorite().IsFavorite(b.ID))
+				b.SetFavorite(persistence.IsFavorite(b.ID))
 			case <-b.closeCh:
 				return
 			}
