@@ -72,27 +72,17 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 // ProgressInfo, only change during download
 
 type PreloadedSongProgressInfo struct {
-	Progress         float64
-	DownloadedPretty string
-	IsDownloading    bool
+	Total         int64
+	Downloaded    int64
+	IsDownloading bool
 }
 
 func (ps *PreloadedSong) GetProgressInfo() PreloadedSongProgressInfo {
-	text := i18n.T("placeholder_unknown_size")
-	if ps.sm.DownloadStatus == Downloading {
-		text = fmt.Sprintf(
-			"%s / %s",
-			utils.PrettyByteSize(ps.DownloadedSize),
-			utils.PrettyByteSize(ps.TotalSize),
-		)
-	}
-	if ps.sm.DownloadStatus == Downloaded {
-		text = utils.PrettyByteSize(ps.TotalSize)
-	}
 	return PreloadedSongProgressInfo{
-		Progress:         float64(ps.DownloadedSize) / float64(ps.TotalSize),
-		DownloadedPretty: text,
-		IsDownloading:    ps.sm.DownloadStatus == Downloading,
+		Total:      ps.TotalSize,
+		Downloaded: ps.DownloadedSize,
+
+		IsDownloading: ps.sm.DownloadStatus == Downloading,
 	}
 }
 

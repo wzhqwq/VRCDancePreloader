@@ -3,6 +3,8 @@ package gui
 import (
 	"fyne.io/fyne/v2/container"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/containers"
+	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"image/color"
 	"time"
 
@@ -28,7 +30,7 @@ type ItemGui struct {
 	InfoRight  fyne.CanvasObject
 	InfoBottom fyne.CanvasObject
 
-	ProgressBar *widget.ProgressBar
+	ProgressBar *widgets.SizeProgressBar
 	ErrorText   *canvas.Text
 	StatusText  *canvas.Text
 	SizeText    *canvas.Text
@@ -64,12 +66,13 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 	id.TextSize = 12
 
 	// Progress
-	progress := widget.NewProgressBar()
+	progress := widgets.NewSizeProgressBar(0, 0)
+	progress.Text.TextSize = 10
 
 	// Size
 	sizeText := canvas.NewText("", theme.Color(theme.ColorNameForeground))
 	sizeText.Alignment = fyne.TextAlignTrailing
-	sizeText.TextSize = 10
+	sizeText.TextSize = 12
 
 	// Status
 	statusText := canvas.NewText("", theme.Color(theme.ColorNamePlaceHolder))
@@ -86,9 +89,6 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 	cardBackground.CornerRadius = theme.Padding() * 2
 	cardBackground.StrokeWidth = 2
 	cardBackground.StrokeColor = theme.Color(theme.ColorNameSeparator)
-	if ps.GetTimeInfo().IsPlaying {
-		cardBackground.StrokeColor = theme.Color(theme.ColorNamePrimary)
-	}
 
 	ig := &ItemGui{
 		ps:  ps,
@@ -117,7 +117,7 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 
 	ig.UpdateStatus()
 	ig.UpdateProgress()
-	ig.UpdateTime()
+	ig.UpdateTime(false)
 
 	return ig
 }
@@ -140,49 +140,65 @@ func (ig *ItemGui) UpdateStatus() {
 func (ig *ItemGui) UpdateProgress() {
 	progress := ig.ps.GetProgressInfo()
 
-	ig.ProgressBar.SetValue(progress.Progress)
-	ig.SizeText.Text = progress.DownloadedPretty
+	ig.ProgressBar.SetTotalSize(progress.Total)
+	ig.ProgressBar.SetCurrentSize(progress.Downloaded)
+	if progress.Total > 0 {
+		ig.SizeText.Text = utils.PrettyByteSize(progress.Total)
+	} else {
+		ig.SizeText.Text = i18n.T("placeholder_unknown_size")
+	}
 	ig.SizeText.Refresh()
 
 	if progress.IsDownloading {
 		ig.ProgressBar.Show()
+		ig.SizeText.Hide()
 	} else {
 		ig.ProgressBar.Hide()
+		ig.SizeText.Show()
 	}
 }
-func (ig *ItemGui) UpdateTime() {
+func (ig *ItemGui) UpdateTime(animation bool) {
 	timeInfo := ig.ps.GetTimeInfo()
 
-	ig.PlayBar.Progress = float32(timeInfo.Progress)
-	ig.PlayBar.Text = timeInfo.Text
-	ig.PlayBar.Refresh()
-
 	if timeInfo.IsPlaying {
+		ig.PlayBar.Progress = float32(timeInfo.Progress)
+		ig.PlayBar.Text = timeInfo.Text
+		ig.PlayBar.Refresh()
 		if !ig.PlayBar.Visible() {
 			ig.PlayBar.Show()
-			canvas.NewColorRGBAAnimation(
-				theme.Color(theme.ColorNameSeparator),
-				theme.Color(theme.ColorNamePrimary),
-				500*time.Millisecond,
-				func(c color.Color) {
-					ig.Background.StrokeColor = c
-					ig.Background.Refresh()
-				},
-			).Start()
+			if animation {
+				canvas.NewColorRGBAAnimation(
+					theme.Color(theme.ColorNameSeparator),
+					theme.Color(theme.ColorNamePrimary),
+					500*time.Millisecond,
+					func(c color.Color) {
+						ig.Background.StrokeColor = c
+						ig.Background.Refresh()
+					},
+				).Start()
+			} else {
+				ig.Background.StrokeColor = theme.Color(theme.ColorNamePrimary)
+				ig.Background.Refresh()
+			}
 			ig.listItem.NotifyUpdateMinSize()
 		}
 	} else {
 		if ig.PlayBar.Visible() {
 			ig.PlayBar.Hide()
-			canvas.NewColorRGBAAnimation(
-				theme.Color(theme.ColorNamePrimary),
-				theme.Color(theme.ColorNameSeparator),
-				500*time.Millisecond,
-				func(c color.Color) {
-					ig.Background.StrokeColor = c
-					ig.Background.Refresh()
-				},
-			).Start()
+			if animation {
+				canvas.NewColorRGBAAnimation(
+					theme.Color(theme.ColorNamePrimary),
+					theme.Color(theme.ColorNameSeparator),
+					500*time.Millisecond,
+					func(c color.Color) {
+						ig.Background.StrokeColor = c
+						ig.Background.Refresh()
+					},
+				).Start()
+			} else {
+				ig.Background.StrokeColor = theme.Color(theme.ColorNameSeparator)
+				ig.Background.Refresh()
+			}
 			ig.listItem.NotifyUpdateMinSize()
 		}
 	}
@@ -198,6 +214,7 @@ func (ig *ItemGui) SlideIn() {
 		ig.Move,
 	)
 	ig.RunningAnimation.Start()
+	ig.Refresh()
 }
 func (ig *ItemGui) SlideOut() {
 	if ig.RunningAnimation != nil {
@@ -233,7 +250,7 @@ func (ig *ItemGui) RenderLoop() {
 			case song.ProgressChange:
 				ig.UpdateProgress()
 			case song.TimeChange:
-				ig.UpdateTime()
+				ig.UpdateTime(true)
 			}
 		}
 	}

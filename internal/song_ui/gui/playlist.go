@@ -84,10 +84,11 @@ func (plg *PlayListGui) refreshItems() {
 			return item
 		}
 		newGui := NewItemGui(ps, plg)
+		newGui.Hide()
 		plg.itemMap[ps.GetId()] = newGui
 		plg.list.AddItem(newGui.listItem)
 		go func() {
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			newGui.SlideIn()
 			newGui.RenderLoop()
 		}()
