@@ -5,6 +5,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"image/color"
 )
 
 type PlayBar struct {
@@ -56,7 +57,7 @@ func NewPlayBar() *PlayBar {
 }
 
 func (p *PlayBar) CreateRenderer() fyne.WidgetRenderer {
-	rect1 := canvas.NewRectangle(theme.Color(theme.ColorNamePlaceHolder))
+	rect1 := canvas.NewRectangle(color.Gray{Y: 200})
 	rect1.CornerRadius = 2
 	rect2 := canvas.NewRectangle(theme.Color(theme.ColorNamePrimary))
 	rect2.CornerRadius = 2

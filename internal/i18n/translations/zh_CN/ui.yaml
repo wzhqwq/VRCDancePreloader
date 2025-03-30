@@ -89,6 +89,8 @@
   Default: "已经收藏"
 - Key: label_cache_is_preserved
   Default: "在白名单里"
+- Key: label_cache_is_partial
+  Default: "部分下载"
 
 - Key: tip_connectivity_test_pass
   Default: "连接测试通过"

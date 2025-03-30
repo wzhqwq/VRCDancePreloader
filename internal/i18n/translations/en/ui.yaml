@@ -89,6 +89,8 @@
   Default: "Favorite"
 - Key: label_cache_is_preserved
   Default: "Kept in cache"
+- Key: label_cache_is_partial
+  Default: "Partially downloaded"
 
 - Key: tip_connectivity_test_pass
   Default: "Connection test passed"

@@ -46,23 +46,25 @@ func NewLocalFileGui(info types.CacheFileInfo, isInAllowList bool) *LocalFileGui
 	infos := container.NewHBox(
 		sizeWidget,
 	)
-
 	if persistence.IsFavorite(info.ID) {
 		favoriteLabel := canvas.NewText(i18n.T("label_cache_is_favorite"), theme.Color(theme.ColorNamePrimary))
 		favoriteLabel.TextSize = 12
 		infos.Add(favoriteLabel)
 	}
-
 	if !isInAllowList && persistence.IsInAllowList(info.ID) {
 		allowedLabel := canvas.NewText(i18n.T("label_cache_is_preserved"), theme.Color(theme.ColorNamePrimary))
 		allowedLabel.TextSize = 12
 		infos.Add(allowedLabel)
 	}
-
 	if info.IsActive {
 		activeLabel := canvas.NewText(i18n.T("label_cache_in_use"), theme.Color(theme.ColorNameError))
 		activeLabel.TextSize = 12
 		infos.Add(activeLabel)
+	}
+	if info.IsPartial {
+		partialLabel := canvas.NewText(i18n.T("label_cache_is_partial"), theme.Color(theme.ColorNameWarning))
+		partialLabel.TextSize = 12
+		infos.Add(partialLabel)
 	}
 
 	g := &LocalFileGui{

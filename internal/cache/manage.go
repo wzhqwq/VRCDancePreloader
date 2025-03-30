@@ -54,6 +54,9 @@ func SetMaxSize(size int64) {
 	maxSize = size
 	CleanUpCache()
 }
+func GetMaxSize() int64 {
+	return maxSize
+}
 func SetKeepFavorites(b bool) {
 	keepFavorites = b
 }
@@ -134,15 +137,20 @@ func GetLocalCacheInfos() []types.CacheFileInfo {
 
 	var infos []types.CacheFileInfo
 	for _, entry := range entries {
-		id := strings.Split(entry.Name(), ".")[0]
+		matches := regexp.MustCompile(AllCacheFileRegex).FindStringSubmatch(entry.Name())
+		if len(matches) == 0 {
+			continue
+		}
+		id := matches[1]
 		info, err := entry.Info()
 		if err != nil {
 			continue
 		}
 		infos = append(infos, types.CacheFileInfo{
-			ID:       id,
-			Size:     info.Size(),
-			IsActive: cacheMap.IsActive(id),
+			ID:        id,
+			Size:      info.Size(),
+			IsActive:  cacheMap.IsActive(id),
+			IsPartial: strings.HasSuffix(entry.Name(), ".dl"),
 		})
 	}
 

@@ -15,10 +15,11 @@ import (
 type LocalFilesGui struct {
 	widget.BaseWidget
 
-	Scroll     *container.Scroll
-	List       *fyne.Container
-	Label      *canvas.Text
-	RefreshBtn *widgets.PaddedIconBtn
+	Scroll      *container.Scroll
+	List        *fyne.Container
+	Label       *canvas.Text
+	RefreshBtn  *widgets.PaddedIconBtn
+	ProgressBar *widgets.SizeProgressBar
 
 	localFileUpdateCh chan string
 	allowListUpdateCh chan string
@@ -33,11 +34,14 @@ func NewLocalFilesGui() *LocalFilesGui {
 	refreshBtn := widgets.NewPaddedIconBtn(theme.ViewRefreshIcon())
 	refreshBtn.SetMinSquareSize(30)
 
+	progressBar := widgets.NewSizeProgressBar(cache.GetMaxSize(), 0)
+
 	g := &LocalFilesGui{
-		Scroll:     container.NewVScroll(list),
-		List:       list,
-		Label:      label,
-		RefreshBtn: refreshBtn,
+		Scroll:      container.NewVScroll(list),
+		List:        list,
+		Label:       label,
+		RefreshBtn:  refreshBtn,
+		ProgressBar: progressBar,
 
 		localFileUpdateCh: cache.SubscribeLocalFileEvent(),
 		allowListUpdateCh: persistence.GetAllowList().SubscribeEvent(),
@@ -80,10 +84,13 @@ func (g *LocalFilesGui) CreateRenderer() fyne.WidgetRenderer {
 func (g *LocalFilesGui) RefreshFiles() {
 	g.List.RemoveAll()
 	infos := cache.GetLocalCacheInfos()
+	totalSize := int64(0)
 	for _, info := range infos {
 		g.List.Add(NewLocalFileGui(info, false))
+		totalSize += info.Size
 	}
 	g.List.Refresh()
+	g.ProgressBar.SetCurrentSize(totalSize)
 }
 
 type LocalFilesGuiRenderer struct {
@@ -106,6 +113,11 @@ func (r *LocalFilesGuiRenderer) Layout(size fyne.Size) {
 	r.g.RefreshBtn.Resize(r.g.RefreshBtn.MinSize())
 	r.g.RefreshBtn.Move(fyne.NewPos(size.Width-btnSize-p/2, p/2))
 
+	progressX := r.g.Label.MinSize().Width + p*2
+	progressWidth := size.Width - progressX - btnSize - p*2
+	r.g.ProgressBar.Resize(fyne.NewSize(progressWidth, btnSize))
+	r.g.ProgressBar.Move(fyne.NewPos(progressX, p/2))
+
 	r.g.Scroll.Resize(fyne.NewSize(size.Width, size.Height-topHeight-theme.Padding()))
 	r.g.Scroll.Move(fyne.NewPos(0, topHeight+theme.Padding()))
 }
@@ -119,6 +131,7 @@ func (r *LocalFilesGuiRenderer) Objects() []fyne.CanvasObject {
 		r.g.Scroll,
 		r.g.Label,
 		r.g.RefreshBtn,
+		r.g.ProgressBar,
 	}
 }
 
