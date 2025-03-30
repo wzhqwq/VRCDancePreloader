@@ -23,9 +23,7 @@ type PaddedIconBtn struct {
 }
 
 func NewPaddedIconBtn(icon fyne.Resource) *PaddedIconBtn {
-	b := &PaddedIconBtn{
-		minSquareSize: 24,
-	}
+	b := &PaddedIconBtn{}
 
 	b.Extend(icon)
 
@@ -39,6 +37,7 @@ func (b *PaddedIconBtn) Extend(icon fyne.Resource) {
 	b.Background = canvas.NewRectangle(theme.Color(theme.ColorNameButton))
 	b.Background.CornerRadius = 5
 	b.padding = theme.Padding()
+	b.minSquareSize = 24
 }
 
 func (b *PaddedIconBtn) SetIcon(icon fyne.Resource) {
