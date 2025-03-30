@@ -1,0 +1,339 @@
+2025.03.30 15:51:16 Debug      -  [Behaviour] OnPlayerJoined 阿米bf24 (usr_f70dead4-3baf-489d-b996-9ce0cb92dfe3)
+2025.03.30 15:51:16 Debug      -  [VoiceDiscrimination] Updating voice discrimination
+2025.03.30 15:51:16 Debug      -  [VoiceDiscrimination] (IN)  阿米bf24: setting voice distance to 8
+2025.03.30 15:51:16 Debug      -  [VoiceDiscrimination] (LOCAL) wzhqwq: skipping
+2025.03.30 15:51:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:16] : querying isOwner == False</color>
+2025.03.30 15:51:16 Debug      -  [Behaviour] OnPlayerJoined wzhqwq (usr_935fbee1-039c-417b-926e-a6a5c74c36db)
+2025.03.30 15:51:16 Debug      -  [VoiceDiscrimination] Updating voice discrimination
+2025.03.30 15:51:16 Debug      -  [VoiceDiscrimination] (OUT) 阿米bf24: setting voice distance to 0
+2025.03.30 15:51:16 Debug      -  [VoiceDiscrimination] (LOCAL) wzhqwq: skipping
+2025.03.30 15:51:16 Debug      -  [Behaviour] Initialized PlayerAPI "阿米bf24" is remote
+2025.03.30 15:51:16 Debug      -  [Behaviour] Initialized PlayerAPI "wzhqwq" is local
+2025.03.30 15:51:16 Debug      -  [Behaviour] Restored player 1
+2025.03.30 15:51:16 Debug      -  [UnifiedPersistence] OnPlayerRestored: 阿米bf24
+2025.03.30 15:51:16 Debug      -  [Behaviour] Restored player 4
+2025.03.30 15:51:16 Debug      -  [UnifiedPersistence] OnPlayerRestored: wzhqwq
+2025.03.30 15:51:16 Debug      -  [UnifiedPersistence] OnPlayerRestored: local player, calling _OnPlayerDataStatusUp
+2025.03.30 15:51:16 Debug      -  [VideoListManager] failed to load favorite dance ids from VRCPlayerData
+2025.03.30 15:51:16 Debug      -  [VideoListManager] failed to load custom playlist from VRCPlayerData
+2025.03.30 15:51:16 Error      -  [Behaviour] Error downloading avatar 小涂真纪v2/Security: Error loading asset bundle from ****: Unable to complete SSL connection
+2025.03.30 15:51:16 Debug      -  [Behaviour] CacheComponents: ParticleSystems 0, AudioSources 0
+2025.03.30 15:51:16 Debug      -  Found SDK3 avatar descriptor.
+2025.03.30 15:51:16 Debug      -  [Behaviour] Using default gesture mask (hands)
+2025.03.30 15:51:16 Debug      -  [Behaviour] Using default fx mask (all muscles disabled, all transforms enabled)
+2025.03.30 15:51:16 Warning    -  Recovered 0 Network IDs from Avatar
+2025.03.30 15:51:16 Debug      -  Measure Human Avatar Avatar isRemeasure:False
+2025.03.30 15:51:16 Debug      -  [Behaviour] eyeToNeck:(0.00, -0.06, 0.22) scaled:(0.00, -0.05, 0.19)
+2025.03.30 15:51:16 Debug      -  [Behaviour] Initialize ThreePoint Avatar VRCPlayer[Local] 4 True 2
+2025.03.30 15:51:16 Error      -  Object reference not set to an instance of an object.
+System.NullReferenceException: Object reference not set to an instance of an object.
+  at ÍÍÌÌÏÍÏÏÏÍÌÍÍÍÎÏÌÎÎÏÏÎÏ.ÏÏÏÎÍÍÌÎÌÎÌÎÎÎÎÌÍÎÌÏÎÍÍ (System.Boolean ÍÎÎÌÏÏÎÍÍÎÌÌÌÌÎÎÌÎÌÍÏÌÏ) [0x00000] in <00000000000000000000000000000000>:0 
+  at ÌÌÍÎÎÍÍÍÎÍÎÌÌÌÌÍÌÌÍÍÏÎÏ+ÍÏÌÏÎÏÍÌÌÌÏÏÌÍÏÏÌÍÎÍÌÌÏ.ÍÍÍÍÎÌÏÍÏÍÍÍÍÍÌÌÏÏÍÎÎÎÍ () [0x00000] in <00000000000000000000000000000000>:0 
+  at ÍÍÎÎÌÏÍÍÎÍÎÍÎÌÏÌÌÏÌÌÍÏÎ+ÌÍÌÌÍÏÍÌÎÌÍÍÍÏÌÎÏÍÌÏÌÌÎ.MoveNext () [0x00000] in <00000000000000000000000000000000>:0 
+  at UnityEngine.SetupCoroutine.InvokeMoveNext (System.Collections.IEnumerator enumerator, System.IntPtr returnValueAddress) [0x00000] in <00000000000000000000000000000000>:0 
+2025.03.30 15:51:16 Warning    -  Avatar was blocked by local perf limits: AssetBundleBadPerformance
+2025.03.30 15:51:16 Debug      -  [Behaviour] Sanity check <color=green>passed</color> for ID: 0, Path: 38
+2025.03.30 15:51:16 Debug      -  [Behaviour] Sanity check <color=green>passed</color> for ID: 1, Path: 18
+2025.03.30 15:51:16 Debug      -  [Behaviour] Sanity check <color=green>passed</color> for ID: 2, Path: 32
+2025.03.30 15:51:16 Debug      -  [Behaviour] Sanity check <color=green>passed</color> for ID: 3, Path: 16
+2025.03.30 15:51:16 Debug      -  [Behaviour] Sanity check <color=green>passed</color> for ID: 4, Path: 79
+2025.03.30 15:51:16 Debug      -  [AssetBundleDownloadManager] Starting download of 1 MB, 0 still queued.
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : OnDeserialization: syncedQueuedInfoJson = [{"playerNames": ["阿米bf24"], "title": "4485. Barbie Girl - Aqua | Marshall", "playerCount": "1P", "songId": 4485, "major": "Major in Fitness Dance", "duration": 220, "group": "Fitness Marshall", "doubleWidth": false}, {"playerNames": ["阿米bf24"], "title": "5246. Armageddon - aespa | Golfy", "playerCount": "1P", "songId": 5246, "major": "Major in Fitness Dance", "duration": 199, "group": "Golfy Dance Fitness", "doubleWidth": true}]</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : OnDeserialization: history ids deserialized: 5247,5852,4533,8630,2167,8715,6546,6456,7297,5671</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : OnDeserialization: queue info deserialized: count = 2, url count = 2</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 5247, "isRandom": false, "infoString": "5247. How Sweet - NewJeans | Golfy | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=5247", "videoTitle": "5247. How Sweet - NewJeans | Golfy", "flip": false, "volume": 0.740000009536743, "doubleWidth": true, "videoGroup": "Golfy Dance Fitness", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : DeserializeVideoUserData: songId = 5247, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : UpdateState: video list version mismatch, ours = 00000000000000, theirs = 20250330134519, useLocalData = False</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : UpdateState: version = 20250330134519, songId = 5247, player = 阿米bf24, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24, volume = 0.74, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:51:17 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : OnUSharpVideoDeserialization: video owner = 阿米bf24, ownerStillFunctional = True, ownerPlaying = True, isPlaying = False</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : [LogOtherPlayerAndDeviceType] Player 阿米bf24, isLocal = False, isOwner = True, isMaster = True, isVR = True, latency = 0.4431458</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : [LogOtherPlayerAndDeviceType] Player wzhqwq, isLocal = True, isOwner = False, isMaster = False, isVR = False, latency = 0.2000122</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 5247, "isRandom": false, "infoString": "5247. How Sweet - NewJeans | Golfy | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=5247", "videoTitle": "5247. How Sweet - NewJeans | Golfy", "flip": false, "volume": 0.740000009536743, "doubleWidth": true, "videoGroup": "Golfy Dance Fitness", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : DeserializeVideoUserData: songId = 5247, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : UpdateState: video list version mismatch, ours = 00000000000000, theirs = 20250330134519, useLocalData = False</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : UpdateState: version = 20250330134519, songId = 5247, player = 阿米bf24, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24, volume = 0.74, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:17 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:17] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:51:17 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:17 Debug      -  [VideoListManager] SelectGroupByIndex: groupIndex = -1
+2025.03.30 15:51:18 Debug      -  列表刷新用时:637.2103毫秒
+2025.03.30 15:51:18 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:18] : _OnVideoListChanged</color>
+2025.03.30 15:51:18 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:18] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 5247, "isRandom": false, "infoString": "5247. How Sweet - NewJeans | Golfy | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=5247", "videoTitle": "5247. How Sweet - NewJeans | Golfy", "flip": false, "volume": 0.740000009536743, "doubleWidth": true, "videoGroup": "Golfy Dance Fitness", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:18 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:18] : DeserializeVideoUserData: songId = 5247, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24</color>
+2025.03.30 15:51:18 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:18] : UpdateState: video list version mismatch, ours = 20250314235518, theirs = 20250330134519, useLocalData = False</color>
+2025.03.30 15:51:18 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:18] : UpdateState: version = 20250330134519, songId = 5247, player = 阿米bf24, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24, volume = 0.74, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:51:18 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:18] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:18 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:18] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:51:18 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:18 Debug      -  [String Download] A web request exception occurred while loading string from URL 'http://127.0.0.1:22500/vrcx/data/getall'. Exception: HTTP/1.1 502 Bad Gateway
+2025.03.30 15:51:18 Error      -  VRCX API: StringLoad 'http://127.0.0.1:22500/vrcx/data/getall' Fail 502 - 'HTTP/1.1 502 Bad Gateway': 
+2025.03.30 15:51:19 Debug      -  NativeProcess.HasExited: process exited with code 0, took 4929 ms. Command line: C:/Users/wzhii/AppData/LocalLow/VRChat/VRChat\Tools/yt-dlp.exe (...)
+2025.03.30 15:51:19 Debug      -  [Video Playback] URL 'http://api.udon.dance/Api/Songs/play?id=5247' resolved to 'http://play.udon.dance/files/2408/5468-66c61438b5cac.mp4?e=d5842b31d63637d17e50de28d55086a9&s=61302064'
+2025.03.30 15:51:19 Debug      -  [String Download] Attempting to load String from URL 'https://api.wannadance.online/Api/Songs/list'
+2025.03.30 15:51:20 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 0 objects from all pools.
+2025.03.30 15:51:23 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] UpdateRenderTexture: Updating render texture for handler PlayingScreen (VRC.Udon.UdonBehaviour)
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : UpdateVideoLoadStatistics: 0.0000s (自动)</color>
+2025.03.30 15:51:23 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnVideoReady: call SyncVideo() since _ownerPlaying is True
+2025.03.30 15:51:23 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 213.84, current time = 0.00, offset = 213.84, threshold = 0.85
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : OnUSharpVideoReady: video owner = 阿米bf24, ownerPlaying = True, waitForSync = False</color>
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 5247, "isRandom": false, "infoString": "5247. How Sweet - NewJeans | Golfy | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=5247", "videoTitle": "5247. How Sweet - NewJeans | Golfy", "flip": false, "volume": 0.740000009536743, "doubleWidth": true, "videoGroup": "Golfy Dance Fitness", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : DeserializeVideoUserData: songId = 5247, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24</color>
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : UpdateState: video list version mismatch, ours = 20250314235518, theirs = 20250330134519, useLocalData = False</color>
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : UpdateState: version = 20250330134519, songId = 5247, player = 阿米bf24, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24, volume = 0.74, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:51:23 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:23 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnVideoStart: call SyncVideo() since _ownerPlaying is True
+2025.03.30 15:51:23 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 213.85, current time = 0.00, offset = 213.85, threshold = 0.85
+2025.03.30 15:51:23 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnVideoStart: Started video: http://api.udon.dance/Api/Songs/play?id=5247, since owner is playing
+2025.03.30 15:51:23 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] CheckForNegativeVideoOffset: video offset: 0, sync threshold: 0.85, force sync time
+2025.03.30 15:51:23 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 213.85
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 5247, "isRandom": false, "infoString": "5247. How Sweet - NewJeans | Golfy | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=5247", "videoTitle": "5247. How Sweet - NewJeans | Golfy", "flip": false, "volume": 0.740000009536743, "doubleWidth": true, "videoGroup": "Golfy Dance Fitness", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : DeserializeVideoUserData: songId = 5247, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24</color>
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : UpdateState: video list version mismatch, ours = 20250314235518, theirs = 20250330134519, useLocalData = False</color>
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : UpdateState: version = 20250330134519, songId = 5247, player = 阿米bf24, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24, volume = 0.74, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:23 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:23] : UpdateState: playButton = False, loading screen = False, error tips = False</color>
+2025.03.30 15:51:23 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:23 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 213.97, current time = 0.00, offset = 213.97, threshold = 0.85
+2025.03.30 15:51:24 Debug      -  [VideoListManager] SelectGroupByIndex: groupIndex = -1
+2025.03.30 15:51:24 Debug      -  列表刷新用时:588.5535毫秒
+2025.03.30 15:51:24 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:24] : _OnVideoListChanged</color>
+2025.03.30 15:51:24 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:24] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 5247, "isRandom": false, "infoString": "5247. How Sweet - NewJeans | Golfy | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=5247", "videoTitle": "5247. How Sweet - NewJeans | Golfy", "flip": false, "volume": 0.740000009536743, "doubleWidth": true, "videoGroup": "Golfy Dance Fitness", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:24 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:24] : DeserializeVideoUserData: songId = 5247, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24</color>
+2025.03.30 15:51:24 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:24] : UpdateState: version = 20250330134519, songId = 5247, player = 阿米bf24, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24, volume = 0.74, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:51:24 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:24] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:24 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:24] : UpdateState: playButton = False, loading screen = False, error tips = False</color>
+2025.03.30 15:51:24 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:26 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 216.98, current time = 214.60, offset = 2.38, threshold = 0.85
+2025.03.30 15:51:27 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnVideoEnd: Video http://api.udon.dance/Api/Songs/play?id=5247 ended
+2025.03.30 15:51:27 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnVideoEnd: Video http://api.udon.dance/Api/Songs/play?id=5247 ended, but I am not the video owner, waiting for video owner 阿米bf24 to act
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : querying isOwner == False</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : OnUSharpVideoEndInCaseVideoOwnerFailure: I am not owner, waiting 5 seconds for owner 阿米bf24 to act, ownerStillFunctional = False</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : OnDeserialization: syncedQueuedInfoJson = [{"playerNames": ["阿米bf24"], "title": "5246. Armageddon - aespa | Golfy", "playerCount": "1P", "songId": 5246, "major": "Major in Fitness Dance", "duration": 199, "group": "Golfy Dance Fitness", "doubleWidth": true}]</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : OnDeserialization: history ids deserialized: 4485,5247,5852,4533,8630,2167,8715,6546,6456,7297</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : OnDeserialization: queue info deserialized: count = 1, url count = 1</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 5247, "isRandom": false, "infoString": "5247. How Sweet - NewJeans | Golfy | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=5247", "videoTitle": "5247. How Sweet - NewJeans | Golfy", "flip": false, "volume": 0.740000009536743, "doubleWidth": true, "videoGroup": "Golfy Dance Fitness", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : DeserializeVideoUserData: songId = 5247, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : UpdateState: version = 20250330134519, songId = 5247, player = 阿米bf24, isRandom = False, infoString = 5247. How Sweet - NewJeans | Golfy | 阿米bf24, volume = 0.74, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : UpdateState: playButton = False, loading screen = False, error tips = False</color>
+2025.03.30 15:51:27 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:27 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Started video load for URL: http://api.udon.dance/Api/Songs/play?id=4485, requested by 阿米bf24
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : OnUSharpVideoStartVideoLoad</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 4485, "isRandom": false, "infoString": "4485. Barbie Girl - Aqua | Marshall | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=4485", "videoTitle": "4485. Barbie Girl - Aqua | Marshall", "flip": false, "volume": 0.769999980926514, "doubleWidth": false, "videoGroup": "Fitness Marshall", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : DeserializeVideoUserData: songId = 4485, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24</color>
+2025.03.30 15:51:27 Debug      -  [VRCX] VideoPlay(PyPyDance) "http://api.udon.dance/Api/Songs/play?id=4485",0,114514,"$4485. Barbie Girl - Aqua | Marshall (阿米bf24)"
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : UpdateVideoLoadStatistics: 0.0000s (自动)</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 4485, "isRandom": false, "infoString": "4485. Barbie Girl - Aqua | Marshall | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=4485", "videoTitle": "4485. Barbie Girl - Aqua | Marshall", "flip": false, "volume": 0.769999980926514, "doubleWidth": false, "videoGroup": "Fitness Marshall", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : DeserializeVideoUserData: songId = 4485, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : UpdateState: version = 20250330134519, songId = 4485, player = 阿米bf24, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24, volume = 0.77, flip = False, doubleWidth = False, motion count = 0</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:51:27 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:27 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] LoadRoutedURL: http://api.udon.dance/Api/Songs/play?id=4485 routed to http://api.udon.dance/Api/Songs/play?id=4485
+2025.03.30 15:51:27 Debug      -  [Video Playback] Attempting to resolve URL 'http://api.udon.dance/Api/Songs/play?id=4485'
+2025.03.30 15:51:27 Debug      -  NativeProcess.Start: started process id [30044]: C:/Users/wzhii/AppData/LocalLow/VRChat/VRChat\Tools/yt-dlp.exe (...)
+2025.03.30 15:51:27 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Playing synced http://api.udon.dance/Api/Songs/play?id=4485
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : OnUSharpVideoDeserialization: video owner = 阿米bf24, ownerStillFunctional = True, ownerPlaying = False, isPlaying = False</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : [LogOtherPlayerAndDeviceType] Player 阿米bf24, isLocal = False, isOwner = True, isMaster = True, isVR = True, latency = 0.4541016</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : [LogOtherPlayerAndDeviceType] Player wzhqwq, isLocal = True, isOwner = False, isMaster = False, isVR = False, latency = 0.2000122</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 4485, "isRandom": false, "infoString": "4485. Barbie Girl - Aqua | Marshall | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=4485", "videoTitle": "4485. Barbie Girl - Aqua | Marshall", "flip": false, "volume": 0.769999980926514, "doubleWidth": false, "videoGroup": "Fitness Marshall", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : DeserializeVideoUserData: songId = 4485, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : UpdateState: version = 20250330134519, songId = 4485, player = 阿米bf24, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24, volume = 0.77, flip = False, doubleWidth = False, motion count = 0</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:27 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:27] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:51:27 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:27 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] UpdateRenderTexture: Updating render texture for handler PlayingScreen (VRC.Udon.UdonBehaviour)
+2025.03.30 15:51:29 Debug      -  [AssetBundleDownloadManager] Download for avatar (Worn:0 Friend:0 Shown:0 Near:0) (1.5 MB) started 0 seconds and completed 12 seconds after queueing.
+2025.03.30 15:51:29 Debug      -  [AssetBundleDownloadManager] Average download speed: 1373681 bytes per second
+2025.03.30 15:51:29 Debug      -  [AssetBundleDownloadManager] [104] Unpacking Avatar (拼好猫（? by 阿米bf24)
+2025.03.30 15:51:29 Debug      -  [Behaviour] CacheComponents: ParticleSystems 0, AudioSources 0
+2025.03.30 15:51:29 Debug      -  Found SDK3 avatar descriptor.
+2025.03.30 15:51:29 Warning    -  Recovered 0 Network IDs from Avatar
+2025.03.30 15:51:29 Debug      -  Measure Human Avatar Avatar isRemeasure:False
+2025.03.30 15:51:29 Debug      -  [Behaviour] Initialize ThreePoint Avatar VRCPlayer[Remote] 1 False 9
+2025.03.30 15:51:30 Debug      -  NativeProcess.HasExited: process exited with code 0, took 2669 ms. Command line: C:/Users/wzhii/AppData/LocalLow/VRChat/VRChat\Tools/yt-dlp.exe (...)
+2025.03.30 15:51:30 Debug      -  [Video Playback] URL 'http://api.udon.dance/Api/Songs/play?id=4485' resolved to 'http://play.udon.dance/files/2403/4485-660524ba2cb96.mp4?e=d369bc160df8b94bddc8bfcc56dcdbb1&s=37510082'
+2025.03.30 15:51:31 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnDeserialization: call SyncVideo() since _networkTimeVideoStart is 2040197890, _localNetworkTimeStart is 0
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : OnUSharpVideoDeserialization: video owner = 阿米bf24, ownerStillFunctional = True, ownerPlaying = False, isPlaying = False</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : [LogOtherPlayerAndDeviceType] Player 阿米bf24, isLocal = False, isOwner = True, isMaster = True, isVR = True, latency = 0.3138733</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : [LogOtherPlayerAndDeviceType] Player wzhqwq, isLocal = True, isOwner = False, isMaster = False, isVR = False, latency = 0.2000122</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 4485, "isRandom": false, "infoString": "4485. Barbie Girl - Aqua | Marshall | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=4485", "videoTitle": "4485. Barbie Girl - Aqua | Marshall", "flip": false, "volume": 0.769999980926514, "doubleWidth": false, "videoGroup": "Fitness Marshall", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : DeserializeVideoUserData: songId = 4485, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : UpdateState: version = 20250330134519, songId = 4485, player = 阿米bf24, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24, volume = 0.77, flip = False, doubleWidth = False, motion count = 0</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:51:31 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:31 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] UpdateRenderTexture: Updating render texture for handler PlayingScreen (VRC.Udon.UdonBehaviour)
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : UpdateVideoLoadStatistics: 0.0000s (自动)</color>
+2025.03.30 15:51:31 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnVideoReady: call SyncVideo() since _ownerPlaying is False and _networkTimeVideoStart is 2040197890
+2025.03.30 15:51:31 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 0.88, current time = 0.00, offset = 0.88, threshold = 0.85
+2025.03.30 15:51:31 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Loaded into world with complete video, duration: 219.6528, start net time: 2040197890
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : OnUSharpVideoReady: video owner = 阿米bf24, ownerPlaying = False, waitForSync = False</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 4485, "isRandom": false, "infoString": "4485. Barbie Girl - Aqua | Marshall | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=4485", "videoTitle": "4485. Barbie Girl - Aqua | Marshall", "flip": false, "volume": 0.769999980926514, "doubleWidth": false, "videoGroup": "Fitness Marshall", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : DeserializeVideoUserData: songId = 4485, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : UpdateState: version = 20250330134519, songId = 4485, player = 阿米bf24, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24, volume = 0.77, flip = False, doubleWidth = False, motion count = 0</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:31 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:31] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:51:31 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:32 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:32] : ForciblyPlayNextVideo: video owner 阿米bf24 is functional, no need to act</color>
+2025.03.30 15:51:35 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 4.55, current time = 0.87, offset = 3.68, threshold = 0.85
+2025.03.30 15:51:37 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnDeserialization: call SyncVideo() since _networkTimeVideoStart is 2040203887, _localNetworkTimeStart is 2040197890
+2025.03.30 15:51:37 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 0.16, current time = 4.54, offset = -4.37, threshold = 0.85
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : OnUSharpVideoDeserialization: video owner = 阿米bf24, ownerStillFunctional = True, ownerPlaying = True, isPlaying = True</color>
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : [LogOtherPlayerAndDeviceType] Player 阿米bf24, isLocal = False, isOwner = True, isMaster = True, isVR = True, latency = 0.2554016</color>
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : [LogOtherPlayerAndDeviceType] Player wzhqwq, isLocal = True, isOwner = False, isMaster = False, isVR = False, latency = 0.2000122</color>
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 4485, "isRandom": false, "infoString": "4485. Barbie Girl - Aqua | Marshall | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=4485", "videoTitle": "4485. Barbie Girl - Aqua | Marshall", "flip": false, "volume": 0.769999980926514, "doubleWidth": false, "videoGroup": "Fitness Marshall", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : DeserializeVideoUserData: songId = 4485, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24</color>
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : UpdateState: version = 20250330134519, songId = 4485, player = 阿米bf24, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24, volume = 0.77, flip = False, doubleWidth = False, motion count = 0</color>
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:51:37 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:37 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnVideoStart: call SyncVideo() since _ownerPlaying is True
+2025.03.30 15:51:37 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 0.17, current time = 4.54, offset = -4.37, threshold = 0.85
+2025.03.30 15:51:37 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnVideoStart: Started video: http://api.udon.dance/Api/Songs/play?id=4485, since owner is playing
+2025.03.30 15:51:37 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] CheckForNegativeVideoOffset: video offset: 0, sync threshold: 0.85, force sync time
+2025.03.30 15:51:37 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 0.17
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 4485, "isRandom": false, "infoString": "4485. Barbie Girl - Aqua | Marshall | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=4485", "videoTitle": "4485. Barbie Girl - Aqua | Marshall", "flip": false, "volume": 0.769999980926514, "doubleWidth": false, "videoGroup": "Fitness Marshall", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : DeserializeVideoUserData: songId = 4485, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24</color>
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : UpdateState: version = 20250330134519, songId = 4485, player = 阿米bf24, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24, volume = 0.77, flip = False, doubleWidth = False, motion count = 0</color>
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:37 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:37] : UpdateState: playButton = False, loading screen = False, error tips = False</color>
+2025.03.30 15:51:37 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:38 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:38] : OnUSharpVideoDeserialization: video owner = 阿米bf24, ownerStillFunctional = True, ownerPlaying = True, isPlaying = True</color>
+2025.03.30 15:51:38 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:38] : [LogOtherPlayerAndDeviceType] Player 阿米bf24, isLocal = False, isOwner = True, isMaster = True, isVR = True, latency = 0.2444153</color>
+2025.03.30 15:51:38 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:38] : [LogOtherPlayerAndDeviceType] Player wzhqwq, isLocal = True, isOwner = False, isMaster = False, isVR = False, latency = 0.1999817</color>
+2025.03.30 15:51:38 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:38] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 4485, "isRandom": false, "infoString": "4485. Barbie Girl - Aqua | Marshall | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=4485", "videoTitle": "4485. Barbie Girl - Aqua | Marshall", "flip": false, "volume": 0.769999980926514, "doubleWidth": false, "videoGroup": "Fitness Marshall", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:51:38 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:38] : DeserializeVideoUserData: songId = 4485, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24</color>
+2025.03.30 15:51:38 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:38] : UpdateState: version = 20250330134519, songId = 4485, player = 阿米bf24, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24, volume = 0.77, flip = False, doubleWidth = False, motion count = 0</color>
+2025.03.30 15:51:38 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:38] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:51:38 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:51:38] : UpdateState: playButton = False, loading screen = False, error tips = False</color>
+2025.03.30 15:51:38 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:51:51 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 32 objects from all pools.
+2025.03.30 15:51:52 Debug      -  LLookQuickMenu] Setting UILayerLength = 19
+2025.03.30 15:51:52 Debug      -  [LLookQuickMenu]Changed to DesktopMenu.
+2025.03.30 15:52:21 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 45 objects from all pools.
+2025.03.30 15:52:51 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 8 objects from all pools.
+2025.03.30 15:52:59 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:52:59] : OnDeserialization: syncedQueuedInfoJson = [{"playerNames": ["阿米bf24"], "title": "5246. Armageddon - aespa | Golfy", "playerCount": "1P", "songId": 5246, "major": "Major in Fitness Dance", "duration": 199, "group": "Golfy Dance Fitness", "doubleWidth": true}, {"playerNames": ["阿米bf24"], "title": "6456. 90's Love - NCT U | Fol2esTz", "playerCount": "1P", "songId": 6456, "major": "Major in K-POP", "duration": 214, "group": "Fol2esTz", "doubleWidth": true}]</color>
+2025.03.30 15:52:59 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:52:59] : OnDeserialization: history ids deserialized: 4485,5247,5852,4533,8630,2167,8715,6546,6456,7297</color>
+2025.03.30 15:52:59 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:52:59] : OnDeserialization: queue info deserialized: count = 2, url count = 2</color>
+2025.03.30 15:52:59 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:52:59] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 4485, "isRandom": false, "infoString": "4485. Barbie Girl - Aqua | Marshall | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=4485", "videoTitle": "4485. Barbie Girl - Aqua | Marshall", "flip": false, "volume": 0.769999980926514, "doubleWidth": false, "videoGroup": "Fitness Marshall", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:52:59 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:52:59] : DeserializeVideoUserData: songId = 4485, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24</color>
+2025.03.30 15:52:59 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:52:59] : UpdateState: version = 20250330134519, songId = 4485, player = 阿米bf24, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24, volume = 0.77, flip = False, doubleWidth = False, motion count = 0</color>
+2025.03.30 15:52:59 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:52:59] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:52:59 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:52:59] : UpdateState: playButton = False, loading screen = False, error tips = False</color>
+2025.03.30 15:52:59 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:53:21 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 11 objects from all pools.
+2025.03.30 15:53:51 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 6 objects from all pools.
+2025.03.30 15:54:21 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 3 objects from all pools.
+2025.03.30 15:54:26 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 169.81, current time = 168.50, offset = 1.30, threshold = 0.85
+2025.03.30 15:54:33 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 176.20, current time = 174.07, offset = 2.13, threshold = 0.85
+2025.03.30 15:54:50 Debug      -  [EOSManager] [Info][LogEOS] Updating Product SDK Config, Time: 664.254395
+2025.03.30 15:54:50 Debug      -  [EOSManager] [Info][LogEOS] SDK Config Product Update Request Completed - No Change
+2025.03.30 15:54:50 Debug      -  [EOSManager] [Info][LogEOS] ScheduleNextSDKConfigDataUpdate - Time: 664.625916, Update Interval: 333.293243
+2025.03.30 15:54:51 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:54:51] : OnDeserialization: syncedQueuedInfoJson = [{"playerNames": ["阿米bf24"], "title": "6456. 90's Love - NCT U | Fol2esTz", "playerCount": "1P", "songId": 6456, "major": "Major in K-POP", "duration": 214, "group": "Fol2esTz", "doubleWidth": true}]</color>
+2025.03.30 15:54:51 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:54:51] : OnDeserialization: history ids deserialized: 4485,5247,5852,4533,8630,2167,8715,6546,6456,7297</color>
+2025.03.30 15:54:51 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:54:51] : OnDeserialization: queue info deserialized: count = 1, url count = 1</color>
+2025.03.30 15:54:51 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:54:51] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 4485, "isRandom": false, "infoString": "4485. Barbie Girl - Aqua | Marshall | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=4485", "videoTitle": "4485. Barbie Girl - Aqua | Marshall", "flip": false, "volume": 0.769999980926514, "doubleWidth": false, "videoGroup": "Fitness Marshall", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:54:51 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:54:51] : DeserializeVideoUserData: songId = 4485, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24</color>
+2025.03.30 15:54:51 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:54:51] : UpdateState: version = 20250330134519, songId = 4485, player = 阿米bf24, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24, volume = 0.77, flip = False, doubleWidth = False, motion count = 0</color>
+2025.03.30 15:54:51 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:54:51] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:54:51 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:54:51] : UpdateState: playButton = False, loading screen = False, error tips = False</color>
+2025.03.30 15:54:51 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:54:54 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 0 objects from all pools.
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : OnDeserialization: syncedQueuedInfoJson = []</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : OnDeserialization: history ids deserialized: 4485,5247,5852,4533,8630,2167,8715,6546,6456,7297</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : OnDeserialization: queue info deserialized: count = 0, url count = 0</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 4485, "isRandom": false, "infoString": "4485. Barbie Girl - Aqua | Marshall | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=4485", "videoTitle": "4485. Barbie Girl - Aqua | Marshall", "flip": false, "volume": 0.769999980926514, "doubleWidth": false, "videoGroup": "Fitness Marshall", "videoMajor": "Major in Fitness Dance", "playerCount": "1P", "motion": [], "rpe": 25}</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : DeserializeVideoUserData: songId = 4485, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : UpdateState: version = 20250330134519, songId = 4485, player = 阿米bf24, isRandom = False, infoString = 4485. Barbie Girl - Aqua | Marshall | 阿米bf24, volume = 0.77, flip = False, doubleWidth = False, motion count = 0</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : UpdateState: playButton = False, loading screen = False, error tips = False</color>
+2025.03.30 15:55:16 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:55:16 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Started video load for URL: http://api.udon.dance/Api/Songs/play?id=6456, requested by 阿米bf24
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : OnUSharpVideoStartVideoLoad</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 6456, "isRandom": false, "infoString": "6456. 90's Love - NCT U | Fol2esTz | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=6456", "videoTitle": "6456. 90's Love - NCT U | Fol2esTz", "flip": false, "volume": 0.649999976158142, "doubleWidth": true, "videoGroup": "Fol2esTz", "videoMajor": "Major in K-POP", "playerCount": "1P", "motion": [], "rpe": 80}</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : DeserializeVideoUserData: songId = 6456, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24</color>
+2025.03.30 15:55:16 Debug      -  [VRCX] VideoPlay(PyPyDance) "http://api.udon.dance/Api/Songs/play?id=6456",0,114514,"$6456. 90's Love - NCT U | Fol2esTz (阿米bf24)"
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : UpdateVideoLoadStatistics: 0.0000s (自动)</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 6456, "isRandom": false, "infoString": "6456. 90's Love - NCT U | Fol2esTz | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=6456", "videoTitle": "6456. 90's Love - NCT U | Fol2esTz", "flip": false, "volume": 0.649999976158142, "doubleWidth": true, "videoGroup": "Fol2esTz", "videoMajor": "Major in K-POP", "playerCount": "1P", "motion": [], "rpe": 80}</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : DeserializeVideoUserData: songId = 6456, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : UpdateState: version = 20250330134519, songId = 6456, player = 阿米bf24, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24, volume = 0.65, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:55:16 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:55:16 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] LoadRoutedURL: http://api.udon.dance/Api/Songs/play?id=6456 routed to http://api.udon.dance/Api/Songs/play?id=6456
+2025.03.30 15:55:16 Debug      -  [Video Playback] Attempting to resolve URL 'http://api.udon.dance/Api/Songs/play?id=6456'
+2025.03.30 15:55:16 Debug      -  NativeProcess.Start: started process id [31360]: C:/Users/wzhii/AppData/LocalLow/VRChat/VRChat\Tools/yt-dlp.exe (...)
+2025.03.30 15:55:16 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Playing synced http://api.udon.dance/Api/Songs/play?id=6456
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : OnUSharpVideoDeserialization: video owner = 阿米bf24, ownerStillFunctional = True, ownerPlaying = False, isPlaying = False</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : [LogOtherPlayerAndDeviceType] Player 阿米bf24, isLocal = False, isOwner = True, isMaster = True, isVR = True, latency = 0.2837524</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : [LogOtherPlayerAndDeviceType] Player wzhqwq, isLocal = True, isOwner = False, isMaster = False, isVR = False, latency = 0.2000122</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 6456, "isRandom": false, "infoString": "6456. 90's Love - NCT U | Fol2esTz | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=6456", "videoTitle": "6456. 90's Love - NCT U | Fol2esTz", "flip": false, "volume": 0.649999976158142, "doubleWidth": true, "videoGroup": "Fol2esTz", "videoMajor": "Major in K-POP", "playerCount": "1P", "motion": [], "rpe": 80}</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : DeserializeVideoUserData: songId = 6456, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : UpdateState: version = 20250330134519, songId = 6456, player = 阿米bf24, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24, volume = 0.65, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:55:16 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:16] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:55:16 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:55:16 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] UpdateRenderTexture: Updating render texture for handler PlayingScreen (VRC.Udon.UdonBehaviour)
+2025.03.30 15:55:18 Debug      -  NativeProcess.HasExited: process exited with code 0, took 1783 ms. Command line: C:/Users/wzhii/AppData/LocalLow/VRChat/VRChat\Tools/yt-dlp.exe (...)
+2025.03.30 15:55:18 Debug      -  [Video Playback] URL 'http://api.udon.dance/Api/Songs/play?id=6456' resolved to 'http://play.udon.dance/files/2409/6456-66d4fcd112383.mp4?e=78ec790af2b6a3b13b67607b927d92e0&s=59954596'
+2025.03.30 15:55:19 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] UpdateRenderTexture: Updating render texture for handler PlayingScreen (VRC.Udon.UdonBehaviour)
+2025.03.30 15:55:20 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:20] : UpdateVideoLoadStatistics: 0.0000s (自动)</color>
+2025.03.30 15:55:20 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:20] : OnUSharpVideoReady: video owner = 阿米bf24, ownerPlaying = False, waitForSync = True</color>
+2025.03.30 15:55:20 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:20] : OnUSharpVideoReady: I am ready, but video owner 阿米bf24 is not, try to wait more 15 seconds</color>
+2025.03.30 15:55:20 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:20] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 6456, "isRandom": false, "infoString": "6456. 90's Love - NCT U | Fol2esTz | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=6456", "videoTitle": "6456. 90's Love - NCT U | Fol2esTz", "flip": false, "volume": 0.649999976158142, "doubleWidth": true, "videoGroup": "Fol2esTz", "videoMajor": "Major in K-POP", "playerCount": "1P", "motion": [], "rpe": 80}</color>
+2025.03.30 15:55:20 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:20] : DeserializeVideoUserData: songId = 6456, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24</color>
+2025.03.30 15:55:20 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:20] : UpdateState: version = 20250330134519, songId = 6456, player = 阿米bf24, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24, volume = 0.65, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:55:20 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:20] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:55:20 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:20] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:55:20 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:55:24 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 104 objects from all pools.
+2025.03.30 15:55:35 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:35] : ForciblyResumeVideo: video owner = 阿米bf24, ownerPlaying = False, waitForSync = True</color>
+2025.03.30 15:55:35 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:35] : ForciblyResumeVideo: I am ready, but video owner 阿米bf24 is not, wait for network master to act, networkMasterStillFunctional = False</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : ForciblyResumeVideo: video owner = 阿米bf24, ownerPlaying = False, waitForSync = True</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : ForciblyResumeVideo: I am ready, but video owner 阿米bf24 is not, wait for network master to act, networkMasterStillFunctional = False</color>
+2025.03.30 15:55:40 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnDeserialization: call SyncVideo() since _networkTimeVideoStart is 2040447414, _localNetworkTimeStart is 0
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : OnUSharpVideoDeserialization: video owner = 阿米bf24, ownerStillFunctional = True, ownerPlaying = True, isPlaying = True</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : [LogOtherPlayerAndDeviceType] Player 阿米bf24, isLocal = False, isOwner = True, isMaster = True, isVR = True, latency = 0.2705078</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : [LogOtherPlayerAndDeviceType] Player wzhqwq, isLocal = True, isOwner = False, isMaster = False, isVR = False, latency = 0.2000122</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 6456, "isRandom": false, "infoString": "6456. 90's Love - NCT U | Fol2esTz | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=6456", "videoTitle": "6456. 90's Love - NCT U | Fol2esTz", "flip": false, "volume": 0.649999976158142, "doubleWidth": true, "videoGroup": "Fol2esTz", "videoMajor": "Major in K-POP", "playerCount": "1P", "motion": [], "rpe": 80}</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : DeserializeVideoUserData: songId = 6456, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : UpdateState: version = 20250330134519, songId = 6456, player = 阿米bf24, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24, volume = 0.65, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : UpdateState: playButton = False, loading screen = True, error tips = False</color>
+2025.03.30 15:55:40 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:55:40 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnVideoStart: call SyncVideo() since _ownerPlaying is True
+2025.03.30 15:55:40 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] OnVideoStart: Started video: http://api.udon.dance/Api/Songs/play?id=6456, since owner is playing
+2025.03.30 15:55:40 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] CheckForNegativeVideoOffset: video offset: 0, sync threshold: 0.85, force sync time
+2025.03.30 15:55:40 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Syncing video to 0.22
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 6456, "isRandom": false, "infoString": "6456. 90's Love - NCT U | Fol2esTz | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=6456", "videoTitle": "6456. 90's Love - NCT U | Fol2esTz", "flip": false, "volume": 0.649999976158142, "doubleWidth": true, "videoGroup": "Fol2esTz", "videoMajor": "Major in K-POP", "playerCount": "1P", "motion": [], "rpe": 80}</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : DeserializeVideoUserData: songId = 6456, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : UpdateState: version = 20250330134519, songId = 6456, player = 阿米bf24, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24, volume = 0.65, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:55:40 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:40] : UpdateState: playButton = False, loading screen = False, error tips = False</color>
+2025.03.30 15:55:40 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:55:40 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Update: Started video: http://api.udon.dance/Api/Songs/play?id=6456
+2025.03.30 15:55:40 Debug      -  [<color=#9C6994>USharpVideo (WannaDance)</color>] Update: call SyncVideo() since _ownerPlaying is True
+2025.03.30 15:55:41 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:41] : OnUSharpVideoDeserialization: video owner = 阿米bf24, ownerStillFunctional = True, ownerPlaying = True, isPlaying = True</color>
+2025.03.30 15:55:41 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:41] : [LogOtherPlayerAndDeviceType] Player 阿米bf24, isLocal = False, isOwner = True, isMaster = True, isVR = True, latency = 0.2763672</color>
+2025.03.30 15:55:41 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:41] : [LogOtherPlayerAndDeviceType] Player wzhqwq, isLocal = True, isOwner = False, isMaster = False, isVR = False, latency = 0.2000122</color>
+2025.03.30 15:55:41 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:41] : DeserializeVideoUserData: userData = {"version": "20250330134519", "songId": 6456, "isRandom": false, "infoString": "6456. 90's Love - NCT U | Fol2esTz | 阿米bf24", "playerName": "阿米bf24", "videoUrl": "http://api.udon.dance/Api/Songs/play?id=6456", "videoTitle": "6456. 90's Love - NCT U | Fol2esTz", "flip": false, "volume": 0.649999976158142, "doubleWidth": true, "videoGroup": "Fol2esTz", "videoMajor": "Major in K-POP", "playerCount": "1P", "motion": [], "rpe": 80}</color>
+2025.03.30 15:55:41 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:41] : DeserializeVideoUserData: songId = 6456, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24</color>
+2025.03.30 15:55:41 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:41] : UpdateState: version = 20250330134519, songId = 6456, player = 阿米bf24, isRandom = False, infoString = 6456. 90's Love - NCT U | Fol2esTz | 阿米bf24, volume = 0.65, flip = False, doubleWidth = True, motion count = 0</color>
+2025.03.30 15:55:41 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:41] : AdjustMotionVideo: motion contributors = 0, enable motion video legalizer = True</color>
+2025.03.30 15:55:41 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:41] : UpdateState: playButton = False, loading screen = False, error tips = False</color>
+2025.03.30 15:55:41 Debug      -  [VideoListManager] CanAddVideoQueueItem: True
+2025.03.30 15:55:45 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:45] : ForciblyResumeVideo: video owner = 阿米bf24, ownerPlaying = True, waitForSync = False</color>
+2025.03.30 15:55:45 Debug      -  <color=#3EFF00>[VideoQueueManager] [15:55:45] : ForciblyResumeVideo: I am ready, also video owner 阿米bf24 is playing, no need to act</color>
+2025.03.30 15:55:54 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 0 objects from all pools.
+2025.03.30 15:56:24 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 11 objects from all pools.
+2025.03.30 15:56:54 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 0 objects from all pools.
+2025.03.30 15:57:24 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 0 objects from all pools.
+2025.03.30 15:57:54 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 0 objects from all pools.
+2025.03.30 15:58:24 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 0 objects from all pools.
+2025.03.30 15:58:54 Debug      -  PoolManager.PoolCleanupTask(): Cleaned up 0 objects from all pools.
