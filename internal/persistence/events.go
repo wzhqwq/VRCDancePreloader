@@ -1,10 +1,10 @@
 package persistence
 
-func (f *Favorites) SubscribeEvent() chan string {
+func (f *LocalSongs) SubscribeEvent() chan string {
 	return f.em.SubscribeEvent()
 }
 
-func (f *Favorites) notifySubscribers(id string) {
+func (f *LocalSongs) notifySubscribers(id string) {
 	f.em.NotifySubscribers(id)
 }
 

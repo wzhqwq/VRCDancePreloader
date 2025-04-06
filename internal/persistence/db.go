@@ -23,18 +23,18 @@ func InitDB(dbFilePath string) error {
 	if err != nil {
 		return err
 	}
-	_, err = DB.Exec(favoriteTableSQL)
+	_, err = DB.Exec(localSongTableSQL)
 	if err != nil {
 		return err
 	}
-	for _, query := range favoriteTableIndicesSQLs {
+	for _, query := range localSongTableIndicesSQLs {
 		_, err = DB.Exec(query)
 		if err != nil {
 			return err
 		}
 	}
 
-	InitFavorites()
+	InitLocalSongs()
 	InitAllowList()
 	return nil
 }

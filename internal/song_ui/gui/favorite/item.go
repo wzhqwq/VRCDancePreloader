@@ -17,20 +17,19 @@ import (
 type ItemGui struct {
 	widget.BaseWidget
 
-	Entry *persistence.FavoriteEntry
+	Entry *persistence.LocalSongEntry
 
 	TitleWidget  *widgets.EllipseText
 	FavoriteBtn  *widgets.FavoriteBtn
 	IDWidget     *canvas.Text
-	SkillRate    *widgets.Rate
-	LikeRate     *widgets.Rate
+	LocalSong    *widgets.LocalSongOperations
 	SyncToPypyCb *widget.Check
 	Thumbnail    *widgets.Thumbnail
 
 	Separator *widget.Separator
 }
 
-func NewItemGui(entry *persistence.FavoriteEntry) *ItemGui {
+func NewItemGui(entry *persistence.LocalSongEntry) *ItemGui {
 	title := widgets.NewEllipseText(entry.Title, theme.Color(theme.ColorNameForeground))
 	title.TextSize = 16
 	title.TextStyle = fyne.TextStyle{Bold: true}
@@ -43,19 +42,12 @@ func NewItemGui(entry *persistence.FavoriteEntry) *ItemGui {
 		TitleWidget:  title,
 		FavoriteBtn:  widgets.NewFavoriteBtn(entry.ID, entry.Title),
 		IDWidget:     id,
-		SkillRate:    widgets.NewRate(entry.Skill, i18n.T("label_skill_score"), "collection"),
-		LikeRate:     widgets.NewRate(entry.Like, i18n.T("label_like_score"), "heart"),
+		LocalSong:    widgets.NewLocalSongOperations(entry),
 		SyncToPypyCb: widget.NewCheck(i18n.T("label_sync_to_pypy"), nil),
 		Thumbnail:    widgets.NewThumbnail(""),
 		Separator:    widget.NewSeparator(),
 	}
 
-	ig.LikeRate.OnChanged = func(score int) {
-		ig.Entry.UpdateLike(score)
-	}
-	ig.SkillRate.OnChanged = func(score int) {
-		ig.Entry.UpdateSkill(score)
-	}
 	ig.SyncToPypyCb.OnChanged = func(b bool) {
 		ig.Entry.UpdateSyncToPypy(b)
 	}
@@ -67,7 +59,7 @@ func NewItemGui(entry *persistence.FavoriteEntry) *ItemGui {
 	return ig
 }
 
-func (ig *ItemGui) UpdateFavoriteEntry(entry *persistence.FavoriteEntry) {
+func (ig *ItemGui) UpdateFavoriteEntry(entry *persistence.LocalSongEntry) {
 	ig.Entry = entry
 
 	thumbnailUrl := ""
@@ -87,8 +79,7 @@ func (ig *ItemGui) UpdateFavoriteEntry(entry *persistence.FavoriteEntry) {
 	}
 	ig.FavoriteBtn.SetFavorite(entry.IsFavorite)
 	ig.IDWidget.Text = entry.ID
-	ig.SkillRate.SetScore(entry.Skill)
-	ig.LikeRate.SetScore(entry.Like)
+	ig.LocalSong.UpdateEntry(entry)
 	ig.SyncToPypyCb.Checked = entry.InPypy
 
 	ig.Refresh()
@@ -106,7 +97,7 @@ type ItemRenderer struct {
 
 func (r *ItemRenderer) MinSize() fyne.Size {
 	minHeight := r.ig.TitleWidget.MinSize().Height + r.ig.IDWidget.MinSize().Height
-	minHeight += r.ig.SkillRate.MinSize().Height + r.ig.LikeRate.MinSize().Height + r.ig.SyncToPypyCb.MinSize().Height
+	minHeight += r.ig.LocalSong.MinSize().Height + r.ig.SyncToPypyCb.MinSize().Height
 	return fyne.NewSize(300, minHeight)
 }
 
@@ -120,7 +111,7 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 	r.ig.TitleWidget.Resize(fyne.NewSize(size.Width-favWidth-theme.Padding(), titleHeight))
 	r.ig.TitleWidget.Move(fyne.NewPos(0, 0))
 
-	infoHeight := r.ig.SkillRate.MinSize().Height + r.ig.LikeRate.MinSize().Height + r.ig.SyncToPypyCb.MinSize().Height + r.ig.IDWidget.MinSize().Height
+	infoHeight := r.ig.LocalSong.MinSize().Height + r.ig.SyncToPypyCb.MinSize().Height + r.ig.IDWidget.MinSize().Height
 
 	imageWidth := float32(0)
 	if size.Width > 320 {
@@ -141,13 +132,9 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 	r.ig.IDWidget.Move(fyne.NewPos(imageWidth, titleHeight))
 	titleHeight += r.ig.IDWidget.MinSize().Height
 
-	r.ig.LikeRate.Resize(r.ig.LikeRate.MinSize())
-	r.ig.LikeRate.Move(fyne.NewPos(imageWidth, titleHeight))
-	titleHeight += r.ig.LikeRate.MinSize().Height
-
-	r.ig.SkillRate.Resize(r.ig.SkillRate.MinSize())
-	r.ig.SkillRate.Move(fyne.NewPos(imageWidth, titleHeight))
-	titleHeight += r.ig.SkillRate.MinSize().Height
+	r.ig.LocalSong.Resize(r.ig.LocalSong.MinSize())
+	r.ig.LocalSong.Move(fyne.NewPos(imageWidth, titleHeight))
+	titleHeight += r.ig.LocalSong.MinSize().Height
 
 	r.ig.SyncToPypyCb.Resize(r.ig.SyncToPypyCb.MinSize())
 	r.ig.SyncToPypyCb.Move(fyne.NewPos(imageWidth, titleHeight))
@@ -167,8 +154,7 @@ func (r *ItemRenderer) Objects() []fyne.CanvasObject {
 		r.ig.TitleWidget,
 		r.ig.FavoriteBtn,
 		r.ig.IDWidget,
-		r.ig.SkillRate,
-		r.ig.LikeRate,
+		r.ig.LocalSong,
 		r.ig.SyncToPypyCb,
 		r.ig.Thumbnail,
 	}

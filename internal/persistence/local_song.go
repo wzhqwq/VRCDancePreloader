@@ -9,10 +9,10 @@ import (
 	"sync"
 )
 
-var currentFavorite *Favorites
+var currentLocalSongs *LocalSongs
 
-const favoriteTableSQL = `
-CREATE TABLE IF NOT EXISTS favorite (
+const localSongTableSQL = `
+CREATE TABLE IF NOT EXISTS local_song (
     	id TEXT PRIMARY KEY,
     	title TEXT,
     	
@@ -24,23 +24,23 @@ CREATE TABLE IF NOT EXISTS favorite (
 );
 `
 
-var favoriteTableIndicesSQLs = []string{
-	"CREATE INDEX IF NOT EXISTS idx_favorite_is_favorite ON favorite (is_favorite)",
-	"CREATE INDEX IF NOT EXISTS idx_favorite_like ON favorite (like)",
-	"CREATE INDEX IF NOT EXISTS idx_favorite_skill ON favorite (skill)",
-	"CREATE INDEX IF NOT EXISTS idx_favorite_in_pypy ON favorite (in_pypy)",
+var localSongTableIndicesSQLs = []string{
+	"CREATE INDEX IF NOT EXISTS idx_local_song_is_favorite ON local_song (is_favorite)",
+	"CREATE INDEX IF NOT EXISTS idx_local_song_like ON local_song (like)",
+	"CREATE INDEX IF NOT EXISTS idx_local_song_skill ON local_song (skill)",
+	"CREATE INDEX IF NOT EXISTS idx_local_song_in_pypy ON local_song (in_pypy)",
 }
 
-type Favorites struct {
+type LocalSongs struct {
 	sync.Mutex
 	Entries map[string]struct{}
 
 	em *utils.StringEventManager
 }
 
-func (f *Favorites) addEntry(entry *FavoriteEntry) {
+func (f *LocalSongs) addEntry(entry *LocalSongEntry) {
 	// save to db
-	query := "INSERT INTO favorite (id, title, like, skill, is_favorite, in_pypy) VALUES (?, ?, ?, ?, ?, ?)"
+	query := "INSERT INTO local_song (id, title, like, skill, is_favorite, in_pypy) VALUES (?, ?, ?, ?, ?, ?)"
 	_, err := DB.Exec(query, entry.ID, entry.Title, entry.Like, entry.Skill, entry.IsFavorite, entry.InPypy)
 	if err != nil {
 		log.Printf("failed to save favorite entry: %v", err)
@@ -50,11 +50,11 @@ func (f *Favorites) addEntry(entry *FavoriteEntry) {
 	f.Entries[entry.ID] = struct{}{}
 }
 
-func (f *Favorites) getEntry(id string) *FavoriteEntry {
+func (f *LocalSongs) getEntry(id string) *LocalSongEntry {
 	// load from db
-	row := DB.QueryRow("SELECT id, title, like, skill, is_favorite, in_pypy FROM favorite WHERE id = ?", id)
+	row := DB.QueryRow("SELECT id, title, like, skill, is_favorite, in_pypy FROM local_song WHERE id = ?", id)
 
-	var entry FavoriteEntry
+	var entry LocalSongEntry
 	err := row.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite, &entry.InPypy)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -67,7 +67,7 @@ func (f *Favorites) getEntry(id string) *FavoriteEntry {
 	return &entry
 }
 
-func (f *Favorites) SetFavorite(id, title string) {
+func (f *LocalSongs) SetFavorite(id, title string) {
 	f.Lock()
 	defer f.Unlock()
 
@@ -82,7 +82,7 @@ func (f *Favorites) SetFavorite(id, title string) {
 	if entry != nil {
 		if !entry.IsFavorite {
 			// update is_favorite
-			_, err := DB.Exec("UPDATE favorite SET is_favorite = ? WHERE id = ?", true, id)
+			_, err := DB.Exec("UPDATE local_song SET is_favorite = ? WHERE id = ?", true, id)
 			if err != nil {
 				log.Printf("failed to update favorite entry: %v", err)
 				return
@@ -90,7 +90,7 @@ func (f *Favorites) SetFavorite(id, title string) {
 		}
 	} else {
 		// create new entry
-		entry = &FavoriteEntry{
+		entry = &LocalSongEntry{
 			ID:    id,
 			Title: title,
 
@@ -107,7 +107,7 @@ func (f *Favorites) SetFavorite(id, title string) {
 	f.notifySubscribers(id)
 }
 
-func (f *Favorites) UnsetFavorite(id string) {
+func (f *LocalSongs) UnsetFavorite(id string) {
 	f.Lock()
 	defer f.Unlock()
 
@@ -118,7 +118,7 @@ func (f *Favorites) UnsetFavorite(id string) {
 	}
 
 	// update is_favorite
-	_, err := DB.Exec("UPDATE favorite SET is_favorite = ? WHERE id = ?", false, id)
+	_, err := DB.Exec("UPDATE local_song SET is_favorite = ? WHERE id = ?", false, id)
 	if err != nil {
 		log.Printf("failed to update favorite entry: %v", err)
 		return
@@ -128,12 +128,34 @@ func (f *Favorites) UnsetFavorite(id string) {
 	f.notifySubscribers(id)
 }
 
-func (f *Favorites) LoadEntries() error {
+func (f *LocalSongs) AddLocalSongIfNotExist(id, title string) {
+	f.Lock()
+	defer f.Unlock()
+
+	// check if already exists in db
+	entry := f.getEntry(id)
+	if entry == nil {
+		// create new entry
+		entry = &LocalSongEntry{
+			ID:    id,
+			Title: title,
+
+			Like:  0,
+			Skill: 0,
+
+			IsFavorite: false,
+			InPypy:     false,
+		}
+		f.addEntry(entry)
+	}
+}
+
+func (f *LocalSongs) LoadEntries() error {
 	f.Lock()
 	defer f.Unlock()
 
 	// load from db
-	rows, err := DB.Query("SELECT id FROM favorite")
+	rows, err := DB.Query("SELECT id FROM local_song WHERE is_favorite=true")
 	if err != nil {
 		return err
 	}
@@ -152,7 +174,7 @@ func (f *Favorites) LoadEntries() error {
 	return nil
 }
 
-func (f *Favorites) IsFavorite(id string) bool {
+func (f *LocalSongs) IsFavorite(id string) bool {
 	f.Lock()
 	defer f.Unlock()
 
@@ -160,7 +182,7 @@ func (f *Favorites) IsFavorite(id string) bool {
 	return ok
 }
 
-func (f *Favorites) ListFavorites(page, pageSize int, sortBy string, ascending bool) []*FavoriteEntry {
+func (f *LocalSongs) ListFavorites(page, pageSize int, sortBy string, ascending bool) []*LocalSongEntry {
 	f.Lock()
 	defer f.Unlock()
 
@@ -170,7 +192,7 @@ func (f *Favorites) ListFavorites(page, pageSize int, sortBy string, ascending b
 	if !ascending {
 		orderBy += " DESC"
 	}
-	query = "SELECT id, title, like, skill, is_favorite, in_pypy FROM favorite WHERE is_favorite=true " + orderBy + " LIMIT ? OFFSET ?"
+	query = "SELECT id, title, like, skill, is_favorite, in_pypy FROM local_song WHERE is_favorite=true " + orderBy + " LIMIT ? OFFSET ?"
 	rows, err := DB.Query(query, pageSize, page*pageSize)
 	if err != nil {
 		log.Printf("failed to load favorite entries: %v", err)
@@ -178,9 +200,9 @@ func (f *Favorites) ListFavorites(page, pageSize int, sortBy string, ascending b
 	}
 	defer rows.Close()
 
-	var entries []*FavoriteEntry
+	var entries []*LocalSongEntry
 	for rows.Next() {
-		var entry FavoriteEntry
+		var entry LocalSongEntry
 		err = rows.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite, &entry.InPypy)
 		if err != nil {
 			log.Printf("failed to scan favorite entry: %v", err)
@@ -193,13 +215,13 @@ func (f *Favorites) ListFavorites(page, pageSize int, sortBy string, ascending b
 	return entries
 }
 
-func (f *Favorites) CalculateTotalPages(pageSize int) int {
+func (f *LocalSongs) CalculateTotalPages(pageSize int) int {
 	f.Lock()
 	defer f.Unlock()
 
 	// load from db
 	var total int
-	err := DB.QueryRow("SELECT COUNT(*) FROM favorite WHERE is_favorite=true").Scan(&total)
+	err := DB.QueryRow("SELECT COUNT(*) FROM local_song WHERE is_favorite=true").Scan(&total)
 	if err != nil {
 		log.Printf("failed to load favorite entries: %v", err)
 		return 0
@@ -208,24 +230,24 @@ func (f *Favorites) CalculateTotalPages(pageSize int) int {
 	return (total + pageSize - 1) / pageSize
 }
 
-func (f *Favorites) UpdateFavorite(entry *FavoriteEntry) {
+func (f *LocalSongs) UpdateFavorite(entry *LocalSongEntry) {
 	f.Lock()
 	defer f.Unlock()
 
 	// update entry
-	_, err := DB.Exec("UPDATE favorite SET like = ?, skill = ? WHERE id = ?", entry.Like, entry.Skill, entry.ID)
+	_, err := DB.Exec("UPDATE local_song SET like = ?, skill = ? WHERE id = ?", entry.Like, entry.Skill, entry.ID)
 	if err != nil {
 		log.Printf("failed to update favorite entry: %v", err)
 		return
 	}
 }
 
-func (f *Favorites) ToPyPyFavorites() string {
+func (f *LocalSongs) ToPyPyFavorites() string {
 	f.Lock()
 	defer f.Unlock()
 
 	// load from db
-	query := "SELECT id FROM favorite WHERE is_favorite = ? AND in_pypy = ? AND id LIKE ?"
+	query := "SELECT id FROM local_song WHERE is_favorite = ? AND in_pypy = ? AND id LIKE ?"
 	rows, err := DB.Query(query, true, true, "pypy_%")
 	if err != nil {
 		log.Printf("failed to load favorite entries: %v", err)
@@ -248,7 +270,7 @@ func (f *Favorites) ToPyPyFavorites() string {
 	return strings.Join(ids, ",")
 }
 
-type FavoriteEntry struct {
+type LocalSongEntry struct {
 	ID    string
 	Title string
 
@@ -259,37 +281,45 @@ type FavoriteEntry struct {
 	InPypy     bool
 }
 
-func (e *FavoriteEntry) UpdateLike(like int) {
+func (e *LocalSongEntry) UpdateLike(like int) {
 	e.Like = like
-	currentFavorite.UpdateFavorite(e)
+	currentLocalSongs.UpdateFavorite(e)
 }
-func (e *FavoriteEntry) UpdateSkill(skill int) {
+func (e *LocalSongEntry) UpdateSkill(skill int) {
 	e.Skill = skill
-	currentFavorite.UpdateFavorite(e)
+	currentLocalSongs.UpdateFavorite(e)
 }
-func (e *FavoriteEntry) UpdateSyncToPypy(b bool) {
+func (e *LocalSongEntry) UpdateSyncToPypy(b bool) {
 	e.InPypy = b
-	currentFavorite.UpdateFavorite(e)
+	currentLocalSongs.UpdateFavorite(e)
 }
-func (e *FavoriteEntry) SetFavorite() {
-	currentFavorite.SetFavorite(e.ID, e.Title)
+func (e *LocalSongEntry) SetFavorite() {
+	currentLocalSongs.SetFavorite(e.ID, e.Title)
 }
-func (e *FavoriteEntry) UnsetFavorite() {
-	currentFavorite.UnsetFavorite(e.ID)
+func (e *LocalSongEntry) UnsetFavorite() {
+	currentLocalSongs.UnsetFavorite(e.ID)
 }
 
-func InitFavorites() {
-	currentFavorite = &Favorites{
+func InitLocalSongs() {
+	currentLocalSongs = &LocalSongs{
 		Entries: make(map[string]struct{}),
 		em:      utils.NewStringEventManager(),
 	}
-	currentFavorite.LoadEntries()
+	currentLocalSongs.LoadEntries()
 }
 
-func GetFavorite() *Favorites {
-	return currentFavorite
+func GetLocalSongs() *LocalSongs {
+	return currentLocalSongs
 }
 
 func IsFavorite(id string) bool {
-	return currentFavorite.IsFavorite(id)
+	return currentLocalSongs.IsFavorite(id)
+}
+
+func GetEntry(id string) (*LocalSongEntry, error) {
+	e := currentLocalSongs.getEntry(id)
+	if e == nil {
+		return nil, errors.New("entry not found")
+	}
+	return e, nil
 }

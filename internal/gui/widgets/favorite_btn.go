@@ -22,16 +22,16 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 		ID:    id,
 		Title: title,
 
-		eventCh: persistence.GetFavorite().SubscribeEvent(),
+		eventCh: persistence.GetLocalSongs().SubscribeEvent(),
 	}
 	b.Extend(nil)
 
 	b.OnClick = func() {
 		b.SetFavorite(!b.isFavorite)
 		if b.isFavorite {
-			persistence.GetFavorite().SetFavorite(b.ID, b.Title)
+			persistence.GetLocalSongs().SetFavorite(b.ID, b.Title)
 		} else {
-			persistence.GetFavorite().UnsetFavorite(b.ID)
+			persistence.GetLocalSongs().UnsetFavorite(b.ID)
 		}
 	}
 

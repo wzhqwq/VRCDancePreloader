@@ -26,7 +26,7 @@ type FavoritesGui struct {
 	SortByOptions []string
 	OrderOptions  []string
 
-	Favorites *persistence.Favorites
+	Favorites *persistence.LocalSongs
 
 	StopCh   chan struct{}
 	changeCh chan string
@@ -35,7 +35,7 @@ type FavoritesGui struct {
 const pageSize = 20
 
 func NewFavoritesGui() *FavoritesGui {
-	favorites := persistence.GetFavorite()
+	favorites := persistence.GetLocalSongs()
 	list := container.NewVBox()
 	scroll := container.NewVScroll(container.NewPadded(list))
 	scroll.SetMinSize(fyne.NewSize(300, 400))
@@ -127,7 +127,7 @@ func (fg *FavoritesGui) refreshItems() {
 	}
 	ascending := fg.OrderSelect.Selected == fg.OrderOptions[0]
 
-	entries := persistence.GetFavorite().ListFavorites(fg.Pagination.CurrentPage-1, pageSize, sortBy, ascending)
+	entries := persistence.GetLocalSongs().ListFavorites(fg.Pagination.CurrentPage-1, pageSize, sortBy, ascending)
 	fg.List.RemoveAll()
 	for _, entry := range entries {
 		fg.List.Add(NewItemGui(entry))
