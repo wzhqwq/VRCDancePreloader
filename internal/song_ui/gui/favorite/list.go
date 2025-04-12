@@ -8,6 +8,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 func NewFavoritesPage() fyne.CanvasObject {
@@ -28,8 +29,8 @@ type FavoritesGui struct {
 
 	Favorites *persistence.LocalSongs
 
-	StopCh   chan struct{}
-	changeCh chan string
+	StopCh         chan struct{}
+	favoriteChange *utils.StringEventSubscriber
 }
 
 const pageSize = 20
@@ -83,8 +84,8 @@ func NewFavoritesGui() *FavoritesGui {
 
 		Favorites: favorites,
 
-		StopCh:   make(chan struct{}),
-		changeCh: favorites.SubscribeEvent(),
+		StopCh:         make(chan struct{}),
+		favoriteChange: favorites.SubscribeEvent(),
 	}
 
 	refreshFunc := func(string) {
@@ -111,7 +112,7 @@ func (fg *FavoritesGui) RenderLoop() {
 		select {
 		case <-fg.StopCh:
 			return
-		case <-fg.changeCh:
+		case <-fg.favoriteChange.Channel:
 			fg.refreshItems()
 		}
 	}

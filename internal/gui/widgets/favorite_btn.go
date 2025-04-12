@@ -3,6 +3,7 @@ package widgets
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type FavoriteBtn struct {
@@ -13,8 +14,8 @@ type FavoriteBtn struct {
 
 	isFavorite bool
 
-	eventCh chan string
-	closeCh chan struct{}
+	favoriteChange *utils.StringEventSubscriber
+	closeCh        chan struct{}
 }
 
 func NewFavoriteBtn(id, title string) *FavoriteBtn {
@@ -22,7 +23,7 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 		ID:    id,
 		Title: title,
 
-		eventCh: persistence.GetLocalSongs().SubscribeEvent(),
+		favoriteChange: persistence.GetLocalSongs().SubscribeEvent(),
 	}
 	b.Extend(nil)
 
@@ -41,7 +42,7 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 	go func() {
 		for {
 			select {
-			case <-b.eventCh:
+			case <-b.favoriteChange.Channel:
 				b.SetFavorite(persistence.IsFavorite(b.ID))
 			case <-b.closeCh:
 				return
@@ -53,8 +54,8 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 }
 
 func (b *FavoriteBtn) Destroy() {
-	close(b.eventCh)
 	close(b.closeCh)
+	b.favoriteChange.Close()
 }
 
 func (b *FavoriteBtn) SetFavorite(f bool) {

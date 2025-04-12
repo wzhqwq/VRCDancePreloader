@@ -51,32 +51,46 @@ func (fb *FinishingBroadcaster) Finish() {
 
 type StringEventManager struct {
 	sync.Mutex
-	subscribers []chan string
+	subscribers []*StringEventSubscriber
 }
 
 func NewStringEventManager() *StringEventManager {
 	return &StringEventManager{
-		subscribers: make([]chan string, 0),
+		subscribers: make([]*StringEventSubscriber, 0),
 	}
 }
 
-func (em *StringEventManager) SubscribeEvent() chan string {
+func (em *StringEventManager) SubscribeEvent() *StringEventSubscriber {
 	em.Lock()
 	defer em.Unlock()
 	channel := make(chan string, 10)
-	em.subscribers = append(em.subscribers, channel)
-	return channel
+	sub := &StringEventSubscriber{
+		closed:  false,
+		Channel: channel,
+	}
+	em.subscribers = append(em.subscribers, sub)
+	return sub
 }
 
 func (em *StringEventManager) NotifySubscribers(payload string) {
 	em.Lock()
 	defer em.Unlock()
-	em.subscribers = lo.Filter(em.subscribers, func(c chan string, _ int) bool {
-		select {
-		case c <- payload:
-			return true
-		default:
+	em.subscribers = lo.Filter(em.subscribers, func(c *StringEventSubscriber, _ int) bool {
+		if c.closed {
 			return false
+		} else {
+			c.Channel <- payload
+			return true
 		}
 	})
+}
+
+type StringEventSubscriber struct {
+	closed  bool
+	Channel chan string
+}
+
+func (es *StringEventSubscriber) Close() {
+	es.closed = true
+	close(es.Channel)
 }

@@ -191,7 +191,7 @@ func CloseCacheEntry(id string) {
 	localFileEm.NotifySubscribers("*" + id)
 }
 
-func SubscribeLocalFileEvent() chan string {
+func SubscribeLocalFileEvent() *utils.StringEventSubscriber {
 	return localFileEm.SubscribeEvent()
 }
 

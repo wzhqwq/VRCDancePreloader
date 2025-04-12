@@ -10,6 +10,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type LocalFilesGui struct {
@@ -21,8 +22,8 @@ type LocalFilesGui struct {
 	RefreshBtn  *widgets.PaddedIconBtn
 	ProgressBar *widgets.SizeProgressBar
 
-	localFileUpdateCh chan string
-	allowListUpdateCh chan string
+	localFileUpdate *utils.StringEventSubscriber
+	allowListUpdate *utils.StringEventSubscriber
 }
 
 func NewLocalFilesGui() *LocalFilesGui {
@@ -43,8 +44,8 @@ func NewLocalFilesGui() *LocalFilesGui {
 		RefreshBtn:  refreshBtn,
 		ProgressBar: progressBar,
 
-		localFileUpdateCh: cache.SubscribeLocalFileEvent(),
-		allowListUpdateCh: persistence.GetAllowList().SubscribeEvent(),
+		localFileUpdate: cache.SubscribeLocalFileEvent(),
+		allowListUpdate: persistence.GetAllowList().SubscribeEvent(),
 	}
 
 	refreshBtn.OnClick = func() {
@@ -58,12 +59,12 @@ func NewLocalFilesGui() *LocalFilesGui {
 	go func() {
 		for {
 			select {
-			case _, ok := <-g.localFileUpdateCh:
+			case _, ok := <-g.localFileUpdate.Channel:
 				if !ok {
 					return
 				}
 				g.RefreshFiles()
-			case _, ok := <-g.allowListUpdateCh:
+			case _, ok := <-g.allowListUpdate.Channel:
 				if !ok {
 					return
 				}
@@ -136,13 +137,11 @@ func (r *LocalFilesGuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *LocalFilesGuiRenderer) Destroy() {
-	if r.g.localFileUpdateCh != nil {
-		close(r.g.localFileUpdateCh)
-		r.g.localFileUpdateCh = nil
+	if r.g.localFileUpdate != nil {
+		r.g.localFileUpdate.Close()
 	}
-	if r.g.allowListUpdateCh != nil {
-		close(r.g.allowListUpdateCh)
-		r.g.allowListUpdateCh = nil
+	if r.g.allowListUpdate != nil {
+		r.g.allowListUpdate.Close()
 	}
 }
 
@@ -154,7 +153,7 @@ type AllowListGui struct {
 	Label      *canvas.Text
 	RefreshBtn *widgets.PaddedIconBtn
 
-	updateCh chan string
+	listUpdate *utils.StringEventSubscriber
 }
 
 func NewAllowListGui() *AllowListGui {
@@ -172,7 +171,7 @@ func NewAllowListGui() *AllowListGui {
 		Label:      label,
 		RefreshBtn: refreshBtn,
 
-		updateCh: persistence.GetAllowList().SubscribeEvent(),
+		listUpdate: persistence.GetAllowList().SubscribeEvent(),
 	}
 
 	refreshBtn.OnClick = func() {
@@ -186,7 +185,7 @@ func NewAllowListGui() *AllowListGui {
 	go func() {
 		for {
 			select {
-			case _, ok := <-g.updateCh:
+			case _, ok := <-g.listUpdate.Channel:
 				if !ok {
 					return
 				}
@@ -250,8 +249,7 @@ func (r *AllowListGuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *AllowListGuiRenderer) Destroy() {
-	if r.g.updateCh != nil {
-		close(r.g.updateCh)
-		r.g.updateCh = nil
+	if r.g.listUpdate != nil {
+		r.g.listUpdate.Close()
 	}
 }
