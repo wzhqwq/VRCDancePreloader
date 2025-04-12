@@ -204,6 +204,7 @@ func (sm *StateMachine) StartPlayingLoop() {
 
 		if nextTime >= sm.ps.Duration {
 			sm.PlayStatus = Ended
+			sm.ps.AddToHistory()
 			break
 		} else {
 			sm.ps.notifySubscribers(TimeChange)
@@ -216,6 +217,7 @@ func (sm *StateMachine) RemoveFromList() {
 	sm.DownloadStatus = Removed
 	if sm.PlayStatus == Playing {
 		sm.PlayStatus = Ended
+		sm.ps.AddToHistory()
 	}
 	sm.ps.notifySubscribers(StatusChange)
 	download.CancelDownload(sm.ps.GetId())

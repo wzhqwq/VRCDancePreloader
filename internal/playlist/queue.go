@@ -1,6 +1,7 @@
 package playlist
 
 import (
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"log"
 	"slices"
 
@@ -80,6 +81,11 @@ func createFromQueueItem(item types.QueueItem) *song.PreloadedSong {
 	}
 
 	newSong.Adder = item.PlayerName
+
+	id := newSong.GetId()
+	if id != "empty_song" && id != "random_play" {
+		persistence.GetLocalSongs().AddLocalSongIfNotExist(id, newSong.GetInfo().Title)
+	}
 
 	return newSong
 }

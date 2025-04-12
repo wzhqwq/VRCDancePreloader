@@ -2,9 +2,11 @@ package song
 
 import (
 	"fmt"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"time"
 )
 
 type PreloadedSong struct {
@@ -174,4 +176,10 @@ func (ps *PreloadedSong) PrioritizeSong() {
 }
 func (ps *PreloadedSong) RemoveFromList() {
 	ps.sm.RemoveFromList()
+}
+func (ps *PreloadedSong) AddToHistory() {
+	info := ps.GetInfo()
+	startTime := time.Now().Unix() - int64(ps.TimePassed)
+	// TODO: support more dance rooms
+	persistence.AddToHistory(info.ID, info.Title, ps.Adder, "PyPyDance", time.Unix(startTime, 0))
 }

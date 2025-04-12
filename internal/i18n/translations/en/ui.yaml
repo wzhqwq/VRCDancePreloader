@@ -116,3 +116,8 @@
   Default: "Ascending"
 - Key: option_order_desc
   Default: "Descending"
+
+- Key: message_title_continue_record
+  Default: "Continue from last record?"
+- Key: message_continue_record
+  Default: "Found recent history, the last song was played at {{.Time}}, do you want to continue from this record?"

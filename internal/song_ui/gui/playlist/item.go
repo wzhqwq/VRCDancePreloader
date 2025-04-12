@@ -1,4 +1,4 @@
-package gui
+package playlist
 
 import (
 	"fyne.io/fyne/v2/container"

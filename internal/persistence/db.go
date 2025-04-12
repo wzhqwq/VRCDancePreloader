@@ -36,6 +36,7 @@ func InitDB(dbFilePath string) error {
 
 	InitLocalSongs()
 	InitAllowList()
+	InitLocalRecords()
 	return nil
 }
 

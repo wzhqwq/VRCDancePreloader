@@ -33,7 +33,7 @@ var localSongTableIndicesSQLs = []string{
 
 type LocalSongs struct {
 	sync.Mutex
-	Entries map[string]struct{}
+	FavoriteMap map[string]struct{}
 
 	em *utils.StringEventManager
 }
@@ -46,8 +46,6 @@ func (f *LocalSongs) addEntry(entry *LocalSongEntry) {
 		log.Printf("failed to save favorite entry: %v", err)
 		return
 	}
-
-	f.Entries[entry.ID] = struct{}{}
 }
 
 func (f *LocalSongs) getEntry(id string) *LocalSongEntry {
@@ -72,7 +70,7 @@ func (f *LocalSongs) SetFavorite(id, title string) {
 	defer f.Unlock()
 
 	// check if already favorite
-	_, ok := f.Entries[id]
+	_, ok := f.FavoriteMap[id]
 	if ok {
 		return
 	}
@@ -103,7 +101,7 @@ func (f *LocalSongs) SetFavorite(id, title string) {
 		f.addEntry(entry)
 	}
 
-	f.Entries[id] = struct{}{}
+	f.FavoriteMap[id] = struct{}{}
 	f.notifySubscribers(id)
 }
 
@@ -112,7 +110,7 @@ func (f *LocalSongs) UnsetFavorite(id string) {
 	defer f.Unlock()
 
 	// check if favorite
-	_, ok := f.Entries[id]
+	_, ok := f.FavoriteMap[id]
 	if !ok {
 		return
 	}
@@ -124,7 +122,7 @@ func (f *LocalSongs) UnsetFavorite(id string) {
 		return
 	}
 
-	delete(f.Entries, id)
+	delete(f.FavoriteMap, id)
 	f.notifySubscribers(id)
 }
 
@@ -168,7 +166,7 @@ func (f *LocalSongs) LoadEntries() error {
 			return err
 		}
 
-		f.Entries[id] = struct{}{}
+		f.FavoriteMap[id] = struct{}{}
 	}
 
 	return nil
@@ -178,7 +176,7 @@ func (f *LocalSongs) IsFavorite(id string) bool {
 	f.Lock()
 	defer f.Unlock()
 
-	_, ok := f.Entries[id]
+	_, ok := f.FavoriteMap[id]
 	return ok
 }
 
@@ -302,8 +300,8 @@ func (e *LocalSongEntry) UnsetFavorite() {
 
 func InitLocalSongs() {
 	currentLocalSongs = &LocalSongs{
-		Entries: make(map[string]struct{}),
-		em:      utils.NewStringEventManager(),
+		FavoriteMap: make(map[string]struct{}),
+		em:          utils.NewStringEventManager(),
 	}
 	currentLocalSongs.LoadEntries()
 }

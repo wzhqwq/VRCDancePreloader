@@ -116,3 +116,8 @@
   Default: "升序"
 - Key: option_order_desc
   Default: "降序"
+
+- Key: message_title_continue_record
+  Default: "继续上次的历史记录？"
+- Key: message_continue_record
+  Default: "发现最近的历史记录，其最后一首歌的播放时间是{{.Time}}，是否在此记录继续？"
