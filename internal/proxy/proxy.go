@@ -121,6 +121,7 @@ func Start(port string) {
 	proxy.OnRequest(goproxy.ReqHostIs("jd.pypy.moe:443")).DoFunc(handleRequest)
 
 	proxy.OnRequest(goproxy.ReqHostIs("jd.pypy.moe:80")).HijackConnect(handleConnect)
+	proxy.OnRequest(goproxy.ReqHostIs("jd.pypy.moe")).DoFunc(handleRequest)
 
 	runningServer = &http.Server{Addr: "127.0.0.1:" + port, Handler: proxy}
 	log.Println("Starting proxy server on port", port)
