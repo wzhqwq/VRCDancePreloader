@@ -149,8 +149,10 @@ func (t *Thumbnail) LoadImage() {
 		if image == nil {
 			return
 		}
-		t.image.Resource = image
-		t.image.Refresh()
+		fyne.Do(func() {
+			t.image.Resource = image
+			t.image.Refresh()
+		})
 	}()
 }
 

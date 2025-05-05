@@ -38,13 +38,15 @@ func NewRecordGui(record *persistence.DanceRecord) *RecordGui {
 }
 
 func (g *RecordGui) UpdateOrders() {
-	g.List.RemoveAll()
+	fyne.Do(func() {
+		g.List.RemoveAll()
 
-	for _, order := range g.Record.Orders {
-		orderGui := NewOrderGui(order)
-		g.List.Add(orderGui)
-	}
-	g.List.Refresh()
+		for _, order := range g.Record.Orders {
+			orderGui := NewOrderGui(order)
+			g.List.Add(orderGui)
+		}
+		g.List.Refresh()
+	})
 }
 
 func (g *RecordGui) RenderLoop() {

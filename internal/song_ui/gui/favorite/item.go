@@ -70,19 +70,22 @@ func (ig *ItemGui) UpdateFavoriteEntry(entry *persistence.LocalSongEntry) {
 		}
 	}
 	ig.Thumbnail.ThumbnailURL = thumbnailUrl
-
-	ig.TitleWidget.Text = entry.Title
+	ig.Thumbnail.LoadImage()
 
 	if entry.ID != ig.FavoriteBtn.ID {
 		ig.FavoriteBtn.Destroy()
 		ig.FavoriteBtn = widgets.NewFavoriteBtn(entry.ID, entry.Title)
 	}
 	ig.FavoriteBtn.SetFavorite(entry.IsFavorite)
-	ig.IDWidget.Text = entry.ID
 	ig.LocalSong.UpdateEntry(entry)
-	ig.SyncToPypyCb.Checked = entry.InPypy
 
-	ig.Refresh()
+	fyne.Do(func() {
+		ig.TitleWidget.Text = entry.Title
+		ig.IDWidget.Text = entry.ID
+		ig.SyncToPypyCb.Checked = entry.InPypy
+
+		ig.Refresh()
+	})
 }
 
 func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {

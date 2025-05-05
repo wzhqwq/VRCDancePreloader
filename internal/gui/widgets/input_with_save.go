@@ -93,17 +93,20 @@ func (i *InputWithSave) SetValue(value string) {
 	}
 
 	i.Value = value
-	i.InputWidget.SetText(value)
 	if i.OnSave != nil {
 		i.OnSave()
 	}
 	i.Dirty = false
 
-	i.SaveBtn.Hide()
-	for _, item := range i.AfterSaveItems {
-		item.Show()
-	}
-	i.Refresh()
+	fyne.Do(func() {
+		i.InputWidget.SetText(value)
+
+		i.SaveBtn.Hide()
+		for _, item := range i.AfterSaveItems {
+			item.Show()
+		}
+		i.Refresh()
+	})
 }
 
 func (i *InputWithSave) CreateRenderer() fyne.WidgetRenderer {

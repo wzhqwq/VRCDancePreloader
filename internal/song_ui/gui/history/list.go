@@ -68,19 +68,23 @@ func (g *HistoryGui) UpdateRecords() {
 	}
 	g.Records = records
 
-	hasActive := false
-	g.Left.RemoveAll()
-	for _, record := range records {
-		button := widgets.NewRecordButton(record.StartTime, g.activeId == record.ID)
-		button.OnClick = func() {
-			g.SetActive(record.ID)
+	fyne.Do(func() {
+		g.Left.RemoveAll()
+		for _, record := range records {
+			button := widgets.NewRecordButton(record.StartTime, g.activeId == record.ID)
+			button.OnClick = func() {
+				g.SetActive(record.ID)
+			}
+			g.Left.Add(button)
 		}
-		g.Left.Add(button)
+	})
+
+	hasActive := false
+	for _, record := range records {
 		if g.activeId == record.ID {
 			hasActive = true
 		}
 	}
-
 	if !hasActive && len(records) > 0 {
 		g.SetActive(records[0].ID)
 	}
@@ -102,10 +106,10 @@ func (g *HistoryGui) SetActive(id int) {
 		log.Println("Error getting record:", err)
 		return
 	}
-	g.Right.RemoveAll()
-	g.Right.Add(NewRecordGui(r))
-
-	g.Refresh()
+	fyne.Do(func() {
+		g.Right.RemoveAll()
+		g.Right.Add(NewRecordGui(r))
+	})
 }
 
 func (g *HistoryGui) RenderLoop() {

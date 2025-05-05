@@ -125,37 +125,41 @@ func NewItemGui(ps *song.PreloadedSong, plg *PlayListGui) *ItemGui {
 func (ig *ItemGui) UpdateStatus() {
 	status := ig.ps.GetStatusInfo()
 
-	ig.StatusText.Text = status.Status
-	ig.StatusText.Color = theme.Color(status.Color)
-	ig.StatusText.Refresh()
+	fyne.Do(func() {
+		ig.StatusText.Text = status.Status
+		ig.StatusText.Color = theme.Color(status.Color)
+		ig.StatusText.Refresh()
 
-	if status.PreloadError != nil {
-		ig.ErrorText.Text = status.PreloadError.Error()
-		ig.ErrorText.Refresh()
-		ig.ErrorText.Show()
-	} else {
-		ig.ErrorText.Hide()
-	}
+		if status.PreloadError != nil {
+			ig.ErrorText.Text = status.PreloadError.Error()
+			ig.ErrorText.Refresh()
+			ig.ErrorText.Show()
+		} else {
+			ig.ErrorText.Hide()
+		}
+	})
 }
 func (ig *ItemGui) UpdateProgress() {
 	progress := ig.ps.GetProgressInfo()
 
 	ig.ProgressBar.SetTotalSize(progress.Total)
 	ig.ProgressBar.SetCurrentSize(progress.Downloaded)
-	if progress.Total > 0 {
-		ig.SizeText.Text = utils.PrettyByteSize(progress.Total)
-	} else {
-		ig.SizeText.Text = i18n.T("placeholder_unknown_size")
-	}
-	ig.SizeText.Refresh()
 
-	if progress.IsDownloading {
-		ig.ProgressBar.Show()
-		ig.SizeText.Hide()
-	} else {
-		ig.ProgressBar.Hide()
-		ig.SizeText.Show()
-	}
+	fyne.Do(func() {
+		if progress.Total > 0 {
+			ig.SizeText.Text = utils.PrettyByteSize(progress.Total)
+		} else {
+			ig.SizeText.Text = i18n.T("placeholder_unknown_size")
+		}
+
+		if progress.IsDownloading {
+			ig.ProgressBar.Show()
+			ig.SizeText.Hide()
+		} else {
+			ig.ProgressBar.Hide()
+			ig.SizeText.Show()
+		}
+	})
 }
 func (ig *ItemGui) UpdateTime(animation bool) {
 	timeInfo := ig.ps.GetTimeInfo()
@@ -163,58 +167,65 @@ func (ig *ItemGui) UpdateTime(animation bool) {
 	if timeInfo.IsPlaying {
 		ig.PlayBar.Progress = float32(timeInfo.Progress)
 		ig.PlayBar.Text = timeInfo.Text
-		ig.PlayBar.Refresh()
-		if !ig.PlayBar.Visible() {
-			ig.PlayBar.Show()
-			if animation {
-				canvas.NewColorRGBAAnimation(
-					theme.Color(theme.ColorNameSeparator),
-					theme.Color(theme.ColorNamePrimary),
-					500*time.Millisecond,
-					func(c color.Color) {
-						ig.Background.StrokeColor = c
-						ig.Background.Refresh()
-					},
-				).Start()
-			} else {
-				ig.Background.StrokeColor = theme.Color(theme.ColorNamePrimary)
-				ig.Background.Refresh()
+
+		fyne.Do(func() {
+			ig.PlayBar.Refresh()
+			if !ig.PlayBar.Visible() {
+				ig.PlayBar.Show()
+				if animation {
+					canvas.NewColorRGBAAnimation(
+						theme.Color(theme.ColorNameSeparator),
+						theme.Color(theme.ColorNamePrimary),
+						500*time.Millisecond,
+						func(c color.Color) {
+							ig.Background.StrokeColor = c
+							ig.Background.Refresh()
+						},
+					).Start()
+				} else {
+					ig.Background.StrokeColor = theme.Color(theme.ColorNamePrimary)
+					ig.Background.Refresh()
+				}
+				ig.listItem.NotifyUpdateMinSize()
 			}
-			ig.listItem.NotifyUpdateMinSize()
-		}
+		})
 	} else {
-		if ig.PlayBar.Visible() {
-			ig.PlayBar.Hide()
-			if animation {
-				canvas.NewColorRGBAAnimation(
-					theme.Color(theme.ColorNamePrimary),
-					theme.Color(theme.ColorNameSeparator),
-					500*time.Millisecond,
-					func(c color.Color) {
-						ig.Background.StrokeColor = c
-						ig.Background.Refresh()
-					},
-				).Start()
-			} else {
-				ig.Background.StrokeColor = theme.Color(theme.ColorNameSeparator)
-				ig.Background.Refresh()
+		fyne.Do(func() {
+			if ig.PlayBar.Visible() {
+				ig.PlayBar.Hide()
+				if animation {
+					canvas.NewColorRGBAAnimation(
+						theme.Color(theme.ColorNamePrimary),
+						theme.Color(theme.ColorNameSeparator),
+						500*time.Millisecond,
+						func(c color.Color) {
+							ig.Background.StrokeColor = c
+							ig.Background.Refresh()
+						},
+					).Start()
+				} else {
+					ig.Background.StrokeColor = theme.Color(theme.ColorNameSeparator)
+					ig.Background.Refresh()
+				}
+				ig.listItem.NotifyUpdateMinSize()
 			}
-			ig.listItem.NotifyUpdateMinSize()
-		}
+		})
 	}
 }
 
 func (ig *ItemGui) SlideIn() {
-	ig.Move(fyne.NewPos(ig.Size().Width, 0))
-	ig.Show()
-	ig.RunningAnimation = canvas.NewPositionAnimation(
-		fyne.NewPos(ig.Size().Width, 0),
-		fyne.NewPos(0, 0),
-		300*time.Millisecond,
-		ig.Move,
-	)
-	ig.RunningAnimation.Start()
-	ig.Refresh()
+	fyne.Do(func() {
+		ig.Move(fyne.NewPos(ig.Size().Width, 0))
+		ig.Show()
+		ig.RunningAnimation = canvas.NewPositionAnimation(
+			fyne.NewPos(ig.Size().Width, 0),
+			fyne.NewPos(0, 0),
+			300*time.Millisecond,
+			ig.Move,
+		)
+		ig.RunningAnimation.Start()
+		ig.Refresh()
+	})
 }
 func (ig *ItemGui) SlideOut() {
 	if ig.RunningAnimation != nil {

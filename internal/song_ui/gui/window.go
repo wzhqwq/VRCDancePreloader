@@ -26,7 +26,9 @@ func Start() {
 	ch := playlist.SubscribeNewListEvent()
 	stopCh = make(chan struct{})
 	go func() {
-		defer w.Close()
+		defer fyne.Do(func() {
+			w.Close()
+		})
 		for {
 			select {
 			case <-stopCh:
@@ -35,13 +37,15 @@ func Start() {
 				}
 				return
 			case pl := <-ch:
-				if currentGui != nil {
-					currentGui.StopCh <- struct{}{}
-					playlistContainer.Remove(currentGui.Container)
-				}
-				currentGui = playlistgui.NewPlayListGui(pl)
-				playlistContainer.Add(currentGui.Container)
-				go currentGui.RenderLoop()
+				fyne.Do(func() {
+					if currentGui != nil {
+						currentGui.StopCh <- struct{}{}
+						playlistContainer.Remove(currentGui.Container)
+					}
+					currentGui = playlistgui.NewPlayListGui(pl)
+					playlistContainer.Add(currentGui.Container)
+					go currentGui.RenderLoop()
+				})
 			}
 		}
 	}()

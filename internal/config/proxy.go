@@ -50,10 +50,7 @@ func (c *ProxyController) Test() {
 	}
 	c.Status = ProxyStatusTesting
 	if c.Input != nil {
-		c.Input.TestBtn.Disable()
-		c.Input.TestBtn.SetText(i18n.T("btn_testing"))
-		c.Input.UpdateStatus()
-		c.Input.Refresh()
+		c.Input.SetTestBtn(true)
 	}
 	go func() {
 		ok, message := config.Proxy.Test(c.Item)
@@ -65,10 +62,7 @@ func (c *ProxyController) Test() {
 			c.Status = ProxyStatusError
 		}
 		if c.Input != nil {
-			c.Input.TestBtn.Enable()
-			c.Input.TestBtn.SetText(i18n.T("btn_test"))
-			c.Input.UpdateStatus()
-			c.Input.Refresh()
+			c.Input.SetTestBtn(false)
 		}
 	}()
 }
@@ -79,7 +73,6 @@ func (c *ProxyController) Save(value string) {
 	config.Proxy.Update(c.Item, value)
 	if c.Input != nil {
 		c.Input.UpdateStatus()
-		c.Input.Refresh()
 	}
 }
 
@@ -137,6 +130,22 @@ func (i *ProxyInput) UpdateStatus() {
 	}
 }
 
+func (i *ProxyInput) SetTestBtn(testing bool) {
+	fyne.Do(func() {
+		if testing {
+			i.TestBtn.Disable()
+			i.TestBtn.SetText(i18n.T("btn_testing"))
+			i.UpdateStatus()
+			i.Refresh()
+		} else {
+			i.TestBtn.Enable()
+			i.TestBtn.SetText(i18n.T("btn_test"))
+			i.UpdateStatus()
+			i.Refresh()
+		}
+	})
+}
+
 type IconWithMessage struct {
 	widget.BaseWidget
 	desktop.Hoverable
@@ -158,13 +167,17 @@ func NewIconWithMessage(icon fyne.Resource) *IconWithMessage {
 }
 
 func (i *IconWithMessage) SetIcon(icon fyne.Resource) {
-	i.Icon.SetResource(icon)
+	fyne.Do(func() {
+		i.Icon.SetResource(icon)
+	})
 }
 
 func (i *IconWithMessage) SetMessage(message string, color color.Color) {
-	i.Message.Text = message
-	i.Message.Color = color
-	i.Refresh()
+	fyne.Do(func() {
+		i.Message.Text = message
+		i.Message.Color = color
+		i.Refresh()
+	})
 }
 
 func (i *IconWithMessage) MouseIn(*desktop.MouseEvent) {

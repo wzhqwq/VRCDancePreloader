@@ -80,8 +80,10 @@ func (p *Pagination) SetCurrentPage(currentPage int) {
 		return
 	}
 	p.CurrentPage = currentPage
-	p.CurrentPageLabel.SetText(fmt.Sprintf("%d/%d", p.CurrentPage, p.TotalPage))
-	p.Refresh()
+	fyne.Do(func() {
+		p.CurrentPageLabel.SetText(fmt.Sprintf("%d/%d", p.CurrentPage, p.TotalPage))
+		p.Refresh()
+	})
 }
 
 func (p *Pagination) SetTotalPage(totalPage int) {
@@ -89,8 +91,10 @@ func (p *Pagination) SetTotalPage(totalPage int) {
 		return
 	}
 	p.TotalPage = totalPage
-	p.CurrentPageLabel.SetText(fmt.Sprintf("%d/%d", p.CurrentPage, p.TotalPage))
-	p.Refresh()
+	fyne.Do(func() {
+		p.CurrentPageLabel.SetText(fmt.Sprintf("%d/%d", p.CurrentPage, p.TotalPage))
+		p.Refresh()
+	})
 }
 
 func (p *Pagination) CreateRenderer() fyne.WidgetRenderer {

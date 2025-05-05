@@ -61,12 +61,14 @@ func NewRecordButton(date time.Time, active bool) *RecordButton {
 
 func (b *RecordButton) SetActive(active bool) {
 	b.Active = active
-	if active {
-		b.Background.StrokeColor = theme.Color(theme.ColorNamePrimary)
-	} else {
-		b.Background.StrokeColor = theme.Color(theme.ColorNameSeparator)
-	}
-	b.Refresh()
+	fyne.Do(func() {
+		if active {
+			b.Background.StrokeColor = theme.Color(theme.ColorNamePrimary)
+		} else {
+			b.Background.StrokeColor = theme.Color(theme.ColorNameSeparator)
+		}
+		b.Refresh()
+	})
 }
 
 func (b *RecordButton) CreateRenderer() fyne.WidgetRenderer {

@@ -76,31 +76,35 @@ func (g *SizeProgressBar) SetTotalSize(size int64) {
 
 func (g *SizeProgressBar) UpdateBar() {
 	ratio := float32(g.CurrentSize) / float32(g.TotalSize)
-	totalSize := g.Background.Size()
-	if ratio > 1.0 {
-		exceedWidth := max(1, totalSize.Width*(ratio-1.0)/ratio-barGap/2)
-		fullWidth := totalSize.Width - exceedWidth
-		g.BarExceed.Show()
-		g.BarExceed.Resize(fyne.NewSize(exceedWidth, totalSize.Height))
-		g.BarExceed.Move(fyne.NewPos(fullWidth, 0))
+	fyne.Do(func() {
+		totalSize := g.Background.Size()
+		if ratio > 1.0 {
+			exceedWidth := max(1, totalSize.Width*(ratio-1.0)/ratio-barGap/2)
+			fullWidth := totalSize.Width - exceedWidth
+			g.BarExceed.Show()
+			g.BarExceed.Resize(fyne.NewSize(exceedWidth, totalSize.Height))
+			g.BarExceed.Move(fyne.NewPos(fullWidth, 0))
 
-		fullWidth -= barGap
-		g.Bar.Resize(fyne.NewSize(fullWidth, totalSize.Height))
-	} else {
-		g.BarExceed.Hide()
-		g.Bar.Resize(fyne.NewSize(totalSize.Width*ratio, totalSize.Height))
-	}
+			fullWidth -= barGap
+			g.Bar.Resize(fyne.NewSize(fullWidth, totalSize.Height))
+		} else {
+			g.BarExceed.Hide()
+			g.Bar.Resize(fyne.NewSize(totalSize.Width*ratio, totalSize.Height))
+		}
+	})
 }
 
 func (g *SizeProgressBar) UpdateText() {
 	label := utils.PrettyByteSize(g.CurrentSize) + " / " + utils.PrettyByteSize(g.TotalSize)
-	g.Text.Text = label
-	g.Text.Refresh()
+	fyne.Do(func() {
+		g.Text.Text = label
+		g.Text.Refresh()
 
-	textSize := g.Text.MinSize()
-	textX := (g.Background.Size().Width - textSize.Width) / 2
-	textY := (g.Background.Size().Height - textSize.Height) / 2
-	g.Text.Move(fyne.NewPos(textX, textY))
+		textSize := g.Text.MinSize()
+		textX := (g.Background.Size().Width - textSize.Width) / 2
+		textY := (g.Background.Size().Height - textSize.Height) / 2
+		g.Text.Move(fyne.NewPos(textX, textY))
+	})
 }
 
 func (g *SizeProgressBar) CreateRenderer() fyne.WidgetRenderer {

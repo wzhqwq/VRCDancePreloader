@@ -43,14 +43,16 @@ func NewRate(score int, label, iconType string) *Rate {
 
 func (r *Rate) SetScore(score int) {
 	r.Score = score
-	for i := 0; i < 5; i++ {
-		if i < score {
-			r.Icons[i].SetResource(icons.GetIcon(r.Type + "-fill"))
-		} else {
-			r.Icons[i].SetResource(icons.GetIcon(r.Type))
+	fyne.Do(func() {
+		for i := 0; i < 5; i++ {
+			if i < score {
+				r.Icons[i].SetResource(icons.GetIcon(r.Type + "-fill"))
+			} else {
+				r.Icons[i].SetResource(icons.GetIcon(r.Type))
+			}
 		}
-	}
-	r.Refresh()
+		r.Refresh()
+	})
 }
 
 func (r *Rate) Tapped(e *fyne.PointEvent) {

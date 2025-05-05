@@ -85,37 +85,39 @@ func NewLocalFileGui(info types.CacheFileInfo, isInAllowList bool) *LocalFileGui
 }
 
 func (g *LocalFileGui) RefreshButtons() {
-	g.Buttons.RemoveAll()
-	if g.IsInAllowList {
-		removeFromListBtn := widgets.NewPaddedIconBtn(theme.WindowCloseIcon())
-		removeFromListBtn.SetMinSquareSize(30)
-		removeFromListBtn.OnClick = func() {
-			persistence.RemoveFromAllowList(g.Info.ID)
-		}
-		g.Buttons.Add(removeFromListBtn)
-	} else {
-		if !g.Info.IsActive {
-			deleteBtn := widgets.NewPaddedIconBtn(theme.DeleteIcon())
-			deleteBtn.SetMinSquareSize(30)
-			deleteBtn.OnClick = func() {
-				err := cache.RemoveLocalCacheById(g.Info.ID)
-				if err != nil {
-					log.Println(err)
+	fyne.Do(func() {
+		g.Buttons.RemoveAll()
+		if g.IsInAllowList {
+			removeFromListBtn := widgets.NewPaddedIconBtn(theme.WindowCloseIcon())
+			removeFromListBtn.SetMinSquareSize(30)
+			removeFromListBtn.OnClick = func() {
+				persistence.RemoveFromAllowList(g.Info.ID)
+			}
+			g.Buttons.Add(removeFromListBtn)
+		} else {
+			if !g.Info.IsActive {
+				deleteBtn := widgets.NewPaddedIconBtn(theme.DeleteIcon())
+				deleteBtn.SetMinSquareSize(30)
+				deleteBtn.OnClick = func() {
+					err := cache.RemoveLocalCacheById(g.Info.ID)
+					if err != nil {
+						log.Println(err)
+					}
 				}
+				g.Buttons.Add(deleteBtn)
 			}
-			g.Buttons.Add(deleteBtn)
-		}
 
-		if !persistence.IsInAllowList(g.Info.ID) {
-			addAllowListBtn := widgets.NewPaddedIconBtn(theme.NavigateNextIcon())
-			addAllowListBtn.SetMinSquareSize(30)
-			addAllowListBtn.OnClick = func() {
-				persistence.AddToAllowList(g.Info.ID, g.Info.Size)
-				g.RefreshButtons()
+			if !persistence.IsInAllowList(g.Info.ID) {
+				addAllowListBtn := widgets.NewPaddedIconBtn(theme.NavigateNextIcon())
+				addAllowListBtn.SetMinSquareSize(30)
+				addAllowListBtn.OnClick = func() {
+					persistence.AddToAllowList(g.Info.ID, g.Info.Size)
+					g.RefreshButtons()
+				}
+				g.Buttons.Add(addAllowListBtn)
 			}
-			g.Buttons.Add(addAllowListBtn)
 		}
-	}
+	})
 }
 
 func (g *LocalFileGui) CreateRenderer() fyne.WidgetRenderer {

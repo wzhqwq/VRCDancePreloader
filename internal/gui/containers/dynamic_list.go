@@ -30,7 +30,9 @@ func (dl *DynamicList) RemoveItem(id string) {
 }
 func (dl *DynamicList) SetOrder(order []string) {
 	dl.order = order
-	dl.Refresh()
+	fyne.Do(func() {
+		dl.Refresh()
+	})
 }
 func (dl *DynamicList) CreateRenderer() fyne.WidgetRenderer {
 	return &DynamicListRenderer{

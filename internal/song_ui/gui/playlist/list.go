@@ -84,7 +84,9 @@ func (plg *PlayListGui) refreshItems() {
 			return item
 		}
 		newGui := NewItemGui(ps, plg)
-		newGui.Hide()
+		fyne.Do(func() {
+			newGui.Hide()
+		})
 		plg.itemMap[ps.GetId()] = newGui
 		plg.list.AddItem(newGui.listItem)
 		go func() {
