@@ -128,11 +128,9 @@ func (ig *ItemGui) UpdateStatus() {
 	fyne.Do(func() {
 		ig.StatusText.Text = status.Status
 		ig.StatusText.Color = theme.Color(status.Color)
-		ig.StatusText.Refresh()
 
 		if status.PreloadError != nil {
 			ig.ErrorText.Text = status.PreloadError.Error()
-			ig.ErrorText.Refresh()
 			ig.ErrorText.Show()
 		} else {
 			ig.ErrorText.Hide()
@@ -164,11 +162,11 @@ func (ig *ItemGui) UpdateProgress() {
 func (ig *ItemGui) UpdateTime(animation bool) {
 	timeInfo := ig.ps.GetTimeInfo()
 
-	if timeInfo.IsPlaying {
-		ig.PlayBar.Progress = float32(timeInfo.Progress)
-		ig.PlayBar.Text = timeInfo.Text
+	fyne.Do(func() {
+		if timeInfo.IsPlaying {
+			ig.PlayBar.Progress = float32(timeInfo.Progress)
+			ig.PlayBar.Text = timeInfo.Text
 
-		fyne.Do(func() {
 			ig.PlayBar.Refresh()
 			if !ig.PlayBar.Visible() {
 				ig.PlayBar.Show()
@@ -188,9 +186,7 @@ func (ig *ItemGui) UpdateTime(animation bool) {
 				}
 				ig.listItem.NotifyUpdateMinSize()
 			}
-		})
-	} else {
-		fyne.Do(func() {
+		} else {
 			if ig.PlayBar.Visible() {
 				ig.PlayBar.Hide()
 				if animation {
@@ -209,8 +205,8 @@ func (ig *ItemGui) UpdateTime(animation bool) {
 				}
 				ig.listItem.NotifyUpdateMinSize()
 			}
-		})
-	}
+		}
+	})
 }
 
 func (ig *ItemGui) SlideIn() {

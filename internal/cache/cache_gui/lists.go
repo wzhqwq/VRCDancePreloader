@@ -83,17 +83,19 @@ func (g *LocalFilesGui) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (g *LocalFilesGui) RefreshFiles() {
+	infos := cache.GetLocalCacheInfos()
+	totalSize := int64(0)
+
+	g.List.RemoveAll()
+	for _, info := range infos {
+		g.List.Add(NewLocalFileGui(info, false))
+		totalSize += info.Size
+	}
 	fyne.Do(func() {
-		g.List.RemoveAll()
-		infos := cache.GetLocalCacheInfos()
-		totalSize := int64(0)
-		for _, info := range infos {
-			g.List.Add(NewLocalFileGui(info, false))
-			totalSize += info.Size
-		}
 		g.List.Refresh()
-		g.ProgressBar.SetCurrentSize(totalSize)
 	})
+
+	g.ProgressBar.SetCurrentSize(totalSize)
 }
 
 type LocalFilesGuiRenderer struct {
@@ -206,12 +208,12 @@ func (g *AllowListGui) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (g *AllowListGui) RefreshFiles() {
+	g.List.RemoveAll()
+	entries := persistence.GetAllowListEntries()
+	for _, info := range entries {
+		g.List.Add(NewLocalFileGui(info, true))
+	}
 	fyne.Do(func() {
-		g.List.RemoveAll()
-		entries := persistence.GetAllowListEntries()
-		for _, info := range entries {
-			g.List.Add(NewLocalFileGui(info, true))
-		}
 		g.List.Refresh()
 	})
 }

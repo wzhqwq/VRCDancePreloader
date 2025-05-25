@@ -131,18 +131,17 @@ func (i *ProxyInput) UpdateStatus() {
 }
 
 func (i *ProxyInput) SetTestBtn(testing bool) {
+	i.UpdateStatus()
+
 	fyne.Do(func() {
 		if testing {
-			i.TestBtn.Disable()
 			i.TestBtn.SetText(i18n.T("btn_testing"))
-			i.UpdateStatus()
-			i.Refresh()
+			i.TestBtn.Disable()
 		} else {
-			i.TestBtn.Enable()
 			i.TestBtn.SetText(i18n.T("btn_test"))
-			i.UpdateStatus()
-			i.Refresh()
+			i.TestBtn.Enable()
 		}
+		i.Refresh()
 	})
 }
 
@@ -176,17 +175,14 @@ func (i *IconWithMessage) SetMessage(message string, color color.Color) {
 	fyne.Do(func() {
 		i.Message.Text = message
 		i.Message.Color = color
-		i.Refresh()
 	})
 }
 
 func (i *IconWithMessage) MouseIn(*desktop.MouseEvent) {
 	i.Message.Show()
-	i.Refresh()
 }
 func (i *IconWithMessage) MouseOut() {
 	i.Message.Hide()
-	i.Refresh()
 }
 func (i *IconWithMessage) MouseMoved(*desktop.MouseEvent) {
 }

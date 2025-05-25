@@ -3,8 +3,11 @@ package history
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+	"github.com/eduardolat/goeasyi18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
@@ -68,15 +71,17 @@ func (g *HistoryGui) UpdateRecords() {
 	}
 	g.Records = records
 
-	fyne.Do(func() {
-		g.Left.RemoveAll()
-		for _, record := range records {
-			button := widgets.NewRecordButton(record.StartTime, g.activeId == record.ID)
-			button.OnClick = func() {
-				g.SetActive(record.ID)
-			}
-			g.Left.Add(button)
+	g.Left.RemoveAll()
+	for _, record := range records {
+		button := widgets.NewRecordButton(record.StartTime, g.activeId == record.ID)
+		button.OnClick = func() {
+			g.SetActive(record.ID)
 		}
+		g.Left.Add(button)
+	}
+
+	fyne.Do(func() {
+		g.Left.Refresh()
 	})
 
 	hasActive := false
@@ -106,9 +111,12 @@ func (g *HistoryGui) SetActive(id int) {
 		log.Println("Error getting record:", err)
 		return
 	}
+
+	g.Right.RemoveAll()
+	g.Right.Add(NewRecordGui(r))
+
 	fyne.Do(func() {
-		g.Right.RemoveAll()
-		g.Right.Add(NewRecordGui(r))
+		g.Right.Refresh()
 	})
 }
 
@@ -166,4 +174,21 @@ func (r *HistoryGuiRenderer) Objects() []fyne.CanvasObject {
 func (r *HistoryGuiRenderer) Destroy() {
 	close(r.g.StopCh)
 	r.g.recordsChange.Close()
+}
+
+func CheckRecordContinuity(parent fyne.Window) {
+	if r := persistence.GetLocalRecords().GetNearestRecord(); r != nil {
+		dialog.NewConfirm(
+			i18n.T("message_title_continue_record"),
+			i18n.T("message_continue_record", goeasyi18n.Options{
+				Data: map[string]any{"Time": r.StartTime.Format("15:04:05")},
+			}),
+			func(confirmed bool) {
+				persistence.PrepareHistory(confirmed)
+			},
+			parent,
+		).Show()
+	} else {
+		persistence.PrepareHistory(false)
+	}
 }

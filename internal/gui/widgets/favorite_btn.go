@@ -1,7 +1,6 @@
 package widgets
 
 import (
-	"fyne.io/fyne/v2"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -61,12 +60,9 @@ func (b *FavoriteBtn) Destroy() {
 
 func (b *FavoriteBtn) SetFavorite(f bool) {
 	b.isFavorite = f
-	fyne.Do(func() {
-		if f {
-			b.SetIcon(icons.GetIcon("star-fill"))
-		} else {
-			b.SetIcon(icons.GetIcon("star-grey"))
-		}
-		b.Refresh()
-	})
+	if f {
+		b.SetIcon(icons.GetIcon("star-fill"))
+	} else {
+		b.SetIcon(icons.GetIcon("star-grey"))
+	}
 }

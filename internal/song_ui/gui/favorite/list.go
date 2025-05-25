@@ -133,6 +133,9 @@ func (fg *FavoritesGui) refreshItems() {
 	for _, entry := range entries {
 		fg.List.Add(NewItemGui(entry))
 	}
-	fg.List.Refresh()
-	fg.Container.Refresh()
+
+	fyne.Do(func() {
+		fg.List.Refresh()
+		fg.Container.Refresh()
+	})
 }

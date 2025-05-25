@@ -37,15 +37,18 @@ func Start() {
 				}
 				return
 			case pl := <-ch:
+				if currentGui != nil {
+					oldGui := currentGui
+					oldGui.StopCh <- struct{}{}
+					playlistContainer.Remove(oldGui.Container)
+				}
+				currentGui = playlistgui.NewPlayListGui(pl)
+				playlistContainer.Add(currentGui.Container)
 				fyne.Do(func() {
-					if currentGui != nil {
-						currentGui.StopCh <- struct{}{}
-						playlistContainer.Remove(currentGui.Container)
-					}
-					currentGui = playlistgui.NewPlayListGui(pl)
-					playlistContainer.Add(currentGui.Container)
-					go currentGui.RenderLoop()
+					playlistContainer.Refresh()
 				})
+
+				go currentGui.RenderLoop()
 			}
 		}
 	}()

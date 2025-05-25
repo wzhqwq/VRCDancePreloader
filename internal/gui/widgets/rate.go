@@ -51,7 +51,6 @@ func (r *Rate) SetScore(score int) {
 				r.Icons[i].SetResource(icons.GetIcon(r.Type))
 			}
 		}
-		r.Refresh()
 	})
 }
 

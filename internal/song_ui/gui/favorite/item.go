@@ -69,8 +69,7 @@ func (ig *ItemGui) UpdateFavoriteEntry(entry *persistence.LocalSongEntry) {
 			thumbnailUrl = utils.GetPyPyThumbnailUrl(pypyId)
 		}
 	}
-	ig.Thumbnail.ThumbnailURL = thumbnailUrl
-	ig.Thumbnail.LoadImage()
+	ig.Thumbnail.LoadImageFromURL(thumbnailUrl)
 
 	if entry.ID != ig.FavoriteBtn.ID {
 		ig.FavoriteBtn.Destroy()
