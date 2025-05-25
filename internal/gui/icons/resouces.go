@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-//go:embed *.png
+//go:embed *.gif *.svg
 var FS embed.FS
 var resources = map[string]fyne.Resource{}
 var resourcesMutex sync.Mutex
@@ -22,11 +22,39 @@ func GetIcon(name string) fyne.Resource {
 	return loadIcon(name)
 }
 
+func GetGif(name string) fyne.Resource {
+	resourcesMutex.Lock()
+	if r, ok := resources[name]; ok {
+		resourcesMutex.Unlock()
+		return r
+	}
+	resourcesMutex.Unlock()
+	return loadGif(name)
+}
+
 func loadIcon(name string) fyne.Resource {
 	resourcesMutex.Lock()
 	defer resourcesMutex.Unlock()
 
-	f, err := FS.Open(name + ".png")
+	f, err := FS.Open(name + ".svg")
+	if err != nil {
+		return nil
+	}
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil
+	}
+	r := fyne.NewStaticResource(name, data)
+	resources[name] = r
+
+	return r
+}
+
+func loadGif(name string) fyne.Resource {
+	resourcesMutex.Lock()
+	defer resourcesMutex.Unlock()
+
+	f, err := FS.Open(name + ".gif")
 	if err != nil {
 		return nil
 	}

@@ -47,7 +47,7 @@ func NewPagination() *Pagination {
 		}
 	}
 	p.NextBtn.SetPadding(theme.Padding() * 2)
-	p.FirstBtn = NewPaddedIconBtn(icons.GetIcon("angle-double-left"))
+	p.FirstBtn = NewPaddedIconBtn(icons.GetIcon("angles-left"))
 	p.FirstBtn.OnClick = func() {
 		if p.CurrentPage > 1 {
 			p.CurrentPage = 1
@@ -57,7 +57,7 @@ func NewPagination() *Pagination {
 		}
 	}
 	p.FirstBtn.SetPadding(theme.Padding() * 2)
-	p.LastBtn = NewPaddedIconBtn(icons.GetIcon("angle-double-right"))
+	p.LastBtn = NewPaddedIconBtn(icons.GetIcon("angles-right"))
 	p.LastBtn.OnClick = func() {
 		if p.CurrentPage < p.TotalPage {
 			p.CurrentPage = p.TotalPage

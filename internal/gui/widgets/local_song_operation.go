@@ -20,7 +20,7 @@ func NewLocalSongOperations(entry *persistence.LocalSongEntry) *LocalSongOperati
 	g := &LocalSongOperations{
 		Entry: entry,
 
-		SkillRate: NewRate(entry.Skill, i18n.T("label_skill_score"), "collection"),
+		SkillRate: NewRate(entry.Skill, i18n.T("label_skill_score"), "star"),
 		LikeRate:  NewRate(entry.Like, i18n.T("label_like_score"), "heart"),
 	}
 	g.LikeRate.OnChanged = func(score int) {

@@ -63,9 +63,9 @@ func (b *FavoriteBtn) SetFavorite(f bool) {
 	b.isFavorite = f
 	fyne.Do(func() {
 		if f {
-			b.SetIcon(icons.GetIcon("collection-fill"))
+			b.SetIcon(icons.GetIcon("star-fill"))
 		} else {
-			b.SetIcon(icons.GetIcon("collection-grey"))
+			b.SetIcon(icons.GetIcon("star-grey"))
 		}
 		b.Refresh()
 	})
