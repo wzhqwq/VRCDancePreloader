@@ -1,8 +1,10 @@
 package playlist
 
 import (
+	"fyne.io/fyne/v2/widget"
 	"sync"
 	"time"
+	"weak"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -13,79 +15,103 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
-type PlayListGui struct {
+type ListGui struct {
+	widget.BaseWidget
+
 	pl *playlist.PlayList
-
-	Container *container.Scroll
-
-	items   []*ItemGui
-	itemMap map[string]*ItemGui
 
 	StopCh   chan struct{}
 	changeCh chan playlist.ChangeType
-
-	list *containers.DynamicList
-
-	mapMutex sync.Mutex
 }
 
-func NewPlayListGui(pl *playlist.PlayList) *PlayListGui {
-	list := containers.NewDynamicList(playItemMinWidth)
-	scroll := container.NewVScroll(list)
-	scroll.SetMinSize(fyne.NewSize(playItemMinWidth+theme.Padding(), 400))
-
-	return &PlayListGui{
-		Container: scroll,
-
-		items:   make([]*ItemGui, 0),
-		itemMap: make(map[string]*ItemGui),
-		list:    list,
-
+func NewListGui(pl *playlist.PlayList) *ListGui {
+	g := &ListGui{
 		pl: pl,
 
 		StopCh:   make(chan struct{}),
 		changeCh: pl.SubscribeChangeEvent(),
 	}
+
+	g.ExtendBaseWidget(g)
+
+	return g
 }
 
-func (plg *PlayListGui) RenderLoop() {
-	plg.refreshItems()
+func (l *ListGui) RenderLoop() {
+	fyne.Do(func() {
+		l.Refresh()
+	})
 
 	for {
 		select {
-		case <-plg.StopCh:
-			for _, item := range plg.items {
-				item.StopCh <- struct{}{}
-			}
+		case <-l.StopCh:
 			return
-		case change := <-plg.changeCh:
+		case change := <-l.changeCh:
 			switch change {
 			case playlist.ItemsChange:
-				plg.refreshItems()
+				fyne.Do(func() {
+					l.Refresh()
+				})
 			}
 		}
 	}
 }
 
-func (plg *PlayListGui) refreshItems() {
-	plg.mapMutex.Lock()
-	defer func() {
-		plg.mapMutex.Unlock()
-		plg.list.SetOrder(lo.Map(plg.items, func(item *ItemGui, _ int) string {
-			return item.ps.GetId()
-		}))
-		plg.Container.Refresh()
-	}()
+func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
+	dynamicList := containers.NewDynamicList(playItemMinWidth)
+	scroll := container.NewVScroll(dynamicList)
+	scroll.SetMinSize(fyne.NewSize(playItemMinWidth+theme.Padding(), 400))
 
-	plg.pl.Lock()
-	defer plg.pl.Unlock()
-	plg.items = lo.Map(plg.pl.Items, func(ps *song.PreloadedSong, _ int) *ItemGui {
-		if item, ok := plg.itemMap[ps.GetId()]; ok {
-			return item
+	go l.RenderLoop()
+
+	return &listGuiRenderer{
+		list: l,
+
+		Container: scroll,
+
+		itemMap: make(map[string]weak.Pointer[ItemGui]),
+
+		dynamicList: dynamicList,
+	}
+}
+
+type listGuiRenderer struct {
+	list *ListGui
+
+	Container *container.Scroll
+
+	items   []*ItemGui
+	itemMap map[string]weak.Pointer[ItemGui]
+
+	dynamicList *containers.DynamicList
+
+	mapMutex sync.Mutex
+}
+
+func (r *listGuiRenderer) MinSize() fyne.Size {
+	return r.Container.MinSize()
+}
+
+func (r *listGuiRenderer) Layout(size fyne.Size) {
+	r.Container.Resize(size)
+	r.Container.Move(fyne.NewPos(0, 0))
+}
+
+func (r *listGuiRenderer) Refresh() {
+	r.mapMutex.Lock()
+
+	songs := make([]*song.PreloadedSong, len(r.list.pl.Items))
+	copy(songs, r.list.pl.Items)
+
+	r.items = lo.Map(songs, func(ps *song.PreloadedSong, _ int) *ItemGui {
+		if item, ok := r.itemMap[ps.GetId()]; ok {
+			if v := item.Value(); v != nil {
+				return v
+			}
 		}
-		newGui := NewItemGui(ps, plg)
-		plg.itemMap[ps.GetId()] = newGui
-		plg.list.AddItem(newGui.listItem)
+		newGui := NewItemGui(ps, r.dynamicList)
+		r.itemMap[ps.GetId()] = weak.Make(newGui)
+		r.dynamicList.AddItem(newGui.listItem)
 
 		go newGui.RenderLoop()
 
@@ -98,11 +124,18 @@ func (plg *PlayListGui) refreshItems() {
 		})
 		return newGui
 	})
+
+	r.mapMutex.Unlock()
+	r.dynamicList.SetOrder(lo.Map(r.items, func(item *ItemGui, _ int) string {
+		return item.ps.GetId()
+	}))
+	r.Container.Refresh()
 }
 
-func (plg *PlayListGui) removeFromMap(id string) {
-	plg.mapMutex.Lock()
-	defer plg.mapMutex.Unlock()
-	plg.list.RemoveItem(id)
-	delete(plg.itemMap, id)
+func (r *listGuiRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.Container}
+}
+
+func (r *listGuiRenderer) Destroy() {
+	close(r.list.StopCh)
 }
