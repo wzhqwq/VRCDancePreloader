@@ -72,7 +72,7 @@ func (c *ProxyController) Save(value string) {
 	c.Status = ProxyStatusUnknown
 	config.Proxy.Update(c.Item, value)
 	if c.Input != nil {
-		c.Input.UpdateStatus()
+		c.Input.SetTestBtn(false)
 	}
 }
 
@@ -92,7 +92,6 @@ func NewProxyInput(controller *ProxyController, label string) *ProxyInput {
 	}
 
 	t.StatusIcon = NewIconWithMessage(nil)
-	t.StatusIcon.Refresh()
 	t.InputAppendItems = []fyne.CanvasObject{container.NewPadded(t.StatusIcon)}
 
 	t.TestBtn = widget.NewButton(i18n.T("btn_test"), func() {
@@ -100,7 +99,7 @@ func NewProxyInput(controller *ProxyController, label string) *ProxyInput {
 	})
 	t.AfterSaveItems = []fyne.CanvasObject{t.TestBtn}
 
-	t.UpdateStatus()
+	t.updateStatus()
 
 	controller.Input = t
 	t.OnSave = func() {
@@ -113,7 +112,7 @@ func NewProxyInput(controller *ProxyController, label string) *ProxyInput {
 	return t
 }
 
-func (i *ProxyInput) UpdateStatus() {
+func (i *ProxyInput) updateStatus() {
 	switch i.Controller.Status {
 	case ProxyStatusOk:
 		i.StatusIcon.SetIcon(theme.NewColoredResource(theme.ConfirmIcon(), theme.ColorNameSuccess))
@@ -131,7 +130,7 @@ func (i *ProxyInput) UpdateStatus() {
 }
 
 func (i *ProxyInput) SetTestBtn(testing bool) {
-	i.UpdateStatus()
+	i.updateStatus()
 
 	fyne.Do(func() {
 		if testing {
@@ -167,7 +166,12 @@ func NewIconWithMessage(icon fyne.Resource) *IconWithMessage {
 
 func (i *IconWithMessage) SetIcon(icon fyne.Resource) {
 	fyne.Do(func() {
-		i.Icon.SetResource(icon)
+		if icon == nil {
+			i.Icon.Hide()
+		} else {
+			i.Icon.SetResource(icon)
+			i.Icon.Show()
+		}
 	})
 }
 
@@ -201,17 +205,18 @@ type iconWithMessageRenderer struct {
 }
 
 func (r *iconWithMessageRenderer) MinSize() fyne.Size {
-	return r.i.Icon.MinSize()
+	return fyne.NewSize(20, 20)
 }
 
-func (r *iconWithMessageRenderer) Layout(fyne.Size) {
-	iconSize := r.i.Icon.MinSize()
-	r.i.Icon.Resize(iconSize)
-	r.i.Icon.Move(fyne.NewPos(0, 0))
+func (r *iconWithMessageRenderer) Layout(size fyne.Size) {
+	if r.i.Icon.Visible() {
+		r.i.Icon.Resize(size)
+		r.i.Icon.Move(fyne.NewPos(0, 0))
+	}
 
 	messageSize := r.i.Message.MinSize()
 	r.i.Message.Resize(messageSize)
-	r.i.Message.Move(fyne.NewPos(min(115-messageSize.Width, -(messageSize.Width-iconSize.Width)/2), iconSize.Height+5))
+	r.i.Message.Move(fyne.NewPos(min(115-messageSize.Width, -(messageSize.Width-size.Width)/2), size.Height+5))
 }
 
 func (r *iconWithMessageRenderer) Objects() []fyne.CanvasObject {
@@ -219,8 +224,7 @@ func (r *iconWithMessageRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *iconWithMessageRenderer) Refresh() {
-	r.i.Icon.Refresh()
-	r.i.Message.Refresh()
+	canvas.Refresh(r.i)
 }
 
 func (r *iconWithMessageRenderer) Destroy() {

@@ -161,7 +161,7 @@ func (r *inputWithSaveRenderer) Layout(size fyne.Size) {
 }
 
 func (r *inputWithSaveRenderer) Refresh() {
-	r.Layout(r.i.Size())
+	canvas.Refresh(r.i)
 }
 
 func (r *inputWithSaveRenderer) Objects() []fyne.CanvasObject {
