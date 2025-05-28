@@ -16,14 +16,25 @@ import (
 	"log"
 )
 
-var cache = utils.NewWeakCache[future.Future[image.Image]](20)
+type AsyncImage struct {
+	i      future.Future[image.Image]
+	loaded bool
+}
+
+var cache = utils.NewWeakCache[AsyncImage](100)
 
 func GetThumbnailImage(url string) image.Image {
 	if i, ok := cache.Get(url); ok {
-		return i.Get()
+		return i.i.Get()
 	}
 
 	i := future.New(func() image.Image {
+		defer func() {
+			if i, ok := cache.Get(url); ok {
+				i.loaded = true
+			}
+		}()
+
 		log.Println("Get: ", url)
 		resp, err := requesting.RequestThumbnail(url)
 		if err != nil {
@@ -47,14 +58,17 @@ func GetThumbnailImage(url string) image.Image {
 		return resize.Resize(160, 0, img, resize.Bilinear)
 	})
 
-	cache.Set(url, i)
+	cache.Set(url, AsyncImage{i: i, loaded: false})
 
 	return i.Get()
 }
 
-func HasThumbnailCached(url string) bool {
-	_, ok := cache.Get(url)
-	return ok
+func HasThumbnailCachedAndLoaded(url string) bool {
+	f, ok := cache.Get(url)
+	if ok {
+		return f.loaded
+	}
+	return false
 }
 
 type Thumbnail struct {
@@ -115,7 +129,7 @@ func (t *Thumbnail) LoadImage() {
 		t.i = canvas.NewImageFromResource(icons.GetIcon("movie"))
 		return
 	}
-	if HasThumbnailCached(t.thumbnailURL) {
+	if HasThumbnailCachedAndLoaded(t.thumbnailURL) {
 		t.showIcon = false
 		t.i = canvas.NewImageFromImage(GetThumbnailImage(t.thumbnailURL))
 		t.i.FillMode = canvas.ImageFillContain
