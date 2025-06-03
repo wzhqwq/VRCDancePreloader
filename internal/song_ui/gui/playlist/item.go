@@ -158,15 +158,21 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	cardBackground.StrokeWidth = 2
 	cardBackground.StrokeColor = theme.Color(theme.ColorNameSeparator)
 
+	thumbnailMask := canvas.NewRectangle(color.Transparent)
+	thumbnailMask.CornerRadius = theme.Padding() * 1.5
+	thumbnailMask.StrokeWidth = theme.Padding() / 2
+	thumbnailMask.StrokeColor = theme.Color(theme.ColorNameHeaderBackground)
+
 	go ig.RenderLoop()
 
 	return &ItemRenderer{
 		ig: ig,
 
-		Background: cardBackground,
-		InfoLeft:   container.NewVBox(group, adder, statusText),
-		InfoRight:  container.NewVBox(id, progress, sizeText),
-		InfoBottom: container.NewVBox(errorText, playBar),
+		Background:    cardBackground,
+		ThumbnailMask: thumbnailMask,
+		InfoLeft:      container.NewVBox(group, adder, statusText),
+		InfoRight:     container.NewVBox(id, progress, sizeText),
+		InfoBottom:    container.NewVBox(errorText, playBar),
 
 		ProgressBar: progress,
 		StatusText:  statusText,
@@ -188,10 +194,11 @@ var topHeight float32 = 30
 type ItemRenderer struct {
 	ig *ItemGui
 
-	Background *canvas.Rectangle
-	InfoLeft   fyne.CanvasObject
-	InfoRight  fyne.CanvasObject
-	InfoBottom fyne.CanvasObject
+	Background    *canvas.Rectangle
+	ThumbnailMask *canvas.Rectangle
+	InfoLeft      fyne.CanvasObject
+	InfoRight     fyne.CanvasObject
+	InfoBottom    fyne.CanvasObject
 
 	ProgressBar *widgets.SizeProgressBar
 	ErrorText   *canvas.Text
@@ -205,12 +212,7 @@ type ItemRenderer struct {
 
 func (r *ItemRenderer) MinSize() fyne.Size {
 	p := theme.Padding()
-	totalHeight := topHeight + p
-	totalHeight += r.InfoLeft.MinSize().Height + p
-	bottomHeight := r.InfoBottom.MinSize().Height
-	if bottomHeight > 0 {
-		totalHeight += bottomHeight + p
-	}
+	totalHeight := topHeight + r.InfoLeft.MinSize().Height + r.InfoBottom.MinSize().Height + p
 	return fyne.NewSize(playItemMinWidth, totalHeight)
 }
 
@@ -238,13 +240,13 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 	r.InfoBottom.Move(fyne.NewPos(p, bottomY))
 
 	// Center layout
-	centerY := topHeight + p
+	centerY := topHeight
 	centerHeight := bottomY - centerY
 
 	// right layout: id, progress, size
 	rightInfoX := size.Width - r.InfoRight.MinSize().Width - p
 	r.InfoRight.Resize(fyne.NewSize(r.InfoRight.MinSize().Width, centerHeight))
-	r.InfoRight.Move(fyne.NewPos(rightInfoX, topHeight))
+	r.InfoRight.Move(fyne.NewPos(rightInfoX, centerY))
 
 	// left layout: thumbnail(if possible), group, adder, status
 	leftInfoX := p
@@ -255,15 +257,21 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 		}
 
 		r.Thumbnail.Resize(fyne.NewSize(thumbnailWidth, centerHeight))
-		r.Thumbnail.Move(fyne.NewPos(leftInfoX, topHeight))
+		r.Thumbnail.Move(fyne.NewPos(leftInfoX, centerY))
+		r.ThumbnailMask.Resize(fyne.NewSize(thumbnailWidth+p, centerHeight+p))
+		r.ThumbnailMask.Move(fyne.NewPos(leftInfoX-p/2, centerY-p/2))
 
 		leftInfoX += thumbnailWidth + p
+
+		r.Thumbnail.Show()
+		r.ThumbnailMask.Show()
 	} else {
-		r.Thumbnail.Resize(fyne.NewSize(0, centerHeight))
+		r.Thumbnail.Hide()
+		r.ThumbnailMask.Hide()
 	}
 
 	r.InfoLeft.Resize(fyne.NewSize(rightInfoX-leftInfoX, centerHeight))
-	r.InfoLeft.Move(fyne.NewPos(leftInfoX, topHeight))
+	r.InfoLeft.Move(fyne.NewPos(leftInfoX, centerY))
 }
 
 func (r *ItemRenderer) Refresh() {
@@ -345,13 +353,14 @@ func (r *ItemRenderer) Refresh() {
 func (r *ItemRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{
 		r.Background,
+		r.Thumbnail,
+		r.ThumbnailMask,
 
 		r.TitleWidget,
 		r.FavoriteBtn,
 
 		r.InfoBottom,
 
-		r.Thumbnail,
 		r.InfoLeft,
 		r.InfoRight,
 	}
