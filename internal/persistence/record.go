@@ -82,6 +82,30 @@ func (r *DanceRecord) AddOrder(order Order) {
 	}
 }
 
+func (r *DanceRecord) RemoveOrder(orderTime time.Time) {
+	r.Lock()
+	defer r.Unlock()
+
+	removeIndex := -1
+	for i, order := range r.Orders {
+		if order.Time.Unix() == orderTime.Unix() {
+			removeIndex = i
+			break
+		}
+	}
+
+	if removeIndex == -1 {
+		return
+	}
+	order := r.Orders[removeIndex]
+	r.Orders = append(r.Orders[:removeIndex], r.Orders[removeIndex+1:]...)
+
+	r.em.NotifySubscribers("-" + order.ID)
+	if r.ID != -1 {
+		r.updateOrders()
+	}
+}
+
 func (r *DanceRecord) SetComment(comment string) {
 	r.Comment = comment
 	if r.ID != -1 {

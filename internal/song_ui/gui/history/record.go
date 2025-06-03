@@ -49,6 +49,10 @@ func (g *RecordGui) RenderLoop() {
 	}
 }
 
+func (g *RecordGui) HandleRemove(order persistence.Order) {
+	g.Record.RemoveOrder(order.Time)
+}
+
 func (g *RecordGui) CreateRenderer() fyne.WidgetRenderer {
 	go g.RenderLoop()
 
@@ -77,6 +81,9 @@ func (r *RecordGuiRenderer) Refresh() {
 	r.List.RemoveAll()
 	for _, order := range r.g.Record.Orders {
 		orderGui := NewOrderGui(order)
+		orderGui.onRemove = func() {
+			r.g.HandleRemove(order)
+		}
 		r.List.Add(orderGui)
 	}
 	r.List.Refresh()

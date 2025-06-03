@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/eduardolat/goeasyi18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
@@ -21,6 +22,8 @@ type OrderGui struct {
 
 	Entry *persistence.LocalSongEntry
 	order persistence.Order
+
+	onRemove func()
 }
 
 func NewOrderGui(order persistence.Order) *OrderGui {
@@ -62,11 +65,29 @@ func (ig *OrderGui) CreateRenderer() fyne.WidgetRenderer {
 		}
 	}
 
+	favoriteBtn := button.NewFavoriteBtn(ig.Entry.ID, ig.Entry.Title)
+	favoriteBtn.SetMinSquareSize(36)
+	favoriteBtn.SetPadding(8)
+
+	deleteBtn := button.NewPaddedIconBtn(icons.GetIcon("delete"))
+	deleteBtn.SetMinSquareSize(36)
+	deleteBtn.SetPadding(8)
+	deleteBtn.OnClick = func() {
+		if ig.onRemove != nil {
+			ig.onRemove()
+		}
+	}
+
+	actions := button.NewSideActions()
+	actions.Buttons = []fyne.CanvasObject{
+		favoriteBtn,
+		deleteBtn,
+	}
+
 	return &ItemRenderer{
 		ig: ig,
 
 		TitleWidget: title,
-		FavoriteBtn: button.NewFavoriteBtn(ig.order.ID, ig.order.Title),
 
 		SongInfoLine:  songInfoLine,
 		OrderInfoLine: orderInfoLine,
@@ -74,6 +95,7 @@ func (ig *OrderGui) CreateRenderer() fyne.WidgetRenderer {
 		LocalSong: widgets.NewLocalSongOperations(ig.Entry),
 		Thumbnail: widgets.NewThumbnail(thumbnailUrl),
 		Separator: widget.NewSeparator(),
+		Actions:   actions,
 	}
 }
 
@@ -81,7 +103,6 @@ type ItemRenderer struct {
 	ig *OrderGui
 
 	TitleWidget *widgets.EllipseText
-	FavoriteBtn *button.FavoriteBtn
 
 	SongInfoLine  *canvas.Text
 	OrderInfoLine *canvas.Text
@@ -90,6 +111,7 @@ type ItemRenderer struct {
 	Thumbnail *widgets.Thumbnail
 
 	Separator *widget.Separator
+	Actions   *button.SideActions
 }
 
 func (r *ItemRenderer) MinSize() fyne.Size {
@@ -103,13 +125,9 @@ func (r *ItemRenderer) MinSize() fyne.Size {
 func (r *ItemRenderer) Layout(size fyne.Size) {
 	p := theme.Padding()
 
-	favWidth := r.FavoriteBtn.MinSize().Width
 	titleHeight := r.TitleWidget.MinSize().Height
 
-	r.FavoriteBtn.Resize(fyne.NewSize(favWidth, favWidth))
-	r.FavoriteBtn.Move(fyne.NewPos(size.Width-favWidth-p, (titleHeight-r.FavoriteBtn.MinSize().Height)/2))
-
-	r.TitleWidget.Resize(fyne.NewSize(size.Width-favWidth-p*2, titleHeight))
+	r.TitleWidget.Resize(fyne.NewSize(size.Width-p*2, titleHeight))
 	r.TitleWidget.Move(fyne.NewPos(p, 0))
 
 	infoHeight := r.LocalSong.MinSize().Height + r.SongInfoLine.MinSize().Height
@@ -145,6 +163,9 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 
 	r.Separator.Resize(fyne.NewSize(size.Width, 1))
 	r.Separator.Move(fyne.NewPos(0, size.Height-1))
+
+	r.Actions.Resize(size)
+	r.Actions.Move(fyne.NewPos(0, 0))
 }
 
 func (r *ItemRenderer) Refresh() {
@@ -154,13 +175,13 @@ func (r *ItemRenderer) Refresh() {
 
 func (r *ItemRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{
-		r.Separator,
 		r.TitleWidget,
-		r.FavoriteBtn,
 		r.SongInfoLine,
 		r.OrderInfoLine,
 		r.LocalSong,
 		r.Thumbnail,
+		r.Actions,
+		r.Separator,
 	}
 }
 
