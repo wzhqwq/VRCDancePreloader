@@ -34,7 +34,8 @@ func createProxySettingsContent() fyne.CanvasObject {
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_proxy")))
 	wholeContent.Add(NewProxyInput(config.Proxy.ProxyControllers["pypydance-api"], i18n.T("label_pypy_proxy")))
-	wholeContent.Add(NewProxyInput(config.Proxy.ProxyControllers["youtube-video"], i18n.T("label_yt_video_proxy")))
+	//TODO cancel comment after implemented youtube preloading
+	//wholeContent.Add(NewProxyInput(config.Proxy.ProxyControllers["youtube-video"], i18n.T("label_yt_video_proxy")))
 	wholeContent.Add(NewProxyInput(config.Proxy.ProxyControllers["youtube-api"], i18n.T("label_yt_api_proxy")))
 	wholeContent.Add(NewProxyInput(config.Proxy.ProxyControllers["youtube-image"], i18n.T("label_yt_image_proxy")))
 
@@ -85,18 +86,19 @@ func createYoutubeSettingsContent() fyne.CanvasObject {
 	enableThumbnailCheck.Checked = config.Youtube.EnableThumbnail
 	wholeContent.Add(enableThumbnailCheck)
 
-	enableVideoCheck := widget.NewCheck(i18n.T("label_yt_video_enable"), func(b bool) {
-		if config.Youtube.EnableVideo == b {
-			return
-		}
-		config.Youtube.EnableVideo = b
-		SaveConfig()
-		if b && config.Proxy.ProxyControllers["youtube-video"].Status != ProxyStatusOk {
-			config.Proxy.ProxyControllers["youtube-video"].Test()
-		}
-	})
-	enableVideoCheck.Checked = config.Youtube.EnableVideo
-	wholeContent.Add(enableVideoCheck)
+	//TODO cancel comment after implemented youtube preloading
+	//enableVideoCheck := widget.NewCheck(i18n.T("label_yt_video_enable"), func(b bool) {
+	//	if config.Youtube.EnableVideo == b {
+	//		return
+	//	}
+	//	config.Youtube.EnableVideo = b
+	//	SaveConfig()
+	//	if b && config.Proxy.ProxyControllers["youtube-video"].Status != ProxyStatusOk {
+	//		config.Proxy.ProxyControllers["youtube-video"].Test()
+	//	}
+	//})
+	//enableVideoCheck.Checked = config.Youtube.EnableVideo
+	//wholeContent.Add(enableVideoCheck)
 
 	return wholeContent
 }

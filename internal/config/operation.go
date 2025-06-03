@@ -11,6 +11,7 @@ import (
 )
 
 func (pc *ProxyConfig) Init() {
+	//TODO cancel comment after implemented youtube preloading
 	pc.ProxyControllers = map[string]*ProxyController{
 		"pypydance-api": NewProxyController("pypydance-api", pc.Pypy),
 		"youtube-video": NewProxyController("youtube-video", pc.YoutubeVideo),
@@ -19,18 +20,18 @@ func (pc *ProxyConfig) Init() {
 	}
 
 	requesting.InitPypyClient(pc.Pypy)
-	requesting.InitYoutubeVideoClient(pc.YoutubeVideo)
+	//requesting.InitYoutubeVideoClient(pc.YoutubeVideo)
 	requesting.InitYoutubeImageClient(pc.YoutubeImage)
 	requesting.InitYoutubeApiClient(pc.YoutubeApi)
 
 	if !skipTest {
 		pc.ProxyControllers["pypydance-api"].Test()
 	}
-	if config.Youtube.EnableVideo {
-		if !skipTest {
-			pc.ProxyControllers["youtube-video"].Test()
-		}
-	}
+	//if config.Youtube.EnableVideo {
+	//	if !skipTest {
+	//		pc.ProxyControllers["youtube-video"].Test()
+	//	}
+	//}
 	if config.Youtube.EnableThumbnail {
 		if !skipTest {
 			pc.ProxyControllers["youtube-image"].Test()
