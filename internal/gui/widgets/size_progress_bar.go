@@ -97,7 +97,6 @@ func (g *SizeProgressBar) updateBar() {
 func (g *SizeProgressBar) updateText() {
 	label := utils.PrettyByteSize(g.CurrentSize) + " / " + utils.PrettyByteSize(g.TotalSize)
 	g.Text.Text = label
-	g.Text.Refresh()
 
 	textSize := g.Text.MinSize()
 	textX := (g.Background.Size().Width - textSize.Width) / 2
@@ -131,6 +130,7 @@ func (r *SizeProgressBarRenderer) Layout(size fyne.Size) {
 func (r *SizeProgressBarRenderer) Refresh() {
 	r.g.updateText()
 	r.g.updateBar()
+	canvas.Refresh(r.g)
 }
 
 func (r *SizeProgressBarRenderer) Objects() []fyne.CanvasObject {

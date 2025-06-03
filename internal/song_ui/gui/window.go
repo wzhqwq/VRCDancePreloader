@@ -20,11 +20,12 @@ func Stop() {
 
 func MainWindow() fyne.Window {
 	w := window_app.NewWindow(i18n.T("app_name"))
+	w.SetMaster()
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem(i18n.T("btn_playlist"), playlist.NewPlaylistManager()),
 		container.NewTabItem(i18n.T("btn_history"), history.NewHistoryGui()),
-		container.NewTabItem(i18n.T("btn_favorites"), favorite.NewFavoritesPage()),
+		container.NewTabItem(i18n.T("btn_favorites"), favorite.NewFavoritesGui()),
 		container.NewTabItem(i18n.T("btn_settings"), config.CreateSettingsContainer()),
 	)
 	w.SetContent(tabs)

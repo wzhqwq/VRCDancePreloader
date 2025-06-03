@@ -75,8 +75,12 @@ type Thumbnail struct {
 	widget.BaseWidget
 
 	thumbnailURL string
-	showIcon     bool
-	i            *canvas.Image
+
+	loading bool
+
+	image image.Image
+
+	imageChanged bool
 }
 
 func NewThumbnail(thumbnailURL string) *Thumbnail {
@@ -85,19 +89,22 @@ func NewThumbnail(thumbnailURL string) *Thumbnail {
 	}
 	t.ExtendBaseWidget(t)
 
-	t.LoadImage()
-
 	return t
 }
 
 func (t *Thumbnail) CreateRenderer() fyne.WidgetRenderer {
+	go t.LoadImage()
+
 	return &thumbnailRenderer{
 		t: t,
+		i: canvas.NewImageFromResource(icons.GetIcon("movie")),
 	}
 }
 
 type thumbnailRenderer struct {
 	t *Thumbnail
+
+	i *canvas.Image
 }
 
 func (r *thumbnailRenderer) MinSize() fyne.Size {
@@ -105,57 +112,77 @@ func (r *thumbnailRenderer) MinSize() fyne.Size {
 }
 
 func (r *thumbnailRenderer) Layout(size fyne.Size) {
-	r.t.i.Show()
-	if r.t.showIcon {
-		r.t.i.Resize(fyne.NewSize(40, 40))
-		r.t.i.Move(fyne.NewPos(size.Width/2-20, size.Height/2-20))
+	if r.t.loading || r.t.image == nil {
+		r.i.Resize(fyne.NewSize(40, 40))
+		r.i.Move(fyne.NewPos(size.Width/2-20, size.Height/2-20))
 	} else {
-		r.t.i.Resize(size)
-		r.t.i.Move(fyne.NewPos(0, 0))
+		r.i.Resize(size)
+		r.i.Move(fyne.NewPos(0, 0))
 	}
 }
 
 func (r *thumbnailRenderer) Refresh() {
+	if r.t.imageChanged {
+		r.t.imageChanged = false
+		if r.t.loading {
+			// TODO spinner
+			r.i = canvas.NewImageFromResource(icons.GetIcon("movie"))
+		} else if r.t.image == nil {
+			r.i = canvas.NewImageFromResource(icons.GetIcon("movie"))
+		} else {
+			r.i = canvas.NewImageFromImage(r.t.image)
+			r.i.FillMode = canvas.ImageFillContain
+		}
+	}
 	canvas.Refresh(r.t)
 }
 
 func (r *thumbnailRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.t.i}
+	return []fyne.CanvasObject{r.i}
 }
 
 func (t *Thumbnail) LoadImage() {
+	t.imageChanged = true
+
+	loadImage := false
+
 	if t.thumbnailURL == "" {
-		t.showIcon = true
-		t.i = canvas.NewImageFromResource(icons.GetIcon("movie"))
-		return
-	}
-	if HasThumbnailCachedAndLoaded(t.thumbnailURL) {
-		t.showIcon = false
-		t.i = canvas.NewImageFromImage(GetThumbnailImage(t.thumbnailURL))
-		t.i.FillMode = canvas.ImageFillContain
+		t.loading = false
+		t.image = nil
+	} else if HasThumbnailCachedAndLoaded(t.thumbnailURL) {
+		t.loading = false
+		t.image = GetThumbnailImage(t.thumbnailURL)
 	} else {
-		t.showIcon = true
-		t.i = canvas.NewImageFromResource(icons.GetIcon("movie"))
+		t.loading = true
+		t.image = nil
 
-		go func() {
-			if t.thumbnailURL == "" {
-				return
-			}
-
-			i := GetThumbnailImage(t.thumbnailURL)
-			if i == nil {
-				return
-			}
-
-			t.i = canvas.NewImageFromImage(i)
-			t.i.FillMode = canvas.ImageFillContain
-			t.showIcon = false
-
-			fyne.Do(func() {
-				t.Refresh()
-			})
-		}()
+		loadImage = true
 	}
+
+	fyne.Do(func() {
+		t.Refresh()
+
+		if loadImage {
+			go func() {
+				if t.thumbnailURL == "" {
+					return
+				}
+
+				i := GetThumbnailImage(t.thumbnailURL)
+				if i == nil {
+					return
+				}
+
+				t.image = i
+				t.imageChanged = true
+				t.loading = false
+
+				fyne.Do(func() {
+					t.Refresh()
+				})
+			}()
+		}
+	})
 }
 
 func (t *Thumbnail) LoadImageFromURL(url string) {

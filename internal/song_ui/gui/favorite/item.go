@@ -72,7 +72,6 @@ func (ig *ItemGui) UpdateFavoriteEntry(entry *persistence.LocalSongEntry) {
 	ig.Thumbnail.LoadImageFromURL(thumbnailUrl)
 
 	if entry.ID != ig.FavoriteBtn.ID {
-		ig.FavoriteBtn.Destroy()
 		ig.FavoriteBtn = widgets.NewFavoriteBtn(entry.ID, entry.Title)
 	}
 	ig.FavoriteBtn.SetFavorite(entry.IsFavorite)
@@ -148,6 +147,8 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 func (r *ItemRenderer) Refresh() {
 	r.ig.TitleWidget.Refresh()
 	r.ig.Thumbnail.Refresh()
+	r.ig.SyncToPypyCb.Refresh()
+	canvas.Refresh(r.ig)
 }
 
 func (r *ItemRenderer) Objects() []fyne.CanvasObject {

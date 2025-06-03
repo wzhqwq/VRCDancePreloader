@@ -14,27 +14,17 @@ type Rate struct {
 
 	Score int
 	Type  string
-
-	Label *canvas.Text
-	Icons []*widget.Icon
+	label string
 
 	OnChanged func(score int)
 }
 
 func NewRate(score int, label, iconType string) *Rate {
-	labelWidget := canvas.NewText(label, theme.Color(theme.ColorNamePlaceHolder))
-
 	r := &Rate{
-		Label: labelWidget,
 		Type:  iconType,
-
-		Icons: make([]*widget.Icon, 5),
+		label: label,
+		Score: score,
 	}
-
-	for i := 0; i < 5; i++ {
-		r.Icons[i] = widget.NewIcon(icons.GetIcon(iconType))
-	}
-	r.SetScore(score)
 
 	r.ExtendBaseWidget(r)
 
@@ -44,13 +34,7 @@ func NewRate(score int, label, iconType string) *Rate {
 func (r *Rate) SetScore(score int) {
 	r.Score = score
 	fyne.Do(func() {
-		for i := 0; i < 5; i++ {
-			if i < score {
-				r.Icons[i].SetResource(icons.GetIcon(r.Type + "-fill"))
-			} else {
-				r.Icons[i].SetResource(icons.GetIcon(r.Type))
-			}
-		}
+		r.Refresh()
 	})
 }
 
@@ -69,13 +53,25 @@ func (r *Rate) Tapped(e *fyne.PointEvent) {
 }
 
 func (r *Rate) CreateRenderer() fyne.WidgetRenderer {
+	labelWidget := canvas.NewText(r.label, theme.Color(theme.ColorNamePlaceHolder))
+
+	iconList := make([]*widget.Icon, 5)
+	for i := 0; i < 5; i++ {
+		iconList[i] = widget.NewIcon(icons.GetIcon(r.Type))
+	}
 	return &rateRenderer{
 		r: r,
+
+		Label: labelWidget,
+		Icons: iconList,
 	}
 }
 
 type rateRenderer struct {
 	r *Rate
+
+	Label *canvas.Text
+	Icons []*widget.Icon
 }
 
 func (r *rateRenderer) MinSize() fyne.Size {
@@ -84,28 +80,32 @@ func (r *rateRenderer) MinSize() fyne.Size {
 
 func (r *rateRenderer) Layout(size fyne.Size) {
 	iconSize := fyne.NewSize(18, 18)
-	labelSize := r.r.Label.MinSize()
+	labelSize := r.Label.MinSize()
 
-	r.r.Label.Resize(labelSize)
-	r.r.Label.Move(fyne.NewPos(56-labelSize.Width, (24-labelSize.Height)/2))
+	r.Label.Resize(labelSize)
+	r.Label.Move(fyne.NewPos(56-labelSize.Width, (24-labelSize.Height)/2))
 	for i := 0; i < 5; i++ {
-		r.r.Icons[i].Resize(iconSize)
-		r.r.Icons[i].Move(fyne.NewPos(float32(63+i*24), 3))
+		r.Icons[i].Resize(iconSize)
+		r.Icons[i].Move(fyne.NewPos(float32(63+i*24), 3))
 	}
 }
 
 func (r *rateRenderer) Objects() []fyne.CanvasObject {
 	objects := make([]fyne.CanvasObject, 6)
-	objects[0] = r.r.Label
+	objects[0] = r.Label
 	for i := 1; i < 6; i++ {
-		objects[i] = r.r.Icons[i-1]
+		objects[i] = r.Icons[i-1]
 	}
 	return objects
 }
 
 func (r *rateRenderer) Refresh() {
 	for i := 0; i < 5; i++ {
-		r.r.Icons[i].Refresh()
+		if i < r.r.Score {
+			r.Icons[i].SetResource(icons.GetIcon(r.r.Type + "-fill"))
+		} else {
+			r.Icons[i].SetResource(icons.GetIcon(r.r.Type))
+		}
 	}
 }
 

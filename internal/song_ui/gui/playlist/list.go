@@ -1,8 +1,8 @@
 package playlist
 
 import (
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/widget"
-	"sync"
 	"time"
 	"weak"
 
@@ -84,8 +84,6 @@ type listGuiRenderer struct {
 	itemMap map[string]weak.Pointer[ItemGui]
 
 	dynamicList *containers.DynamicList
-
-	mapMutex sync.Mutex
 }
 
 func (r *listGuiRenderer) MinSize() fyne.Size {
@@ -98,8 +96,6 @@ func (r *listGuiRenderer) Layout(size fyne.Size) {
 }
 
 func (r *listGuiRenderer) Refresh() {
-	r.mapMutex.Lock()
-
 	songs := make([]*song.PreloadedSong, len(r.list.pl.Items))
 	copy(songs, r.list.pl.Items)
 
@@ -113,23 +109,19 @@ func (r *listGuiRenderer) Refresh() {
 		r.itemMap[ps.GetId()] = weak.Make(newGui)
 		r.dynamicList.AddItem(newGui.listItem)
 
-		go newGui.RenderLoop()
-
-		fyne.Do(func() {
-			newGui.Hide()
-			go func() {
-				time.Sleep(100 * time.Millisecond)
-				newGui.SlideIn()
-			}()
-		})
+		newGui.Hide()
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			newGui.SlideIn()
+		}()
 		return newGui
 	})
 
-	r.mapMutex.Unlock()
 	r.dynamicList.SetOrder(lo.Map(r.items, func(item *ItemGui, _ int) string {
 		return item.ps.GetId()
 	}))
-	r.Container.Refresh()
+
+	canvas.Refresh(r.list)
 }
 
 func (r *listGuiRenderer) Objects() []fyne.CanvasObject {

@@ -34,7 +34,6 @@ func (p *ellipseTextRenderer) Layout(size fyne.Size) {
 	p.width = size.Width
 	p.text.Resize(size)
 	p.text.Text = p.findProperSlice()
-	p.text.Refresh()
 }
 
 func (p *ellipseTextRenderer) Objects() []fyne.CanvasObject {
@@ -46,7 +45,6 @@ func (p *ellipseTextRenderer) Refresh() {
 	p.text.TextSize = p.e.TextSize
 	p.text.TextStyle = p.e.TextStyle
 	p.text.Color = p.e.Color
-	p.text.Refresh()
 }
 
 func (p *ellipseTextRenderer) Destroy() {

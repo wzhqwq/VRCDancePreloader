@@ -16,6 +16,8 @@ type FavoriteBtn struct {
 
 	favoriteChange *utils.StringEventSubscriber
 	closeCh        chan struct{}
+
+	destroyed bool
 }
 
 func NewFavoriteBtn(id, title string) *FavoriteBtn {
@@ -24,6 +26,7 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 		Title: title,
 
 		favoriteChange: persistence.GetLocalSongs().SubscribeEvent(),
+		closeCh:        make(chan struct{}),
 	}
 	b.Extend(nil)
 
@@ -34,6 +37,14 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 		} else {
 			persistence.GetLocalSongs().UnsetFavorite(b.ID)
 		}
+	}
+	b.OnDestroy = func() {
+		if b.destroyed {
+			return
+		}
+		b.destroyed = true
+		close(b.closeCh)
+		b.favoriteChange.Close()
 	}
 
 	b.ExtendBaseWidget(b)
@@ -51,11 +62,6 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 	}()
 
 	return b
-}
-
-func (b *FavoriteBtn) Destroy() {
-	close(b.closeCh)
-	b.favoriteChange.Close()
 }
 
 func (b *FavoriteBtn) SetFavorite(f bool) {

@@ -161,6 +161,36 @@ func GetLocalCacheInfos() []types.CacheFileInfo {
 	return infos
 }
 
+func GetLocalCacheInfo(id string) types.CacheFileInfo {
+	entries, err := os.ReadDir(cachePath)
+
+	if err == nil {
+		for _, entry := range entries {
+			matches := regexp.MustCompile(AllCacheFileRegex).FindStringSubmatch(entry.Name())
+			if len(matches) == 0 || matches[0] != id {
+				continue
+			}
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+			return types.CacheFileInfo{
+				ID:        id,
+				Size:      info.Size(),
+				IsActive:  cacheMap.IsActive(id),
+				IsPartial: strings.HasSuffix(entry.Name(), ".dl"),
+			}
+		}
+	}
+
+	return types.CacheFileInfo{
+		ID:        id,
+		Size:      0,
+		IsActive:  false,
+		IsPartial: false,
+	}
+}
+
 func RemoveLocalCacheById(id string) error {
 	if cacheMap.IsActive(id) {
 		return nil

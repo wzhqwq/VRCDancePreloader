@@ -91,6 +91,9 @@ type StringEventSubscriber struct {
 }
 
 func (es *StringEventSubscriber) Close() {
+	if es.closed {
+		return
+	}
 	es.closed = true
 	close(es.Channel)
 }

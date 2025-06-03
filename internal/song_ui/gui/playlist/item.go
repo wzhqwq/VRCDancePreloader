@@ -157,6 +157,8 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	cardBackground.StrokeWidth = 2
 	cardBackground.StrokeColor = theme.Color(theme.ColorNameSeparator)
 
+	go ig.RenderLoop()
+
 	return &ItemRenderer{
 		ig: ig,
 
@@ -265,81 +267,75 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 
 func (r *ItemRenderer) Refresh() {
 	if r.ig.statusChanged {
+		r.ig.statusChanged = false
 		status := r.ig.ps.GetStatusInfo()
 
-		fyne.Do(func() {
-			r.StatusText.Text = status.Status
-			r.StatusText.Color = theme.Color(status.Color)
+		r.StatusText.Text = status.Status
+		r.StatusText.Color = theme.Color(status.Color)
 
-			if status.PreloadError != nil {
-				r.ErrorText.Text = status.PreloadError.Error()
-				r.ErrorText.Show()
-			} else {
-				r.ErrorText.Hide()
-			}
-		})
+		if status.PreloadError != nil {
+			r.ErrorText.Text = status.PreloadError.Error()
+			r.ErrorText.Show()
+		} else {
+			r.ErrorText.Hide()
+		}
 	}
 	if r.ig.progressChanged {
+		r.ig.progressChanged = false
 		progress := r.ig.ps.GetProgressInfo()
 
 		r.ProgressBar.SetTotalSize(progress.Total)
 		r.ProgressBar.SetCurrentSize(progress.Downloaded)
 
-		fyne.Do(func() {
-			if progress.Total > 0 {
-				r.SizeText.Text = utils.PrettyByteSize(progress.Total)
-			} else {
-				r.SizeText.Text = i18n.T("placeholder_unknown_size")
-			}
+		if progress.Total > 0 {
+			r.SizeText.Text = utils.PrettyByteSize(progress.Total)
+		} else {
+			r.SizeText.Text = i18n.T("placeholder_unknown_size")
+		}
 
-			if progress.IsDownloading {
-				r.ProgressBar.Show()
-				r.SizeText.Hide()
-			} else {
-				r.ProgressBar.Hide()
-				r.SizeText.Show()
-			}
-		})
-
+		if progress.IsDownloading {
+			r.ProgressBar.Show()
+			r.SizeText.Hide()
+		} else {
+			r.ProgressBar.Hide()
+			r.SizeText.Show()
+		}
 	}
 	if r.ig.timeChanged {
+		r.ig.timeChanged = false
 		timeInfo := r.ig.ps.GetTimeInfo()
 
-		fyne.Do(func() {
-			if timeInfo.IsPlaying {
-				r.PlayBar.Progress = float32(timeInfo.Progress)
-				r.PlayBar.Text = timeInfo.Text
+		if timeInfo.IsPlaying {
+			r.PlayBar.Progress = float32(timeInfo.Progress)
+			r.PlayBar.Text = timeInfo.Text
 
-				r.PlayBar.Refresh()
-				if !r.PlayBar.Visible() {
-					r.PlayBar.Show()
-					canvas.NewColorRGBAAnimation(
-						theme.Color(theme.ColorNameSeparator),
-						theme.Color(theme.ColorNamePrimary),
-						500*time.Millisecond,
-						func(c color.Color) {
-							r.Background.StrokeColor = c
-							canvas.Refresh(r.Background)
-						},
-					).Start()
-					r.ig.listItem.NotifyUpdateMinSize()
-				}
-			} else {
-				if r.PlayBar.Visible() {
-					r.PlayBar.Hide()
-					canvas.NewColorRGBAAnimation(
-						theme.Color(theme.ColorNamePrimary),
-						theme.Color(theme.ColorNameSeparator),
-						500*time.Millisecond,
-						func(c color.Color) {
-							r.Background.StrokeColor = c
-							canvas.Refresh(r.Background)
-						},
-					).Start()
-					r.ig.listItem.NotifyUpdateMinSize()
-				}
+			r.PlayBar.Refresh()
+			if !r.PlayBar.Visible() {
+				r.PlayBar.Show()
+				canvas.NewColorRGBAAnimation(
+					theme.Color(theme.ColorNameSeparator),
+					theme.Color(theme.ColorNamePrimary),
+					500*time.Millisecond,
+					func(c color.Color) {
+						r.Background.StrokeColor = c
+					},
+				).Start()
+				r.ig.listItem.NotifyUpdateMinSize()
 			}
-		})
+		} else {
+			if r.PlayBar.Visible() {
+				r.PlayBar.Hide()
+				canvas.NewColorRGBAAnimation(
+					theme.Color(theme.ColorNamePrimary),
+					theme.Color(theme.ColorNameSeparator),
+					500*time.Millisecond,
+					func(c color.Color) {
+						r.Background.StrokeColor = c
+					},
+				).Start()
+				r.ig.listItem.NotifyUpdateMinSize()
+			}
+		}
 	}
 
 	canvas.Refresh(r.ig)

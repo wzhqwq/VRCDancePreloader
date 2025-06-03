@@ -13,13 +13,14 @@ type PaddedIconBtn struct {
 	fyne.Tappable
 	desktop.Hoverable
 
-	Icon       *widget.Icon
-	Background *canvas.Rectangle
-
 	padding       float32
 	minSquareSize float32
 
-	OnClick func()
+	icon    fyne.Resource
+	hovered bool
+
+	OnClick   func()
+	OnDestroy func()
 }
 
 func NewPaddedIconBtn(icon fyne.Resource) *PaddedIconBtn {
@@ -33,16 +34,15 @@ func NewPaddedIconBtn(icon fyne.Resource) *PaddedIconBtn {
 }
 
 func (b *PaddedIconBtn) Extend(icon fyne.Resource) {
-	b.Icon = widget.NewIcon(icon)
-	b.Background = canvas.NewRectangle(theme.Color(theme.ColorNameButton))
-	b.Background.CornerRadius = 5
 	b.padding = theme.Padding()
 	b.minSquareSize = 24
+	b.icon = icon
 }
 
 func (b *PaddedIconBtn) SetIcon(icon fyne.Resource) {
+	b.icon = icon
 	fyne.Do(func() {
-		b.Icon.SetResource(icon)
+		b.Refresh()
 	})
 }
 
@@ -61,8 +61,13 @@ func (b *PaddedIconBtn) SetMinSquareSize(size float32) {
 }
 
 func (b *PaddedIconBtn) CreateRenderer() fyne.WidgetRenderer {
+	background := canvas.NewRectangle(theme.Color(theme.ColorNameButton))
+	background.CornerRadius = 5
+
 	return &paddedIconBtnRenderer{
-		btn: b,
+		btn:        b,
+		Icon:       widget.NewIcon(b.icon),
+		Background: background,
 	}
 }
 
@@ -73,11 +78,11 @@ func (b *PaddedIconBtn) Tapped(_ *fyne.PointEvent) {
 }
 
 func (b *PaddedIconBtn) MouseIn(_ *desktop.MouseEvent) {
-	b.Background.FillColor = theme.Color(theme.ColorNameHover)
+	b.hovered = true
 	b.Refresh()
 }
 func (b *PaddedIconBtn) MouseOut() {
-	b.Background.FillColor = theme.Color(theme.ColorNameButton)
+	b.hovered = false
 	b.Refresh()
 }
 func (b *PaddedIconBtn) MouseMoved(_ *desktop.MouseEvent) {
@@ -85,22 +90,36 @@ func (b *PaddedIconBtn) MouseMoved(_ *desktop.MouseEvent) {
 
 type paddedIconBtnRenderer struct {
 	btn *PaddedIconBtn
+
+	Icon       *widget.Icon
+	Background *canvas.Rectangle
 }
 
 func (r *paddedIconBtnRenderer) MinSize() fyne.Size {
 	return fyne.NewSquareSize(r.btn.minSquareSize)
 }
 func (r *paddedIconBtnRenderer) Layout(size fyne.Size) {
-	r.btn.Background.Resize(size)
+	r.Background.Resize(size)
 	pad := r.btn.padding
-	r.btn.Icon.Resize(fyne.NewSize(size.Width-pad*2, size.Height-pad*2))
-	r.btn.Icon.Move(fyne.NewPos(pad, pad))
+	r.Icon.Resize(fyne.NewSize(size.Width-pad*2, size.Height-pad*2))
+	r.Icon.Move(fyne.NewPos(pad, pad))
 }
 func (r *paddedIconBtnRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.btn.Background, r.btn.Icon}
+	return []fyne.CanvasObject{r.Background, r.Icon}
 }
 func (r *paddedIconBtnRenderer) Refresh() {
-	r.Layout(r.btn.Size())
+	r.Icon.SetResource(r.btn.icon)
+
+	if r.btn.hovered {
+		r.Background.FillColor = theme.Color(theme.ColorNameHover)
+	} else {
+		r.Background.FillColor = theme.Color(theme.ColorNameButton)
+	}
+
+	canvas.Refresh(r.btn)
 }
 func (r *paddedIconBtnRenderer) Destroy() {
+	if r.btn.OnDestroy != nil {
+		r.btn.OnDestroy()
+	}
 }

@@ -2,6 +2,7 @@ package history
 
 import (
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
@@ -11,7 +12,6 @@ import (
 type RecordGui struct {
 	widget.BaseWidget
 
-	List   *fyne.Container
 	Record *persistence.DanceRecord
 
 	StopCh       chan struct{}
@@ -19,39 +19,26 @@ type RecordGui struct {
 }
 
 func NewRecordGui(record *persistence.DanceRecord) *RecordGui {
-	list := container.NewVBox()
-
 	g := &RecordGui{
-		List:         list,
-		Record:       record,
-		StopCh:       make(chan struct{}),
+		StopCh: make(chan struct{}),
+
+		Record: record,
+
 		ordersChange: record.SubscribeEvent(),
 	}
 
 	g.ExtendBaseWidget(g)
 
-	go func() {
-		g.RenderLoop()
-	}()
-
 	return g
 }
 
 func (g *RecordGui) UpdateOrders() {
-	g.List.RemoveAll()
-	for _, order := range g.Record.Orders {
-		orderGui := NewOrderGui(order)
-		g.List.Add(orderGui)
-	}
-
 	fyne.Do(func() {
-		g.List.Refresh()
+		g.Refresh()
 	})
 }
 
 func (g *RecordGui) RenderLoop() {
-	g.UpdateOrders()
-
 	for {
 		select {
 		case <-g.StopCh:
@@ -63,30 +50,43 @@ func (g *RecordGui) RenderLoop() {
 }
 
 func (g *RecordGui) CreateRenderer() fyne.WidgetRenderer {
+	go g.RenderLoop()
+
 	return &RecordGuiRenderer{
 		g: g,
+
+		List: container.NewVBox(),
 	}
 }
 
 type RecordGuiRenderer struct {
 	g *RecordGui
+
+	List *fyne.Container
 }
 
 func (r *RecordGuiRenderer) MinSize() fyne.Size {
-	return r.g.List.MinSize()
+	return r.List.MinSize()
 }
 
 func (r *RecordGuiRenderer) Layout(size fyne.Size) {
-	r.g.List.Resize(size)
+	r.List.Resize(size)
 }
 
 func (r *RecordGuiRenderer) Refresh() {
-	r.g.List.Refresh()
+	r.List.RemoveAll()
+	for _, order := range r.g.Record.Orders {
+		orderGui := NewOrderGui(order)
+		r.List.Add(orderGui)
+	}
+	r.List.Refresh()
+
+	canvas.Refresh(r.g)
 }
 
 func (r *RecordGuiRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{
-		r.g.List,
+		r.List,
 	}
 }
 

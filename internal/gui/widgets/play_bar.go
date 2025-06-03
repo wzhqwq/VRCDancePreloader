@@ -42,9 +42,8 @@ func (p *playBarRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (p *playBarRenderer) Refresh() {
-	p.rect2.Resize(fyne.NewSize(p.rect1.Size().Width*p.pb.Progress, 4))
 	p.text.Text = p.pb.Text
-	p.text.Refresh()
+	canvas.Refresh(p.pb)
 }
 
 func (p *playBarRenderer) Destroy() {

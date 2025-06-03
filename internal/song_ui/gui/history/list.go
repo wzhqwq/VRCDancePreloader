@@ -2,6 +2,7 @@ package history
 
 import (
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
@@ -22,44 +23,22 @@ type HistoryGui struct {
 
 	recordButtonsCached map[int]*widgets.RecordButton
 
-	Left        *fyne.Container
-	Right       *fyne.Container
-	LeftScroll  fyne.CanvasObject
-	RightScroll fyne.CanvasObject
-
-	Separator *widget.Separator
-
 	StopCh        chan struct{}
 	recordsChange *utils.StringEventSubscriber
+
+	recordsChanged bool
+	activeChanged  bool
 }
 
 func NewHistoryGui() *HistoryGui {
-	left := container.NewVBox()
-	right := container.NewVBox()
-
-	leftScroll := container.NewVScroll(container.NewPadded(left))
-	rightScroll := container.NewVScroll(right)
-
 	g := &HistoryGui{
 		activeId: -1,
-
-		Left:  left,
-		Right: right,
-
-		LeftScroll:  leftScroll,
-		RightScroll: rightScroll,
-
-		Separator: widget.NewSeparator(),
 
 		StopCh:        make(chan struct{}),
 		recordsChange: persistence.GetLocalRecords().SubscribeEvent(),
 	}
 
 	g.ExtendBaseWidget(g)
-
-	go func() {
-		g.RenderLoop()
-	}()
 
 	return g
 }
@@ -71,28 +50,11 @@ func (g *HistoryGui) UpdateRecords() {
 	}
 	g.Records = records
 
-	g.Left.RemoveAll()
-	for _, record := range records {
-		button := widgets.NewRecordButton(record.StartTime, g.activeId == record.ID)
-		button.OnClick = func() {
-			g.SetActive(record.ID)
-		}
-		g.Left.Add(button)
-	}
+	g.recordsChanged = true
 
 	fyne.Do(func() {
-		g.Left.Refresh()
+		g.Refresh()
 	})
-
-	hasActive := false
-	for _, record := range records {
-		if g.activeId == record.ID {
-			hasActive = true
-		}
-	}
-	if !hasActive && len(records) > 0 {
-		g.SetActive(records[0].ID)
-	}
 }
 
 func (g *HistoryGui) SetActive(id int) {
@@ -101,22 +63,10 @@ func (g *HistoryGui) SetActive(id int) {
 	}
 
 	g.activeId = id
-
-	for i, record := range g.Records {
-		button := g.Left.Objects[i].(*widgets.RecordButton)
-		button.SetActive(record.ID == id)
-	}
-	r, err := persistence.GetLocalRecords().GetRecord(id)
-	if err != nil {
-		log.Println("Error getting record:", err)
-		return
-	}
-
-	g.Right.RemoveAll()
-	g.Right.Add(NewRecordGui(r))
+	g.activeChanged = true
 
 	fyne.Do(func() {
-		g.Right.Refresh()
+		g.Refresh()
 	})
 }
 
@@ -134,40 +84,122 @@ func (g *HistoryGui) RenderLoop() {
 }
 
 func (g *HistoryGui) CreateRenderer() fyne.WidgetRenderer {
+	left := container.NewVBox()
+	right := container.NewVBox()
+
+	leftScroll := container.NewVScroll(container.NewPadded(left))
+	rightScroll := container.NewVScroll(right)
+
+	go g.RenderLoop()
+
 	return &HistoryGuiRenderer{
 		g: g,
+
+		Left:  left,
+		Right: right,
+
+		LeftScroll:  leftScroll,
+		RightScroll: rightScroll,
+
+		Separator: widget.NewSeparator(),
 	}
 }
 
 type HistoryGuiRenderer struct {
 	g *HistoryGui
+
+	Left        *fyne.Container
+	Right       *fyne.Container
+	LeftScroll  fyne.CanvasObject
+	RightScroll fyne.CanvasObject
+
+	Separator *widget.Separator
 }
 
 func (r *HistoryGuiRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(r.g.LeftScroll.MinSize().Width+r.g.RightScroll.MinSize().Width, 300)
+	return fyne.NewSize(r.LeftScroll.MinSize().Width+r.RightScroll.MinSize().Width, 300)
 }
 
 func (r *HistoryGuiRenderer) Layout(size fyne.Size) {
-	separateX := r.g.LeftScroll.MinSize().Width
-	r.g.LeftScroll.Resize(fyne.NewSize(separateX, size.Height))
-	r.g.LeftScroll.Move(fyne.NewPos(0, 0))
-	r.g.RightScroll.Resize(fyne.NewSize(size.Width-separateX, size.Height))
-	r.g.RightScroll.Move(fyne.NewPos(separateX, 0))
+	separateX := r.LeftScroll.MinSize().Width
+	r.LeftScroll.Resize(fyne.NewSize(separateX, size.Height))
+	r.LeftScroll.Move(fyne.NewPos(0, 0))
+	r.RightScroll.Resize(fyne.NewSize(size.Width-separateX, size.Height))
+	r.RightScroll.Move(fyne.NewPos(separateX, 0))
 
-	r.g.Separator.Resize(fyne.NewSize(1, size.Height))
-	r.g.Separator.Move(fyne.NewPos(separateX, 0))
+	r.Separator.Resize(fyne.NewSize(1, size.Height))
+	r.Separator.Move(fyne.NewPos(separateX, 0))
 }
 
 func (r *HistoryGuiRenderer) Refresh() {
-	r.g.LeftScroll.Refresh()
-	r.g.RightScroll.Refresh()
+	if r.g.recordsChanged {
+		r.g.recordsChanged = false
+
+		r.Left.RemoveAll()
+		for _, record := range r.g.Records {
+			button := widgets.NewRecordButton(record.StartTime, r.g.activeId == record.ID)
+			button.OnClick = func() {
+				r.g.SetActive(record.ID)
+			}
+			r.Left.Add(button)
+		}
+		r.Left.Refresh()
+		r.LeftScroll.Refresh()
+
+		hasActive := false
+		for _, record := range r.g.Records {
+			if r.g.activeId == record.ID {
+				hasActive = true
+			}
+		}
+		if !hasActive && len(r.g.Records) > 0 {
+			r.g.activeId = r.g.Records[0].ID
+		}
+		r.g.activeChanged = true
+	}
+
+	if r.g.activeChanged {
+		r.g.activeChanged = false
+
+		id := r.g.activeId
+		for i, record := range r.g.Records {
+			button := r.Left.Objects[i].(*widgets.RecordButton)
+			button.SetActive(record.ID == id)
+		}
+
+		if id != -1 {
+			needUpdateRight := true
+
+			if len(r.Right.Objects) > 0 {
+				recordGui := r.Right.Objects[0].(*RecordGui)
+
+				if recordGui.Record.ID == id {
+					needUpdateRight = false
+				}
+			}
+
+			if needUpdateRight {
+				record, err := persistence.GetLocalRecords().GetRecord(id)
+				if err != nil {
+					log.Println("Error getting record:", err)
+					return
+				}
+				r.Right.RemoveAll()
+				r.Right.Add(NewRecordGui(record))
+
+				r.RightScroll.Refresh()
+			}
+		}
+	}
+
+	canvas.Refresh(r.g)
 }
 
 func (r *HistoryGuiRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{
-		r.g.LeftScroll,
-		r.g.RightScroll,
-		r.g.Separator,
+		r.LeftScroll,
+		r.RightScroll,
+		r.Separator,
 	}
 }
 
