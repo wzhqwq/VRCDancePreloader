@@ -78,7 +78,7 @@ func (r *DanceRecord) AddOrder(order Order) {
 	if r.ID != -1 {
 		r.updateOrders()
 	} else {
-		localRecords.AddRecord(r)
+		localRecords.addRecord(r)
 	}
 }
 
@@ -228,7 +228,7 @@ func (l *LocalRecords) DeleteRecord(id int) error {
 	return nil
 }
 
-func (l *LocalRecords) AddRecord(r *DanceRecord) error {
+func (l *LocalRecords) addRecord(r *DanceRecord) error {
 	data, err := json.Marshal(r.Orders)
 	if err != nil {
 		return err
@@ -247,6 +247,8 @@ func (l *LocalRecords) AddRecord(r *DanceRecord) error {
 
 	r.ID = int(id)
 	l.em.NotifySubscribers("+" + strconv.Itoa(r.ID))
+
+	l.Records[r.ID] = r
 
 	return nil
 }
