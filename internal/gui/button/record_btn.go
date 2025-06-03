@@ -1,4 +1,4 @@
-package widgets
+package button
 
 import (
 	"fyne.io/fyne/v2"

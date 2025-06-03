@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
@@ -140,7 +141,7 @@ func (r *LocalFileGuiRenderer) RefreshInfos() {
 func (r *LocalFileGuiRenderer) RefreshButtons() {
 	r.Buttons.RemoveAll()
 	if r.g.IsInAllowList {
-		removeFromListBtn := widgets.NewPaddedIconBtn(theme.WindowCloseIcon())
+		removeFromListBtn := button.NewPaddedIconBtn(theme.WindowCloseIcon())
 		removeFromListBtn.SetMinSquareSize(30)
 		removeFromListBtn.OnClick = func() {
 			persistence.RemoveFromAllowList(r.g.Info.ID)
@@ -148,7 +149,7 @@ func (r *LocalFileGuiRenderer) RefreshButtons() {
 		r.Buttons.Add(removeFromListBtn)
 	} else {
 		if !r.g.Info.IsActive {
-			deleteBtn := widgets.NewPaddedIconBtn(theme.DeleteIcon())
+			deleteBtn := button.NewPaddedIconBtn(theme.DeleteIcon())
 			deleteBtn.SetMinSquareSize(30)
 			deleteBtn.OnClick = func() {
 				err := cache.RemoveLocalCacheById(r.g.Info.ID)
@@ -160,7 +161,7 @@ func (r *LocalFileGuiRenderer) RefreshButtons() {
 		}
 
 		if !persistence.IsInAllowList(r.g.Info.ID) {
-			addAllowListBtn := widgets.NewPaddedIconBtn(theme.NavigateNextIcon())
+			addAllowListBtn := button.NewPaddedIconBtn(theme.NavigateNextIcon())
 			addAllowListBtn.SetMinSquareSize(30)
 			addAllowListBtn.OnClick = func() {
 				persistence.AddToAllowList(r.g.Info.ID, r.g.Info.Size)

@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
 )
 
@@ -57,7 +58,7 @@ func (p *Pagination) handlePageChange() {
 }
 
 func (p *Pagination) CreateRenderer() fyne.WidgetRenderer {
-	prevBtn := NewPaddedIconBtn(icons.GetIcon("angle-left"))
+	prevBtn := button.NewPaddedIconBtn(icons.GetIcon("angle-left"))
 	prevBtn.OnClick = func() {
 		if p.CurrentPage > 1 {
 			p.CurrentPage--
@@ -65,7 +66,7 @@ func (p *Pagination) CreateRenderer() fyne.WidgetRenderer {
 		}
 	}
 	prevBtn.SetPadding(theme.Padding() * 2)
-	nextBtn := NewPaddedIconBtn(icons.GetIcon("angle-right"))
+	nextBtn := button.NewPaddedIconBtn(icons.GetIcon("angle-right"))
 	nextBtn.OnClick = func() {
 		if p.CurrentPage < p.TotalPage {
 			p.CurrentPage++
@@ -73,7 +74,7 @@ func (p *Pagination) CreateRenderer() fyne.WidgetRenderer {
 		}
 	}
 	nextBtn.SetPadding(theme.Padding() * 2)
-	firstBtn := NewPaddedIconBtn(icons.GetIcon("angles-left"))
+	firstBtn := button.NewPaddedIconBtn(icons.GetIcon("angles-left"))
 	firstBtn.OnClick = func() {
 		if p.CurrentPage > 1 {
 			p.CurrentPage = 1
@@ -81,7 +82,7 @@ func (p *Pagination) CreateRenderer() fyne.WidgetRenderer {
 		}
 	}
 	firstBtn.SetPadding(theme.Padding() * 2)
-	lastBtn := NewPaddedIconBtn(icons.GetIcon("angles-right"))
+	lastBtn := button.NewPaddedIconBtn(icons.GetIcon("angles-right"))
 	lastBtn.OnClick = func() {
 		if p.CurrentPage < p.TotalPage {
 			p.CurrentPage = p.TotalPage
@@ -105,10 +106,10 @@ func (p *Pagination) CreateRenderer() fyne.WidgetRenderer {
 type paginationRenderer struct {
 	pagination *Pagination
 
-	PrevBtn  *PaddedIconBtn
-	NextBtn  *PaddedIconBtn
-	FirstBtn *PaddedIconBtn
-	LastBtn  *PaddedIconBtn
+	PrevBtn  *button.PaddedIconBtn
+	NextBtn  *button.PaddedIconBtn
+	FirstBtn *button.PaddedIconBtn
+	LastBtn  *button.PaddedIconBtn
 
 	CurrentPageLabel *widget.Label
 }

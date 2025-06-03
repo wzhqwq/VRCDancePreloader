@@ -2,6 +2,7 @@ package playlist
 
 import (
 	"fyne.io/fyne/v2/container"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/containers"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -172,7 +173,7 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 		ErrorText:   errorText,
 		SizeText:    sizeText,
 		PlayBar:     playBar,
-		FavoriteBtn: widgets.NewFavoriteBtn(info.ID, info.Title),
+		FavoriteBtn: button.NewFavoriteBtn(info.ID, info.Title),
 		Thumbnail:   widgets.NewThumbnail(info.ThumbnailURL),
 		TitleWidget: title,
 	}
@@ -197,7 +198,7 @@ type ItemRenderer struct {
 	StatusText  *canvas.Text
 	SizeText    *canvas.Text
 	PlayBar     *widgets.PlayBar
-	FavoriteBtn *widgets.FavoriteBtn
+	FavoriteBtn *button.FavoriteBtn
 	TitleWidget *widgets.EllipseText
 	Thumbnail   *widgets.Thumbnail
 }

@@ -7,7 +7,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/eduardolat/goeasyi18n"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -21,7 +21,7 @@ type HistoryGui struct {
 
 	Records []*persistence.DanceRecord
 
-	recordButtonsCached map[int]*widgets.RecordButton
+	recordButtonsCached map[int]*button.RecordButton
 
 	StopCh        chan struct{}
 	recordsChange *utils.StringEventSubscriber
@@ -137,7 +137,7 @@ func (r *HistoryGuiRenderer) Refresh() {
 
 		r.Left.RemoveAll()
 		for _, record := range r.g.Records {
-			button := widgets.NewRecordButton(record.StartTime, r.g.activeId == record.ID)
+			button := button.NewRecordButton(record.StartTime, r.g.activeId == record.ID)
 			button.OnClick = func() {
 				r.g.SetActive(record.ID)
 			}
@@ -163,7 +163,7 @@ func (r *HistoryGuiRenderer) Refresh() {
 
 		id := r.g.activeId
 		for i, record := range r.g.Records {
-			button := r.Left.Objects[i].(*widgets.RecordButton)
+			button := r.Left.Objects[i].(*button.RecordButton)
 			button.SetActive(record.ID == id)
 		}
 

@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
@@ -74,7 +75,7 @@ func (g *LocalFilesGui) CreateRenderer() fyne.WidgetRenderer {
 	label := canvas.NewText(i18n.T("label_cache_local"), theme.Color(theme.ColorNameForeground))
 	label.TextSize = 14
 
-	refreshBtn := widgets.NewPaddedIconBtn(theme.ViewRefreshIcon())
+	refreshBtn := button.NewPaddedIconBtn(theme.ViewRefreshIcon())
 	refreshBtn.SetMinSquareSize(30)
 
 	progressBar := widgets.NewSizeProgressBar(cache.GetMaxSize(), 0)
@@ -111,7 +112,7 @@ type LocalFilesGuiRenderer struct {
 	Scroll      *container.Scroll
 	List        *fyne.Container
 	Label       *canvas.Text
-	RefreshBtn  *widgets.PaddedIconBtn
+	RefreshBtn  *button.PaddedIconBtn
 	ProgressBar *widgets.SizeProgressBar
 
 	itemMap  map[string]weak.Pointer[LocalFileGui]
@@ -255,7 +256,7 @@ func (g *AllowListGui) CreateRenderer() fyne.WidgetRenderer {
 	label := canvas.NewText(i18n.T("label_cache_allow_list"), theme.Color(theme.ColorNameForeground))
 	label.TextSize = 14
 
-	refreshBtn := widgets.NewPaddedIconBtn(theme.ViewRefreshIcon())
+	refreshBtn := button.NewPaddedIconBtn(theme.ViewRefreshIcon())
 	refreshBtn.SetMinSquareSize(30)
 
 	refreshBtn.OnClick = func() {
@@ -282,7 +283,7 @@ type AllowListGuiRenderer struct {
 	Scroll     *container.Scroll
 	List       *fyne.Container
 	Label      *canvas.Text
-	RefreshBtn *widgets.PaddedIconBtn
+	RefreshBtn *button.PaddedIconBtn
 
 	itemMap  map[string]weak.Pointer[LocalFileGui]
 	mapMutex sync.Mutex

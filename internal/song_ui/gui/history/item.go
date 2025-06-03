@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/eduardolat/goeasyi18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
@@ -65,7 +66,7 @@ func (ig *OrderGui) CreateRenderer() fyne.WidgetRenderer {
 		ig: ig,
 
 		TitleWidget: title,
-		FavoriteBtn: widgets.NewFavoriteBtn(ig.order.ID, ig.order.Title),
+		FavoriteBtn: button.NewFavoriteBtn(ig.order.ID, ig.order.Title),
 
 		SongInfoLine:  songInfoLine,
 		OrderInfoLine: orderInfoLine,
@@ -80,7 +81,7 @@ type ItemRenderer struct {
 	ig *OrderGui
 
 	TitleWidget *widgets.EllipseText
-	FavoriteBtn *widgets.FavoriteBtn
+	FavoriteBtn *button.FavoriteBtn
 
 	SongInfoLine  *canvas.Text
 	OrderInfoLine *canvas.Text

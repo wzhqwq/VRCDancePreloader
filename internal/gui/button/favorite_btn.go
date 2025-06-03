@@ -1,4 +1,4 @@
-package widgets
+package button
 
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"

@@ -5,6 +5,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
@@ -20,7 +21,7 @@ type ItemGui struct {
 	Entry *persistence.LocalSongEntry
 
 	TitleWidget  *widgets.EllipseText
-	FavoriteBtn  *widgets.FavoriteBtn
+	FavoriteBtn  *button.FavoriteBtn
 	IDWidget     *canvas.Text
 	LocalSong    *widgets.LocalSongOperations
 	SyncToPypyCb *widget.Check
@@ -40,7 +41,7 @@ func NewItemGui(entry *persistence.LocalSongEntry) *ItemGui {
 
 	ig := &ItemGui{
 		TitleWidget:  title,
-		FavoriteBtn:  widgets.NewFavoriteBtn(entry.ID, entry.Title),
+		FavoriteBtn:  button.NewFavoriteBtn(entry.ID, entry.Title),
 		IDWidget:     id,
 		LocalSong:    widgets.NewLocalSongOperations(entry),
 		SyncToPypyCb: widget.NewCheck(i18n.T("label_sync_to_pypy"), nil),
@@ -72,7 +73,7 @@ func (ig *ItemGui) UpdateFavoriteEntry(entry *persistence.LocalSongEntry) {
 	ig.Thumbnail.LoadImageFromURL(thumbnailUrl)
 
 	if entry.ID != ig.FavoriteBtn.ID {
-		ig.FavoriteBtn = widgets.NewFavoriteBtn(entry.ID, entry.Title)
+		ig.FavoriteBtn = button.NewFavoriteBtn(entry.ID, entry.Title)
 	}
 	ig.FavoriteBtn.SetFavorite(entry.IsFavorite)
 	ig.LocalSong.UpdateEntry(entry)
