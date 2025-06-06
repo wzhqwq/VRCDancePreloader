@@ -38,10 +38,6 @@ func NewListGui(pl *playlist.PlayList) *ListGui {
 }
 
 func (l *ListGui) RenderLoop() {
-	fyne.Do(func() {
-		l.Refresh()
-	})
-
 	for {
 		select {
 		case <-l.StopCh:
@@ -62,9 +58,7 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 	scroll := container.NewVScroll(dynamicList)
 	scroll.SetMinSize(fyne.NewSize(playItemMinWidth+theme.Padding(), 400))
 
-	go l.RenderLoop()
-
-	return &listGuiRenderer{
+	r := &listGuiRenderer{
 		list: l,
 
 		Container: scroll,
@@ -73,6 +67,12 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 
 		dynamicList: dynamicList,
 	}
+
+	r.updateItems()
+
+	go l.RenderLoop()
+
+	return r
 }
 
 type listGuiRenderer struct {
@@ -95,7 +95,7 @@ func (r *listGuiRenderer) Layout(size fyne.Size) {
 	r.Container.Move(fyne.NewPos(0, 0))
 }
 
-func (r *listGuiRenderer) Refresh() {
+func (r *listGuiRenderer) updateItems() {
 	songs := make([]*song.PreloadedSong, len(r.list.pl.Items))
 	copy(songs, r.list.pl.Items)
 
@@ -120,6 +120,10 @@ func (r *listGuiRenderer) Refresh() {
 	r.dynamicList.SetOrder(lo.Map(r.items, func(item *ItemGui, _ int) string {
 		return item.ps.GetId()
 	}))
+}
+
+func (r *listGuiRenderer) Refresh() {
+	r.updateItems()
 
 	canvas.Refresh(r.list)
 }

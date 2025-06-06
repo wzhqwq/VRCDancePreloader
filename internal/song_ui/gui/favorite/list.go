@@ -49,6 +49,7 @@ func NewFavoritesGui() *FavoritesGui {
 		OrderOptions:  orderOptions,
 
 		Favorites: favorites,
+		entries:   persistence.GetLocalSongs().ListFavorites(0, pageSize, "id", true),
 
 		sortBy:    "id",
 		ascending: true,
@@ -84,8 +85,6 @@ func (fg *FavoritesGui) RenderLoop() {
 }
 
 func (fg *FavoritesGui) CreateRenderer() fyne.WidgetRenderer {
-	go fg.RenderLoop()
-
 	list := container.NewVBox()
 	scroll := container.NewVScroll(container.NewPadded(list))
 	scroll.SetMinSize(fyne.NewSize(300, 400))
@@ -126,7 +125,7 @@ func (fg *FavoritesGui) CreateRenderer() fyne.WidgetRenderer {
 		fg.refreshItems()
 	}
 
-	return &favoritesGuiRenderer{
+	r := &favoritesGuiRenderer{
 		TopBar:     topBar,
 		List:       list,
 		Scroll:     scroll,
@@ -138,6 +137,12 @@ func (fg *FavoritesGui) CreateRenderer() fyne.WidgetRenderer {
 
 		g: fg,
 	}
+
+	r.pushItems()
+
+	go fg.RenderLoop()
+
+	return r
 }
 
 type favoritesGuiRenderer struct {
@@ -183,13 +188,16 @@ func (r *favoritesGuiRenderer) Objects() []fyne.CanvasObject {
 	}
 }
 
-func (r *favoritesGuiRenderer) Refresh() {
-	r.List.RemoveAll()
+func (r *favoritesGuiRenderer) pushItems() {
 	for _, entry := range r.g.entries {
 		r.List.Add(NewItemGui(entry))
 	}
-
 	r.List.Refresh()
+}
+
+func (r *favoritesGuiRenderer) Refresh() {
+	r.List.RemoveAll()
+	r.pushItems()
 }
 
 func (r *favoritesGuiRenderer) Destroy() {

@@ -108,8 +108,6 @@ func (r *LocalFileGuiRenderer) Layout(size fyne.Size) {
 }
 
 func (r *LocalFileGuiRenderer) RefreshInfos() {
-	r.Infos.RemoveAll()
-
 	sizeWidget := canvas.NewText(utils.PrettyByteSize(r.g.Info.Size), theme.Color(theme.ColorNamePlaceHolder))
 	sizeWidget.TextSize = 12
 	r.Infos.Add(sizeWidget)
@@ -134,12 +132,9 @@ func (r *LocalFileGuiRenderer) RefreshInfos() {
 		partialLabel.TextSize = 12
 		r.Infos.Add(partialLabel)
 	}
-
-	r.Infos.Refresh()
 }
 
 func (r *LocalFileGuiRenderer) RefreshButtons() {
-	r.Buttons.RemoveAll()
 	if r.g.IsInAllowList {
 		removeFromListBtn := button.NewPaddedIconBtn(theme.WindowCloseIcon())
 		removeFromListBtn.SetMinSquareSize(30)
@@ -169,13 +164,16 @@ func (r *LocalFileGuiRenderer) RefreshButtons() {
 			r.Buttons.Add(addAllowListBtn)
 		}
 	}
-
-	r.Buttons.Refresh()
 }
 
 func (r *LocalFileGuiRenderer) Refresh() {
+	r.Buttons.RemoveAll()
 	r.RefreshButtons()
+	r.Buttons.Refresh()
+
+	r.Infos.RemoveAll()
 	r.RefreshInfos()
+	r.Infos.Refresh()
 
 	canvas.Refresh(r.g)
 }

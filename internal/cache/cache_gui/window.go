@@ -5,7 +5,6 @@ import (
 	"fyne.io/fyne/v2/container"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/window_app"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"time"
 )
 
 var openedWindow fyne.Window
@@ -19,6 +18,9 @@ func OpenCacheWindow() {
 	localFiles := NewLocalFilesGui()
 	allowList := NewAllowListGui()
 
+	localFiles.RefreshFiles()
+	allowList.RefreshFiles()
+
 	splitContainer := container.NewGridWithColumns(2, localFiles, allowList)
 
 	openedWindow.SetContent(splitContainer)
@@ -26,10 +28,4 @@ func OpenCacheWindow() {
 	openedWindow.SetOnClosed(func() {
 		openedWindow = nil
 	})
-
-	go func() {
-		time.Sleep(time.Millisecond * 300)
-		localFiles.RefreshFiles()
-		allowList.RefreshFiles()
-	}()
 }

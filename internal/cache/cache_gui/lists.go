@@ -84,9 +84,7 @@ func (g *LocalFilesGui) CreateRenderer() fyne.WidgetRenderer {
 		g.RefreshFiles()
 	}
 
-	go g.RenderLoop()
-
-	return &LocalFilesGuiRenderer{
+	r := &LocalFilesGuiRenderer{
 		g: g,
 
 		Scroll:      container.NewVScroll(list),
@@ -97,6 +95,12 @@ func (g *LocalFilesGui) CreateRenderer() fyne.WidgetRenderer {
 
 		itemMap: make(map[string]weak.Pointer[LocalFileGui]),
 	}
+
+	r.updateItems()
+
+	go g.RenderLoop()
+
+	return r
 }
 
 func (g *LocalFilesGui) RefreshFiles() {
@@ -144,19 +148,7 @@ func (r *LocalFilesGuiRenderer) Layout(size fyne.Size) {
 	r.Scroll.Move(fyne.NewPos(0, topHeight+theme.Padding()))
 }
 
-func (r *LocalFilesGuiRenderer) Refresh() {
-	if r.g.changedId != "" {
-		r.mapMutex.Lock()
-		if item, ok := r.itemMap[r.g.changedId]; ok {
-			if v := item.Value(); v != nil {
-				v.UpdateInfo(cache.GetLocalCacheInfo(r.g.changedId))
-			}
-		}
-		r.mapMutex.Unlock()
-		r.g.changedId = ""
-		return
-	}
-
+func (r *LocalFilesGuiRenderer) updateItems() {
 	totalSize := int64(0)
 
 	var items []*LocalFileGui
@@ -176,13 +168,29 @@ func (r *LocalFilesGuiRenderer) Refresh() {
 	}
 	r.mapMutex.Unlock()
 
-	r.List.RemoveAll()
 	for _, item := range items {
 		r.List.Add(item)
 	}
 	r.List.Refresh()
 
 	r.ProgressBar.SetCurrentSize(totalSize)
+}
+
+func (r *LocalFilesGuiRenderer) Refresh() {
+	if r.g.changedId != "" {
+		r.mapMutex.Lock()
+		if item, ok := r.itemMap[r.g.changedId]; ok {
+			if v := item.Value(); v != nil {
+				v.UpdateInfo(cache.GetLocalCacheInfo(r.g.changedId))
+			}
+		}
+		r.mapMutex.Unlock()
+		r.g.changedId = ""
+		return
+	}
+
+	r.List.RemoveAll()
+	r.updateItems()
 
 	canvas.Refresh(r.g)
 }
@@ -263,9 +271,7 @@ func (g *AllowListGui) CreateRenderer() fyne.WidgetRenderer {
 		g.RefreshFiles()
 	}
 
-	go g.RenderLoop()
-
-	return &AllowListGuiRenderer{
+	r := &AllowListGuiRenderer{
 		g: g,
 
 		Scroll:     container.NewVScroll(list),
@@ -275,6 +281,12 @@ func (g *AllowListGui) CreateRenderer() fyne.WidgetRenderer {
 
 		itemMap: make(map[string]weak.Pointer[LocalFileGui]),
 	}
+
+	r.updateItems()
+
+	go g.RenderLoop()
+
+	return r
 }
 
 type AllowListGuiRenderer struct {
@@ -309,19 +321,7 @@ func (r *AllowListGuiRenderer) Layout(size fyne.Size) {
 	r.Scroll.Move(fyne.NewPos(0, topHeight+theme.Padding()))
 }
 
-func (r *AllowListGuiRenderer) Refresh() {
-	if r.g.changedId != "" {
-		r.mapMutex.Lock()
-		if item, ok := r.itemMap[r.g.changedId]; ok {
-			if v := item.Value(); v != nil {
-				v.UpdateInfo(cache.GetLocalCacheInfo(r.g.changedId))
-			}
-		}
-		r.mapMutex.Unlock()
-		r.g.changedId = ""
-		return
-	}
-
+func (r *AllowListGuiRenderer) updateItems() {
 	var items []*LocalFileGui
 	r.mapMutex.Lock()
 	for _, info := range r.g.infos {
@@ -337,11 +337,27 @@ func (r *AllowListGuiRenderer) Refresh() {
 	}
 	r.mapMutex.Unlock()
 
-	r.List.RemoveAll()
 	for _, item := range items {
 		r.List.Add(item)
 	}
 	r.List.Refresh()
+}
+
+func (r *AllowListGuiRenderer) Refresh() {
+	if r.g.changedId != "" {
+		r.mapMutex.Lock()
+		if item, ok := r.itemMap[r.g.changedId]; ok {
+			if v := item.Value(); v != nil {
+				v.UpdateInfo(cache.GetLocalCacheInfo(r.g.changedId))
+			}
+		}
+		r.mapMutex.Unlock()
+		r.g.changedId = ""
+		return
+	}
+
+	r.List.RemoveAll()
+	r.updateItems()
 
 	canvas.Refresh(r.g)
 }

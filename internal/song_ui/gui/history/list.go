@@ -31,8 +31,15 @@ type HistoryGui struct {
 }
 
 func NewHistoryGui() *HistoryGui {
+	records, err := persistence.GetLocalRecords().GetRecords()
+	if err != nil {
+		log.Println("Error getting records:", err)
+	}
+
 	g := &HistoryGui{
 		activeId: -1,
+
+		Records: records,
 
 		StopCh:        make(chan struct{}),
 		recordsChange: persistence.GetLocalRecords().SubscribeEvent(),
@@ -71,8 +78,6 @@ func (g *HistoryGui) SetActive(id int) {
 }
 
 func (g *HistoryGui) RenderLoop() {
-	g.UpdateRecords()
-
 	for {
 		select {
 		case <-g.StopCh:
@@ -92,7 +97,7 @@ func (g *HistoryGui) CreateRenderer() fyne.WidgetRenderer {
 
 	go g.RenderLoop()
 
-	return &HistoryGuiRenderer{
+	r := &HistoryGuiRenderer{
 		g: g,
 
 		Left:  left,
@@ -103,6 +108,10 @@ func (g *HistoryGui) CreateRenderer() fyne.WidgetRenderer {
 
 		Separator: widget.NewSeparator(),
 	}
+
+	r.PushRecordButtons()
+
+	return r
 }
 
 type HistoryGuiRenderer struct {
@@ -131,20 +140,24 @@ func (r *HistoryGuiRenderer) Layout(size fyne.Size) {
 	r.Separator.Move(fyne.NewPos(separateX, 0))
 }
 
+func (r *HistoryGuiRenderer) PushRecordButtons() {
+	for _, record := range r.g.Records {
+		b := button.NewRecordButton(record.StartTime, r.g.activeId == record.ID)
+		b.OnClick = func() {
+			r.g.SetActive(record.ID)
+		}
+		r.Left.Add(b)
+	}
+	r.Left.Refresh()
+	r.LeftScroll.Refresh()
+}
+
 func (r *HistoryGuiRenderer) Refresh() {
 	if r.g.recordsChanged {
 		r.g.recordsChanged = false
 
 		r.Left.RemoveAll()
-		for _, record := range r.g.Records {
-			button := button.NewRecordButton(record.StartTime, r.g.activeId == record.ID)
-			button.OnClick = func() {
-				r.g.SetActive(record.ID)
-			}
-			r.Left.Add(button)
-		}
-		r.Left.Refresh()
-		r.LeftScroll.Refresh()
+		r.PushRecordButtons()
 
 		hasActive := false
 		for _, record := range r.g.Records {
@@ -163,8 +176,8 @@ func (r *HistoryGuiRenderer) Refresh() {
 
 		id := r.g.activeId
 		for i, record := range r.g.Records {
-			button := r.Left.Objects[i].(*button.RecordButton)
-			button.SetActive(record.ID == id)
+			b := r.Left.Objects[i].(*button.RecordButton)
+			b.SetActive(record.ID == id)
 		}
 
 		if id != -1 {
