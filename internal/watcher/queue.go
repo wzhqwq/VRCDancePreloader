@@ -57,6 +57,12 @@ func diffQueues(old []*song.PreloadedSong, new []types.QueueItem) {
 			y--
 			if x == len(old) {
 				playlist.InsertItem(new[y], -1)
+			} else if x == 0 {
+				// inserting before currently playing song is prohibited
+				// instead we should clear and refill the queue
+				// to prevent an incorrect playing state
+				playlist.ClearAndSetQueue(new)
+				return
 			} else {
 				playlist.InsertItem(new[y], x)
 			}
