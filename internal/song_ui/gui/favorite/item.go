@@ -97,6 +97,8 @@ func (r *ItemRenderer) MinSize() fyne.Size {
 }
 
 func (r *ItemRenderer) Layout(size fyne.Size) {
+	p := theme.Padding()
+
 	titleHeight := r.TitleWidget.MinSize().Height
 
 	r.TitleWidget.Resize(fyne.NewSize(size.Width, titleHeight))
@@ -110,27 +112,30 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 		if size.Width < 400 {
 			imageWidth = size.Width - 240
 		}
-		r.Thumbnail.Resize(fyne.NewSize(imageWidth, infoHeight))
-		r.Thumbnail.Move(fyne.NewPos(0, titleHeight))
+		r.Thumbnail.Resize(fyne.NewSize(imageWidth, infoHeight-p*2))
+		r.Thumbnail.Move(fyne.NewPos(0, titleHeight+p))
 		r.Thumbnail.Show()
 
-		imageWidth += theme.Padding()
+		imageWidth += p
 	} else {
 		r.Thumbnail.Hide()
 	}
 
+	infoX := imageWidth
+	infoY := titleHeight
+
 	r.IDWidget.Resize(r.IDWidget.MinSize())
-	r.IDWidget.Move(fyne.NewPos(imageWidth, titleHeight))
-	titleHeight += r.IDWidget.MinSize().Height
+	r.IDWidget.Move(fyne.NewPos(infoX, infoY))
+	infoY += r.IDWidget.MinSize().Height
 
 	r.LocalSong.Resize(r.LocalSong.MinSize())
-	r.LocalSong.Move(fyne.NewPos(imageWidth, titleHeight))
-	titleHeight += r.LocalSong.MinSize().Height
+	r.LocalSong.Move(fyne.NewPos(infoX, infoY))
+	infoY += r.LocalSong.MinSize().Height
 
 	r.SyncToPypyCb.Resize(r.SyncToPypyCb.MinSize())
-	r.SyncToPypyCb.Move(fyne.NewPos(imageWidth, titleHeight))
+	r.SyncToPypyCb.Move(fyne.NewPos(infoX, infoY))
 
-	r.Separator.Resize(fyne.NewSize(size.Width, 1))
+	r.Separator.Resize(fyne.NewSize(size.Width+p, 1))
 	r.Separator.Move(fyne.NewPos(0, size.Height-1))
 
 	r.Actions.Resize(size)

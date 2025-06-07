@@ -135,31 +135,33 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 
 	imageWidth := float32(0)
 	if size.Width > 320 {
-		imageWidth = 160
+		imageWidth = 150
 		if size.Width < 400 {
-			imageWidth = size.Width - 240
+			imageWidth = size.Width - 250
 		}
-		r.Thumbnail.Resize(fyne.NewSize(imageWidth, infoHeight))
-		r.Thumbnail.Move(fyne.NewPos(p, titleHeight))
+		r.Thumbnail.Resize(fyne.NewSize(imageWidth, infoHeight-p))
+		r.Thumbnail.Move(fyne.NewPos(p, titleHeight+p))
 		r.Thumbnail.Show()
 
 		imageWidth += p
 	} else {
 		r.Thumbnail.Hide()
 	}
-	imageWidth += p
+
+	infoX := imageWidth + p
+	infoY := titleHeight
 
 	r.SongInfoLine.Resize(r.SongInfoLine.MinSize())
-	r.SongInfoLine.Move(fyne.NewPos(imageWidth, titleHeight))
-	titleHeight += r.SongInfoLine.MinSize().Height + p
+	r.SongInfoLine.Move(fyne.NewPos(infoX, infoY))
+	infoY += r.SongInfoLine.MinSize().Height + p
 
 	r.OrderInfoLine.Resize(r.OrderInfoLine.MinSize())
-	r.OrderInfoLine.Move(fyne.NewPos(imageWidth, titleHeight))
-	titleHeight += r.OrderInfoLine.MinSize().Height + p
+	r.OrderInfoLine.Move(fyne.NewPos(infoX, infoY))
+	infoY += r.OrderInfoLine.MinSize().Height + p
 
 	r.LocalSong.Resize(r.LocalSong.MinSize())
-	r.LocalSong.Move(fyne.NewPos(imageWidth, titleHeight))
-	titleHeight += r.LocalSong.MinSize().Height + p
+	r.LocalSong.Move(fyne.NewPos(infoX, infoY))
+	infoY += r.LocalSong.MinSize().Height + p
 
 	r.Separator.Resize(fyne.NewSize(size.Width, 1))
 	r.Separator.Move(fyne.NewPos(0, size.Height-1))
