@@ -51,36 +51,35 @@ func (p *ellipseTextRenderer) Destroy() {
 }
 
 func (p *ellipseTextRenderer) findProperSlice() string {
-	if p.width < p.e.TextSize {
+	full := p.e.Text
+	if p.calculateSize(full) <= p.width {
+		return full
+	}
+
+	ellipsis := "..."
+	ellipsisWidth := p.calculateSize(ellipsis)
+	runes := []rune(full)
+	n := len(runes)
+
+	low, high := 0, n
+	for low < high {
+		mid := (low + high + 1) / 2
+		slice := string(runes[:mid])
+		if p.calculateSize(slice)+ellipsisWidth <= p.width {
+			low = mid
+		} else {
+			high = mid - 1
+		}
+	}
+
+	if low <= 0 {
+		if ellipsisWidth <= p.width {
+			return ellipsis
+		}
 		return ""
 	}
-	maxWidth := p.width
-	originalText := []rune(p.e.Text)
-	if p.calculateSize(string(originalText)) <= maxWidth {
-		return string(originalText)
-	}
-	text := originalText
-	iter := 0
-	for {
-		width := p.calculateSize(string(text) + "...")
-		estimatedLen := int(float32(len(text)+3)*(maxWidth/width)) - 3
-		if width <= maxWidth {
-			if estimatedLen >= len(text)-1 || iter > 10 {
-				return string(text) + "..."
-			}
-			text = originalText[:estimatedLen]
-		}
-		if width > maxWidth {
-			if estimatedLen <= 0 {
-				return ""
-			}
-			if estimatedLen == len(text) {
-				estimatedLen--
-			}
-			text = originalText[:estimatedLen]
-		}
-		iter++
-	}
+
+	return string(runes[:low]) + ellipsis
 }
 func (p *ellipseTextRenderer) calculateSize(text string) float32 {
 	size, _ := window_app.Driver().RenderedTextSize(text, p.e.TextSize, p.e.TextStyle, nil)
