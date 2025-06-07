@@ -19,8 +19,7 @@ func Stop() {
 }
 
 func MainWindow() fyne.Window {
-	w := window_app.NewWindow(i18n.T("app_name"))
-	w.SetMaster()
+	w := window_app.NewMainWindow(i18n.T("app_name"))
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem(i18n.T("btn_playlist"), playlist.NewPlaylistManager()),

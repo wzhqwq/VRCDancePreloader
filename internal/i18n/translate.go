@@ -2,7 +2,10 @@ package i18n
 
 import (
 	"embed"
+	"gopkg.in/yaml.v3"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/cloudfoundry/jibber_jabber"
 	"github.com/eduardolat/goeasyi18n"
@@ -14,8 +17,18 @@ var enTranslationsFS embed.FS
 //go:embed translations/zh_CN/*.yaml
 var zhCNTranslationsFS embed.FS
 
+//go:embed translations/date/*.yaml
+var dateTranslationsFS embed.FS
+
 var i18n *goeasyi18n.I18n
 var lang string
+
+type DateTranslations struct {
+	MonthsFull []string `yaml:"months_full"`
+	MonthsAbbr []string `yaml:"months_abbr"`
+}
+
+var dateTranslations DateTranslations
 
 func Init() {
 	localLang, err := jibber_jabber.DetectIETF()
@@ -40,8 +53,38 @@ func Init() {
 	// Register the translations
 	i18n.AddLanguage("en", enTranslations)
 	i18n.AddLanguage("zh-CN", zhCNTranslations)
+
+	if lang == "en" {
+		file, err := dateTranslationsFS.ReadFile("translations/date/en.yaml")
+		if err != nil {
+			panic(err)
+		}
+
+		err = yaml.Unmarshal(file, &dateTranslations)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func T(key string, options ...goeasyi18n.Options) string {
 	return i18n.Translate(lang, key, options...)
+}
+
+func ParseMonth(m time.Month) string {
+	if lang == "en" {
+		return dateTranslations.MonthsAbbr[m]
+	}
+	return strconv.Itoa(int(m))
+}
+
+func ParseDate(date time.Time) map[string]string {
+	year, month, day := date.Date()
+
+	return map[string]string{
+		"Year":  strconv.Itoa(year),
+		"Month": ParseMonth(month),
+		"Day":   strconv.Itoa(day),
+		"Time":  date.Format("15:04"),
+	}
 }

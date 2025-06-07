@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 func PrettyByteSize(b int64) string {
@@ -18,4 +19,9 @@ func PrettyByteSize(b int64) string {
 
 func PrettyTime(s float64) string {
 	return fmt.Sprintf("%02d:%02d", int(s)/60, int(s)%60)
+}
+
+func FirstLine(s string) string {
+	lines := strings.Split(s, "\n")
+	return lines[0]
 }

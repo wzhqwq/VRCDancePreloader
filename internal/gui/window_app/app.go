@@ -6,6 +6,7 @@ import (
 )
 
 var a fyne.App
+var mainWindow fyne.Window
 
 func InitFyne() {
 	a = app.New()
@@ -21,8 +22,18 @@ func Quit() {
 	})
 }
 
+func NewMainWindow(title string) fyne.Window {
+	mainWindow = a.NewWindow(title)
+	mainWindow.SetMaster()
+	return mainWindow
+}
+
 func NewWindow(title string) fyne.Window {
 	return a.NewWindow(title)
+}
+
+func GetParent() fyne.Window {
+	return mainWindow
 }
 
 func Driver() fyne.Driver {

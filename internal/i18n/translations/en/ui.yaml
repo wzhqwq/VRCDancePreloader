@@ -120,4 +120,33 @@
 - Key: message_title_continue_record
   Default: "Continue from last record?"
 - Key: message_continue_record
-  Default: "Found recent history, the last song was played at {{.Time}}, do you want to continue from this record?"
+  Default: "Found recent record where the last song played at {{.Time}}. Continue from this record?"
+- Key: reject_continue_record
+  Default: "Nope"
+- Key: confirm_continue_record
+  Default: "Yes, continue"
+
+- Key: tip_select_record
+  Default: "Select dance record from the left"
+- Key: wrapper_record_title
+  Default: "Dance record starting at {{.Time}} on {{.Year}} {{.Month}} {{.Day}}"
+- Key: btn_delete_record
+  Default: "Delete Record"
+- Key: btn_edit_comment
+  Default: "Edit Comment"
+
+- Key: message_title_delete_record
+  Default: "Do you really want to delete?"
+- Key: message_delete_record
+  Default: "The entire record is gone forever if you delete it!"
+- Key: reject_delete_record
+  Default: "I give up"
+- Key: confirm_delete_record
+  Default: "Delete anyway"
+
+- Key: message_title_edit_comment
+  Default: "Edit Comment"
+- Key: submit_edit_comment
+  Default: "Update"
+- Key: discard_edit_comment
+  Default: "Discard"

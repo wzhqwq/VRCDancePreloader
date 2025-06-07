@@ -4,9 +4,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
-	"github.com/eduardolat/goeasyi18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
@@ -90,21 +88,19 @@ func (g *HistoryGui) RenderLoop() {
 
 func (g *HistoryGui) CreateRenderer() fyne.WidgetRenderer {
 	left := container.NewVBox()
-	right := container.NewVBox()
+	right := container.NewCenter(widget.NewLabel(i18n.T("tip_select_record")))
 
 	leftScroll := container.NewVScroll(container.NewPadded(left))
-	rightScroll := container.NewVScroll(right)
 
 	go g.RenderLoop()
 
 	r := &HistoryGuiRenderer{
 		g: g,
 
-		Left:  left,
-		Right: right,
+		Left:       left,
+		LeftScroll: leftScroll,
 
-		LeftScroll:  leftScroll,
-		RightScroll: rightScroll,
+		Right: right,
 
 		Separator: widget.NewSeparator(),
 	}
@@ -117,24 +113,24 @@ func (g *HistoryGui) CreateRenderer() fyne.WidgetRenderer {
 type HistoryGuiRenderer struct {
 	g *HistoryGui
 
-	Left        *fyne.Container
-	Right       *fyne.Container
-	LeftScroll  fyne.CanvasObject
-	RightScroll fyne.CanvasObject
+	Left       *fyne.Container
+	LeftScroll fyne.CanvasObject
+
+	Right fyne.CanvasObject
 
 	Separator *widget.Separator
 }
 
 func (r *HistoryGuiRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(r.LeftScroll.MinSize().Width+r.RightScroll.MinSize().Width, 300)
+	return fyne.NewSize(r.LeftScroll.MinSize().Width+r.Right.MinSize().Width, r.Right.MinSize().Height)
 }
 
 func (r *HistoryGuiRenderer) Layout(size fyne.Size) {
 	separateX := r.LeftScroll.MinSize().Width
 	r.LeftScroll.Resize(fyne.NewSize(separateX, size.Height))
 	r.LeftScroll.Move(fyne.NewPos(0, 0))
-	r.RightScroll.Resize(fyne.NewSize(size.Width-separateX, size.Height))
-	r.RightScroll.Move(fyne.NewPos(separateX, 0))
+	r.Right.Resize(fyne.NewSize(size.Width-separateX, size.Height))
+	r.Right.Move(fyne.NewPos(separateX, 0))
 
 	r.Separator.Resize(fyne.NewSize(1, size.Height))
 	r.Separator.Move(fyne.NewPos(separateX, 0))
@@ -183,10 +179,8 @@ func (r *HistoryGuiRenderer) Refresh() {
 		if id != -1 {
 			needUpdateRight := true
 
-			if len(r.Right.Objects) > 0 {
-				recordGui := r.Right.Objects[0].(*RecordGui)
-
-				if recordGui.Record.ID == id {
+			if gui, ok := r.Right.(*RecordGui); ok {
+				if gui.Record.ID == id {
 					needUpdateRight = false
 				}
 			}
@@ -197,10 +191,7 @@ func (r *HistoryGuiRenderer) Refresh() {
 					log.Println("Error getting record:", err)
 					return
 				}
-				r.Right.RemoveAll()
-				r.Right.Add(NewRecordGui(record))
-
-				r.RightScroll.Refresh()
+				r.Right = NewRecordGui(record)
 			}
 		}
 	}
@@ -211,7 +202,7 @@ func (r *HistoryGuiRenderer) Refresh() {
 func (r *HistoryGuiRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{
 		r.LeftScroll,
-		r.RightScroll,
+		r.Right,
 		r.Separator,
 	}
 }
@@ -219,21 +210,4 @@ func (r *HistoryGuiRenderer) Objects() []fyne.CanvasObject {
 func (r *HistoryGuiRenderer) Destroy() {
 	close(r.g.StopCh)
 	r.g.recordsChange.Close()
-}
-
-func CheckRecordContinuity(parent fyne.Window) {
-	if r := persistence.GetLocalRecords().GetNearestRecord(); r != nil {
-		dialog.NewConfirm(
-			i18n.T("message_title_continue_record"),
-			i18n.T("message_continue_record", goeasyi18n.Options{
-				Data: map[string]any{"Time": r.StartTime.Format("15:04:05")},
-			}),
-			func(confirmed bool) {
-				persistence.PrepareHistory(confirmed)
-			},
-			parent,
-		).Show()
-	} else {
-		persistence.PrepareHistory(false)
-	}
 }

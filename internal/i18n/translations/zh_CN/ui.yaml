@@ -120,4 +120,33 @@
 - Key: message_title_continue_record
   Default: "继续上次的历史记录？"
 - Key: message_continue_record
-  Default: "发现最近的历史记录，其最后一首歌的播放时间是{{.Time}}，是否在此记录继续？"
+  Default: "发现最近一条历史记录，其最后一首歌是在{{.Time}}播放的，是否在此记录继续？"
+- Key: reject_continue_record
+  Default: "不了"
+- Key: confirm_continue_record
+  Default: "继续记录"
+
+- Key: tip_select_record
+  Default: "从左侧选择舞蹈记录"
+- Key: wrapper_record_title
+  Default: "{{.Year}}年{{.Month}}月{{.Day}}日{{.Time}}开始的舞蹈记录"
+- Key: btn_delete_record
+  Default: "删除记录"
+- Key: btn_edit_comment
+  Default: "编辑备注"
+
+- Key: message_title_delete_record
+  Default: "真的要删除吗？"
+- Key: message_delete_record
+  Default: "删除整条记录就再也找不回来了！"
+- Key: reject_delete_record
+  Default: "算了"
+- Key: confirm_delete_record
+  Default: "删删删"
+
+- Key: message_title_edit_comment
+  Default: "编辑备注"
+- Key: submit_edit_comment
+  Default: "更新"
+- Key: discard_edit_comment
+  Default: "放弃修改"
