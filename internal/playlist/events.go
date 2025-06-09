@@ -2,8 +2,6 @@ package playlist
 
 import (
 	"sync"
-
-	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
 var newListSubscribers []chan *PlayList
@@ -35,14 +33,12 @@ const (
 
 type EventManager struct {
 	sync.Mutex
-	ChangeSubscribers  []chan ChangeType
-	NewItemSubscribers []chan *song.PreloadedSong
+	ChangeSubscribers []chan ChangeType
 }
 
 func NewEventManager() *EventManager {
 	return &EventManager{
-		ChangeSubscribers:  []chan ChangeType{},
-		NewItemSubscribers: []chan *song.PreloadedSong{},
+		ChangeSubscribers: []chan ChangeType{},
 	}
 }
 
@@ -60,25 +56,6 @@ func (pl *PlayList) notifyChange(changeType ChangeType) {
 	for _, sub := range pl.em.ChangeSubscribers {
 		select {
 		case sub <- changeType:
-		default:
-		}
-	}
-}
-
-func (pl *PlayList) SubscribeNewItemEvent() chan *song.PreloadedSong {
-	pl.em.Lock()
-	defer pl.em.Unlock()
-	channel := make(chan *song.PreloadedSong, 10)
-	pl.em.NewItemSubscribers = append(pl.em.NewItemSubscribers, channel)
-	return channel
-}
-
-func (pl *PlayList) notifyNewItem(item *song.PreloadedSong) {
-	pl.em.Lock()
-	defer pl.em.Unlock()
-	for _, sub := range pl.em.NewItemSubscribers {
-		select {
-		case sub <- item:
 		default:
 		}
 	}

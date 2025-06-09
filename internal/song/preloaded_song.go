@@ -75,7 +75,7 @@ func CreateRandomPlaySong() *PreloadedSong {
 	return ret
 }
 
-func CreateEmptySong() *PreloadedSong {
+func CreateUnknownSong() *PreloadedSong {
 	ret := &PreloadedSong{
 		RandomPlay: false,
 
@@ -126,7 +126,7 @@ func (ps *PreloadedSong) GetId() string {
 	if ps.RandomPlay {
 		return "random_play"
 	}
-	return "empty_song"
+	return "unknown"
 }
 func (ps *PreloadedSong) GetPreloadStatus() DownloadStatus {
 	return ps.sm.DownloadStatus

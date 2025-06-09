@@ -42,7 +42,6 @@ func (pl *PlayList) InsertItem(item *song.PreloadedSong, beforeIndex int) {
 		return
 	}
 
-	pl.notifyNewItem(item)
 	pl.notifyChange(ItemsChange)
 	pl.CriticalUpdate()
 }
@@ -55,9 +54,6 @@ func (pl *PlayList) FromList(items []*song.PreloadedSong) {
 	}
 
 	pl.Items = items
-	for _, item := range items {
-		pl.notifyNewItem(item)
-	}
 	pl.notifyChange(ItemsChange)
 	pl.CriticalUpdate()
 }
@@ -73,17 +69,20 @@ func createFromQueueItem(item types.QueueItem) *song.PreloadedSong {
 			// Custom Song
 			newSong = song.CreatePreloadedCustomSong(item.VideoName, item.URL)
 		} else if item.SongNum == 0 {
-			newSong = song.CreateEmptySong()
+			newSong = song.CreateUnknownSong()
 		} else {
 			// PyPyDance Song
 			newSong = song.CreatePreloadedPyPySong(item.SongNum)
 		}
 	}
+	if newSong == nil {
+		newSong = song.CreateUnknownSong()
+	}
 
 	newSong.Adder = item.PlayerName
 
 	id := newSong.GetId()
-	if id != "empty_song" && id != "random_play" {
+	if id != "unknown" && id != "random_play" {
 		persistence.GetLocalSongs().AddLocalSongIfNotExist(id, newSong.GetInfo().Title)
 	}
 

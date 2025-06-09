@@ -25,6 +25,9 @@ type ItemGui struct {
 
 	listItem *containers.DynamicListItem
 
+	Staled   bool
+	Replaced bool
+
 	// static UI
 
 	RunningAnimation *fyne.Animation
@@ -92,11 +95,14 @@ func (ig *ItemGui) RenderLoop() {
 				ig.statusChanged = true
 				switch ig.ps.GetPreloadStatus() {
 				case song.Removed:
+					ig.Staled = true
 					ig.SlideOut()
 					ig.listItem.MarkRemoving()
 					go func() {
 						time.Sleep(300 * time.Millisecond)
-						ig.dl.RemoveItem(ig.ps.GetId())
+						if !ig.Replaced {
+							ig.dl.RemoveItem(ig.ps.GetId())
+						}
 					}()
 					return
 				}

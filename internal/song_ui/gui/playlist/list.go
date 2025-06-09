@@ -102,7 +102,11 @@ func (r *listGuiRenderer) updateItems() {
 	r.items = lo.Map(songs, func(ps *song.PreloadedSong, _ int) *ItemGui {
 		if item, ok := r.itemMap[ps.GetId()]; ok {
 			if v := item.Value(); v != nil {
-				return v
+				if v.Staled {
+					v.Replaced = true
+				} else {
+					return v
+				}
 			}
 		}
 		newGui := NewItemGui(ps, r.dynamicList)
