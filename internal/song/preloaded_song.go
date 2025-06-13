@@ -6,6 +6,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"log"
 	"time"
 )
 
@@ -38,7 +39,20 @@ type PreloadedSong struct {
 func CreatePreloadedPyPySong(id int) *PreloadedSong {
 	song, ok := raw_song.FindPyPySong(id)
 	if !ok {
-		return nil
+		// maybe caused by corrupted song list
+		// TODO: reload song list to fix it
+		log.Println("Warning: failed to find PyPySong ", id)
+		song = &raw_song.PyPyDanceSong{
+			ID:          id,
+			Group:       0,
+			Volume:      0,
+			Name:        fmt.Sprintf("PyPyDance #%d", id),
+			Flip:        false,
+			Start:       0,
+			End:         1,
+			SkipRandom:  false,
+			OriginalURL: []string{},
+		}
 	}
 	ret := &PreloadedSong{
 		sm: NewSongStateMachine(),
