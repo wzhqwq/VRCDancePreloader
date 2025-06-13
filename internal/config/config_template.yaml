@@ -17,6 +17,6 @@ cache:
   path: "./cache"
   max-cache-size: 300
   keep-favorites: false
-  whitelist: []
 db:
   path: ./data.db
+  enable_pwi: false

@@ -19,10 +19,12 @@ func InitDB(dbFilePath string) error {
 	if err != nil {
 		return err
 	}
+
 	_, err = DB.Exec(danceRecordTableSQL)
 	if err != nil {
 		return err
 	}
+
 	_, err = DB.Exec(localSongTableSQL)
 	if err != nil {
 		return err
@@ -32,6 +34,11 @@ func InitDB(dbFilePath string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	_, err = DB.Exec(worldDataTableSQL)
+	if err != nil {
+		return err
 	}
 
 	InitLocalSongs()

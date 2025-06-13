@@ -6,6 +6,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/service"
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 	"log"
 )
@@ -129,5 +130,22 @@ func (cc *CacheConfig) UpdateKeepFavorites(b bool) {
 }
 
 func (dc *DbConfig) Init() error {
-	return persistence.InitDB(dc.Path)
+	err := persistence.InitDB(dc.Path)
+	if err != nil {
+		return err
+	}
+
+	if dc.EnablePWI {
+		service.StartPWIServer()
+	}
+	return nil
+}
+
+func (dc *DbConfig) UpdateEnablePWI(b bool) {
+	dc.EnablePWI = b
+	if dc.EnablePWI {
+		service.StartPWIServer()
+	} else {
+		service.StopPWIServer()
+	}
 }

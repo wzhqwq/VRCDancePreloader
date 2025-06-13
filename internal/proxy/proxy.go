@@ -125,9 +125,12 @@ func Start(port string) {
 
 	runningServer = &http.Server{Addr: "127.0.0.1:" + port, Handler: proxy}
 	log.Println("Starting proxy server on port", port)
-	if err := runningServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("HTTP server error: %v", err)
-	}
+
+	go func() {
+		if err := runningServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("HTTP server error: %v", err)
+		}
+	}()
 }
 
 func SelfCheck() {

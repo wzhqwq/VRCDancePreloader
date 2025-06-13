@@ -135,7 +135,7 @@ func main() {
 		return
 	default:
 	}
-	go proxy.Start(args.Port)
+	proxy.Start(args.Port)
 	defer func() {
 		log.Println("Stopping proxy")
 		proxy.Stop()

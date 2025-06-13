@@ -8,10 +8,13 @@ import (
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/service"
 )
 
-var receivedLogs = make([]string, 0)
 var playTimeMap = make(map[string]float64)
+
+var lastQueue = ""
+var lastEnteredRoom = ""
 
 func ReadNewLines(file *os.File, seekStart int64) (int64, error) {
 	file.Seek(seekStart, 0)
@@ -37,19 +40,18 @@ func ReadNewLines(file *os.File, seekStart int64) (int64, error) {
 		seekStart += int64(n)
 	}
 
-	if len(receivedLogs) > 0 {
+	if lastQueue != "" {
 		// process the last log
-		lastLog := receivedLogs[len(receivedLogs)-1]
-		log.Println("Processing queue log:\n" + lastLog)
+		log.Println("Processing queue:\n" + lastQueue)
 
-		err := processQueueLog([]byte(lastLog))
+		err := processQueueLog([]byte(lastQueue))
 		if err != nil {
 			log.Println("Error processing queue log:")
 			log.Println(err)
 		}
 
 		// clear the received logs
-		receivedLogs = make([]string, 0)
+		lastQueue = ""
 	}
 
 	// play time map
@@ -65,10 +67,27 @@ func ReadNewLines(file *os.File, seekStart int64) (int64, error) {
 }
 
 func processLine(line []byte) {
+	// [Behaviour] Entering Room: PyPyDance
+	matches := regexp.MustCompile(`\[Behaviour] Entering Room: (.*)`).FindSubmatch(line)
+	if len(matches) > 1 {
+		lastEnteredRoom = string(matches[1])
+		return
+	}
+
+	// [Behaviour] Joining wrld_f20326da-f1ac-45fc-a062-609723b097b1:29406~region(jp)
+	matches = regexp.MustCompile(`\[Behaviour] Joining (wrld_.*):.*`).FindSubmatch(line)
+	if len(matches) > 1 {
+		service.SetCurrentWorldID(string(matches[1]))
+		return
+	}
+
+	// time related
+
 	timeStampText := regexp.MustCompile(`\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}`).Find(line)
 	if timeStampText == nil {
 		return
 	}
+	// TODO time zone
 	timeStamp, err := time.Parse("2006.01.02 15:04:05 -0700", string(timeStampText)+" +0800")
 	if err != nil {
 		return
@@ -78,10 +97,27 @@ func processLine(line []byte) {
 		return
 	}
 
-	matches := regexp.MustCompile(`\[PyPyDanceQueue] (\[.*])`).FindSubmatch(line)
+	// [PyPyDanceQueue] [{
+	matches = regexp.MustCompile(`\[PyPyDanceQueue] (\[.*])`).FindSubmatch(line)
 	if len(matches) > 1 {
-		receivedLogs = append(receivedLogs, string(matches[1]))
+		lastQueue = string(matches[1])
+		if len(lastEnteredRoom) > 0 && lastEnteredRoom[0] != '*' {
+			lastEnteredRoom = "*" + lastEnteredRoom
+		}
+		return
 	}
+
+	// [VRCX-World] {
+	if service.IsPWIOn() {
+		matches = regexp.MustCompile(`\[VRCX-World] (\{.*})`).FindSubmatch(line)
+		if len(matches) > 1 {
+			err = processPwiLog([]byte(lastEnteredRoom))
+			if err != nil {
+				log.Println("Error while processing PWI request: " + err.Error())
+			}
+		}
+	}
+
 	// VideoPlay(PyPyDance) "http://jd.pypy.moe/api/v1/videos/3338.mp4",220,220
 	matches = regexp.MustCompile(`VideoPlay\(PyPyDance\) "(.*)",([.\d]+),([.\d]+)`).FindSubmatch(line)
 	if len(matches) > 1 {

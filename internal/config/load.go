@@ -34,13 +34,13 @@ type DownloadConfig struct {
 	MaxDownload int `yaml:"max-parallel-download-count"`
 }
 type CacheConfig struct {
-	Path          string   `yaml:"path"`
-	MaxCacheSize  int      `yaml:"max-cache-size"`
-	KeepFavorites bool     `yaml:"keep-favorites"`
-	Whitelist     []string `yaml:"whitelist"`
+	Path          string `yaml:"path"`
+	MaxCacheSize  int    `yaml:"max-cache-size"`
+	KeepFavorites bool   `yaml:"keep-favorites"`
 }
 type DbConfig struct {
-	Path string `yaml:"path"`
+	Path      string `yaml:"path"`
+	EnablePWI bool   `yaml:"enable-pwi"`
 }
 
 var config struct {
