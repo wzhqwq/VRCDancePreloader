@@ -3,6 +3,7 @@ package playlist
 import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"time"
 	"weak"
 
@@ -22,6 +23,9 @@ type ListGui struct {
 
 	StopCh   chan struct{}
 	changeCh chan playlist.ChangeType
+
+	itemChanged bool
+	roomChanged bool
 }
 
 func NewListGui(pl *playlist.PlayList) *ListGui {
@@ -45,6 +49,12 @@ func (l *ListGui) RenderLoop() {
 		case change := <-l.changeCh:
 			switch change {
 			case playlist.ItemsChange:
+				l.itemChanged = true
+				fyne.Do(func() {
+					l.Refresh()
+				})
+			case playlist.RoomChange:
+				l.roomChanged = true
 				fyne.Do(func() {
 					l.Refresh()
 				})
@@ -58,10 +68,20 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 	scroll := container.NewVScroll(dynamicList)
 	scroll.SetMinSize(fyne.NewSize(playItemMinWidth+theme.Padding(), 400))
 
+	roomName := canvas.NewText(l.pl.RoomName, theme.Color(theme.ColorNamePlaceHolder))
+	roomName.TextSize = 18
+	roomName.TextStyle.Bold = true
+
+	emptyTip := canvas.NewText(i18n.T("tip_playlist_empty"), theme.Color(theme.ColorNamePlaceHolder))
+	emptyTip.TextSize = 12
+
 	r := &listGuiRenderer{
 		list: l,
 
 		Container: scroll,
+
+		RoomName: roomName,
+		EmptyTip: emptyTip,
 
 		itemMap: make(map[string]weak.Pointer[ItemGui]),
 
@@ -75,10 +95,15 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 	return r
 }
 
+var playlistTopHeight = float32(30)
+
 type listGuiRenderer struct {
 	list *ListGui
 
 	Container *container.Scroll
+
+	RoomName *canvas.Text
+	EmptyTip *canvas.Text
 
 	items   []*ItemGui
 	itemMap map[string]weak.Pointer[ItemGui]
@@ -91,8 +116,20 @@ func (r *listGuiRenderer) MinSize() fyne.Size {
 }
 
 func (r *listGuiRenderer) Layout(size fyne.Size) {
-	r.Container.Resize(size)
-	r.Container.Move(fyne.NewPos(0, 0))
+	p := theme.Padding()
+
+	r.RoomName.Resize(r.RoomName.MinSize())
+	if len(r.items) == 0 {
+		r.RoomName.Move(fyne.NewPos((size.Width-r.RoomName.MinSize().Width)/2, size.Height/2-r.RoomName.MinSize().Height))
+
+		r.EmptyTip.Resize(r.EmptyTip.MinSize())
+		r.EmptyTip.Move(fyne.NewPos((size.Width-r.EmptyTip.MinSize().Width)/2, size.Height/2+theme.Padding()))
+	} else {
+		r.RoomName.Move(fyne.NewPos(p, p))
+	}
+
+	r.Container.Resize(fyne.NewSize(size.Width, size.Height-playlistTopHeight))
+	r.Container.Move(fyne.NewPos(0, playlistTopHeight))
 }
 
 func (r *listGuiRenderer) updateItems() {
@@ -120,19 +157,41 @@ func (r *listGuiRenderer) updateItems() {
 		return newGui
 	})
 
+	if len(r.items) == 0 {
+		r.EmptyTip.Show()
+		r.RoomName.TextSize = 18
+	} else {
+		r.EmptyTip.Hide()
+		r.RoomName.TextSize = 14
+	}
+
 	r.dynamicList.SetOrder(lo.Map(r.items, func(item *ItemGui, _ int) string {
 		return item.ps.GetId()
 	}))
+
+	r.Container.Refresh()
 }
 
 func (r *listGuiRenderer) Refresh() {
-	r.updateItems()
+	if r.list.itemChanged {
+		r.list.itemChanged = false
+		r.updateItems()
+	}
+
+	if r.list.roomChanged {
+		r.list.roomChanged = false
+		r.RoomName.Text = r.list.pl.RoomName
+	}
 
 	canvas.Refresh(r.list)
 }
 
 func (r *listGuiRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.Container}
+	return []fyne.CanvasObject{
+		r.Container,
+		r.RoomName,
+		r.EmptyTip,
+	}
 }
 
 func (r *listGuiRenderer) Destroy() {

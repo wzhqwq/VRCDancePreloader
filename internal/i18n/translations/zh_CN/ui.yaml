@@ -33,6 +33,8 @@
 
 - Key: wrapper_adder
   Default: "由{{.Adder}}点歌"
+- Key: tip_playlist_empty
+  Default: "等待播放列表"
 
 - Key: app_name
   Default: "VRC跳舞房预加载器"

@@ -29,6 +29,8 @@ type ChangeType string
 
 const (
 	ItemsChange ChangeType = "items"
+	RoomChange  ChangeType = "room"
+	Stopped     ChangeType = "stopped"
 )
 
 type EventManager struct {

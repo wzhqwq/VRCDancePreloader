@@ -63,6 +63,19 @@ func ReadNewLines(file *os.File, seekStart int64) (int64, error) {
 		playTimeMap = make(map[string]float64)
 	}
 
+	if lastEnteredRoom != "" {
+		// only consider the last room
+		log.Println("Entering room: " + lastEnteredRoom)
+
+		if lastEnteredRoom[0] == '*' {
+			playlist.UpdateRoomName(lastEnteredRoom[1:])
+		} else {
+			playlist.EnterNewRoom(lastEnteredRoom)
+		}
+
+		lastEnteredRoom = ""
+	}
+
 	return seekStart, nil
 }
 

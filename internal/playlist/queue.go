@@ -158,6 +158,24 @@ func ClearAndSetQueue(items []types.QueueItem) {
 	}
 }
 
+// EnterNewRoom must be in the watcher routine
+func EnterNewRoom(roomName string) {
+	if currentPlaylist == nil {
+		return
+	}
+
+	if len(currentPlaylist.Items) > 0 {
+		currentPlaylist.StopAll()
+
+		currentPlaylist = newPlayList(currentPlaylist.maxPreload)
+		currentPlaylist.RoomName = roomName
+		notifyNewList(currentPlaylist)
+	} else {
+		UpdateRoomName(roomName)
+	}
+}
+
+// GetQueue must be in the watcher routine
 func GetQueue() []*song.PreloadedSong {
 	if currentPlaylist == nil {
 		return nil

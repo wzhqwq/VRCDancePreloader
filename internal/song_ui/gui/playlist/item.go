@@ -63,14 +63,14 @@ func (ig *ItemGui) SlideIn() {
 	fyne.Do(func() {
 		ig.Move(fyne.NewPos(ig.Size().Width, 0))
 		ig.Show()
-		ig.RunningAnimation = canvas.NewPositionAnimation(
-			fyne.NewPos(ig.Size().Width, 0),
-			fyne.NewPos(0, 0),
-			300*time.Millisecond,
-			ig.Move,
-		)
-		ig.RunningAnimation.Start()
 	})
+	ig.RunningAnimation = canvas.NewPositionAnimation(
+		fyne.NewPos(ig.Size().Width, 0),
+		fyne.NewPos(0, 0),
+		300*time.Millisecond,
+		ig.Move,
+	)
+	ig.RunningAnimation.Start()
 }
 func (ig *ItemGui) SlideOut() {
 	if ig.RunningAnimation != nil {
@@ -101,7 +101,9 @@ func (ig *ItemGui) RenderLoop() {
 					go func() {
 						time.Sleep(300 * time.Millisecond)
 						if !ig.Replaced {
-							ig.dl.RemoveItem(ig.ps.GetId())
+							fyne.Do(func() {
+								ig.dl.RemoveItem(ig.ps.GetId())
+							})
 						}
 					}()
 					return

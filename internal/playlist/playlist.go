@@ -9,6 +9,8 @@ import (
 type PlayList struct {
 	Items []*song.PreloadedSong
 
+	RoomName string
+
 	criticalUpdateCh chan struct{}
 	maxPreload       int
 
@@ -86,4 +88,12 @@ func MarkURLPlaying(url string, now float64) {
 		return
 	}
 	currentPlaylist.SyncWithTime(url, now)
+}
+
+func UpdateRoomName(roomName string) {
+	if currentPlaylist == nil {
+		return
+	}
+	currentPlaylist.RoomName = roomName
+	currentPlaylist.notifyChange(RoomChange)
 }
