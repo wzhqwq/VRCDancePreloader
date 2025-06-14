@@ -7,8 +7,6 @@ import (
 	"math"
 	"sync"
 	"time"
-
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type DownloadStatus string
@@ -50,20 +48,23 @@ type StateMachine struct {
 	ps *PreloadedSong
 
 	// waiter
-	songWaiting *utils.FinishingBroadcaster
+	completeSongWg sync.WaitGroup
 
 	// locks
 	timeMutex sync.Mutex
 }
 
 func NewSongStateMachine() *StateMachine {
-	return &StateMachine{
+	sm := &StateMachine{
 		DownloadStatus: Initial,
 		PlayStatus:     Queued,
 		ps:             nil,
-		songWaiting:    utils.NewBroadcaster(),
+		completeSongWg: sync.WaitGroup{},
 		timeMutex:      sync.Mutex{},
 	}
+	sm.completeSongWg.Add(1)
+
+	return sm
 }
 
 func (sm *StateMachine) IsDownloadLoopStarted() bool {
@@ -79,7 +80,7 @@ func (sm *StateMachine) IsPlayingLoopStarted() bool {
 func (sm *StateMachine) WaitForCompleteSong() error {
 	sm.StartDownload()
 	sm.Prioritize()
-	sm.songWaiting.WaitForFinishing()
+	sm.completeSongWg.Wait()
 
 	switch sm.DownloadStatus {
 	case Removed:
@@ -127,7 +128,7 @@ func (sm *StateMachine) Prioritize() {
 }
 
 func (sm *StateMachine) StartDownloadLoop(ds *download.DownloadState) {
-	defer sm.songWaiting.Finish()
+	defer sm.completeSongWg.Done()
 	for {
 		select {
 		case <-ds.StateCh:
