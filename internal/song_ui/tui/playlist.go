@@ -67,7 +67,9 @@ func (plt *PlayListTui) refreshItems() {
 		plt.Print()
 	}()
 
-	plt.items = lo.Map(plt.pl.Items, func(ps *song.PreloadedSong, _ int) *ItemTui {
+	songs := plt.pl.GetItemsSnapshot()
+
+	plt.items = lo.Map(songs, func(ps *song.PreloadedSong, _ int) *ItemTui {
 		if item, ok := plt.itemMap[ps.GetId()]; ok {
 			return item
 		}

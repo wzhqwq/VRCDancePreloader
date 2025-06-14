@@ -13,10 +13,9 @@ func SetAsyncDownload(async bool) {
 	asyncDownload = async
 }
 
-func (pl *PlayList) findPyPySong(id int) *song.PreloadedSong {
-	pl.Lock()
-	defer pl.Unlock()
-	for _, item := range pl.Items {
+func (pl *PlayList) FindPyPySong(id int) *song.PreloadedSong {
+	items := pl.GetItemsSnapshot()
+	for _, item := range items {
 		if item.MatchWithPyPyId(id) {
 			return item
 		}
@@ -26,10 +25,9 @@ func (pl *PlayList) findPyPySong(id int) *song.PreloadedSong {
 	return item
 }
 
-func (pl *PlayList) findCustomSong(url string) *song.PreloadedSong {
-	pl.Lock()
-	defer pl.Unlock()
-	for _, item := range pl.Items {
+func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
+	items := pl.GetItemsSnapshot()
+	for _, item := range items {
 		if item.MatchWithCustomUrl(url) {
 			return item
 		}
@@ -40,7 +38,7 @@ func (pl *PlayList) findCustomSong(url string) *song.PreloadedSong {
 }
 
 func RequestPyPySong(id int) (io.ReadSeekCloser, error) {
-	item := currentPlaylist.findPyPySong(id)
+	item := currentPlaylist.FindPyPySong(id)
 	if asyncDownload {
 		return item.GetSongRSAsync()
 	} else {
@@ -51,6 +49,6 @@ func RequestPyPySong(id int) (io.ReadSeekCloser, error) {
 // TODO
 
 func RequestYoutubeSong(id string) (io.ReadSeekCloser, error) {
-	item := currentPlaylist.findCustomSong(utils.GetStandardYoutubeURL(id))
+	item := currentPlaylist.FindCustomSong(utils.GetStandardYoutubeURL(id))
 	return item.GetSongRSSync()
 }

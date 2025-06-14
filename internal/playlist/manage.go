@@ -3,7 +3,6 @@ package playlist
 func Init(maxPreload int) {
 	currentPlaylist = newPlayList(maxPreload)
 	notifyNewList(currentPlaylist)
-	currentPlaylist.Start()
 }
 
 func StopPlayList() {
@@ -18,8 +17,6 @@ func SetMaxPreload(maxPreload int) {
 	if currentPlaylist == nil {
 		return
 	}
-	currentPlaylist.Lock()
-	defer currentPlaylist.Unlock()
 	currentPlaylist.maxPreload = maxPreload
 	currentPlaylist.CriticalUpdate()
 }

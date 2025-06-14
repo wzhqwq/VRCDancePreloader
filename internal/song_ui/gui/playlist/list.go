@@ -96,8 +96,7 @@ func (r *listGuiRenderer) Layout(size fyne.Size) {
 }
 
 func (r *listGuiRenderer) updateItems() {
-	songs := make([]*song.PreloadedSong, len(r.list.pl.Items))
-	copy(songs, r.list.pl.Items)
+	songs := r.list.pl.GetItemsSnapshot()
 
 	r.items = lo.Map(songs, func(ps *song.PreloadedSong, _ int) *ItemGui {
 		if item, ok := r.itemMap[ps.GetId()]; ok {

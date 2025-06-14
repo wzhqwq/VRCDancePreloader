@@ -9,7 +9,8 @@ func (pl *PlayList) CriticalUpdate() {
 
 func (pl *PlayList) Preload() {
 	scanned := 0
-	for _, item := range pl.Items {
+	items := pl.GetItemsSnapshot()
+	for _, item := range items {
 		if scanned > pl.maxPreload {
 			break
 		}

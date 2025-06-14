@@ -10,16 +10,29 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 )
 
-func (pl *PlayList) RemoveItem(index int) {
-	pl.Lock()
-	defer pl.Unlock()
+func (pl *PlayList) GetItemsSnapshot() []*song.PreloadedSong {
+	pl.ItemsLock.RLock()
+	items := make([]*song.PreloadedSong, len(pl.Items))
+	copy(items, pl.Items)
+	pl.ItemsLock.RUnlock()
 
+	return items
+}
+
+// RemoveItem must be in the watcher routine
+func (pl *PlayList) RemoveItem(index int) {
+	if pl.stopped {
+		return
+	}
 	if index >= len(pl.Items) {
 		return
 	}
 
 	item := pl.Items[index]
+
+	pl.ItemsLock.Lock()
 	pl.Items = slices.Delete(pl.Items, index, index+1)
+	pl.ItemsLock.Unlock()
 
 	item.RemoveFromList()
 	log.Println("Removed item", item.GetInfo().Title)
@@ -28,15 +41,23 @@ func (pl *PlayList) RemoveItem(index int) {
 	pl.CriticalUpdate()
 }
 
+// InsertItem must be in the watcher routine
 func (pl *PlayList) InsertItem(item *song.PreloadedSong, beforeIndex int) {
-	pl.Lock()
-	defer pl.Unlock()
+	if pl.stopped {
+		return
+	}
 
 	if beforeIndex == -1 {
+		pl.ItemsLock.Lock()
 		pl.Items = append(pl.Items, item)
+		pl.ItemsLock.Unlock()
+
 		log.Println("Appended item", item.GetInfo().Title)
 	} else if beforeIndex < len(pl.Items) {
+		pl.ItemsLock.Lock()
 		pl.Items = slices.Insert(pl.Items, beforeIndex, item)
+		pl.ItemsLock.Unlock()
+
 		log.Println("Inserted item", item.GetInfo().Title, "before", beforeIndex)
 	} else {
 		return
@@ -46,14 +67,19 @@ func (pl *PlayList) InsertItem(item *song.PreloadedSong, beforeIndex int) {
 	pl.CriticalUpdate()
 }
 
+// FromList must be in the watcher routine
 func (pl *PlayList) FromList(items []*song.PreloadedSong) {
-	pl.Lock()
-	defer pl.Unlock()
+	if pl.stopped {
+		return
+	}
 	if pl.Items == nil {
 		return
 	}
 
+	pl.ItemsLock.Lock()
 	pl.Items = items
+	pl.ItemsLock.Unlock()
+
 	pl.notifyChange(ItemsChange)
 	pl.CriticalUpdate()
 }
@@ -89,33 +115,47 @@ func createFromQueueItem(item types.QueueItem) *song.PreloadedSong {
 	return newSong
 }
 
+// RemoveItem must be in the watcher routine
 func RemoveItem(index int) {
 	if currentPlaylist == nil {
 		return
 	}
 	currentPlaylist.RemoveItem(index)
 }
+
+// InsertItem must be in the watcher routine
 func InsertItem(item types.QueueItem, beforeIndex int) {
 	if currentPlaylist == nil {
 		return
 	}
 	currentPlaylist.InsertItem(createFromQueueItem(item), beforeIndex)
 }
+
+// ClearAndSetQueue must be in the watcher routine
 func ClearAndSetQueue(items []types.QueueItem) {
-	maxPreload := 2
-	if currentPlaylist != nil {
-		currentPlaylist.StopAll()
-		maxPreload = currentPlaylist.maxPreload
+	if currentPlaylist == nil {
+		return
 	}
 
-	currentPlaylist = newPlayList(maxPreload)
-	notifyNewList(currentPlaylist)
-	list := lo.Map(items, func(item types.QueueItem, _ int) *song.PreloadedSong {
-		return createFromQueueItem(item)
-	})
-	currentPlaylist.FromList(list)
-	currentPlaylist.Start()
-	log.Println("Restarted playlist")
+	if len(currentPlaylist.Items) > 0 {
+		lastRoomName := currentPlaylist.RoomName
+		currentPlaylist.StopAll()
+
+		currentPlaylist = newPlayList(currentPlaylist.maxPreload)
+		currentPlaylist.RoomName = lastRoomName
+		notifyNewList(currentPlaylist)
+
+		log.Println("New playlist")
+	}
+
+	if len(items) > 0 {
+		list := lo.Map(items, func(item types.QueueItem, _ int) *song.PreloadedSong {
+			return createFromQueueItem(item)
+		})
+		currentPlaylist.FromList(list)
+		currentPlaylist.Start()
+		log.Println("Started playlist")
+	}
 }
 
 func GetQueue() []*song.PreloadedSong {

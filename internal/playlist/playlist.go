@@ -7,16 +7,19 @@ import (
 )
 
 type PlayList struct {
-	sync.Mutex
-	//utils.LoggingMutex
-
 	Items []*song.PreloadedSong
 
 	criticalUpdateCh chan struct{}
 	maxPreload       int
 
+	started bool
+	stopped bool
+
 	// event
 	em *EventManager
+
+	// lightweight locks
+	ItemsLock sync.RWMutex
 }
 
 var currentPlaylist *PlayList
@@ -32,32 +35,48 @@ func newPlayList(maxPreload int) *PlayList {
 }
 
 func (pl *PlayList) Start() {
+	if pl.started {
+		return
+	}
+	pl.started = true
+
 	go func() {
 		pl.Preload()
 		for {
 			<-pl.criticalUpdateCh
+			if pl.stopped {
+				return
+			}
 			pl.Preload()
 		}
 	}()
 }
 
 func (pl *PlayList) StopAll() {
-	pl.Lock()
-	defer pl.Unlock()
+	if pl.stopped {
+		return
+	}
+	pl.stopped = true
 
-	for _, item := range pl.Items {
+	items := pl.GetItemsSnapshot()
+	for _, item := range items {
 		item.RemoveFromList()
 	}
-	pl.Items = make([]*song.PreloadedSong, 0)
-	pl.notifyChange(ItemsChange)
+
+	pl.notifyChange(Stopped)
+	pl.CriticalUpdate()
 }
 
 func (pl *PlayList) SyncWithTime(url string, now float64) {
+	if pl.stopped {
+		return
+	}
+
 	var item *song.PreloadedSong
 	if id, ok := utils.CheckPyPyUrl(url); ok {
-		item = pl.findPyPySong(id)
+		item = pl.FindPyPySong(id)
 	} else {
-		item = pl.findCustomSong(url)
+		item = pl.FindCustomSong(url)
 	}
 	item.PlaySongStartFrom(now)
 }
