@@ -22,31 +22,32 @@ type playBarRenderer struct {
 	pb *PlayBar
 }
 
-func (p *playBarRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(p.text.MinSize().Width, p.text.MinSize().Height+8)
+func (r *playBarRenderer) MinSize() fyne.Size {
+	return fyne.NewSize(r.text.MinSize().Width, r.text.MinSize().Height+8)
 }
 
-func (p *playBarRenderer) Layout(size fyne.Size) {
-	offset := (size.Height-p.MinSize().Height)/2 + 4
+func (r *playBarRenderer) Layout(size fyne.Size) {
+	offset := (size.Height-r.MinSize().Height)/2 + 4
 
-	p.rect1.Move(fyne.NewPos(0, offset))
-	p.rect2.Move(fyne.NewPos(0, offset))
-	p.text.Move(fyne.NewPos(0, offset+4))
+	r.rect1.Move(fyne.NewPos(0, offset))
+	r.rect2.Move(fyne.NewPos(0, offset))
+	r.text.Move(fyne.NewPos(0, offset+4))
 
-	p.rect1.Resize(fyne.NewSize(size.Width, 4))
-	p.rect2.Resize(fyne.NewSize(size.Width*p.pb.Progress, 4))
+	r.rect1.Resize(fyne.NewSize(size.Width, 4))
+	r.rect2.Resize(fyne.NewSize(size.Width*r.pb.Progress, 4))
 }
 
-func (p *playBarRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{p.rect1, p.rect2, p.text}
+func (r *playBarRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.rect1, r.rect2, r.text}
 }
 
-func (p *playBarRenderer) Refresh() {
-	p.text.Text = p.pb.Text
-	canvas.Refresh(p.pb)
+func (r *playBarRenderer) Refresh() {
+	r.text.Text = r.pb.Text
+	r.rect2.Resize(fyne.NewSize(r.pb.Size().Width*r.pb.Progress, 4))
+	canvas.Refresh(r.pb)
 }
 
-func (p *playBarRenderer) Destroy() {
+func (r *playBarRenderer) Destroy() {
 }
 
 func NewPlayBar() *PlayBar {

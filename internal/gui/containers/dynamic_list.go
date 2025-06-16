@@ -44,17 +44,17 @@ type DynamicListRenderer struct {
 	dl *DynamicList
 }
 
-func (dlr *DynamicListRenderer) MinSize() fyne.Size {
+func (r *DynamicListRenderer) MinSize() fyne.Size {
 	totalHeight := float32(0)
-	for _, item := range dlr.dl.itemMap {
+	for _, item := range r.dl.itemMap {
 		totalHeight += item.MinSize().Height + theme.Padding()
 	}
-	return fyne.NewSize(dlr.dl.minWidth+theme.Padding()*2, totalHeight+theme.Padding())
+	return fyne.NewSize(r.dl.minWidth+theme.Padding()*2, totalHeight+theme.Padding())
 }
-func (dlr *DynamicListRenderer) Layout(size fyne.Size) {
+func (r *DynamicListRenderer) Layout(size fyne.Size) {
 	accY := theme.Padding()
-	for _, id := range dlr.dl.order {
-		if o, ok := dlr.dl.itemMap[id]; ok {
+	for _, id := range r.dl.order {
+		if o, ok := r.dl.itemMap[id]; ok {
 			o.Resize(fyne.NewSize(size.Width-theme.Padding()*2, o.MinSize().Height))
 			if o.isRemoving {
 				continue
@@ -70,19 +70,19 @@ func (dlr *DynamicListRenderer) Layout(size fyne.Size) {
 		}
 	}
 }
-func (dlr *DynamicListRenderer) Refresh() {
-	for _, item := range dlr.dl.itemMap {
+func (r *DynamicListRenderer) Refresh() {
+	for _, item := range r.dl.itemMap {
 		item.Refresh()
 	}
 }
-func (dlr *DynamicListRenderer) Objects() []fyne.CanvasObject {
+func (r *DynamicListRenderer) Objects() []fyne.CanvasObject {
 	var objs []fyne.CanvasObject
-	for _, item := range dlr.dl.itemMap {
+	for _, item := range r.dl.itemMap {
 		objs = append(objs, item)
 	}
 	return objs
 }
-func (dlr *DynamicListRenderer) Destroy() {
+func (r *DynamicListRenderer) Destroy() {
 	// TODO
 }
 
@@ -161,18 +161,18 @@ type DynamicListItemRenderer struct {
 	dli *DynamicListItem
 }
 
-func (ir *DynamicListItemRenderer) MinSize() fyne.Size {
-	return ir.dli.object.MinSize()
+func (r *DynamicListItemRenderer) MinSize() fyne.Size {
+	return r.dli.object.MinSize()
 }
-func (ir *DynamicListItemRenderer) Layout(size fyne.Size) {
-	ir.dli.object.Resize(size)
+func (r *DynamicListItemRenderer) Layout(size fyne.Size) {
+	r.dli.object.Resize(size)
 }
-func (ir *DynamicListItemRenderer) Refresh() {
-	ir.dli.object.Refresh()
+func (r *DynamicListItemRenderer) Refresh() {
+	r.dli.object.Refresh()
 }
-func (ir *DynamicListItemRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{ir.dli.object}
+func (r *DynamicListItemRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.dli.object}
 }
-func (ir *DynamicListItemRenderer) Destroy() {
+func (r *DynamicListItemRenderer) Destroy() {
 	// TODO
 }

@@ -78,22 +78,22 @@ type inputWithMinWidthRenderer struct {
 	i     *inputWithMinWidth
 }
 
-func (i *inputWithMinWidthRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(400, i.input.MinSize().Height)
+func (r *inputWithMinWidthRenderer) MinSize() fyne.Size {
+	return fyne.NewSize(400, r.input.MinSize().Height)
 }
 
-func (i *inputWithMinWidthRenderer) Layout(size fyne.Size) {
-	i.input.Resize(size)
-	i.input.Move(fyne.NewPos(0, 0))
+func (r *inputWithMinWidthRenderer) Layout(size fyne.Size) {
+	r.input.Resize(size)
+	r.input.Move(fyne.NewPos(0, 0))
 }
-func (i *inputWithMinWidthRenderer) Refresh() {
-	i.input.Refresh()
-	canvas.Refresh(i.i)
+func (r *inputWithMinWidthRenderer) Refresh() {
+	r.input.Refresh()
+	canvas.Refresh(r.i)
 }
-func (i *inputWithMinWidthRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{i.input}
+func (r *inputWithMinWidthRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.input}
 }
-func (i *inputWithMinWidthRenderer) Destroy() {
+func (r *inputWithMinWidthRenderer) Destroy() {
 }
 
 func ShowCommentEditor(original string, onSubmit func(comment string)) {

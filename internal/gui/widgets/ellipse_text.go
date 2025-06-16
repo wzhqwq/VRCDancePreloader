@@ -26,38 +26,38 @@ type ellipseTextRenderer struct {
 	e *EllipseText
 }
 
-func (p *ellipseTextRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(50, p.text.MinSize().Height)
+func (r *ellipseTextRenderer) MinSize() fyne.Size {
+	return fyne.NewSize(50, r.text.MinSize().Height)
 }
 
-func (p *ellipseTextRenderer) Layout(size fyne.Size) {
-	p.width = size.Width
-	p.text.Resize(size)
-	p.text.Text = p.findProperSlice()
+func (r *ellipseTextRenderer) Layout(size fyne.Size) {
+	r.width = size.Width
+	r.text.Resize(size)
+	r.text.Text = r.findProperSlice()
 }
 
-func (p *ellipseTextRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{p.text}
+func (r *ellipseTextRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.text}
 }
 
-func (p *ellipseTextRenderer) Refresh() {
-	p.text.Text = p.findProperSlice()
-	p.text.TextSize = p.e.TextSize
-	p.text.TextStyle = p.e.TextStyle
-	p.text.Color = p.e.Color
+func (r *ellipseTextRenderer) Refresh() {
+	r.text.Text = r.findProperSlice()
+	r.text.TextSize = r.e.TextSize
+	r.text.TextStyle = r.e.TextStyle
+	r.text.Color = r.e.Color
 }
 
-func (p *ellipseTextRenderer) Destroy() {
+func (r *ellipseTextRenderer) Destroy() {
 }
 
-func (p *ellipseTextRenderer) findProperSlice() string {
-	full := p.e.Text
-	if p.calculateSize(full) <= p.width {
+func (r *ellipseTextRenderer) findProperSlice() string {
+	full := r.e.Text
+	if r.calculateSize(full) <= r.width {
 		return full
 	}
 
 	ellipsis := "..."
-	ellipsisWidth := p.calculateSize(ellipsis)
+	ellipsisWidth := r.calculateSize(ellipsis)
 	runes := []rune(full)
 	n := len(runes)
 
@@ -65,7 +65,7 @@ func (p *ellipseTextRenderer) findProperSlice() string {
 	for low < high {
 		mid := (low + high + 1) / 2
 		slice := string(runes[:mid])
-		if p.calculateSize(slice)+ellipsisWidth <= p.width {
+		if r.calculateSize(slice)+ellipsisWidth <= r.width {
 			low = mid
 		} else {
 			high = mid - 1
@@ -73,7 +73,7 @@ func (p *ellipseTextRenderer) findProperSlice() string {
 	}
 
 	if low <= 0 {
-		if ellipsisWidth <= p.width {
+		if ellipsisWidth <= r.width {
 			return ellipsis
 		}
 		return ""
@@ -81,8 +81,8 @@ func (p *ellipseTextRenderer) findProperSlice() string {
 
 	return string(runes[:low]) + ellipsis
 }
-func (p *ellipseTextRenderer) calculateSize(text string) float32 {
-	size, _ := window_app.Driver().RenderedTextSize(text, p.e.TextSize, p.e.TextStyle, nil)
+func (r *ellipseTextRenderer) calculateSize(text string) float32 {
+	size, _ := window_app.Driver().RenderedTextSize(text, r.e.TextSize, r.e.TextStyle, nil)
 	return size.Width
 }
 
