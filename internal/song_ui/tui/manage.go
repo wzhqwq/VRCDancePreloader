@@ -8,19 +8,20 @@ var currentTui *PlayListTui
 var stopCh chan struct{}
 
 func Start() {
-	ch := playlist.SubscribeNewListEvent()
+	listUpdate := playlist.SubscribeNewListEvent()
 	stopCh = make(chan struct{})
 	go func() {
 		for {
 			select {
 			case <-stopCh:
 				if currentTui != nil {
-					currentTui.StopCh <- struct{}{}
+					close(currentTui.StopCh)
 				}
+				listUpdate.Close()
 				return
-			case pl := <-ch:
+			case pl := <-listUpdate.Channel:
 				if currentTui != nil {
-					currentTui.StopCh <- struct{}{}
+					close(currentTui.StopCh)
 				}
 				currentTui = NewPlayListTui(pl)
 				go currentTui.RenderLoop()
@@ -29,5 +30,5 @@ func Start() {
 	}()
 }
 func Stop() {
-	stopCh <- struct{}{}
+	close(stopCh)
 }

@@ -29,8 +29,9 @@ func (it *ItemTui) RenderLoop() {
 	for {
 		select {
 		case <-it.StopCh:
+			ch.Close()
 			return
-		case event := <-ch:
+		case event := <-ch.Channel:
 			switch event {
 			case song.ProgressChange:
 				it.plt.stdoutMutex.Lock()

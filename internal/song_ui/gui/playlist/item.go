@@ -32,8 +32,8 @@ type ItemGui struct {
 
 	RunningAnimation *fyne.Animation
 
-	StopCh   chan struct{}
-	changeCh chan song.ChangeType
+	stopCh     chan struct{}
+	songUpdate *utils.EventSubscriber[song.ChangeType]
 
 	statusChanged   bool
 	timeChanged     bool
@@ -45,8 +45,8 @@ func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
 		ps: ps,
 		dl: dl,
 
-		StopCh:   make(chan struct{}, 10),
-		changeCh: ps.SubscribeEvent(),
+		stopCh:     make(chan struct{}, 10),
+		songUpdate: ps.SubscribeEvent(),
 
 		statusChanged:   true,
 		timeChanged:     true,
@@ -87,9 +87,9 @@ func (ig *ItemGui) SlideOut() {
 func (ig *ItemGui) RenderLoop() {
 	for {
 		select {
-		case <-ig.StopCh:
+		case <-ig.stopCh:
 			return
-		case event := <-ig.changeCh:
+		case event := <-ig.songUpdate.Channel:
 			switch event {
 			case song.StatusChange:
 				ig.statusChanged = true
@@ -375,5 +375,6 @@ func (r *ItemRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *ItemRenderer) Destroy() {
-	close(r.ig.StopCh)
+	close(r.ig.stopCh)
+	r.ig.songUpdate.Close()
 }

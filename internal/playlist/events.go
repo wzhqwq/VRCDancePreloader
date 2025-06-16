@@ -1,28 +1,16 @@
 package playlist
 
 import (
-	"sync"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var newListSubscribers []chan *PlayList
+var newListEm = utils.NewEventManager[*PlayList]()
 
-func SubscribeNewListEvent() chan *PlayList {
-	channel := make(chan *PlayList, 10)
-	newListSubscribers = append(newListSubscribers, channel)
-	if currentPlaylist != nil {
-		channel <- currentPlaylist
-	}
-	return channel
+func SubscribeNewListEvent() *utils.EventSubscriber[*PlayList] {
+	return newListEm.SubscribeEvent()
 }
 func notifyNewList(pl *PlayList) {
-	for _, sub := range newListSubscribers {
-		select {
-		case sub <- pl:
-		default:
-			<-sub
-			sub <- pl
-		}
-	}
+	newListEm.NotifySubscribers(pl)
 }
 
 type ChangeType string
@@ -33,32 +21,10 @@ const (
 	Stopped     ChangeType = "stopped"
 )
 
-type EventManager struct {
-	sync.Mutex
-	ChangeSubscribers []chan ChangeType
-}
-
-func NewEventManager() *EventManager {
-	return &EventManager{
-		ChangeSubscribers: []chan ChangeType{},
-	}
-}
-
-func (pl *PlayList) SubscribeChangeEvent() chan ChangeType {
-	pl.em.Lock()
-	defer pl.em.Unlock()
-	channel := make(chan ChangeType, 10)
-	pl.em.ChangeSubscribers = append(pl.em.ChangeSubscribers, channel)
-	return channel
+func (pl *PlayList) SubscribeChangeEvent() *utils.EventSubscriber[ChangeType] {
+	return pl.em.SubscribeEvent()
 }
 
 func (pl *PlayList) notifyChange(changeType ChangeType) {
-	pl.em.Lock()
-	defer pl.em.Unlock()
-	for _, sub := range pl.em.ChangeSubscribers {
-		select {
-		case sub <- changeType:
-		default:
-		}
-	}
+	pl.em.NotifySubscribers(changeType)
 }

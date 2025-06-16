@@ -5,22 +5,25 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type Manager struct {
 	widget.BaseWidget
 
 	currentList *playlist.PlayList
-	newListCh   chan *playlist.PlayList
-	stopCh      chan struct{}
+
+	listUpdate *utils.EventSubscriber[*playlist.PlayList]
+	stopCh     chan struct{}
 
 	listChanged bool
 }
 
 func NewPlaylistManager() *Manager {
 	m := &Manager{
-		newListCh: playlist.SubscribeNewListEvent(),
-		stopCh:    make(chan struct{}),
+		listUpdate:  playlist.SubscribeNewListEvent(),
+		stopCh:      make(chan struct{}),
+		currentList: playlist.GetCurrentPlaylist(),
 	}
 
 	m.ExtendBaseWidget(m)
@@ -33,7 +36,7 @@ func (m *Manager) RenderLoop() {
 		select {
 		case <-m.stopCh:
 			return
-		case pl := <-m.newListCh:
+		case pl := <-m.listUpdate.Channel:
 			m.currentList = pl
 			m.listChanged = true
 			fyne.Do(func() {
@@ -45,8 +48,15 @@ func (m *Manager) RenderLoop() {
 
 func (m *Manager) CreateRenderer() fyne.WidgetRenderer {
 	go m.RenderLoop()
+
+	var list *ListGui
+	if m.currentList != nil {
+		list = NewListGui(m.currentList)
+	}
+
 	return &managerRender{
 		manager: m,
+		list:    list,
 	}
 }
 
@@ -56,33 +66,40 @@ type managerRender struct {
 	list *ListGui
 }
 
-func (m *managerRender) MinSize() fyne.Size {
-	if m.list == nil {
+func (r *managerRender) MinSize() fyne.Size {
+	if r.list == nil {
 		return fyne.NewSize(playItemMinWidth, playItemMinWidth)
 	}
-	return m.list.MinSize()
+	return r.list.MinSize()
 }
 
-func (m *managerRender) Layout(size fyne.Size) {
-	if m.list != nil {
-		m.list.Resize(size)
-		m.list.Move(fyne.NewPos(0, 0))
+func (r *managerRender) Layout(size fyne.Size) {
+	if r.list != nil {
+		r.list.Resize(size)
+		r.list.Move(fyne.NewPos(0, 0))
 	}
 }
 
-func (m *managerRender) Refresh() {
-	if m.manager.listChanged {
-		m.list = NewListGui(m.manager.currentList)
-		m.manager.listChanged = false
+func (r *managerRender) Refresh() {
+	if r.manager.listChanged {
+		r.manager.listChanged = false
+		if r.manager.currentList == nil {
+			r.list = nil
+		} else {
+			r.list = NewListGui(r.manager.currentList)
+		}
 	}
-	canvas.Refresh(m.manager)
+	canvas.Refresh(r.manager)
 }
 
-func (m *managerRender) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{m.list}
+func (r *managerRender) Objects() []fyne.CanvasObject {
+	if r.list == nil {
+		return []fyne.CanvasObject{}
+	}
+	return []fyne.CanvasObject{r.list}
 }
 
-func (m *managerRender) Destroy() {
-	close(m.manager.stopCh)
-	close(m.manager.newListCh)
+func (r *managerRender) Destroy() {
+	close(r.manager.stopCh)
+	r.manager.listUpdate.Close()
 }

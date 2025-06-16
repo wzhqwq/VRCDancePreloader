@@ -18,7 +18,7 @@ type AllowList struct {
 	sync.Mutex
 	Entries map[string]int64
 
-	em *utils.StringEventManager
+	em *utils.EventManager[string]
 }
 
 var currentAllowList *AllowList
@@ -142,7 +142,7 @@ func (a *AllowList) LoadEntries() error {
 func InitAllowList() {
 	currentAllowList = &AllowList{
 		Entries: make(map[string]int64),
-		em:      utils.NewStringEventManager(),
+		em:      utils.NewEventManager[string](),
 	}
 
 	err := currentAllowList.LoadEntries()

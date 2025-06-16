@@ -31,7 +31,7 @@ type PreloadedSong struct {
 	PreloadError error
 
 	// event
-	em *EventManager
+	em *utils.EventManager[ChangeType]
 }
 
 // constructors
@@ -60,7 +60,7 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 		Duration: float64(song.End),
 		PyPySong: song,
 
-		em: NewEventManager(),
+		em: utils.NewEventManager[ChangeType](),
 	}
 	ret.sm.ps = ret
 	return ret
@@ -72,7 +72,7 @@ func CreatePreloadedCustomSong(title, url string) *PreloadedSong {
 
 		CustomSong: raw_song.FindOrCreateCustomSong(title, url),
 
-		em: NewEventManager(),
+		em: utils.NewEventManager[ChangeType](),
 	}
 	ret.sm.ps = ret
 	return ret
@@ -83,7 +83,7 @@ func CreateRandomPlaySong() *PreloadedSong {
 		RandomPlay: true,
 
 		sm: NewSongStateMachine(),
-		em: NewEventManager(),
+		em: utils.NewEventManager[ChangeType](),
 	}
 	ret.sm.ps = ret
 	return ret
@@ -94,7 +94,7 @@ func CreateUnknownSong() *PreloadedSong {
 		RandomPlay: false,
 
 		sm: NewSongStateMachine(),
-		em: NewEventManager(),
+		em: utils.NewEventManager[ChangeType](),
 	}
 	ret.sm.ps = ret
 	ret.sm.DownloadStatus = NotAvailable

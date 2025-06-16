@@ -18,7 +18,7 @@ type PlayList struct {
 	stopped bool
 
 	// event
-	em *EventManager
+	em *utils.EventManager[ChangeType]
 
 	// lightweight locks
 	ItemsLock sync.RWMutex
@@ -32,7 +32,7 @@ func newPlayList(maxPreload int) *PlayList {
 		Items:            make([]*song.PreloadedSong, 0),
 		criticalUpdateCh: make(chan struct{}, 1),
 		maxPreload:       maxPreload,
-		em:               NewEventManager(),
+		em:               utils.NewEventManager[ChangeType](),
 	}
 }
 
@@ -80,7 +80,9 @@ func (pl *PlayList) SyncWithTime(url string, now float64) {
 	} else {
 		item = pl.FindCustomSong(url)
 	}
-	item.PlaySongStartFrom(now)
+	if item != nil {
+		item.PlaySongStartFrom(now)
+	}
 }
 
 func MarkURLPlaying(url string, now float64) {
@@ -96,4 +98,8 @@ func UpdateRoomName(roomName string) {
 	}
 	currentPlaylist.RoomName = roomName
 	currentPlaylist.notifyChange(RoomChange)
+}
+
+func GetCurrentPlaylist() *PlayList {
+	return currentPlaylist
 }

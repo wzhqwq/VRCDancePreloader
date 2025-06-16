@@ -21,8 +21,8 @@ type HistoryGui struct {
 
 	recordButtonsCached map[int]*button.RecordButton
 
-	StopCh        chan struct{}
-	recordsChange *utils.StringEventSubscriber
+	stopCh        chan struct{}
+	recordsChange *utils.EventSubscriber[string]
 
 	recordsChanged bool
 	activeChanged  bool
@@ -39,7 +39,7 @@ func NewHistoryGui() *HistoryGui {
 
 		Records: records,
 
-		StopCh:        make(chan struct{}),
+		stopCh:        make(chan struct{}),
 		recordsChange: persistence.GetLocalRecords().SubscribeEvent(),
 	}
 
@@ -78,7 +78,7 @@ func (g *HistoryGui) SetActive(id int) {
 func (g *HistoryGui) RenderLoop() {
 	for {
 		select {
-		case <-g.StopCh:
+		case <-g.stopCh:
 			return
 		case <-g.recordsChange.Channel:
 			g.UpdateRecords()
@@ -208,6 +208,6 @@ func (r *HistoryGuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *HistoryGuiRenderer) Destroy() {
-	close(r.g.StopCh)
+	close(r.g.stopCh)
 	r.g.recordsChange.Close()
 }

@@ -25,7 +25,7 @@ var keepFavorites bool
 var cacheMap = NewCacheMap()
 var cleanUpChan = make(chan struct{}, 1)
 
-var localFileEm = utils.NewStringEventManager()
+var localFileEm = utils.NewEventManager[string]()
 var dirWatcher *fsnotify.Watcher
 
 func SetupCache(path string) {
@@ -221,7 +221,7 @@ func CloseCacheEntry(id string) {
 	localFileEm.NotifySubscribers("*" + id)
 }
 
-func SubscribeLocalFileEvent() *utils.StringEventSubscriber {
+func SubscribeLocalFileEvent() *utils.EventSubscriber[string] {
 	return localFileEm.SubscribeEvent()
 }
 

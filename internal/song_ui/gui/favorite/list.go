@@ -25,8 +25,8 @@ type FavoritesGui struct {
 
 	entries []*persistence.LocalSongEntry
 
-	StopCh         chan struct{}
-	favoriteChange *utils.StringEventSubscriber
+	stopCh         chan struct{}
+	favoriteChange *utils.EventSubscriber[string]
 }
 
 const pageSize = 5
@@ -54,7 +54,7 @@ func NewFavoritesGui() *FavoritesGui {
 		sortBy:    "id",
 		ascending: true,
 
-		StopCh:         make(chan struct{}),
+		stopCh:         make(chan struct{}),
 		favoriteChange: favorites.SubscribeEvent(),
 	}
 
@@ -76,7 +76,7 @@ func (fg *FavoritesGui) RenderLoop() {
 
 	for {
 		select {
-		case <-fg.StopCh:
+		case <-fg.stopCh:
 			return
 		case <-fg.favoriteChange.Channel:
 			fg.refreshItems()
@@ -201,6 +201,6 @@ func (r *favoritesGuiRenderer) Refresh() {
 }
 
 func (r *favoritesGuiRenderer) Destroy() {
-	close(r.g.StopCh)
+	close(r.g.stopCh)
 	r.g.favoriteChange.Close()
 }

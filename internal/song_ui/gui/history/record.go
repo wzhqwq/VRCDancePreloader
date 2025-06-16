@@ -18,8 +18,8 @@ type RecordGui struct {
 
 	Record *persistence.DanceRecord
 
-	StopCh       chan struct{}
-	ordersChange *utils.StringEventSubscriber
+	stopCh       chan struct{}
+	ordersChange *utils.EventSubscriber[string]
 
 	orderChanged   bool
 	commentChanged bool
@@ -27,7 +27,7 @@ type RecordGui struct {
 
 func NewRecordGui(record *persistence.DanceRecord) *RecordGui {
 	g := &RecordGui{
-		StopCh: make(chan struct{}),
+		stopCh: make(chan struct{}),
 
 		Record: record,
 
@@ -50,7 +50,7 @@ func (g *RecordGui) UpdateOrders() {
 func (g *RecordGui) RenderLoop() {
 	for {
 		select {
-		case <-g.StopCh:
+		case <-g.stopCh:
 			return
 		case <-g.ordersChange.Channel:
 			g.UpdateOrders()
@@ -199,6 +199,6 @@ func (r *RecordGuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *RecordGuiRenderer) Destroy() {
-	close(r.g.StopCh)
+	close(r.g.stopCh)
 	r.g.ordersChange.Close()
 }

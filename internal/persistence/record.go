@@ -30,12 +30,12 @@ type DanceRecord struct {
 	Comment   string
 	Orders    []Order
 
-	em *utils.StringEventManager
+	em *utils.EventManager[string]
 }
 
 func NewEmptyDanceRecord() *DanceRecord {
 	return &DanceRecord{
-		em: utils.NewStringEventManager(),
+		em: utils.NewEventManager[string](),
 	}
 }
 
@@ -46,7 +46,7 @@ func NewDanceRecord() *DanceRecord {
 		Comment:   "",
 		Orders:    make([]Order, 0),
 
-		em: utils.NewStringEventManager(),
+		em: utils.NewEventManager[string](),
 	}
 }
 
@@ -129,7 +129,7 @@ func (r *DanceRecord) updateComment() {
 	}
 }
 
-func (r *DanceRecord) SubscribeEvent() *utils.StringEventSubscriber {
+func (r *DanceRecord) SubscribeEvent() *utils.EventSubscriber[string] {
 	return r.em.SubscribeEvent()
 }
 
@@ -161,7 +161,7 @@ type LocalRecords struct {
 
 	Records map[int]*DanceRecord
 
-	em *utils.StringEventManager
+	em *utils.EventManager[string]
 }
 
 func (l *LocalRecords) ReplaceIfExists(record *DanceRecord) *DanceRecord {
@@ -253,7 +253,7 @@ func (l *LocalRecords) addRecord(r *DanceRecord) error {
 	return nil
 }
 
-func (l *LocalRecords) SubscribeEvent() *utils.StringEventSubscriber {
+func (l *LocalRecords) SubscribeEvent() *utils.EventSubscriber[string] {
 	return l.em.SubscribeEvent()
 }
 
@@ -305,7 +305,7 @@ func InitLocalRecords() {
 	localRecords = &LocalRecords{
 		Records: make(map[int]*DanceRecord),
 
-		em: utils.NewStringEventManager(),
+		em: utils.NewEventManager[string](),
 	}
 }
 

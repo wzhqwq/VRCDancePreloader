@@ -20,8 +20,8 @@ import (
 type LocalFilesGui struct {
 	widget.BaseWidget
 
-	localFileUpdate *utils.StringEventSubscriber
-	allowListUpdate *utils.StringEventSubscriber
+	localFileUpdate *utils.EventSubscriber[string]
+	allowListUpdate *utils.EventSubscriber[string]
 
 	infos     []types.CacheFileInfo
 	changedId string
@@ -216,7 +216,7 @@ func (r *LocalFilesGuiRenderer) Destroy() {
 type AllowListGui struct {
 	widget.BaseWidget
 
-	listUpdate *utils.StringEventSubscriber
+	listUpdate *utils.EventSubscriber[string]
 
 	infos     []types.CacheFileInfo
 	changedId string

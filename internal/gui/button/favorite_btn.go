@@ -14,7 +14,7 @@ type FavoriteBtn struct {
 
 	isFavorite bool
 
-	favoriteChange *utils.StringEventSubscriber
+	favoriteChange *utils.EventSubscriber[string]
 	closeCh        chan struct{}
 
 	destroyed bool

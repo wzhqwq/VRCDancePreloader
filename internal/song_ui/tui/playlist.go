@@ -48,10 +48,11 @@ func (plt *PlayListTui) RenderLoop() {
 		select {
 		case <-plt.StopCh:
 			for _, item := range plt.items {
-				item.StopCh <- struct{}{}
+				close(item.StopCh)
 			}
+			changeCh.Close()
 			return
-		case change := <-changeCh:
+		case change := <-changeCh.Channel:
 			switch change {
 			case playlist.ItemsChange:
 				plt.refreshItems()

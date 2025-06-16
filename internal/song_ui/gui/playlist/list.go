@@ -4,6 +4,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"time"
 	"weak"
 
@@ -21,8 +22,8 @@ type ListGui struct {
 
 	pl *playlist.PlayList
 
-	StopCh   chan struct{}
-	changeCh chan playlist.ChangeType
+	stopCh     chan struct{}
+	listUpdate *utils.EventSubscriber[playlist.ChangeType]
 
 	itemChanged bool
 	roomChanged bool
@@ -32,8 +33,8 @@ func NewListGui(pl *playlist.PlayList) *ListGui {
 	g := &ListGui{
 		pl: pl,
 
-		StopCh:   make(chan struct{}),
-		changeCh: pl.SubscribeChangeEvent(),
+		stopCh:     make(chan struct{}),
+		listUpdate: pl.SubscribeChangeEvent(),
 	}
 
 	g.ExtendBaseWidget(g)
@@ -44,9 +45,9 @@ func NewListGui(pl *playlist.PlayList) *ListGui {
 func (l *ListGui) RenderLoop() {
 	for {
 		select {
-		case <-l.StopCh:
+		case <-l.stopCh:
 			return
-		case change := <-l.changeCh:
+		case change := <-l.listUpdate.Channel:
 			switch change {
 			case playlist.ItemsChange:
 				l.itemChanged = true
@@ -195,5 +196,6 @@ func (r *listGuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *listGuiRenderer) Destroy() {
-	close(r.list.StopCh)
+	close(r.list.stopCh)
+	r.list.listUpdate.Close()
 }

@@ -35,7 +35,7 @@ type LocalSongs struct {
 	sync.Mutex
 	FavoriteMap map[string]struct{}
 
-	em *utils.StringEventManager
+	em *utils.EventManager[string]
 }
 
 func (f *LocalSongs) addEntry(entry *LocalSongEntry) {
@@ -301,7 +301,7 @@ func (e *LocalSongEntry) UnsetFavorite() {
 func InitLocalSongs() {
 	currentLocalSongs = &LocalSongs{
 		FavoriteMap: make(map[string]struct{}),
-		em:          utils.NewStringEventManager(),
+		em:          utils.NewEventManager[string](),
 	}
 	currentLocalSongs.LoadEntries()
 }
