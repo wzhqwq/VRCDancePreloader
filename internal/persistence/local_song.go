@@ -40,8 +40,8 @@ type LocalSongs struct {
 
 func (f *LocalSongs) addEntry(entry *LocalSongEntry) {
 	// save to db
-	query := "INSERT INTO local_song (id, title, like, skill, is_favorite) VALUES (?, ?, ?, ?, ?)"
-	_, err := DB.Exec(query, entry.ID, entry.Title, entry.Like, entry.Skill, entry.IsFavorite)
+	query := "INSERT INTO local_song (id, title, like, skill, is_favorite, sync_in_game) VALUES (?, ?, ?, ?, ?, ?)"
+	_, err := DB.Exec(query, entry.ID, entry.Title, entry.Like, entry.Skill, entry.IsFavorite, entry.IsSyncInGame)
 	if err != nil {
 		log.Printf("failed to save favorite entry: %v", err)
 	}
