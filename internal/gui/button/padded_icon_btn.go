@@ -115,8 +115,7 @@ func (r *paddedIconBtnRenderer) Refresh() {
 	} else {
 		r.Background.FillColor = theme.Color(theme.ColorNameButton)
 	}
-
-	canvas.Refresh(r.btn)
+	r.Background.Refresh()
 }
 func (r *paddedIconBtnRenderer) Destroy() {
 	if r.btn.OnDestroy != nil {

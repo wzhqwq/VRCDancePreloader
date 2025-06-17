@@ -14,11 +14,20 @@ type SideActions struct {
 
 	Buttons []fyne.CanvasObject
 
-	hovered bool
+	hovered      bool
+	hoverChanged bool
+	hoveredIndex int
+
+	gapY     float32
+	offsetsY []float32
+	left     float32
+	right    float32
 }
 
 func NewSideActions() *SideActions {
-	a := &SideActions{}
+	a := &SideActions{
+		hoveredIndex: -1,
+	}
 
 	a.ExtendBaseWidget(a)
 
@@ -30,12 +39,23 @@ func (a *SideActions) CreateRenderer() fyne.WidgetRenderer {
 	ov := newOverlay()
 	ov.onHover = func() {
 		a.hovered = true
+		a.hoverChanged = true
 		a.Refresh()
 	}
 	ov.onLeave = func() {
 		a.hovered = false
+		a.hoverChanged = true
+
+		if a.hoveredIndex >= 0 && a.hoveredIndex < len(a.Buttons) {
+			if b, ok := a.Buttons[a.hoveredIndex].(desktop.Hoverable); ok {
+				b.MouseOut()
+			}
+		}
+		a.hoveredIndex = -1
+
 		a.Refresh()
 	}
+	ov.onMove = a.MouseMoved
 
 	background.Hide()
 	for _, b := range a.Buttons {
@@ -48,6 +68,68 @@ func (a *SideActions) CreateRenderer() fyne.WidgetRenderer {
 		a:  a,
 		ov: ov,
 	}
+}
+
+func (a *SideActions) getPointingIndex(position fyne.Position) int {
+	x, y := position.X, position.Y
+	if x < a.left || x > a.right {
+		return -1
+	}
+	if len(a.offsetsY) == 0 || y < a.offsetsY[0] {
+		return -1
+	}
+
+	for i, b := range a.offsetsY {
+		if y < b {
+			if y < b-a.gapY {
+				return i - 1
+			} else {
+				return -1
+			}
+		}
+	}
+	if y < a.Size().Height-a.gapY {
+		return len(a.offsetsY) - 1
+	}
+	return -1
+}
+
+func (a *SideActions) MouseMoved(e *desktop.MouseEvent) {
+	pointedIndex := a.getPointingIndex(e.Position)
+
+	var lastButton desktop.Hoverable
+	if a.hoveredIndex >= 0 && a.hoveredIndex < len(a.Buttons) {
+		if b, ok := a.Buttons[a.hoveredIndex].(desktop.Hoverable); ok {
+			lastButton = b
+		}
+	}
+
+	if pointedIndex == -1 {
+		if lastButton != nil {
+			lastButton.MouseOut()
+		}
+	} else {
+		ev := &desktop.MouseEvent{Button: e.Button}
+		ev.AbsolutePosition = e.AbsolutePosition
+		ev.Position = fyne.NewPos(e.Position.X-a.left, e.Position.Y-a.offsetsY[pointedIndex])
+
+		if lastButton != nil {
+			if a.hoveredIndex == pointedIndex {
+				lastButton.MouseMoved(ev)
+				return
+			} else {
+				lastButton.MouseOut()
+			}
+		}
+
+		if pointedIndex < len(a.Buttons) {
+			if b, ok := a.Buttons[pointedIndex].(desktop.Hoverable); ok {
+				b.MouseIn(ev)
+			}
+		}
+	}
+
+	a.hoveredIndex = pointedIndex
 }
 
 type sideActionsRenderer struct {
@@ -87,10 +169,17 @@ func (r *sideActionsRenderer) Layout(size fyne.Size) {
 
 	gap := (size.Height - heightSum) / (float32)(len(r.a.Buttons)+1)
 	offset := gap
+	var offsets []float32
 	for _, b := range r.a.Buttons {
+		offsets = append(offsets, offset)
 		b.Move(fyne.NewPos(containerOffset+itemWidth, offset))
 		offset += b.MinSize().Width + gap
 	}
+
+	r.a.gapY = gap
+	r.a.offsetsY = offsets
+	r.a.left = containerOffset + itemWidth
+	r.a.right = size.Width - 10
 }
 
 func (r *sideActionsRenderer) Objects() []fyne.CanvasObject {
@@ -103,15 +192,18 @@ func (r *sideActionsRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *sideActionsRenderer) Refresh() {
-	if r.a.hovered {
-		r.background.Show()
-		for _, b := range r.a.Buttons {
-			b.Show()
-		}
-	} else {
-		r.background.Hide()
-		for _, b := range r.a.Buttons {
-			b.Hide()
+	if r.a.hoverChanged {
+		r.a.hoverChanged = false
+		if r.a.hovered {
+			r.background.Show()
+			for _, b := range r.a.Buttons {
+				b.Show()
+			}
+		} else {
+			r.background.Hide()
+			for _, b := range r.a.Buttons {
+				b.Hide()
+			}
 		}
 	}
 
@@ -127,6 +219,7 @@ type overlay struct {
 
 	onHover func()
 	onLeave func()
+	onMove  func(*desktop.MouseEvent)
 }
 
 func newOverlay() *overlay {
@@ -151,5 +244,6 @@ func (o *overlay) MouseOut() {
 		o.onLeave()
 	}
 }
-func (o *overlay) MouseMoved(_ *desktop.MouseEvent) {
+func (o *overlay) MouseMoved(e *desktop.MouseEvent) {
+	o.onMove(e)
 }
