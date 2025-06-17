@@ -7,7 +7,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
-	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"image/color"
@@ -52,10 +51,6 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	id.Alignment = fyne.TextAlignTrailing
 	id.TextSize = 12
 
-	checkbox := widget.NewCheck(i18n.T("label_sync_to_pypy"), func(b bool) {
-		ig.Entry.UpdateSyncToPypy(b)
-	})
-
 	favoriteBtn := button.NewFavoriteBtn(ig.Entry.ID, ig.Entry.Title)
 	favoriteBtn.SetMinSquareSize(36)
 	favoriteBtn.SetPadding(8)
@@ -66,13 +61,12 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	}
 
 	return &ItemRenderer{
-		TitleWidget:  title,
-		IDWidget:     id,
-		LocalSong:    widgets.NewLocalSongOperations(ig.Entry),
-		SyncToPypyCb: checkbox,
-		Thumbnail:    widgets.NewThumbnail(""),
-		Separator:    widget.NewSeparator(),
-		Actions:      actions,
+		TitleWidget: title,
+		IDWidget:    id,
+		LocalSong:   widgets.NewLocalSongOperations(ig.Entry),
+		Thumbnail:   widgets.NewThumbnail(""),
+		Separator:   widget.NewSeparator(),
+		Actions:     actions,
 
 		ig: ig,
 	}
@@ -81,18 +75,16 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 type ItemRenderer struct {
 	ig *ItemGui
 
-	TitleWidget  *widgets.EllipseText
-	IDWidget     *canvas.Text
-	LocalSong    *widgets.LocalSongOperations
-	SyncToPypyCb *widget.Check
-	Thumbnail    *widgets.Thumbnail
-	Separator    *widget.Separator
-	Actions      *button.SideActions
+	TitleWidget *widgets.EllipseText
+	IDWidget    *canvas.Text
+	LocalSong   *widgets.LocalSongOperations
+	Thumbnail   *widgets.Thumbnail
+	Separator   *widget.Separator
+	Actions     *button.SideActions
 }
 
 func (r *ItemRenderer) MinSize() fyne.Size {
-	minHeight := r.TitleWidget.MinSize().Height + r.IDWidget.MinSize().Height
-	minHeight += r.LocalSong.MinSize().Height + r.SyncToPypyCb.MinSize().Height
+	minHeight := r.TitleWidget.MinSize().Height + r.IDWidget.MinSize().Height + r.LocalSong.MinSize().Height + theme.Padding()*2
 	return fyne.NewSize(300, minHeight)
 }
 
@@ -104,7 +96,7 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 	r.TitleWidget.Resize(fyne.NewSize(size.Width, titleHeight))
 	r.TitleWidget.Move(fyne.NewPos(0, 0))
 
-	infoHeight := r.LocalSong.MinSize().Height + r.SyncToPypyCb.MinSize().Height + r.IDWidget.MinSize().Height
+	infoHeight := r.LocalSong.MinSize().Height + r.IDWidget.MinSize().Height + p*2
 
 	imageWidth := float32(0)
 	if size.Width > 320 {
@@ -129,11 +121,7 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 	infoY += r.IDWidget.MinSize().Height
 
 	r.LocalSong.Resize(r.LocalSong.MinSize())
-	r.LocalSong.Move(fyne.NewPos(infoX, infoY))
-	infoY += r.LocalSong.MinSize().Height
-
-	r.SyncToPypyCb.Resize(r.SyncToPypyCb.MinSize())
-	r.SyncToPypyCb.Move(fyne.NewPos(infoX, infoY))
+	r.LocalSong.Move(fyne.NewPos(infoX, infoY+p))
 
 	r.Separator.Resize(fyne.NewSize(size.Width+p, 1))
 	r.Separator.Move(fyne.NewPos(0, size.Height-1))
@@ -148,7 +136,6 @@ func (r *ItemRenderer) Refresh() {
 
 		r.TitleWidget.Text = r.ig.Entry.Title
 		r.IDWidget.Text = r.ig.Entry.ID
-		r.SyncToPypyCb.Checked = r.ig.Entry.InPypy
 
 		thumbnailUrl := ""
 		if regexp.MustCompile(`^pypy_`).MatchString(r.ig.Entry.ID) {
@@ -163,7 +150,6 @@ func (r *ItemRenderer) Refresh() {
 	}
 	r.TitleWidget.Refresh()
 	r.Thumbnail.Refresh()
-	r.SyncToPypyCb.Refresh()
 
 	canvas.Refresh(r.ig)
 }
@@ -173,7 +159,6 @@ func (r *ItemRenderer) Objects() []fyne.CanvasObject {
 		r.TitleWidget,
 		r.IDWidget,
 		r.LocalSong,
-		r.SyncToPypyCb,
 		r.Thumbnail,
 		r.Actions,
 		r.Separator,

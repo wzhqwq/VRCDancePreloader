@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS local_song (
     	skill INTEGER,
                                     
     	is_favorite BOOLEAN,
-        in_pypy BOOLEAN
+        sync_in_game BOOLEAN
 );
 `
 
@@ -28,7 +28,7 @@ var localSongTableIndicesSQLs = []string{
 	"CREATE INDEX IF NOT EXISTS idx_local_song_is_favorite ON local_song (is_favorite)",
 	"CREATE INDEX IF NOT EXISTS idx_local_song_like ON local_song (like)",
 	"CREATE INDEX IF NOT EXISTS idx_local_song_skill ON local_song (skill)",
-	"CREATE INDEX IF NOT EXISTS idx_local_song_in_pypy ON local_song (in_pypy)",
+	"CREATE INDEX IF NOT EXISTS idx_local_song_sync_in_game ON local_song (sync_in_game)",
 }
 
 type LocalSongs struct {
@@ -40,20 +40,19 @@ type LocalSongs struct {
 
 func (f *LocalSongs) addEntry(entry *LocalSongEntry) {
 	// save to db
-	query := "INSERT INTO local_song (id, title, like, skill, is_favorite, in_pypy) VALUES (?, ?, ?, ?, ?, ?)"
-	_, err := DB.Exec(query, entry.ID, entry.Title, entry.Like, entry.Skill, entry.IsFavorite, entry.InPypy)
+	query := "INSERT INTO local_song (id, title, like, skill, is_favorite) VALUES (?, ?, ?, ?, ?)"
+	_, err := DB.Exec(query, entry.ID, entry.Title, entry.Like, entry.Skill, entry.IsFavorite)
 	if err != nil {
 		log.Printf("failed to save favorite entry: %v", err)
-		return
 	}
 }
 
 func (f *LocalSongs) getEntry(id string) *LocalSongEntry {
 	// load from db
-	row := DB.QueryRow("SELECT id, title, like, skill, is_favorite, in_pypy FROM local_song WHERE id = ?", id)
+	row := DB.QueryRow("SELECT id, title, like, skill, is_favorite, sync_in_game FROM local_song WHERE id = ?", id)
 
 	var entry LocalSongEntry
-	err := row.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite, &entry.InPypy)
+	err := row.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite, &entry.IsSyncInGame)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
@@ -95,8 +94,8 @@ func (f *LocalSongs) SetFavorite(id, title string) {
 			Like:  0,
 			Skill: 0,
 
-			IsFavorite: true,
-			InPypy:     true,
+			IsFavorite:   true,
+			IsSyncInGame: false,
 		}
 		f.addEntry(entry)
 	}
@@ -141,8 +140,8 @@ func (f *LocalSongs) AddLocalSongIfNotExist(id, title string) {
 			Like:  0,
 			Skill: 0,
 
-			IsFavorite: false,
-			InPypy:     false,
+			IsFavorite:   false,
+			IsSyncInGame: false,
 		}
 		f.addEntry(entry)
 	}
@@ -190,7 +189,7 @@ func (f *LocalSongs) ListFavorites(page, pageSize int, sortBy string, ascending 
 	if !ascending {
 		orderBy += " DESC"
 	}
-	query = "SELECT id, title, like, skill, is_favorite, in_pypy FROM local_song WHERE is_favorite=true " + orderBy + " LIMIT ? OFFSET ?"
+	query = "SELECT id, title, like, skill, is_favorite, sync_in_game FROM local_song WHERE is_favorite=true " + orderBy + " LIMIT ? OFFSET ?"
 	rows, err := DB.Query(query, pageSize, page*pageSize)
 	if err != nil {
 		log.Printf("failed to load favorite entries: %v", err)
@@ -201,7 +200,7 @@ func (f *LocalSongs) ListFavorites(page, pageSize int, sortBy string, ascending 
 	var entries []*LocalSongEntry
 	for rows.Next() {
 		var entry LocalSongEntry
-		err = rows.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite, &entry.InPypy)
+		err = rows.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite, &entry.IsSyncInGame)
 		if err != nil {
 			log.Printf("failed to scan favorite entry: %v", err)
 			return nil
@@ -245,7 +244,7 @@ func (f *LocalSongs) ToPyPyFavorites() string {
 	defer f.Unlock()
 
 	// load from db
-	query := "SELECT id FROM local_song WHERE is_favorite = ? AND in_pypy = ? AND id LIKE ?"
+	query := "SELECT id FROM local_song WHERE is_favorite = ? AND sync_in_game = ? AND id LIKE ?"
 	rows, err := DB.Query(query, true, true, "pypy_%")
 	if err != nil {
 		log.Printf("failed to load favorite entries: %v", err)
@@ -275,8 +274,8 @@ type LocalSongEntry struct {
 	Like  int
 	Skill int
 
-	IsFavorite bool
-	InPypy     bool
+	IsFavorite   bool
+	IsSyncInGame bool
 }
 
 func (e *LocalSongEntry) UpdateLike(like int) {
@@ -287,8 +286,8 @@ func (e *LocalSongEntry) UpdateSkill(skill int) {
 	e.Skill = skill
 	currentLocalSongs.UpdateFavorite(e)
 }
-func (e *LocalSongEntry) UpdateSyncToPypy(b bool) {
-	e.InPypy = b
+func (e *LocalSongEntry) UpdateSyncInGame(b bool) {
+	e.IsSyncInGame = b
 	currentLocalSongs.UpdateFavorite(e)
 }
 func (e *LocalSongEntry) SetFavorite() {
