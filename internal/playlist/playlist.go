@@ -77,6 +77,8 @@ func (pl *PlayList) SyncWithTime(url string, now float64) {
 	var item *song.PreloadedSong
 	if id, ok := utils.CheckPyPyUrl(url); ok {
 		item = pl.FindPyPySong(id)
+	} else if id, ok = utils.CheckWannaUrl(url); ok {
+		item = pl.FindWannaSong(id)
 	} else {
 		item = pl.FindCustomSong(url)
 	}

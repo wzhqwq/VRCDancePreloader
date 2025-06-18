@@ -1,13 +1,12 @@
 package playlist
 
 import (
+	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 	"log"
 	"slices"
-
-	"github.com/samber/lo"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song"
-	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 )
 
 func (pl *PlayList) GetItemsSnapshot() []*song.PreloadedSong {
@@ -84,28 +83,20 @@ func (pl *PlayList) FromList(items []*song.PreloadedSong) {
 	pl.CriticalUpdate()
 }
 
-func createFromQueueItem(item types.QueueItem) *song.PreloadedSong {
+func createFromQueueItem(item queue.QueueItem) *song.PreloadedSong {
 	var newSong *song.PreloadedSong
 
-	if temporaryItem != nil && temporaryItem.MatchWithQueueItem(&item) {
+	if temporaryItem != nil && item.MatchWithPreloaded(temporaryItem) {
 		newSong = temporaryItem
 		temporaryItem = nil
 	} else {
-		if item.SongNum < 0 {
-			// Custom Song
-			newSong = song.CreatePreloadedCustomSong(item.VideoName, item.URL)
-		} else if item.SongNum == 0 {
-			newSong = song.CreateUnknownSong()
-		} else {
-			// PyPyDance Song
-			newSong = song.CreatePreloadedPyPySong(item.SongNum)
-		}
+		newSong = item.ToPreloaded()
 	}
 	if newSong == nil {
 		newSong = song.CreateUnknownSong()
 	}
 
-	newSong.Adder = item.PlayerName
+	newSong.Adder = item.GetAdder()
 
 	id := newSong.GetId()
 	if id != "unknown" && id != "random_play" {
@@ -124,7 +115,7 @@ func RemoveItem(index int) {
 }
 
 // InsertItem must be in the watcher routine
-func InsertItem(item types.QueueItem, beforeIndex int) {
+func InsertItem(item queue.QueueItem, beforeIndex int) {
 	if currentPlaylist == nil {
 		return
 	}
@@ -132,7 +123,7 @@ func InsertItem(item types.QueueItem, beforeIndex int) {
 }
 
 // ClearAndSetQueue must be in the watcher routine
-func ClearAndSetQueue(items []types.QueueItem) {
+func ClearAndSetQueue(items []queue.QueueItem) {
 	if currentPlaylist == nil {
 		return
 	}
@@ -149,7 +140,7 @@ func ClearAndSetQueue(items []types.QueueItem) {
 	}
 
 	if len(items) > 0 {
-		list := lo.Map(items, func(item types.QueueItem, _ int) *song.PreloadedSong {
+		list := lo.Map(items, func(item queue.QueueItem, _ int) *song.PreloadedSong {
 			return createFromQueueItem(item)
 		})
 		currentPlaylist.FromList(list)

@@ -1,25 +1,13 @@
 package watcher
 
 import (
-	"encoding/json"
+	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
-	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 )
 
-func parseQueue(data []byte) ([]types.QueueItem, error) {
-	// parse the json data into a slice of QueueItem
-	var items []types.QueueItem
-	err := json.Unmarshal(data, &items)
-	if err != nil {
-		return nil, err
-	}
-
-	return items, nil
-}
-
-func diffQueues(old []*song.PreloadedSong, new []types.QueueItem) {
+func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
 	// do the lcs
 	lengths := make([][]int, len(old)+1)
 	for i := 0; i <= len(old); i++ {
@@ -29,7 +17,7 @@ func diffQueues(old []*song.PreloadedSong, new []types.QueueItem) {
 	// row 0 and column 0 are initialized to 0 already
 	for i := 0; i < len(old); i++ {
 		for j := 0; j < len(new); j++ {
-			match := old[i].MatchWithQueueItem(&new[j])
+			match := new[j].MatchWithPreloaded(old[i])
 			if match {
 				lengths[i+1][j+1] = lengths[i][j] + 1
 			} else if lengths[i+1][j] > lengths[i][j+1] {
@@ -71,17 +59,4 @@ func diffQueues(old []*song.PreloadedSong, new []types.QueueItem) {
 			y--
 		}
 	}
-}
-
-func processQueueLog(data []byte) error {
-	// parse the new queue
-	newQueue, err := parseQueue(data)
-	if err != nil {
-		return err
-	}
-
-	// compare the new queue with the current queue
-	diffQueues(playlist.GetQueue(), newQueue)
-
-	return nil
 }

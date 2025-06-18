@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
-	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
 	"time"
@@ -14,6 +13,7 @@ type PreloadedSong struct {
 	sm         *StateMachine
 	PyPySong   *raw_song.PyPyDanceSong
 	CustomSong *raw_song.CustomSong
+	WannaSong  *raw_song.WannaDanceSong
 
 	// constant
 	Adder      string
@@ -41,16 +41,13 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 	if !ok {
 		// maybe caused by corrupted song list
 		// TODO: reload song list to fix it
-		log.Println("Warning: failed to find PyPySong ", id)
+		log.Println("Warning: failed to find PyPyDance song ", id)
 		song = &raw_song.PyPyDanceSong{
 			ID:          id,
 			Group:       0,
-			Volume:      0,
 			Name:        fmt.Sprintf("PyPyDance #%d", id),
-			Flip:        false,
 			Start:       0,
 			End:         1,
-			SkipRandom:  false,
 			OriginalURL: []string{},
 		}
 	}
@@ -59,6 +56,32 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 
 		Duration: float64(song.End),
 		PyPySong: song,
+
+		em: utils.NewEventManager[ChangeType](),
+	}
+	ret.sm.ps = ret
+	return ret
+}
+
+func CreatePreloadedWannaSong(id int) *PreloadedSong {
+	song, ok := raw_song.FindWannaSong(id)
+	if !ok {
+		// maybe caused by corrupted song list
+		// TODO: reload song list to fix it
+		log.Println("Warning: failed to find WannaDance song ", id)
+		song = &raw_song.WannaDanceSong{
+			ID:    id,
+			Group: "",
+			Name:  fmt.Sprintf("WannaDance #%d", id),
+			Start: 0,
+			End:   1,
+		}
+	}
+	ret := &PreloadedSong{
+		sm: NewSongStateMachine(),
+
+		Duration:  float64(song.End),
+		WannaSong: song,
 
 		em: utils.NewEventManager[ChangeType](),
 	}
@@ -116,6 +139,9 @@ func (ps *PreloadedSong) GetDownloadUrl() string {
 	if ps.PyPySong != nil {
 		return utils.GetPyPyVideoUrl(ps.PyPySong.ID)
 	}
+	if ps.WannaSong != nil {
+		return utils.GetWannaVideoUrl(ps.WannaSong.ID)
+	}
 	if ps.CustomSong != nil {
 		return ps.CustomSong.Url
 	}
@@ -134,6 +160,9 @@ func (ps *PreloadedSong) GetId() string {
 	if ps.PyPySong != nil {
 		return fmt.Sprintf("pypy_%d", ps.PyPySong.ID)
 	}
+	if ps.WannaSong != nil {
+		return fmt.Sprintf("wanna_%d", ps.WannaSong.ID)
+	}
 	if ps.CustomSong != nil {
 		return ps.CustomSong.UniqueId
 	}
@@ -148,15 +177,6 @@ func (ps *PreloadedSong) GetPreloadStatus() DownloadStatus {
 
 // compare
 
-func (ps *PreloadedSong) MatchWithQueueItem(queueItem *types.QueueItem) bool {
-	if queueItem.SongNum < 0 {
-		return ps.CustomSong != nil && ps.CustomSong.MatchUrl(queueItem.URL)
-	}
-	if queueItem.SongNum == 0 {
-		return ps.PyPySong == nil && ps.CustomSong == nil && !ps.RandomPlay
-	}
-	return ps.PyPySong != nil && ps.PyPySong.ID == queueItem.SongNum
-}
 func (ps *PreloadedSong) MatchWithCustomUrl(url string) bool {
 	if ps.CustomSong == nil {
 		return false
@@ -168,6 +188,12 @@ func (ps *PreloadedSong) MatchWithPyPyId(id int) bool {
 		return false
 	}
 	return ps.PyPySong.ID == id
+}
+func (ps *PreloadedSong) MatchWithWannaId(id int) bool {
+	if ps.WannaSong == nil {
+		return false
+	}
+	return ps.WannaSong.DanceId == id
 }
 
 // actions

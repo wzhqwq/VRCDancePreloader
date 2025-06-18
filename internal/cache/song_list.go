@@ -8,11 +8,10 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 )
 
-var savedResponse []byte
-
 func loadSongs() error {
-	// load songs from https://jd.pypy.moe/api/v2/songs
-	log.Println("loading songs")
+	var savedResponse []byte
+
+	log.Println("loading PyPyDance songs")
 	resp, err := http.Get("https://jd.pypy.moe/api/v2/songs")
 	if err != nil {
 		return err
@@ -24,16 +23,27 @@ func loadSongs() error {
 		return err
 	}
 
-	return raw_song.ProcessSongList(savedResponse)
-}
-
-func GetSongListBytes() []byte {
-	if savedResponse == nil {
-		err := loadSongs()
-		if err != nil {
-			log.Println("Failed to load songs:", err)
-			return nil
-		}
+	err = raw_song.ProcessPyPyDanceList(savedResponse)
+	if err != nil {
+		return err
 	}
-	return savedResponse
+
+	log.Println("loading WannaDance songs")
+	resp, err = http.Get("https://api.udon.dance/Api/Songs/list")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	savedResponse, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	err = raw_song.ProcessWannaDanceList(savedResponse)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

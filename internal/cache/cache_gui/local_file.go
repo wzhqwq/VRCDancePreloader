@@ -43,13 +43,17 @@ func (g *LocalFileGui) UpdateInfo(info types.CacheFileInfo) {
 }
 
 func (g *LocalFileGui) getTitle() string {
-	title := g.Info.ID + ".mp4"
 	if pypyId, ok := utils.CheckIdIsPyPy(g.Info.ID); ok {
 		if song, ok := raw_song.FindPyPySong(pypyId); ok {
-			title = song.Name
+			return song.Name
 		}
 	}
-	return title
+	if wannaId, ok := utils.CheckIdIsWanna(g.Info.ID); ok {
+		if song, ok := raw_song.FindWannaSong(wannaId); ok {
+			return song.Name
+		}
+	}
+	return g.Info.ID + ".mp4"
 }
 
 func (g *LocalFileGui) CreateRenderer() fyne.WidgetRenderer {

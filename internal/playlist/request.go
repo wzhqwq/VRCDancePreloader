@@ -25,6 +25,18 @@ func (pl *PlayList) FindPyPySong(id int) *song.PreloadedSong {
 	return item
 }
 
+func (pl *PlayList) FindWannaSong(id int) *song.PreloadedSong {
+	items := pl.GetItemsSnapshot()
+	for _, item := range items {
+		if item.MatchWithWannaId(id) {
+			return item
+		}
+	}
+	item := song.CreatePreloadedWannaSong(id)
+	// TODO: add to temporary list
+	return item
+}
+
 func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
 	items := pl.GetItemsSnapshot()
 	for _, item := range items {
@@ -39,6 +51,15 @@ func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
 
 func RequestPyPySong(id int) (io.ReadSeekCloser, error) {
 	item := currentPlaylist.FindPyPySong(id)
+	if asyncDownload {
+		return item.GetSongRSAsync()
+	} else {
+		return item.GetSongRSSync()
+	}
+}
+
+func RequestWannaSong(id int) (io.ReadSeekCloser, error) {
+	item := currentPlaylist.FindWannaSong(id)
 	if asyncDownload {
 		return item.GetSongRSAsync()
 	} else {

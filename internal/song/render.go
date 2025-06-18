@@ -38,28 +38,31 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 		size = utils.PrettyByteSize(ps.TotalSize)
 	}
 
+	basicInfo := PreloadedSongInfo{
+		ID: ps.GetId(),
+
+		Adder:        adder,
+		Size:         size,
+		OriginalURL:  ps.GetOriginalUrl(),
+		ThumbnailURL: ps.GetThumbnailUrl(),
+	}
+
 	if ps.PyPySong != nil {
-		return PreloadedSongInfo{
-			ID:           ps.GetId(),
-			Title:        ps.PyPySong.Name,
-			Group:        ps.PyPySong.GetGroupName(),
-			Adder:        adder,
-			Size:         size,
-			OriginalURL:  ps.GetOriginalUrl(),
-			ThumbnailURL: ps.GetThumbnailUrl(),
-		}
+		basicInfo.Title = ps.PyPySong.Name
+		basicInfo.Group = ps.PyPySong.GetGroupName()
+		return basicInfo
+	}
+	if ps.WannaSong != nil {
+		basicInfo.Title = ps.WannaSong.FullTitle()
+		basicInfo.Group = ps.WannaSong.Group
+		return basicInfo
 	}
 	if ps.CustomSong != nil {
-		return PreloadedSongInfo{
-			ID:           ps.GetId(),
-			Title:        ps.CustomSong.Name,
-			Group:        i18n.T("placeholder_custom_song"),
-			Adder:        adder,
-			Size:         size,
-			OriginalURL:  ps.GetOriginalUrl(),
-			ThumbnailURL: ps.GetThumbnailUrl(),
-		}
+		basicInfo.Title = ps.CustomSong.Name
+		basicInfo.Group = i18n.T("placeholder_custom_song")
+		return basicInfo
 	}
+
 	title := i18n.T("placeholder_empty_song")
 	if ps.RandomPlay {
 		title = "random_play"
