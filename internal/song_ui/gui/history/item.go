@@ -1,6 +1,7 @@
 package history
 
 import (
+	"errors"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -29,7 +30,13 @@ type OrderGui struct {
 func NewOrderGui(order persistence.Order) *OrderGui {
 	entry, err := persistence.GetEntry(order.ID)
 	if err != nil {
-		panic(err)
+		// try to recover unsaved information from song list
+		persistence.GetLocalSongs().AddLocalSongIfNotExist(order.ID, order.Title)
+		entry, err = persistence.GetEntry(order.ID)
+		if err != nil {
+			// it can't be
+			panic(errors.New("failed to add song to local database"))
+		}
 	}
 	ig := &OrderGui{
 		Entry: entry,
