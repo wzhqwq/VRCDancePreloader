@@ -51,7 +51,8 @@ type StateMachine struct {
 	completeSongWg sync.WaitGroup
 
 	// locks
-	timeMutex sync.Mutex
+	timeMutex          sync.Mutex
+	startDownloadMutex sync.Mutex
 }
 
 func NewSongStateMachine() *StateMachine {
@@ -62,7 +63,6 @@ func NewSongStateMachine() *StateMachine {
 		completeSongWg: sync.WaitGroup{},
 		timeMutex:      sync.Mutex{},
 	}
-	sm.completeSongWg.Add(1)
 
 	return sm
 }
@@ -77,23 +77,12 @@ func (sm *StateMachine) IsPlayingLoopStarted() bool {
 	return sm.PlayStatus == Playing
 }
 
-func (sm *StateMachine) WaitForCompleteSong() error {
+func (sm *StateMachine) DownloadInstantly(waitComplete bool) error {
 	sm.StartDownload()
 	sm.Prioritize()
-	sm.completeSongWg.Wait()
-
-	switch sm.DownloadStatus {
-	case Removed:
-		return fmt.Errorf("download removed")
-	case Failed:
-		return sm.ps.PreloadError
-	default:
-		return nil
+	if waitComplete {
+		sm.completeSongWg.Wait()
 	}
-}
-func (sm *StateMachine) WaitForSong() error {
-	sm.StartDownload()
-	sm.Prioritize()
 
 	switch sm.DownloadStatus {
 	case Removed:
@@ -105,6 +94,9 @@ func (sm *StateMachine) WaitForSong() error {
 	}
 }
 func (sm *StateMachine) StartDownload() {
+	sm.startDownloadMutex.Lock()
+	defer sm.startDownloadMutex.Unlock()
+
 	if !sm.IsDownloadNeeded() {
 		return
 	}
@@ -128,6 +120,7 @@ func (sm *StateMachine) Prioritize() {
 }
 
 func (sm *StateMachine) StartDownloadLoop(ds *download.DownloadState) {
+	sm.completeSongWg.Add(1)
 	defer sm.completeSongWg.Done()
 	for {
 		select {

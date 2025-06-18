@@ -6,7 +6,7 @@ import (
 )
 
 func (ps *PreloadedSong) GetSongRSSync() (io.ReadSeekCloser, error) {
-	err := ps.sm.WaitForCompleteSong()
+	err := ps.sm.DownloadInstantly(true)
 	if err != nil {
 		return nil, err
 	}
@@ -18,7 +18,7 @@ func (ps *PreloadedSong) GetSongRSSync() (io.ReadSeekCloser, error) {
 }
 
 func (ps *PreloadedSong) GetSongRSAsync() (io.ReadSeekCloser, error) {
-	err := ps.sm.WaitForSong()
+	err := ps.sm.DownloadInstantly(false)
 	if err != nil {
 		return nil, err
 	}

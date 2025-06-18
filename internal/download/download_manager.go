@@ -45,8 +45,9 @@ func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 		}
 		// Check if file is already downloaded
 		if cacheEntry.IsComplete() {
-			ds.TotalSize = cacheEntry.TotalLen()
-			ds.DownloadedSize = cacheEntry.TotalLen()
+			size := cacheEntry.TotalLen()
+			ds.TotalSize = size
+			ds.DownloadedSize = size
 			ds.Done = true
 		}
 		dm.stateMap[id] = ds
@@ -58,8 +59,8 @@ func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 func (dm *downloadManager) CancelDownload(id string) {
 	dm.Lock()
 	defer dm.unlockAndUpdate()
-	ds, ok := dm.stateMap[id]
-	if ok {
+
+	if ds, ok := dm.stateMap[id]; ok {
 		close(ds.CancelCh)
 		delete(dm.stateMap, id)
 	}
