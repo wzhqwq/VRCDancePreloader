@@ -7,13 +7,11 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/elazarl/goproxy"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 )
 
@@ -36,38 +34,65 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 
 		rangeHeader := req.Header.Get("Range")
 		if rangeHeader == "" {
-			log.Printf("Intercepted pypy video %d full request", id)
+			log.Printf("Intercepted PyPyDance video %d full request", id)
 		} else {
-			log.Printf("Intercepted pypy video %d range: %s", id, rangeHeader)
+			log.Printf("Intercepted PyPyDance video %d range: %s", id, rangeHeader)
 		}
 		reader, err := playlist.RequestPyPySong(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
-			log.Println("Failed to request playlist:", err)
+			log.Println("Failed to load PyPyDance video:", err)
 			return true
 		}
-		log.Printf("Requested pypy video %d is available", id)
+		log.Printf("Requested PyPyDance video %d is available", id)
 
 		http.ServeContent(w, req, "video.mp4", time.Now(), reader)
 		return true
 	}
-	return false
-}
 
-func handleSongListRequest(w http.ResponseWriter, req *http.Request) bool {
-	if req.URL.Path == "/api/v2/songs" {
-		log.Println("Intercepted song list request")
-		bodyBytes := cache.GetSongListBytes()
-		// w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("Content-Length", strconv.Itoa(len(bodyBytes)))
-		w.Write(bodyBytes)
+	if req.URL.Path == "/Api/Songs/play" {
+		q := req.URL.Query()
+		id, err := strconv.Atoi(q.Get("id"))
+		if err != nil {
+			log.Println("Failed to parse id:", err)
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return true
+		}
 
+		rangeHeader := req.Header.Get("Range")
+		if rangeHeader == "" {
+			log.Printf("Intercepted WannaDance video %d full request", id)
+		} else {
+			log.Printf("Intercepted WannaDance video %d range: %s", id, rangeHeader)
+		}
+		reader, err := playlist.RequestWannaSong(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			log.Println("Failed to load WannaDance video:", err)
+			return true
+		}
+		log.Printf("Requested WannaDance video %d is available", id)
+
+		http.ServeContent(w, req, "video.mp4", time.Now(), reader)
 		return true
 	}
+
 	return false
 }
 
+//	func handleSongListRequest(w http.ResponseWriter, req *http.Request) bool {
+//		if req.URL.Path == "/api/v2/songs" {
+//			log.Println("Intercepted song list request")
+//			bodyBytes := cache.GetSongListBytes()
+//			// w.Header().Set("Access-Control-Allow-Origin", "*")
+//			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+//			w.Header().Set("Content-Length", strconv.Itoa(len(bodyBytes)))
+//			w.Write(bodyBytes)
+//
+//			return true
+//		}
+//		return false
+//	}
 func handleConnect(req *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
 	defer func() {
 		if e := recover(); e != nil {
@@ -85,7 +110,7 @@ func handleConnect(req *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
 
 		if req.Method == http.MethodGet {
 			rw := NewRespWriter(client)
-			if handleVideoRequest(rw, req) || handleSongListRequest(rw, req) {
+			if handleVideoRequest(rw, req) {
 				continue
 			}
 			log.Println("Mismatched:", req.URL.Path)
@@ -97,9 +122,6 @@ func handleConnect(req *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
 func handleRequest(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	if req.Method == http.MethodGet {
 		rw := NewRespWriterNoHeaderWritten()
-		if handleSongListRequest(rw, req) {
-			return req, rw.ToResponse(req)
-		}
 		if handleVideoRequest(rw, req) {
 			return req, rw.ToResponse(req)
 		}
@@ -111,17 +133,10 @@ func Start(port string) {
 	proxy := goproxy.NewProxyHttpServer()
 	proxy.Verbose = true
 
-	_, err := os.Stat("ca.crt")
-	if err != nil {
-		// Generate a CA certificate if it doesn't exist
-		os.WriteFile("ca.crt", goproxy.CA_CERT, 0644)
-	}
-
-	proxy.OnRequest(goproxy.ReqHostIs("jd.pypy.moe:443")).HandleConnect(goproxy.AlwaysMitm)
-	proxy.OnRequest(goproxy.ReqHostIs("jd.pypy.moe:443")).DoFunc(handleRequest)
-
 	proxy.OnRequest(goproxy.ReqHostIs("jd.pypy.moe:80")).HijackConnect(handleConnect)
+	proxy.OnRequest(goproxy.ReqHostIs("api.udon.dance:80")).HijackConnect(handleConnect)
 	proxy.OnRequest(goproxy.ReqHostIs("jd.pypy.moe")).DoFunc(handleRequest)
+	proxy.OnRequest(goproxy.ReqHostIs("api.udon.dance")).DoFunc(handleRequest)
 
 	runningServer = &http.Server{Addr: "127.0.0.1:" + port, Handler: proxy}
 	log.Println("Starting proxy server on port", port)

@@ -8,12 +8,22 @@ import (
 
 func NewEntry(id string) Entry {
 	if num, ok := utils.CheckIdIsPyPy(id); ok {
-		return &PyPyEntry{
+		return &DirectDownloadEntry{
 			BaseEntry: BaseEntry{
 				id:     id,
 				client: requesting.GetPyPyClient(),
 			},
 			videoUrl: utils.GetPyPyVideoUrl(num),
+		}
+	}
+	// TODO uncomment when WannaDance queue processing is well tested
+	if num, ok := utils.CheckIdIsWanna(id); ok {
+		return &DirectDownloadEntry{
+			BaseEntry: BaseEntry{
+				id:     id,
+				client: requesting.GetPyPyClient(),
+			},
+			videoUrl: utils.GetWannaVideoUrl(num),
 		}
 	}
 	// TODO youtube handler
@@ -33,18 +43,18 @@ func OpenEntry(id string) Entry {
 	return e
 }
 
-type PyPyEntry struct {
+type DirectDownloadEntry struct {
 	BaseEntry
 	videoUrl string
 
 	totalLen int64
 }
 
-func (p *PyPyEntry) Open() error {
+func (p *DirectDownloadEntry) Open() error {
 	return p.openFile()
 }
 
-func (p *PyPyEntry) TotalLen() int64 {
+func (p *DirectDownloadEntry) TotalLen() int64 {
 	if p.totalLen == 0 {
 		if savedSize := p.getSavedSize(); savedSize != 0 {
 			p.totalLen = savedSize
@@ -57,18 +67,18 @@ func (p *PyPyEntry) TotalLen() int64 {
 	return p.totalLen
 }
 
-func (p *PyPyEntry) GetReadSeekCloser() io.ReadSeekCloser {
+func (p *DirectDownloadEntry) GetReadSeekCloser() io.ReadSeekCloser {
 	if totalLen := p.TotalLen(); totalLen > 0 {
 		return p.writingFile.RequestRsc(totalLen)
 	}
 	return nil
 }
 
-func (p *PyPyEntry) GetDownloadBody() (io.ReadCloser, error) {
+func (p *DirectDownloadEntry) GetDownloadBody() (io.ReadCloser, error) {
 	return p.requestBody(p.videoUrl, p.getIncompleteSize())
 }
 
-func (p *PyPyEntry) Write(bytes []byte) (int, error) {
+func (p *DirectDownloadEntry) Write(bytes []byte) (int, error) {
 	err := p.writingFile.Append(bytes)
 	if err != nil {
 		return 0, err
@@ -76,15 +86,15 @@ func (p *PyPyEntry) Write(bytes []byte) (int, error) {
 	return len(bytes), nil
 }
 
-func (p *PyPyEntry) Close() error {
+func (p *DirectDownloadEntry) Close() error {
 	return p.closeFile()
 }
 
-func (p *PyPyEntry) Save() error {
+func (p *DirectDownloadEntry) Save() error {
 	return p.saveFile()
 }
 
-func (p *PyPyEntry) IsComplete() bool {
+func (p *DirectDownloadEntry) IsComplete() bool {
 	return p.getSavedSize() > 0
 }
 
