@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"log"
 	"os"
 	"regexp"
@@ -55,10 +56,12 @@ func ReadNewLines(file *os.File, seekStart int64) (int64, error) {
 		log.Println("Entering room: " + lastEnteredRoom)
 
 		if lastEnteredRoom[0] == '*' {
-			playlist.UpdateRoomName(lastEnteredRoom[1:])
+			lastEnteredRoom = lastEnteredRoom[1:]
+			playlist.UpdateRoomName(lastEnteredRoom)
 		} else {
 			playlist.EnterNewRoom(lastEnteredRoom)
 		}
+		persistence.SetCurrentRoomName(lastEnteredRoom)
 
 		lastEnteredRoom = ""
 	}

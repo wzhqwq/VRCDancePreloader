@@ -8,6 +8,8 @@
   Default: "随机播放"
 - Key: placeholder_empty_song
   Default: "没在播放"
+- Key: placeholder_room_not_supported
+  Default: "不支持的房间"
 
 - Key: key_id
   Default: "ID"

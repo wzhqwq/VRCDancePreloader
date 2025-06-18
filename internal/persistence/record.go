@@ -12,6 +12,7 @@ import (
 )
 
 var localRecords *LocalRecords
+var currentRoomName string
 
 const danceRecordTableSQL = `
 CREATE TABLE IF NOT EXISTS dance_record (
@@ -141,7 +142,7 @@ type Order struct {
 	DanceRoom string    `json:"dance_room"`
 }
 
-func AddToHistory(id, title, username, danceRoom string, time time.Time) {
+func AddToHistory(id, title, username string, time time.Time) {
 	if localRecords.CurrentRecord == nil {
 		return
 	}
@@ -150,7 +151,7 @@ func AddToHistory(id, title, username, danceRoom string, time time.Time) {
 		Title:     title,
 		Username:  username,
 		Time:      time,
-		DanceRoom: danceRoom,
+		DanceRoom: currentRoomName,
 	})
 }
 
@@ -319,4 +320,8 @@ func GetCurrentRecord() *DanceRecord {
 
 func GetLocalRecords() *LocalRecords {
 	return localRecords
+}
+
+func SetCurrentRoomName(roomName string) {
+	currentRoomName = roomName
 }

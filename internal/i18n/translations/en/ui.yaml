@@ -8,6 +8,8 @@
   Default: "Random Play"
 - Key: placeholder_empty_song
   Default: "Not Playing"
+- Key: placeholder_room_not_supported
+  Default: "Unsupported Room"
 
 - Key: key_id
   Default: "ID"

@@ -1,6 +1,7 @@
 package playlist
 
 import (
+	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"sync"
@@ -9,7 +10,8 @@ import (
 type PlayList struct {
 	Items []*song.PreloadedSong
 
-	RoomName string
+	RoomName  string
+	RoomBrand string
 
 	criticalUpdateCh chan struct{}
 	maxPreload       int
@@ -99,6 +101,11 @@ func UpdateRoomName(roomName string) {
 		return
 	}
 	currentPlaylist.RoomName = roomName
+	if brand := utils.IdentifyRoomBrand(roomName); brand != "" {
+		currentPlaylist.RoomBrand = brand
+	} else {
+		currentPlaylist.RoomBrand = i18n.T("placeholder_room_not_supported")
+	}
 	currentPlaylist.notifyChange(RoomChange)
 }
 

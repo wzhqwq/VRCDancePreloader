@@ -69,7 +69,7 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 	scroll := container.NewVScroll(dynamicList)
 	scroll.SetMinSize(fyne.NewSize(playItemMinWidth+theme.Padding(), 400))
 
-	roomName := canvas.NewText(l.pl.RoomName, theme.Color(theme.ColorNamePlaceHolder))
+	roomName := canvas.NewText(l.pl.RoomBrand, theme.Color(theme.ColorNamePlaceHolder))
 	roomName.TextSize = 18
 	roomName.TextStyle.Bold = true
 
@@ -181,7 +181,7 @@ func (r *listGuiRenderer) Refresh() {
 
 	if r.list.roomChanged {
 		r.list.roomChanged = false
-		r.RoomName.Text = r.list.pl.RoomName
+		r.RoomName.Text = r.list.pl.RoomBrand
 	}
 
 	canvas.Refresh(r.list)

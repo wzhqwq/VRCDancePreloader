@@ -220,6 +220,5 @@ func (ps *PreloadedSong) RemoveFromList() {
 func (ps *PreloadedSong) AddToHistory() {
 	info := ps.GetInfo()
 	startTime := time.Now().Unix() - int64(ps.TimePassed)
-	// TODO: support more dance rooms
-	persistence.AddToHistory(info.ID, info.Title, ps.Adder, "PyPyDance", time.Unix(startTime, 0))
+	persistence.AddToHistory(info.ID, info.Title, ps.Adder, time.Unix(startTime, 0))
 }
