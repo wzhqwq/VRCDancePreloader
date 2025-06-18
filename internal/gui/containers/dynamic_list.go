@@ -141,7 +141,9 @@ func (dli *DynamicListItem) MarkRemoving() {
 }
 
 func (dli *DynamicListItem) NotifyUpdateMinSize() {
-	dli.dl.Refresh()
+	fyne.Do(func() {
+		dli.dl.Refresh()
+	})
 }
 
 func NewDynamicListItem(ID string, dl *DynamicList, object fyne.CanvasObject) *DynamicListItem {

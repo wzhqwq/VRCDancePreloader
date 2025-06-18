@@ -58,9 +58,7 @@ func (g *SizeProgressBar) SetCurrentSize(size int64) {
 		return
 	}
 	g.CurrentSize = size
-	fyne.Do(func() {
-		g.Refresh()
-	})
+	g.Refresh()
 }
 
 func (g *SizeProgressBar) SetTotalSize(size int64) {
@@ -71,9 +69,7 @@ func (g *SizeProgressBar) SetTotalSize(size int64) {
 		return
 	}
 	g.TotalSize = size
-	fyne.Do(func() {
-		g.Refresh()
-	})
+	g.Refresh()
 }
 
 func (g *SizeProgressBar) updateBar() {

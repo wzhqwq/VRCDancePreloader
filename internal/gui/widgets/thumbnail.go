@@ -134,7 +134,6 @@ func (r *thumbnailRenderer) Refresh() {
 			r.i.FillMode = canvas.ImageFillContain
 		}
 	}
-	canvas.Refresh(r.t)
 }
 
 func (r *thumbnailRenderer) Objects() []fyne.CanvasObject {
