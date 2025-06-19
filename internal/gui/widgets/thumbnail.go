@@ -133,6 +133,7 @@ func (r *thumbnailRenderer) Refresh() {
 			r.i = canvas.NewImageFromImage(r.t.image)
 			r.i.FillMode = canvas.ImageFillContain
 		}
+		canvas.Refresh(r.t)
 	}
 }
 
