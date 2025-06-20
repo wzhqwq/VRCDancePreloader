@@ -36,6 +36,13 @@ func NewCustomSong(title, url string) CustomSong {
 			ThumbnailUrl: utils.GetYoutubeHQThumbnailURL(id),
 		}
 	}
+	if id, isBiliBili := utils.CheckBiliURL(url); isBiliBili {
+		return CustomSong{
+			Name:     title,
+			Url:      url,
+			UniqueId: fmt.Sprintf("bili_%s", id),
+		}
+	}
 	uniqueIdIncrement++
 	return CustomSong{
 		Name:         title,
@@ -56,11 +63,7 @@ func (m *CustomSongs) Find(url string) (*CustomSong, bool) {
 	m.Lock()
 	defer m.Unlock()
 
-	key := url
-	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
-		key = fmt.Sprintf("yt_%s", id)
-	}
-	song, ok := m.songs[key]
+	song, ok := m.songs[findCustomKey(url)]
 	return song, ok
 }
 
@@ -68,11 +71,12 @@ func (m *CustomSongs) FindOrCreate(title, url string) *CustomSong {
 	m.Lock()
 	defer m.Unlock()
 
-	if song, ok := m.songs[url]; ok {
+	key := findCustomKey(title)
+	if song, ok := m.songs[key]; ok {
 		return song
 	}
 	song := NewCustomSong(title, url)
-	m.songs[song.Url] = &song
+	m.songs[key] = &song
 	return &song
 }
 
@@ -83,4 +87,11 @@ func FindOrCreateCustomSong(title, url string) *CustomSong {
 		}
 	}
 	return customSongs.FindOrCreate(title, url)
+}
+
+func findCustomKey(url string) string {
+	if id, ok := utils.GetIdFromCustomUrl(url); ok {
+		return id
+	}
+	return url
 }

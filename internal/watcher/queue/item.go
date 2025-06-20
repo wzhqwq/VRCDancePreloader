@@ -2,6 +2,8 @@ package queue
 
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"regexp"
 	"strings"
 )
 
@@ -67,6 +69,16 @@ func (item *WannaQueueItem) ToPreloaded() *song.PreloadedSong {
 	if item.SongID > 0 {
 		// WannaDance Song
 		return song.CreatePreloadedWannaSong(item.SongID)
+	}
+	if item.SongID < 0 {
+		matches := regexp.MustCompile(`URL: (.*)`).FindSubmatch([]byte(item.Title))
+		if len(matches) > 0 {
+			url := string(matches[1])
+			if url[:2] == "BV" {
+				// BiliBili
+				return song.CreatePreloadedCustomSong(url, utils.GetStandardBiliURL(url))
+			}
+		}
 	}
 	return song.CreateUnknownSong()
 }

@@ -21,8 +21,6 @@ type DownloadState struct {
 	Pending bool
 	Error   error
 
-	FinalURL string
-
 	StateCh    chan *DownloadState
 	CancelCh   chan bool
 	PriorityCh chan int

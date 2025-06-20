@@ -67,6 +67,15 @@ func RequestWannaSong(id int) (io.ReadSeekCloser, error) {
 	}
 }
 
+func RequestBiliSong(bvID string) (io.ReadSeekCloser, error) {
+	item := currentPlaylist.FindCustomSong(utils.GetStandardBiliURL(bvID))
+	if asyncDownload {
+		return item.GetSongRSAsync()
+	} else {
+		return item.GetSongRSSync()
+	}
+}
+
 // TODO
 
 func RequestYoutubeSong(id string) (io.ReadSeekCloser, error) {

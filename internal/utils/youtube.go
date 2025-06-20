@@ -36,3 +36,11 @@ func CheckYoutubeURL(url string) (string, bool) {
 func CheckYoutubeThumbnailURL(url string) bool {
 	return strings.Contains(url, "i.ytimg.com")
 }
+
+func CheckIdIsYoutube(id string) (string, bool) {
+	if !strings.Contains(id, "yt_") {
+		return "", false
+	}
+
+	return id[3:], true
+}

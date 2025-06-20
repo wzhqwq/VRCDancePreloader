@@ -8,6 +8,9 @@ import (
 )
 
 var pypyClient *http.Client
+var wannaClient *http.Client
+var biliClient *http.Client
+
 var youtubeVideoClient *http.Client
 var youtubeApiClient *http.Client
 var youtubeImageClient *http.Client
@@ -49,6 +52,28 @@ func TestPypyClient() (bool, string) {
 	return testClient(pypyClient, utils.GetPyPyVideoUrl(1), "PyPyDance")
 }
 
+func InitWannaClient(proxyUrl string) {
+	if proxyUrl != "" {
+		wannaClient = createProxyClient(proxyUrl)
+	} else {
+		wannaClient = &http.Client{}
+	}
+}
+func TestWannaClient() (bool, string) {
+	return testClient(wannaClient, utils.GetWannaVideoUrl(1), "WannaDance")
+}
+
+func InitBiliClient(proxyUrl string) {
+	if proxyUrl != "" {
+		biliClient = createProxyClient(proxyUrl)
+	} else {
+		biliClient = &http.Client{}
+	}
+}
+func TestBiliClient() (bool, string) {
+	return testClient(biliClient, utils.GetBiliVideoInfoURL("BV17g7XzME13"), "BiliBili api")
+}
+
 func InitYoutubeVideoClient(proxyUrl string) {
 	if proxyUrl != "" {
 		youtubeVideoClient = createProxyClient(proxyUrl)
@@ -84,6 +109,12 @@ func TestYoutubeImageClient() (bool, string) {
 
 func GetPyPyClient() *http.Client {
 	return pypyClient
+}
+func GetWannaClient() *http.Client {
+	return wannaClient
+}
+func GetBiliClient() *http.Client {
+	return biliClient
 }
 func GetYoutubeVideoClient() *http.Client {
 	return youtubeVideoClient

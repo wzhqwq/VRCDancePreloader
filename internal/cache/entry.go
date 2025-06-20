@@ -68,6 +68,9 @@ func (e *BaseEntry) requestInfo(url string) (int64, string) {
 	if err != nil {
 		return 0, url
 	}
+	if res.StatusCode >= 400 {
+		return 0, url
+	}
 	location := res.Header.Get("Location")
 	if location == "" {
 		return res.ContentLength, url
@@ -92,4 +95,30 @@ func (e *BaseEntry) requestBody(url string, offset int64) (io.ReadCloser, error)
 		return res.Body, nil
 	}
 	return nil, fmt.Errorf(res.Status)
+}
+
+// adapters
+
+func (e *BaseEntry) Open() error {
+	return e.openFile()
+}
+
+func (e *BaseEntry) Close() error {
+	return e.closeFile()
+}
+
+func (e *BaseEntry) Save() error {
+	return e.saveFile()
+}
+
+func (e *BaseEntry) IsComplete() bool {
+	return e.getSavedSize() > 0
+}
+
+func (e *BaseEntry) Write(bytes []byte) (int, error) {
+	err := e.writingFile.Append(bytes)
+	if err != nil {
+		return 0, err
+	}
+	return len(bytes), nil
 }

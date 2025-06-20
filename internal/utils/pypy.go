@@ -16,7 +16,7 @@ func GetPyPyThumbnailUrl(id int) string {
 func CheckPyPyUrl(url string) (int, bool) {
 	// jd.pypy.moe/api/v1/videos/VIDEO_ID.mp4
 
-	if len(url) < 11 {
+	if len(url) < 37 {
 		return 0, false
 	}
 
@@ -38,7 +38,7 @@ func CheckIdIsPyPy(id string) (int, bool) {
 		return 0, false
 	}
 
-	num, err := strconv.Atoi(strings.Split(id, "pypy_")[1])
+	num, err := strconv.Atoi(id[5:])
 	if err != nil {
 		return 0, false
 	}

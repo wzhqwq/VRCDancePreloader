@@ -2,6 +2,7 @@ package cache
 
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"io"
 )
@@ -16,14 +17,22 @@ func NewEntry(id string) Entry {
 			videoUrl: utils.GetPyPyVideoUrl(num),
 		}
 	}
-	// TODO uncomment when WannaDance queue processing is well tested
 	if num, ok := utils.CheckIdIsWanna(id); ok {
 		return &DirectDownloadEntry{
 			BaseEntry: BaseEntry{
 				id:     id,
-				client: requesting.GetPyPyClient(),
+				client: requesting.GetWannaClient(),
 			},
 			videoUrl: utils.GetWannaVideoUrl(num),
+		}
+	}
+	if bvID, ok := utils.CheckIdIsBili(id); ok {
+		return &BiliBiliEntry{
+			BaseEntry: BaseEntry{
+				id:     id,
+				client: requesting.GetBiliClient(),
+			},
+			bvID: bvID,
 		}
 	}
 	// TODO youtube handler
@@ -50,52 +59,74 @@ type DirectDownloadEntry struct {
 	totalLen int64
 }
 
-func (p *DirectDownloadEntry) Open() error {
-	return p.openFile()
-}
-
-func (p *DirectDownloadEntry) TotalLen() int64 {
-	if p.totalLen == 0 {
-		if savedSize := p.getSavedSize(); savedSize != 0 {
-			p.totalLen = savedSize
+func (e *DirectDownloadEntry) TotalLen() int64 {
+	if e.totalLen == 0 {
+		if savedSize := e.getSavedSize(); savedSize > 0 {
+			e.totalLen = savedSize
 		} else {
-			totalLen, newUrl := p.requestInfo(p.videoUrl)
-			p.videoUrl = newUrl
-			p.totalLen = totalLen
+			totalLen, newUrl := e.requestInfo(e.videoUrl)
+			e.videoUrl = newUrl
+			e.totalLen = totalLen
 		}
 	}
-	return p.totalLen
+	return e.totalLen
 }
 
-func (p *DirectDownloadEntry) GetReadSeekCloser() io.ReadSeekCloser {
-	if totalLen := p.TotalLen(); totalLen > 0 {
-		return p.writingFile.RequestRsc(totalLen)
+func (e *DirectDownloadEntry) GetReadSeekCloser() io.ReadSeekCloser {
+	if totalLen := e.TotalLen(); totalLen > 0 {
+		return e.writingFile.RequestRsc(totalLen)
 	}
 	return nil
 }
 
-func (p *DirectDownloadEntry) GetDownloadBody() (io.ReadCloser, error) {
-	return p.requestBody(p.videoUrl, p.getIncompleteSize())
+func (e *DirectDownloadEntry) GetDownloadBody() (io.ReadCloser, error) {
+	return e.requestBody(e.videoUrl, e.getIncompleteSize())
 }
 
-func (p *DirectDownloadEntry) Write(bytes []byte) (int, error) {
-	err := p.writingFile.Append(bytes)
-	if err != nil {
-		return 0, err
+type BiliBiliEntry struct {
+	BaseEntry
+
+	bvID     string
+	videoUrl string
+
+	totalLen int64
+}
+
+func (e *BiliBiliEntry) TotalLen() int64 {
+	if e.totalLen == 0 {
+		if savedSize := e.getSavedSize(); savedSize > 0 {
+			e.totalLen = savedSize
+		} else {
+			if e.videoUrl == "" {
+				e.videoUrl, _ = third_party_api.GetBiliVideoUrl(e.client, e.bvID)
+				if e.videoUrl == "" {
+					return 0
+				}
+			}
+			totalLen, newUrl := e.requestInfo(e.videoUrl)
+			e.videoUrl = newUrl
+			e.totalLen = totalLen
+		}
 	}
-	return len(bytes), nil
+	return e.totalLen
 }
 
-func (p *DirectDownloadEntry) Close() error {
-	return p.closeFile()
+func (e *BiliBiliEntry) GetReadSeekCloser() io.ReadSeekCloser {
+	if totalLen := e.TotalLen(); totalLen > 0 {
+		return e.writingFile.RequestRsc(totalLen)
+	}
+	return nil
 }
 
-func (p *DirectDownloadEntry) Save() error {
-	return p.saveFile()
-}
-
-func (p *DirectDownloadEntry) IsComplete() bool {
-	return p.getSavedSize() > 0
+func (e *BiliBiliEntry) GetDownloadBody() (io.ReadCloser, error) {
+	if e.videoUrl == "" {
+		var err error
+		e.videoUrl, err = third_party_api.GetBiliVideoUrl(e.client, e.bvID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return e.requestBody(e.videoUrl, e.getIncompleteSize())
 }
 
 type YouTubeEntry struct {

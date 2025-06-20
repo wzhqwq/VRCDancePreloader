@@ -21,6 +21,8 @@ func (pc *ProxyConfig) Init() {
 	}
 
 	requesting.InitPypyClient(pc.Pypy)
+	requesting.InitWannaClient("")
+	requesting.InitBiliClient("")
 	//requesting.InitYoutubeVideoClient(pc.YoutubeVideo)
 	requesting.InitYoutubeImageClient(pc.YoutubeImage)
 	requesting.InitYoutubeApiClient(pc.YoutubeApi)

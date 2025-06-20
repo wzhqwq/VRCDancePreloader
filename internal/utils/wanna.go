@@ -11,7 +11,7 @@ func GetWannaVideoUrl(id int) string {
 }
 
 func CheckWannaUrl(url string) (int, bool) {
-	if len(url) < 11 {
+	if len(url) < 40 {
 		return 0, false
 	}
 
@@ -29,7 +29,7 @@ func CheckIdIsWanna(id string) (int, bool) {
 		return 0, false
 	}
 
-	num, err := strconv.Atoi(strings.Split(id, "wanna_")[1])
+	num, err := strconv.Atoi(id[6:])
 	if err != nil {
 		return 0, false
 	}
