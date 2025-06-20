@@ -9,7 +9,7 @@ import (
 )
 
 func handleWannaRequest(w http.ResponseWriter, req *http.Request) bool {
-	if req.Host != "jd.pypy.moe" {
+	if req.Host != "api.udon.dance" {
 		return false
 	}
 	if req.URL.Path == "/Api/Songs/play" {
