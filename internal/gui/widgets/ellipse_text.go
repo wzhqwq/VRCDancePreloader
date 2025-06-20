@@ -45,6 +45,7 @@ func (r *ellipseTextRenderer) Refresh() {
 	r.text.TextSize = r.e.TextSize
 	r.text.TextStyle = r.e.TextStyle
 	r.text.Color = r.e.Color
+	canvas.Refresh(r.text)
 }
 
 func (r *ellipseTextRenderer) Destroy() {

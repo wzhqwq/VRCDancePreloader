@@ -13,9 +13,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"regexp"
-	"strconv"
 )
 
 type OrderGui struct {
@@ -49,7 +46,7 @@ func NewOrderGui(order persistence.Order) *OrderGui {
 }
 
 func (ig *OrderGui) CreateRenderer() fyne.WidgetRenderer {
-	title := widgets.NewEllipseText(ig.order.Title, theme.Color(theme.ColorNameForeground))
+	title := widgets.NewSongTitle(ig.order.ID, ig.order.Title, theme.Color(theme.ColorNameForeground))
 	title.TextSize = 16
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
@@ -63,14 +60,6 @@ func (ig *OrderGui) CreateRenderer() fyne.WidgetRenderer {
 	orderInfo := fmt.Sprintf("%s %s", orderUser, ig.order.Time.Format("15:04:05"))
 	orderInfoLine := canvas.NewText(orderInfo, theme.Color(theme.ColorNamePlaceHolder))
 	orderInfoLine.TextSize = 12
-
-	thumbnailUrl := ""
-	if regexp.MustCompile(`^pypy_`).MatchString(ig.Entry.ID) {
-		pypyId, err := strconv.Atoi(ig.Entry.ID[5:])
-		if err == nil {
-			thumbnailUrl = utils.GetPyPyThumbnailUrl(pypyId)
-		}
-	}
 
 	favoriteBtn := button.NewFavoriteBtn(ig.Entry.ID, ig.Entry.Title)
 	favoriteBtn.SetMinSquareSize(36)
@@ -100,7 +89,7 @@ func (ig *OrderGui) CreateRenderer() fyne.WidgetRenderer {
 		OrderInfoLine: orderInfoLine,
 
 		LocalSong: widgets.NewLocalSongOperations(ig.Entry),
-		Thumbnail: widgets.NewThumbnail(thumbnailUrl),
+		Thumbnail: widgets.NewThumbnailWithID(ig.Entry.ID),
 		Separator: widget.NewSeparator(),
 		Actions:   actions,
 	}
@@ -109,7 +98,7 @@ func (ig *OrderGui) CreateRenderer() fyne.WidgetRenderer {
 type ItemRenderer struct {
 	ig *OrderGui
 
-	TitleWidget *widgets.EllipseText
+	TitleWidget *widgets.SongTitle
 
 	SongInfoLine  *canvas.Text
 	OrderInfoLine *canvas.Text

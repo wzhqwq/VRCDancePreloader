@@ -13,13 +13,12 @@ import (
 // Info, immutable
 
 type PreloadedSongInfo struct {
-	ID           string
-	Title        string
-	Group        string
-	Adder        string
-	Size         string
-	OriginalURL  string
-	ThumbnailURL string
+	ID          string
+	Title       string
+	Group       string
+	Adder       string
+	Size        string
+	OriginalURL string
 }
 
 func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
@@ -41,10 +40,9 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 	basicInfo := PreloadedSongInfo{
 		ID: ps.GetId(),
 
-		Adder:        adder,
-		Size:         size,
-		OriginalURL:  ps.GetOriginalUrl(),
-		ThumbnailURL: ps.GetThumbnailUrl(),
+		Adder:       adder,
+		Size:        size,
+		OriginalURL: ps.GetOriginalUrl(),
 	}
 
 	if ps.PyPySong != nil {

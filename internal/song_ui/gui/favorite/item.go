@@ -8,10 +8,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"image/color"
-	"regexp"
-	"strconv"
 )
 
 type ItemGui struct {
@@ -43,7 +40,7 @@ func (ig *ItemGui) UpdateFavoriteEntry(entry *persistence.LocalSongEntry) {
 }
 
 func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
-	title := widgets.NewEllipseText(ig.Entry.Title, theme.Color(theme.ColorNameForeground))
+	title := widgets.NewSongTitle(ig.Entry.ID, ig.Entry.Title, theme.Color(theme.ColorNameForeground))
 	title.TextSize = 16
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
@@ -64,7 +61,7 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 		TitleWidget: title,
 		IDWidget:    id,
 		LocalSong:   widgets.NewLocalSongOperations(ig.Entry),
-		Thumbnail:   widgets.NewThumbnail(""),
+		Thumbnail:   widgets.NewThumbnailWithID(ig.Entry.ID),
 		Separator:   widget.NewSeparator(),
 		Actions:     actions,
 
@@ -75,7 +72,7 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 type ItemRenderer struct {
 	ig *ItemGui
 
-	TitleWidget *widgets.EllipseText
+	TitleWidget *widgets.SongTitle
 	IDWidget    *canvas.Text
 	LocalSong   *widgets.LocalSongOperations
 	Thumbnail   *widgets.Thumbnail
@@ -137,14 +134,7 @@ func (r *ItemRenderer) Refresh() {
 		r.TitleWidget.Text = r.ig.Entry.Title
 		r.IDWidget.Text = r.ig.Entry.ID
 
-		thumbnailUrl := ""
-		if regexp.MustCompile(`^pypy_`).MatchString(r.ig.Entry.ID) {
-			pypyId, err := strconv.Atoi(r.ig.Entry.ID[5:])
-			if err == nil {
-				thumbnailUrl = utils.GetPyPyThumbnailUrl(pypyId)
-			}
-		}
-		r.Thumbnail.LoadImageFromURL(thumbnailUrl)
+		r.Thumbnail.LoadImageFromID(r.ig.Entry.ID)
 
 		r.LocalSong.UpdateEntry(r.ig.Entry)
 	}

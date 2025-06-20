@@ -43,6 +43,11 @@ func (g *LocalFileGui) UpdateInfo(info types.CacheFileInfo) {
 }
 
 func (g *LocalFileGui) getTitle() string {
+	entry, err := persistence.GetEntry(g.Info.ID)
+	if err == nil {
+		return entry.Title
+	}
+
 	if pypyId, ok := utils.CheckIdIsPyPy(g.Info.ID); ok {
 		if song, ok := raw_song.FindPyPySong(pypyId); ok {
 			return song.Name
@@ -50,14 +55,14 @@ func (g *LocalFileGui) getTitle() string {
 	}
 	if wannaId, ok := utils.CheckIdIsWanna(g.Info.ID); ok {
 		if song, ok := raw_song.FindWannaSong(wannaId); ok {
-			return song.Name
+			return song.FullTitle()
 		}
 	}
 	return g.Info.ID + ".mp4"
 }
 
 func (g *LocalFileGui) CreateRenderer() fyne.WidgetRenderer {
-	titleWidget := widgets.NewEllipseText(g.getTitle(), theme.Color(theme.ColorNameForeground))
+	titleWidget := widgets.NewSongTitle(g.Info.ID, g.getTitle(), theme.Color(theme.ColorNameForeground))
 	titleWidget.TextSize = 16
 
 	r := &LocalFileGuiRenderer{
@@ -77,7 +82,7 @@ func (g *LocalFileGui) CreateRenderer() fyne.WidgetRenderer {
 type LocalFileGuiRenderer struct {
 	g *LocalFileGui
 
-	Title     *widgets.EllipseText
+	Title     *widgets.SongTitle
 	Infos     *fyne.Container
 	Separator *widget.Separator
 

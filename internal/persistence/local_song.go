@@ -227,14 +227,15 @@ func (f *LocalSongs) CalculateTotalPages(pageSize int) int {
 	return (total + pageSize - 1) / pageSize
 }
 
-func (f *LocalSongs) UpdateFavorite(entry *LocalSongEntry) {
+func (f *LocalSongs) UpdateEntry(entry *LocalSongEntry) {
 	f.Lock()
 	defer f.Unlock()
 
 	// update entry
-	_, err := DB.Exec("UPDATE local_song SET like = ?, skill = ? WHERE id = ?", entry.Like, entry.Skill, entry.ID)
+	q := "UPDATE local_song SET title = ?, like = ?, skill = ? WHERE id = ?"
+	_, err := DB.Exec(q, entry.Title, entry.Like, entry.Skill, entry.ID)
 	if err != nil {
-		log.Printf("failed to update favorite entry: %v", err)
+		log.Printf("failed to update entry: %v", err)
 		return
 	}
 }
@@ -280,15 +281,19 @@ type LocalSongEntry struct {
 
 func (e *LocalSongEntry) UpdateLike(like int) {
 	e.Like = like
-	currentLocalSongs.UpdateFavorite(e)
+	currentLocalSongs.UpdateEntry(e)
 }
 func (e *LocalSongEntry) UpdateSkill(skill int) {
 	e.Skill = skill
-	currentLocalSongs.UpdateFavorite(e)
+	currentLocalSongs.UpdateEntry(e)
 }
 func (e *LocalSongEntry) UpdateSyncInGame(b bool) {
 	e.IsSyncInGame = b
-	currentLocalSongs.UpdateFavorite(e)
+	currentLocalSongs.UpdateEntry(e)
+}
+func (e *LocalSongEntry) UpdateTitle(title string) {
+	e.Title = title
+	currentLocalSongs.UpdateEntry(e)
 }
 func (e *LocalSongEntry) SetFavorite() {
 	currentLocalSongs.SetFavorite(e.ID, e.Title)

@@ -123,7 +123,7 @@ func (ig *ItemGui) RenderLoop() {
 func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	info := ig.ps.GetInfo()
 	// Title
-	title := widgets.NewEllipseText(info.Title, theme.Color(theme.ColorNameForeground))
+	title := widgets.NewSongTitle(info.ID, info.Title, theme.Color(theme.ColorNameForeground))
 	title.TextSize = 16
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
@@ -188,7 +188,7 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 		SizeText:    sizeText,
 		PlayBar:     playBar,
 		FavoriteBtn: button.NewFavoriteBtn(info.ID, info.Title),
-		Thumbnail:   widgets.NewThumbnail(info.ThumbnailURL),
+		Thumbnail:   widgets.NewThumbnailWithID(info.ID),
 		TitleWidget: title,
 	}
 }
@@ -214,7 +214,7 @@ type ItemRenderer struct {
 	SizeText    *canvas.Text
 	PlayBar     *widgets.PlayBar
 	FavoriteBtn *button.FavoriteBtn
-	TitleWidget *widgets.EllipseText
+	TitleWidget *widgets.SongTitle
 	Thumbnail   *widgets.Thumbnail
 }
 

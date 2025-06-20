@@ -32,7 +32,7 @@ func RequestThumbnail(url string) (resp *http.Response, err error) {
 	if utils.CheckPyPyThumbnailUrl(url) {
 		return pypyClient.Get(url)
 	}
-	if _, ok := utils.CheckYoutubeURL(url); ok {
+	if utils.CheckYoutubeThumbnailURL(url) {
 		return youtubeImageClient.Get(url)
 	}
 	return http.Get(url)

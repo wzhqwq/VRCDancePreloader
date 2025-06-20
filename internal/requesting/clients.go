@@ -93,7 +93,7 @@ func InitYoutubeApiClient(proxyUrl string) {
 	}
 }
 func TestYoutubeApiClient() (bool, string) {
-	return testClient(youtubeApiClient, "https://youtube.googleapis.com/", "Youtube API")
+	return testClient(youtubeApiClient, "https://www.googleapis.com/", "Youtube API")
 }
 
 func InitYoutubeImageClient(proxyUrl string) {

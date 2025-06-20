@@ -147,15 +147,6 @@ func (ps *PreloadedSong) GetDownloadUrl() string {
 	}
 	return ""
 }
-func (ps *PreloadedSong) GetThumbnailUrl() string {
-	if ps.PyPySong != nil {
-		return utils.GetPyPyThumbnailUrl(ps.PyPySong.ID)
-	}
-	if ps.CustomSong != nil {
-		return ps.CustomSong.ThumbnailUrl
-	}
-	return ""
-}
 func (ps *PreloadedSong) GetId() string {
 	if ps.PyPySong != nil {
 		return fmt.Sprintf("pypy_%d", ps.PyPySong.ID)

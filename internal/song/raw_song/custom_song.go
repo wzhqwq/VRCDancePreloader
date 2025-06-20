@@ -18,10 +18,9 @@ var customSongs *CustomSongs
 var uniqueIdIncrement = 0
 
 type CustomSong struct {
-	Name         string
-	Url          string
-	UniqueId     string
-	ThumbnailUrl string
+	Name     string
+	Url      string
+	UniqueId string
 }
 
 func NewCustomSong(title, url string) CustomSong {
@@ -30,10 +29,9 @@ func NewCustomSong(title, url string) CustomSong {
 			title = third_party_api.GetYoutubeTitle(id)
 		}
 		return CustomSong{
-			Name:         title,
-			Url:          url,
-			UniqueId:     fmt.Sprintf("yt_%s", id),
-			ThumbnailUrl: utils.GetYoutubeHQThumbnailURL(id),
+			Name:     title,
+			Url:      url,
+			UniqueId: fmt.Sprintf("yt_%s", id),
 		}
 	}
 	if id, isBiliBili := utils.CheckBiliURL(url); isBiliBili {
@@ -45,10 +43,9 @@ func NewCustomSong(title, url string) CustomSong {
 	}
 	uniqueIdIncrement++
 	return CustomSong{
-		Name:         title,
-		Url:          url,
-		UniqueId:     fmt.Sprintf("custom_%d", uniqueIdIncrement),
-		ThumbnailUrl: "",
+		Name:     title,
+		Url:      url,
+		UniqueId: fmt.Sprintf("custom_%d", uniqueIdIncrement),
 	}
 }
 
