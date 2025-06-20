@@ -17,8 +17,8 @@ var wannaLastUserData = ""
 
 type wannaUserData struct {
 	//Version     string        `json:"version"`
-	SongID int `json:"songId"`
-	//IsRandom    bool          `json:"isRandom"`
+	SongID   int  `json:"songId"`
+	IsRandom bool `json:"isRandom"`
 	//InfoString  string        `json:"infoString"`
 	PlayerName string `json:"playerName"`
 	VideoURL   string `json:"videoUrl"`
@@ -132,6 +132,7 @@ func wannaPostProcess() {
 				SongID:      id,
 				Title:       userData.VideoTitle,
 				PlayerNames: []string{userData.PlayerName},
+				Random:      userData.IsRandom,
 			})
 		}
 

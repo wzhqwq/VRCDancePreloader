@@ -59,6 +59,8 @@ type WannaQueueItem struct {
 	//Duration    int      `json:"duration"`
 	//Group       string   `json:"group"`
 	//DoubleWidth bool     `json:"doubleWidth"`
+
+	Random bool
 }
 
 func (item *WannaQueueItem) ToPreloaded() *song.PreloadedSong {
@@ -74,5 +76,8 @@ func (item *WannaQueueItem) MatchWithPreloaded(song *song.PreloadedSong) bool {
 }
 
 func (item *WannaQueueItem) GetAdder() string {
+	if item.Random {
+		return "Random"
+	}
 	return strings.Join(item.PlayerNames, ",")
 }
