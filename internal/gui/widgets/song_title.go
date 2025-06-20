@@ -32,13 +32,16 @@ func NewSongTitle(id, title string, color color.Color) *SongTitle {
 			return
 		}
 
+		persistence.GetLocalSongs().AddLocalSongIfNotExist(id, completedTitle)
 		entry, err := persistence.GetEntry(id)
 		if err != nil {
 			log.Println("failed to get entry: " + err.Error())
 			return
 		}
 
-		entry.UpdateTitle(completedTitle)
+		if entry.Title != completedTitle {
+			entry.UpdateTitle(completedTitle)
+		}
 		t.Text = entry.Title
 
 		fyne.Do(func() {
