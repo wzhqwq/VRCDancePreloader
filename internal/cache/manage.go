@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	AllCacheFileRegex      = `^((?:pypy_|yt_).+)(?:\.mp4|\.mp4\.dl)$`
-	CompleteCacheFileRegex = `^((?:pypy_|yt_).+)\.mp4$`
-	PartialCacheFileRegex  = `^((?:pypy_|yt_).+)\.mp4\.dl$`
+	AllCacheFileRegex      = `^((?:pypy|yt|wanna|bili)_.+)(?:\.mp4|\.mp4\.dl)$`
+	CompleteCacheFileRegex = `^((?:pypy|yt|wanna|bili)_.+)\.mp4$`
+	PartialCacheFileRegex  = `^((?:pypy|yt|wanna|bili)_.+)\.mp4\.dl$`
 )
 
 var cachePath string
