@@ -32,9 +32,7 @@ func (p *Pagination) SetCurrentPage(currentPage int) {
 		return
 	}
 	p.CurrentPage = currentPage
-	fyne.Do(func() {
-		p.Refresh()
-	})
+	p.Refresh()
 }
 
 func (p *Pagination) SetTotalPage(totalPage int) {
@@ -42,19 +40,14 @@ func (p *Pagination) SetTotalPage(totalPage int) {
 		return
 	}
 	p.TotalPage = totalPage
-	fyne.Do(func() {
-		p.Refresh()
-	})
+	p.Refresh()
 }
 
 func (p *Pagination) handlePageChange() {
 	if p.OnPageChange != nil {
 		p.OnPageChange(p.CurrentPage)
 	}
-
-	fyne.Do(func() {
-		p.Refresh()
-	})
+	p.Refresh()
 }
 
 func (p *Pagination) CreateRenderer() fyne.WidgetRenderer {
@@ -153,6 +146,15 @@ func (r *paginationRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *paginationRenderer) Refresh() {
+	if r.pagination.CurrentPage < 1 {
+		r.pagination.CurrentPage = 1
+		r.pagination.handlePageChange()
+	}
+	if r.pagination.CurrentPage > r.pagination.TotalPage {
+		r.pagination.CurrentPage = r.pagination.TotalPage
+		r.pagination.handlePageChange()
+	}
+
 	r.CurrentPageLabel.SetText(fmt.Sprintf("%d/%d", r.pagination.CurrentPage, r.pagination.TotalPage))
 
 	canvas.Refresh(r.pagination)

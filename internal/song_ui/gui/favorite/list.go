@@ -16,9 +16,10 @@ type FavoritesGui struct {
 
 	Favorites *persistence.LocalSongs
 
-	sortBy    string
-	ascending bool
-	page      int
+	sortBy     string
+	ascending  bool
+	page       int
+	totalPages int
 
 	SortByOptions []string
 	OrderOptions  []string
@@ -51,8 +52,9 @@ func NewFavoritesGui() *FavoritesGui {
 		Favorites: favorites,
 		entries:   persistence.GetLocalSongs().ListFavorites(0, pageSize, "id", true),
 
-		sortBy:    "id",
-		ascending: true,
+		sortBy:     "id",
+		ascending:  true,
+		totalPages: favorites.CalculateTotalPages(pageSize),
 
 		stopCh:         make(chan struct{}),
 		favoriteChange: favorites.SubscribeEvent(),
@@ -65,21 +67,19 @@ func NewFavoritesGui() *FavoritesGui {
 
 func (fg *FavoritesGui) refreshItems() {
 	fg.entries = persistence.GetLocalSongs().ListFavorites(fg.page, pageSize, fg.sortBy, fg.ascending)
-
-	fyne.Do(func() {
-		fg.Refresh()
-	})
+	fg.Refresh()
 }
 
 func (fg *FavoritesGui) RenderLoop() {
-	fg.refreshItems()
-
 	for {
 		select {
 		case <-fg.stopCh:
 			return
 		case <-fg.favoriteChange.Channel:
-			fg.refreshItems()
+			fg.totalPages = fg.Favorites.CalculateTotalPages(pageSize)
+			fyne.Do(func() {
+				fg.refreshItems()
+			})
 		}
 	}
 }
@@ -117,7 +117,7 @@ func (fg *FavoritesGui) CreateRenderer() fyne.WidgetRenderer {
 	topBar := container.NewHBox(sortBySelect, orderSelect, refreshBtn)
 
 	pagination := widgets.NewPagination()
-	pagination.SetTotalPage(fg.Favorites.CalculateTotalPages(pageSize))
+	pagination.SetTotalPage(fg.totalPages)
 	pagination.SetCurrentPage(1)
 	pagination.OnPageChange = func(page int) {
 		fg.page = page - 1
@@ -198,6 +198,7 @@ func (r *favoritesGuiRenderer) pushItems() {
 func (r *favoritesGuiRenderer) Refresh() {
 	r.List.RemoveAll()
 	r.pushItems()
+	r.Pagination.SetTotalPage(r.g.totalPages)
 }
 
 func (r *favoritesGuiRenderer) Destroy() {
