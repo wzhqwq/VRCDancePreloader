@@ -134,6 +134,7 @@ func ClearAndSetQueue(items []queue.QueueItem) {
 
 		currentPlaylist = newPlayList(currentPlaylist.maxPreload)
 		currentPlaylist.RoomName = lastRoomName
+		currentPlaylist.UpdateRoomBrand()
 		notifyNewList(currentPlaylist)
 
 		log.Println("New playlist")
@@ -160,6 +161,7 @@ func EnterNewRoom(roomName string) {
 
 		currentPlaylist = newPlayList(currentPlaylist.maxPreload)
 		currentPlaylist.RoomName = roomName
+		currentPlaylist.UpdateRoomBrand()
 		notifyNewList(currentPlaylist)
 	} else {
 		UpdateRoomName(roomName)

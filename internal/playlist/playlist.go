@@ -89,6 +89,14 @@ func (pl *PlayList) SyncWithTime(url string, now float64) {
 	}
 }
 
+func (pl *PlayList) UpdateRoomBrand() {
+	if brand := utils.IdentifyRoomBrand(pl.RoomName); brand != "" {
+		pl.RoomBrand = brand
+	} else {
+		pl.RoomBrand = i18n.T("placeholder_room_not_supported")
+	}
+}
+
 func MarkURLPlaying(url string, now float64) {
 	if currentPlaylist == nil {
 		return
@@ -101,11 +109,7 @@ func UpdateRoomName(roomName string) {
 		return
 	}
 	currentPlaylist.RoomName = roomName
-	if brand := utils.IdentifyRoomBrand(roomName); brand != "" {
-		currentPlaylist.RoomBrand = brand
-	} else {
-		currentPlaylist.RoomBrand = i18n.T("placeholder_room_not_supported")
-	}
+	currentPlaylist.UpdateRoomBrand()
 	currentPlaylist.notifyChange(RoomChange)
 }
 
