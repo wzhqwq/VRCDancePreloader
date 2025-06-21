@@ -5,11 +5,13 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
+	"weak"
 )
 
 type HistoryGui struct {
@@ -18,8 +20,6 @@ type HistoryGui struct {
 	activeId int
 
 	Records []*persistence.DanceRecord
-
-	recordButtonsCached map[int]*button.RecordButton
 
 	stopCh        chan struct{}
 	recordsChange *utils.EventSubscriber[string]
@@ -103,6 +103,8 @@ func (g *HistoryGui) CreateRenderer() fyne.WidgetRenderer {
 		Right: right,
 
 		Separator: widget.NewSeparator(),
+
+		buttonMap: make(map[int]weak.Pointer[button.RecordButton]),
 	}
 
 	r.PushRecordButtons()
@@ -119,6 +121,8 @@ type HistoryGuiRenderer struct {
 	Right fyne.CanvasObject
 
 	Separator *widget.Separator
+
+	buttonMap map[int]weak.Pointer[button.RecordButton]
 }
 
 func (r *HistoryGuiRenderer) MinSize() fyne.Size {
@@ -137,11 +141,24 @@ func (r *HistoryGuiRenderer) Layout(size fyne.Size) {
 }
 
 func (r *HistoryGuiRenderer) PushRecordButtons() {
-	for _, record := range r.g.Records {
+	buttons := lo.Map(r.g.Records, func(record *persistence.DanceRecord, _ int) *button.RecordButton {
+		if item, ok := r.buttonMap[record.ID]; ok {
+			if v := item.Value(); v != nil {
+				return v
+			}
+		}
 		b := button.NewRecordButton(record.StartTime, r.g.activeId == record.ID)
 		b.OnClick = func() {
 			r.g.SetActive(record.ID)
 		}
+		r.buttonMap[record.ID] = weak.Make(b)
+		return b
+	})
+
+	if r.Left.Objects != nil {
+		r.Left.RemoveAll()
+	}
+	for _, b := range buttons {
 		r.Left.Add(b)
 	}
 	r.Left.Refresh()
@@ -152,7 +169,6 @@ func (r *HistoryGuiRenderer) Refresh() {
 	if r.g.recordsChanged {
 		r.g.recordsChanged = false
 
-		r.Left.RemoveAll()
 		r.PushRecordButtons()
 
 		hasActive := false

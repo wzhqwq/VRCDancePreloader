@@ -138,7 +138,7 @@ func (fg *FavoritesGui) CreateRenderer() fyne.WidgetRenderer {
 		g: fg,
 	}
 
-	r.pushItems()
+	r.updateItems()
 
 	go fg.RenderLoop()
 
@@ -188,16 +188,23 @@ func (r *favoritesGuiRenderer) Objects() []fyne.CanvasObject {
 	}
 }
 
-func (r *favoritesGuiRenderer) pushItems() {
-	for _, entry := range r.g.entries {
-		r.List.Add(NewItemGui(entry))
+func (r *favoritesGuiRenderer) updateItems() {
+	if r.List.Objects == nil {
+		for _, entry := range r.g.entries {
+			r.List.Add(NewItemGui(entry))
+		}
+		r.List.Refresh()
+	} else {
+		for i, entry := range r.g.entries {
+			if item, ok := r.List.Objects[i].(*ItemGui); ok {
+				item.UpdateFavoriteEntry(entry)
+			}
+		}
 	}
-	r.List.Refresh()
 }
 
 func (r *favoritesGuiRenderer) Refresh() {
-	r.List.RemoveAll()
-	r.pushItems()
+	r.updateItems()
 	r.Pagination.SetTotalPage(r.g.totalPages)
 }
 

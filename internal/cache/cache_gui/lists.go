@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
@@ -13,7 +14,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"sync"
+	"log"
 	"weak"
 )
 
@@ -119,8 +120,7 @@ type LocalFilesGuiRenderer struct {
 	RefreshBtn  *button.PaddedIconBtn
 	ProgressBar *widgets.SizeProgressBar
 
-	itemMap  map[string]weak.Pointer[LocalFileGui]
-	mapMutex sync.Mutex
+	itemMap map[string]weak.Pointer[LocalFileGui]
 }
 
 func (r *LocalFilesGuiRenderer) MinSize() fyne.Size {
@@ -149,47 +149,46 @@ func (r *LocalFilesGuiRenderer) Layout(size fyne.Size) {
 }
 
 func (r *LocalFilesGuiRenderer) updateItems() {
-	totalSize := int64(0)
+	totalSize := lo.Reduce(r.g.infos, func(sum int64, info types.CacheFileInfo, _ int) int64 {
+		return sum + info.Size
+	}, 0)
 
-	var items []*LocalFileGui
-	r.mapMutex.Lock()
-	for _, info := range r.g.infos {
-		totalSize += info.Size
-
+	items := lo.Map(r.g.infos, func(info types.CacheFileInfo, _ int) *LocalFileGui {
 		if item, ok := r.itemMap[info.ID]; ok {
 			if v := item.Value(); v != nil {
-				items = append(items, v)
-				continue
+				v.UpdateInfo(info)
+				return v
 			}
 		}
 		newGui := NewLocalFileGui(info, false)
+		log.Println("newGui:", info.ID)
 		r.itemMap[info.ID] = weak.Make(newGui)
-		items = append(items, newGui)
-	}
-	r.mapMutex.Unlock()
+		return newGui
+	})
 
+	if r.List.Objects != nil {
+		r.List.RemoveAll()
+	}
 	for _, item := range items {
 		r.List.Add(item)
 	}
 	r.List.Refresh()
+	r.Scroll.Refresh()
 
 	r.ProgressBar.SetCurrentSize(totalSize)
 }
 
 func (r *LocalFilesGuiRenderer) Refresh() {
 	if r.g.changedId != "" {
-		r.mapMutex.Lock()
 		if item, ok := r.itemMap[r.g.changedId]; ok {
 			if v := item.Value(); v != nil {
 				v.UpdateInfo(cache.GetLocalCacheInfo(r.g.changedId))
 			}
 		}
-		r.mapMutex.Unlock()
 		r.g.changedId = ""
 		return
 	}
 
-	r.List.RemoveAll()
 	r.updateItems()
 
 	canvas.Refresh(r.g)
@@ -297,8 +296,7 @@ type AllowListGuiRenderer struct {
 	Label      *canvas.Text
 	RefreshBtn *button.PaddedIconBtn
 
-	itemMap  map[string]weak.Pointer[LocalFileGui]
-	mapMutex sync.Mutex
+	itemMap map[string]weak.Pointer[LocalFileGui]
 }
 
 func (r *AllowListGuiRenderer) MinSize() fyne.Size {
@@ -322,41 +320,40 @@ func (r *AllowListGuiRenderer) Layout(size fyne.Size) {
 }
 
 func (r *AllowListGuiRenderer) updateItems() {
-	var items []*LocalFileGui
-	r.mapMutex.Lock()
-	for _, info := range r.g.infos {
+	items := lo.Map(r.g.infos, func(info types.CacheFileInfo, _ int) *LocalFileGui {
 		if item, ok := r.itemMap[info.ID]; ok {
 			if v := item.Value(); v != nil {
-				items = append(items, v)
-				continue
+				v.UpdateInfo(info)
+				return v
 			}
 		}
+		log.Println("newGui:", info.ID)
 		newGui := NewLocalFileGui(info, true)
 		r.itemMap[info.ID] = weak.Make(newGui)
-		items = append(items, newGui)
-	}
-	r.mapMutex.Unlock()
+		return newGui
+	})
 
+	if r.List.Objects != nil {
+		r.List.RemoveAll()
+	}
 	for _, item := range items {
 		r.List.Add(item)
 	}
 	r.List.Refresh()
+	r.Scroll.Refresh()
 }
 
 func (r *AllowListGuiRenderer) Refresh() {
 	if r.g.changedId != "" {
-		r.mapMutex.Lock()
 		if item, ok := r.itemMap[r.g.changedId]; ok {
 			if v := item.Value(); v != nil {
 				v.UpdateInfo(cache.GetLocalCacheInfo(r.g.changedId))
 			}
 		}
-		r.mapMutex.Unlock()
 		r.g.changedId = ""
 		return
 	}
 
-	r.List.RemoveAll()
 	r.updateItems()
 
 	canvas.Refresh(r.g)

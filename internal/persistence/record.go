@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"log"
 	"math"
 	"strconv"
 	"sync"
@@ -24,14 +25,14 @@ CREATE TABLE IF NOT EXISTS dance_record (
 `
 
 type DanceRecord struct {
-	sync.Mutex
-
 	ID        int
 	StartTime time.Time
 	Comment   string
 	Orders    []Order
 
 	em *utils.EventManager[string]
+
+	ordersMutex sync.RWMutex
 }
 
 func NewEmptyDanceRecord() *DanceRecord {
@@ -48,6 +49,8 @@ func NewDanceRecord() *DanceRecord {
 		Orders:    make([]Order, 0),
 
 		em: utils.NewEventManager[string](),
+
+		ordersMutex: sync.RWMutex{},
 	}
 }
 
@@ -59,13 +62,29 @@ func NewDanceRecordFromScan(rows *sql.Rows) (*DanceRecord, error) {
 		return nil, err
 	}
 	record.StartTime = time.Unix(startTimeInt, 0)
-	json.Unmarshal([]byte(orders), &record.Orders)
+	err := json.Unmarshal([]byte(orders), &record.Orders)
+	if err != nil {
+		log.Println("Error unmarshalling dance record: ", err)
+	}
 	return record, nil
 }
 
 func (r *DanceRecord) AddOrder(order Order) {
-	r.Lock()
-	defer r.Unlock()
+	r.doAdd(order)
+	r.em.NotifySubscribers("+" + order.ID)
+	if r.ID != -1 {
+		r.updateOrders()
+	} else {
+		err := localRecords.addRecord(r)
+		if err != nil {
+			log.Println("error adding record:", err)
+		}
+	}
+}
+
+func (r *DanceRecord) doAdd(order Order) {
+	r.ordersMutex.Lock()
+	defer r.ordersMutex.Unlock()
 
 	if len(r.Orders) > 0 {
 		lastOrder := r.Orders[len(r.Orders)-1]
@@ -75,17 +94,20 @@ func (r *DanceRecord) AddOrder(order Order) {
 	}
 
 	r.Orders = append(r.Orders, order)
-	r.em.NotifySubscribers("+" + order.ID)
-	if r.ID != -1 {
-		r.updateOrders()
-	} else {
-		localRecords.addRecord(r)
-	}
 }
 
 func (r *DanceRecord) RemoveOrder(orderTime time.Time) {
-	r.Lock()
-	defer r.Unlock()
+	if id := r.doRemove(orderTime); id != "" {
+		r.em.NotifySubscribers("-" + id)
+		if r.ID != -1 {
+			r.updateOrders()
+		}
+	}
+}
+
+func (r *DanceRecord) doRemove(orderTime time.Time) string {
+	r.ordersMutex.Lock()
+	defer r.ordersMutex.Unlock()
 
 	removeIndex := -1
 	for i, order := range r.Orders {
@@ -96,15 +118,21 @@ func (r *DanceRecord) RemoveOrder(orderTime time.Time) {
 	}
 
 	if removeIndex == -1 {
-		return
+		return ""
 	}
 	order := r.Orders[removeIndex]
 	r.Orders = append(r.Orders[:removeIndex], r.Orders[removeIndex+1:]...)
 
-	r.em.NotifySubscribers("-" + order.ID)
-	if r.ID != -1 {
-		r.updateOrders()
-	}
+	return order.ID
+}
+
+func (r *DanceRecord) GetOrdersSnapshot() []Order {
+	r.ordersMutex.RLock()
+	orders := make([]Order, len(r.Orders))
+	copy(orders, r.Orders)
+	r.ordersMutex.RUnlock()
+
+	return orders
 }
 
 func (r *DanceRecord) SetComment(comment string) {
@@ -115,7 +143,7 @@ func (r *DanceRecord) SetComment(comment string) {
 }
 
 func (r *DanceRecord) updateOrders() {
-	data, err := json.Marshal(r.Orders)
+	data, err := json.Marshal(r.GetOrdersSnapshot())
 	if err != nil {
 		return
 	}
@@ -170,11 +198,12 @@ func (l *LocalRecords) ReplaceIfExists(record *DanceRecord) *DanceRecord {
 	defer l.Unlock()
 
 	if existingRecord, ok := l.Records[record.ID]; ok {
-		existingRecord.Lock()
-		defer existingRecord.Unlock()
-
 		existingRecord.Comment = record.Comment
+
+		existingRecord.ordersMutex.Lock()
 		existingRecord.Orders = record.Orders
+		existingRecord.ordersMutex.Unlock()
+
 		return existingRecord
 	} else {
 		l.Records[record.ID] = record
@@ -230,7 +259,7 @@ func (l *LocalRecords) DeleteRecord(id int) error {
 }
 
 func (l *LocalRecords) addRecord(r *DanceRecord) error {
-	data, err := json.Marshal(r.Orders)
+	data, err := json.Marshal(r.GetOrdersSnapshot())
 	if err != nil {
 		return err
 	}
@@ -283,7 +312,8 @@ func (l *LocalRecords) GetNearestRecord() *DanceRecord {
 		return nil
 	}
 
-	lastOrder := latestRecord.Orders[len(latestRecord.Orders)-1]
+	orders := latestRecord.GetOrdersSnapshot()
+	lastOrder := orders[len(orders)-1]
 	if time.Now().Unix()-lastOrder.Time.Unix() > 30*60 {
 		return nil
 	}

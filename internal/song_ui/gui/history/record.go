@@ -7,10 +7,12 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/eduardolat/goeasyi18n"
+	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"weak"
 )
 
 type RecordGui struct {
@@ -101,6 +103,8 @@ func (g *RecordGui) CreateRenderer() fyne.WidgetRenderer {
 
 		List:   list,
 		Scroll: container.NewVScroll(list),
+
+		itemMap: make(map[string]weak.Pointer[OrderGui]),
 	}
 
 	r.pushOrders()
@@ -123,6 +127,8 @@ type RecordGuiRenderer struct {
 
 	List   *fyne.Container
 	Scroll *container.Scroll
+
+	itemMap map[string]weak.Pointer[OrderGui]
 }
 
 var recordTopHeight float32 = 100
@@ -159,12 +165,25 @@ func (r *RecordGuiRenderer) Layout(size fyne.Size) {
 }
 
 func (r *RecordGuiRenderer) pushOrders() {
-	for _, order := range r.g.Record.Orders {
+	items := lo.Map(r.g.Record.GetOrdersSnapshot(), func(order persistence.Order, _ int) *OrderGui {
+		if item, ok := r.itemMap[order.ID]; ok {
+			if v := item.Value(); v != nil {
+				return v
+			}
+		}
 		orderGui := NewOrderGui(order)
 		orderGui.onRemove = func() {
 			r.g.HandleRemove(order)
 		}
-		r.List.Add(orderGui)
+		r.itemMap[order.ID] = weak.Make(orderGui)
+		return orderGui
+	})
+
+	if r.List.Objects != nil {
+		r.List.RemoveAll()
+	}
+	for _, item := range items {
+		r.List.Add(item)
 	}
 	r.List.Refresh()
 	r.Scroll.Refresh()
@@ -174,7 +193,6 @@ func (r *RecordGuiRenderer) Refresh() {
 	if r.g.orderChanged {
 		r.g.orderChanged = false
 
-		r.List.RemoveAll()
 		r.pushOrders()
 	}
 	if r.g.commentChanged {
