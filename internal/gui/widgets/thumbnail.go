@@ -75,10 +75,11 @@ func HasThumbnailCachedAndLoaded(url string) bool {
 type Thumbnail struct {
 	widget.BaseWidget
 
-	thumbnailURL string
-	ID           string
+	url string
+	ID  string
 
 	loading bool
+	invalid bool
 
 	image image.Image
 
@@ -87,7 +88,7 @@ type Thumbnail struct {
 
 func NewThumbnail(thumbnailURL string) *Thumbnail {
 	t := &Thumbnail{
-		thumbnailURL: thumbnailURL,
+		url: thumbnailURL,
 	}
 	t.ExtendBaseWidget(t)
 
@@ -155,30 +156,33 @@ func (r *thumbnailRenderer) Objects() []fyne.CanvasObject {
 func (t *Thumbnail) loadImage() {
 	t.imageChanged = true
 
-	if t.thumbnailURL == "" {
-		if t.ID == "" {
+	if t.url == "" {
+		if t.ID == "" || t.invalid {
 			t.loading = false
 		} else {
 			t.loading = true
 			defer func() {
-				t.thumbnailURL = third_party_api.GetThumbnailByInternalID(t.ID).Get()
+				t.url = third_party_api.GetThumbnailByInternalID(t.ID).Get()
+				if t.url == "" {
+					t.invalid = true
+				}
 				go t.loadImage()
 			}()
 		}
 		t.image = nil
-	} else if HasThumbnailCachedAndLoaded(t.thumbnailURL) {
+	} else if HasThumbnailCachedAndLoaded(t.url) {
 		t.loading = false
-		t.image = GetThumbnailImage(t.thumbnailURL)
+		t.image = GetThumbnailImage(t.url)
 	} else {
 		t.loading = true
 		t.image = nil
 
 		defer func() {
-			if t.thumbnailURL == "" {
+			if t.url == "" {
 				return
 			}
 
-			i := GetThumbnailImage(t.thumbnailURL)
+			i := GetThumbnailImage(t.url)
 			if i == nil {
 				return
 			}
@@ -199,12 +203,14 @@ func (t *Thumbnail) loadImage() {
 }
 
 func (t *Thumbnail) LoadImageFromURL(url string) {
-	t.thumbnailURL = url
+	t.url = url
+	t.invalid = false
 	go t.loadImage()
 }
 func (t *Thumbnail) LoadImageFromID(id string) {
 	t.ID = id
-	t.thumbnailURL = ""
+	t.url = ""
+	t.invalid = false
 	go t.loadImage()
 }
 
