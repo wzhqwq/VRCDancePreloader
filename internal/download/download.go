@@ -128,7 +128,7 @@ func Download(id string) *DownloadState {
 		}
 		defer body.Close()
 
-		ds.DownloadedSize = 0
+		ds.DownloadedSize = entry.DownloadedSize()
 
 		// Notify about the total size and that the request header is done
 		ds.StateCh <- ds

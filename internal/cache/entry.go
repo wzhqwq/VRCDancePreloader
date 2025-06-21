@@ -11,6 +11,7 @@ type Entry interface {
 	io.Writer
 	Open() error
 	TotalLen() int64
+	DownloadedSize() int64
 	GetReadSeekCloser() io.ReadSeekCloser
 	GetDownloadBody() (io.ReadCloser, error)
 	Close() error
@@ -113,6 +114,10 @@ func (e *BaseEntry) Save() error {
 
 func (e *BaseEntry) IsComplete() bool {
 	return e.getSavedSize() > 0
+}
+
+func (e *BaseEntry) DownloadedSize() int64 {
+	return e.getIncompleteSize()
 }
 
 func (e *BaseEntry) Write(bytes []byte) (int, error) {
