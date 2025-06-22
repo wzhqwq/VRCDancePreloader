@@ -60,7 +60,7 @@ func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
 }
 
 func (ig *ItemGui) SlideIn() {
-	fyne.Do(func() {
+	fyne.DoAndWait(func() {
 		ig.Move(fyne.NewPos(ig.Size().Width, 0))
 		ig.Show()
 	})
@@ -329,7 +329,7 @@ func (r *ItemRenderer) Refresh() {
 			r.PlayBar.Refresh()
 			if !r.PlayBar.Visible() {
 				r.PlayBar.Show()
-				canvas.NewColorRGBAAnimation(
+				go canvas.NewColorRGBAAnimation(
 					theme.Color(theme.ColorNameSeparator),
 					theme.Color(theme.ColorNamePrimary),
 					500*time.Millisecond,
@@ -337,12 +337,12 @@ func (r *ItemRenderer) Refresh() {
 						r.Background.StrokeColor = c
 					},
 				).Start()
-				r.ig.listItem.NotifyUpdateMinSize()
+				defer r.ig.listItem.NotifyUpdateMinSize()
 			}
 		} else {
 			if r.PlayBar.Visible() {
 				r.PlayBar.Hide()
-				canvas.NewColorRGBAAnimation(
+				go canvas.NewColorRGBAAnimation(
 					theme.Color(theme.ColorNamePrimary),
 					theme.Color(theme.ColorNameSeparator),
 					500*time.Millisecond,
@@ -350,7 +350,7 @@ func (r *ItemRenderer) Refresh() {
 						r.Background.StrokeColor = c
 					},
 				).Start()
-				r.ig.listItem.NotifyUpdateMinSize()
+				defer r.ig.listItem.NotifyUpdateMinSize()
 			}
 		}
 	}

@@ -30,9 +30,7 @@ func (dl *DynamicList) RemoveItem(id string) {
 }
 func (dl *DynamicList) SetOrder(order []string) {
 	dl.order = order
-	fyne.Do(func() {
-		dl.Refresh()
-	})
+	dl.Refresh()
 }
 func (dl *DynamicList) CreateRenderer() fyne.WidgetRenderer {
 	return &DynamicListRenderer{
@@ -74,11 +72,33 @@ func (r *DynamicListRenderer) Refresh() {
 	for _, item := range r.dl.itemMap {
 		item.Refresh()
 	}
+	canvas.Refresh(r.dl)
 }
 func (r *DynamicListRenderer) Objects() []fyne.CanvasObject {
 	var objs []fyne.CanvasObject
+	//inOrder := map[string]interface{}{}
+	//for _, id := range r.dl.order {
+	//	inOrder[id] = struct{}{}
+	//}
+	//for _, item := range r.dl.itemMap {
+	//	if _, ok := inOrder[item.ID]; !ok {
+	//		objs = append(objs, item)
+	//	}
+	//}
+	//for _, id := range r.dl.order {
+	//	if o, ok := r.dl.itemMap[id]; ok {
+	//		objs = append(objs, o)
+	//	}
+	//}
 	for _, item := range r.dl.itemMap {
-		objs = append(objs, item)
+		if item.isRemoving {
+			objs = append(objs, item)
+		}
+	}
+	for _, item := range r.dl.itemMap {
+		if !item.isRemoving {
+			objs = append(objs, item)
+		}
 	}
 	return objs
 }
@@ -133,7 +153,7 @@ func (dli *DynamicListItem) SlideY(y float32) {
 		300*time.Millisecond,
 		dli.Move,
 	)
-	dli.runningAnimation.Start()
+	go dli.runningAnimation.Start()
 }
 
 func (dli *DynamicListItem) MarkRemoving() {
@@ -141,9 +161,7 @@ func (dli *DynamicListItem) MarkRemoving() {
 }
 
 func (dli *DynamicListItem) NotifyUpdateMinSize() {
-	fyne.Do(func() {
-		dli.dl.Refresh()
-	})
+	dli.dl.Refresh()
 }
 
 func NewDynamicListItem(ID string, dl *DynamicList, object fyne.CanvasObject) *DynamicListItem {
