@@ -14,6 +14,7 @@ import (
 var wannaLastQueue = ""
 var wannaLastHistory = ""
 var wannaLastUserData = ""
+var wannaLastPlayedURL string
 
 type wannaUserData struct {
 	//Version     string        `json:"version"`
@@ -76,6 +77,14 @@ func checkWannaLine(line []byte, timeStamp time.Time) bool {
 		return true
 	}
 
+	// Started video load for URL: http://api.udon.dance/Api/Songs/play?id=3919, requested by
+	// It's always before "Syncing video to 12.37"
+	matches = regexp.MustCompile(`Started video load for URL: ([^,]+)`).FindSubmatch(line)
+	if len(matches) > 1 {
+		wannaLastPlayedURL = string(matches[1])
+		return true
+	}
+
 	// Syncing video to 12.37
 	matches = regexp.MustCompile(`Syncing video to ([.\d]+)`).FindSubmatch(line)
 	if len(matches) > 1 {
@@ -88,7 +97,7 @@ func checkWannaLine(line []byte, timeStamp time.Time) bool {
 
 		nowFloat += time.Since(timeStamp).Seconds()
 
-		playTimeMap[lastPlayedURL] = nowFloat
+		playTimeMap[wannaLastPlayedURL] = nowFloat
 
 		return true
 	}

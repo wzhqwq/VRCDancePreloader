@@ -11,7 +11,6 @@ import (
 )
 
 var pypyLastQueue string
-var lastPlayedURL string
 
 func parsePyPyQueue(data []byte) ([]queue.PyPyQueueItem, error) {
 	var items []queue.PyPyQueueItem
@@ -41,22 +40,23 @@ func checkPyPyLine(line []byte, timeStamp time.Time) bool {
 		now := string(matches[2])
 		dur := string(matches[3])
 
-		nowFloat, err := strconv.ParseFloat(now, 64)
-		if err != nil {
-			return false
-		}
-		durFloat, err := strconv.ParseFloat(dur, 64)
-		if err != nil {
-			return false
-		}
+		if now != "0" {
+			nowFloat, err := strconv.ParseFloat(now, 64)
+			if err != nil {
+				return false
+			}
+			durFloat, err := strconv.ParseFloat(dur, 64)
+			if err != nil {
+				return false
+			}
 
-		nowFloat += time.Since(timeStamp).Seconds()
-		if nowFloat > durFloat {
-			return false
-		}
+			nowFloat += time.Since(timeStamp).Seconds()
+			if nowFloat > durFloat {
+				return false
+			}
 
-		playTimeMap[url] = nowFloat
-		lastPlayedURL = url
+			playTimeMap[url] = nowFloat
+		}
 
 		return true
 	}
