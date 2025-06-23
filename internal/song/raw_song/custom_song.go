@@ -53,6 +53,9 @@ func (cs *CustomSong) MatchUrl(url string) bool {
 	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
 		return cs.UniqueId == fmt.Sprintf("yt_%s", id)
 	}
+	if id, isBili := utils.CheckBiliURL(url); isBili {
+		return cs.UniqueId == fmt.Sprintf("bili_%s", id)
+	}
 	return cs.Url == url
 }
 

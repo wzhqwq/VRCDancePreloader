@@ -7,13 +7,12 @@ import (
 	"log"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 )
 
-var wannaLastQueue = ""
-var wannaLastHistory = ""
-var wannaLastUserData = ""
+var wannaLastQueue string
+var wannaLastUserData string
+var wannaQueueChanged bool
 var wannaLastPlayedURL string
 
 type wannaUserData struct {
@@ -50,30 +49,16 @@ func checkWannaLine(line []byte, timeStamp time.Time) bool {
 	matches := regexp.MustCompile(`(?:syncedQueuedInfoJson =|queue info serialized:) (\[.*])`).FindSubmatch(line)
 	if len(matches) > 1 {
 		wannaLastQueue = string(matches[1])
-		wannaLastHistory = ""
-		if len(lastEnteredRoom) > 0 && lastEnteredRoom[0] != '*' {
-			lastEnteredRoom = "*" + lastEnteredRoom
-		}
-		return true
-	}
-
-	// history ids deserialized: 1460,1226,1457,5907,1221,1249,10247,5882,5793,1242</color>
-	// history ids serialized: 1460,1226,1457,5907,1221,1249,10247,5882,5793,1242</color>
-	matches = regexp.MustCompile(`history ids (?:deserialized|serialized): (.*)</color>`).FindSubmatch(line)
-	if len(matches) > 1 {
-		content := string(matches[1])
-		if content == "" {
-			wannaLastHistory = "empty"
-		} else {
-			wannaLastHistory = strings.Split(content, ",")[0]
-		}
+		wannaQueueChanged = true
 		return true
 	}
 
 	// userData = {
+	// userData = Wanna Dance
 	matches = regexp.MustCompile(`userData = (\{.*})`).FindSubmatch(line)
 	if len(matches) > 1 {
 		wannaLastUserData = string(matches[1])
+		wannaQueueChanged = true
 		return true
 	}
 
@@ -105,8 +90,18 @@ func checkWannaLine(line []byte, timeStamp time.Time) bool {
 	return false
 }
 
+func resetWannaLog() {
+	wannaLastQueue = ""
+	wannaLastUserData = ""
+}
+
 func wannaPostProcess() {
-	if wannaLastQueue != "" && wannaLastHistory != "" && wannaLastUserData != "" {
+	if wannaLastQueue != "" {
+		if wannaQueueChanged {
+			wannaQueueChanged = false
+			log.Println("Unstable queue log, wait for one second.")
+			return
+		}
 		// process the last log
 		log.Println("Processing queue:\n" + wannaLastQueue)
 
@@ -118,13 +113,8 @@ func wannaPostProcess() {
 			log.Println(err)
 			return
 		}
-		if wannaLastHistory != "empty" {
-			id, err := strconv.Atoi(wannaLastHistory)
-			if err != nil {
-				log.Println("Error processing WannaDance history log:")
-				log.Println(err)
-			}
-
+		if wannaLastUserData != "" {
+			log.Println("And user data:\n" + wannaLastUserData)
 			var userData wannaUserData
 			err = json.Unmarshal([]byte(wannaLastUserData), &userData)
 			if err != nil {
@@ -132,13 +122,8 @@ func wannaPostProcess() {
 				log.Println(err)
 			}
 
-			if id != userData.SongID {
-				log.Println("User data is not matched with the first song in the WannaDance history")
-				return
-			}
-
 			newQueue = append(newQueue, &queue.WannaQueueItem{
-				SongID:      id,
+				SongID:      userData.SongID,
 				Title:       userData.VideoTitle,
 				PlayerNames: []string{userData.PlayerName},
 				Random:      userData.IsRandom,
@@ -150,10 +135,11 @@ func wannaPostProcess() {
 		}
 
 		diffQueues(playlist.GetQueue(), newQueue)
+		if len(lastEnteredRoom) > 0 && lastEnteredRoom[0] != '*' {
+			lastEnteredRoom = "*" + lastEnteredRoom
+		}
 
 		// clear the received logs
-		wannaLastQueue = ""
-		wannaLastHistory = ""
-		wannaLastUserData = ""
+		resetWannaLog()
 	}
 }

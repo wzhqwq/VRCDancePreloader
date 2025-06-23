@@ -27,9 +27,6 @@ func checkPyPyLine(line []byte, timeStamp time.Time) bool {
 	matches := regexp.MustCompile(`\[PyPyDanceQueue] (\[.*])`).FindSubmatch(line)
 	if len(matches) > 1 {
 		pypyLastQueue = string(matches[1])
-		if len(lastEnteredRoom) > 0 && lastEnteredRoom[0] != '*' {
-			lastEnteredRoom = "*" + lastEnteredRoom
-		}
 		return true
 	}
 
@@ -82,6 +79,9 @@ func pypyPostProcess() {
 		}
 
 		diffQueues(playlist.GetQueue(), newQueue)
+		if len(lastEnteredRoom) > 0 && lastEnteredRoom[0] != '*' {
+			lastEnteredRoom = "*" + lastEnteredRoom
+		}
 
 		// clear the received logs
 		pypyLastQueue = ""
