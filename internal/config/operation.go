@@ -5,11 +5,28 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/proxy"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/service"
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 	"log"
 )
+
+func (hc *HijackConfig) Init() {
+	proxy.Start(hc.InterceptedSites, hc.EnableHttps, hc.ProxyPort)
+	if hc.EnablePWI {
+		service.StartPWIServer()
+	}
+}
+
+func (hc *HijackConfig) UpdateEnablePWI(b bool) {
+	hc.EnablePWI = b
+	if hc.EnablePWI {
+		service.StartPWIServer()
+	} else {
+		service.StopPWIServer()
+	}
+}
 
 func (pc *ProxyConfig) Init() {
 	//TODO cancel comment after implemented youtube preloading
@@ -95,6 +112,8 @@ func (kc *KeyConfig) Init() {
 
 func (pc *PreloadConfig) Init() {
 	playlist.Init(pc.MaxPreload)
+	playlist.SetEnabledRooms(pc.EnabledRooms)
+	playlist.SetEnabledPlatforms(pc.EnabledPlatforms)
 }
 
 func (pc *PreloadConfig) UpdateMaxPreload(max int) {
@@ -136,18 +155,5 @@ func (dc *DbConfig) Init() error {
 	if err != nil {
 		return err
 	}
-
-	if dc.EnablePWI {
-		service.StartPWIServer()
-	}
 	return nil
-}
-
-func (dc *DbConfig) UpdateEnablePWI(b bool) {
-	dc.EnablePWI = b
-	if dc.EnablePWI {
-		service.StartPWIServer()
-	} else {
-		service.StopPWIServer()
-	}
 }

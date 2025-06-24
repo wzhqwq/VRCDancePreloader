@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/elazarl/goproxy"
@@ -33,7 +34,7 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 	return false
 }
 
-func handleConnect(req *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
+func handleConnect(_ *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
 	defer func() {
 		if e := recover(); e != nil {
 			ctx.Logf("error connecting to remote: %v", e)
@@ -59,7 +60,7 @@ func handleConnect(req *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
 		}
 	}
 }
-func handleRequest(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	if req.Method == http.MethodGet {
 		rw := NewRespWriterNoHeaderWritten()
 		if handleVideoRequest(rw, req) {
@@ -69,18 +70,29 @@ func handleRequest(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *ht
 	return req, nil
 }
 
-func Start(port string) {
+func Start(sites []string, enableHttps bool, port int) {
 	proxy := goproxy.NewProxyHttpServer()
 	proxy.Verbose = true
 
-	proxy.OnRequest(goproxy.ReqHostIs("jd.pypy.moe:80")).HijackConnect(handleConnect)
-	proxy.OnRequest(goproxy.ReqHostIs("api.udon.dance:80")).HijackConnect(handleConnect)
-	proxy.OnRequest(goproxy.ReqHostIs("api.xin.moe:80")).HijackConnect(handleConnect)
-	proxy.OnRequest(goproxy.ReqHostIs("jd.pypy.moe")).DoFunc(handleRequest)
-	proxy.OnRequest(goproxy.ReqHostIs("api.udon.dance")).DoFunc(handleRequest)
-	proxy.OnRequest(goproxy.ReqHostIs("api.xin.moe")).DoFunc(handleRequest)
+	// for http proxy
+	for _, site := range sites {
+		proxy.OnRequest(goproxy.ReqHostIs(site + ":80")).HijackConnect(handleConnect)
+	}
 
-	runningServer = &http.Server{Addr: "127.0.0.1:" + port, Handler: proxy}
+	// for https proxy
+	if enableHttps {
+		for _, site := range sites {
+			proxy.OnRequest(goproxy.ReqHostIs(site + ":443")).HandleConnect(goproxy.AlwaysMitm)
+			proxy.OnRequest(goproxy.ReqHostIs(site + ":443")).DoFunc(handleRequest)
+		}
+	}
+
+	// for Windows system proxy
+	for _, site := range sites {
+		proxy.OnRequest(goproxy.ReqHostIs(site)).DoFunc(handleRequest)
+	}
+
+	runningServer = &http.Server{Addr: "127.0.0.1:" + strconv.Itoa(port), Handler: proxy}
 	log.Println("Starting proxy server on port", port)
 
 	go func() {

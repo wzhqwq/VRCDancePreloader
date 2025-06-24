@@ -1,15 +1,12 @@
 package config
 
 import (
-	"embed"
+	"errors"
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"sync"
 )
-
-//go:embed config_template.yaml
-var templateConfigFileFS embed.FS
 
 type KeyConfig struct {
 	Youtube string `yaml:"youtube-api"`
@@ -25,10 +22,17 @@ type ProxyConfig struct {
 type YoutubeConfig struct {
 	EnableApi       bool `yaml:"enable-youtube-api"`
 	EnableThumbnail bool `yaml:"enable-youtube-thumbnail"`
-	EnableVideo     bool `yaml:"enable-youtube-video"`
 }
 type PreloadConfig struct {
-	MaxPreload int `yaml:"max-preload-count"`
+	EnabledRooms     []string `yaml:"enabled-rooms"`
+	EnabledPlatforms []string `yaml:"enabled-platforms"`
+	MaxPreload       int      `yaml:"max-preload-count"`
+}
+type HijackConfig struct {
+	ProxyPort        int      `yaml:"proxy-port"`
+	InterceptedSites []string `yaml:"intercepted-sites"`
+	EnableHttps      bool     `yaml:"enable-https"`
+	EnablePWI        bool     `yaml:"enable-pwi"`
 }
 type DownloadConfig struct {
 	MaxDownload int `yaml:"max-parallel-download-count"`
@@ -39,11 +43,12 @@ type CacheConfig struct {
 	KeepFavorites bool   `yaml:"keep-favorites"`
 }
 type DbConfig struct {
-	Path      string `yaml:"path"`
-	EnablePWI bool   `yaml:"enable-pwi"`
+	Path string `yaml:"path"`
 }
 
 var config struct {
+	Version  string         `yaml:"version"`
+	Hijack   HijackConfig   `yaml:"hijack"`
 	Proxy    ProxyConfig    `yaml:"proxy"`
 	Keys     KeyConfig      `yaml:"keys"`
 	Youtube  YoutubeConfig  `yaml:"youtube"`
@@ -53,52 +58,95 @@ var config struct {
 	Db       DbConfig       `yaml:"db"`
 }
 
-var configMutex = sync.Mutex{}
-
-func CreateIfNotExists() {
-	if _, err := os.Stat("config.yaml"); os.IsNotExist(err) {
-		templateFile, err := templateConfigFileFS.ReadFile("config_template.yaml")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		configFile, err := os.Create("config.yaml")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer configFile.Close()
-
-		if _, err := configFile.Write(templateFile); err != nil {
-			log.Fatal(err)
-		}
-
-		log.Println("Created config.yaml, you can customize the preloader by editing it")
+func FillDefaultSetting() {
+	config.Version = "2.2"
+	config.Hijack = HijackConfig{
+		ProxyPort:   7653,
+		EnableHttps: true,
+		EnablePWI:   false,
+	}
+	copy(config.Hijack.InterceptedSites, allSites)
+	config.Proxy = ProxyConfig{
+		Pypy:         "",
+		YoutubeVideo: "",
+		YoutubeApi:   "",
+		YoutubeImage: "",
+	}
+	config.Keys = KeyConfig{
+		Youtube: "",
+	}
+	config.Youtube = YoutubeConfig{
+		EnableApi:       false,
+		EnableThumbnail: false,
+	}
+	config.Preload = PreloadConfig{
+		EnabledRooms: []string{
+			"PyPyDance",
+			"WannaDance",
+		},
+		EnabledPlatforms: []string{
+			"PyPyDance",
+			"WannaDance",
+			"BiliBili",
+			//"YouTube",
+		},
+		MaxPreload: 4,
+	}
+	config.Download = DownloadConfig{
+		MaxDownload: 2,
+	}
+	config.Cache = CacheConfig{
+		Path:          "./cache",
+		MaxCacheSize:  300,
+		KeepFavorites: false,
+	}
+	config.Db = DbConfig{
+		Path: "./data.db",
 	}
 }
 
+var configMutex = sync.Mutex{}
+
 func LoadConfig() {
-	CreateIfNotExists()
+	FillDefaultSetting()
+	currentVersion := config.Version
 
-	configFile, err := os.Open("config.yaml")
-	if err != nil {
-		log.Fatalf("open config.yaml error: %s", err)
+	_, err := os.Stat("config.yaml")
+	if errors.Is(err, os.ErrPermission) {
+		log.Fatalln("config.yaml permission denied")
 	}
-	defer configFile.Close()
 
-	decoder := yaml.NewDecoder(configFile)
-	err = decoder.Decode(&config)
-	if err != nil {
-		log.Fatalf("Failed to parse config.yaml: %s", err)
+	if err == nil {
+		configFile, err := os.Open("config.yaml")
+		if err != nil {
+			log.Fatalf("open config.yaml error: %s", err)
+		}
+		defer configFile.Close()
+
+		decoder := yaml.NewDecoder(configFile)
+		err = decoder.Decode(&config)
+		if err != nil {
+			log.Fatalf("Failed to parse config.yaml: %s", err)
+		}
 	}
+
+	if config.Version != currentVersion {
+		// TODO show features
+	}
+
+	checkInterceptionConflict()
+	checkPreloadConflict()
+
+	SaveConfig()
 }
 
 func SaveConfig() {
 	configMutex.Lock()
 	defer configMutex.Unlock()
 
-	configFile, err := os.OpenFile("config.yaml", os.O_WRONLY|os.O_TRUNC, 0666)
+	configFile, err := os.Create("config.yaml")
 	if err != nil {
-		log.Fatalf("open config.yaml error: %s", err)
+		log.Fatalf("Open or create config.yaml error: %s", err)
 	}
 	defer configFile.Close()
 
@@ -109,6 +157,9 @@ func SaveConfig() {
 	}
 }
 
+func GetHijackConfig() *HijackConfig {
+	return &config.Hijack
+}
 func GetKeyConfig() *KeyConfig {
 	return &config.Keys
 }

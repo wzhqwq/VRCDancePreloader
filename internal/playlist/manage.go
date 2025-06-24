@@ -20,3 +20,11 @@ func SetMaxPreload(maxPreload int) {
 	currentPlaylist.maxPreload = maxPreload
 	currentPlaylist.CriticalUpdate()
 }
+
+func SetEnabledPlatforms(sites []string) {
+	// TODO
+}
+
+func SetEnabledRooms(rooms []string) {
+	// TODO
+}

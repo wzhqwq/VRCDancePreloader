@@ -25,8 +25,6 @@ import (
 var build_gui_on = false
 
 var args struct {
-	Port string `arg:"-p,--port" default:"7653" help:"port to listen on"`
-
 	VrChatDir string `arg:"-d,--vrchat-dir" default:"" help:"VRChat directory"`
 
 	GuiEnabled bool `arg:"-g,--gui" default:"false" help:"enable GUI"`
@@ -135,7 +133,7 @@ func main() {
 		return
 	default:
 	}
-	proxy.Start(args.Port)
+	config.GetHijackConfig().Init()
 	defer func() {
 		log.Println("Stopping proxy")
 		proxy.Stop()
