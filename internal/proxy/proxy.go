@@ -14,11 +14,29 @@ import (
 )
 
 var runningServer *http.Server
+var proxy *goproxy.ProxyHttpServer
 
 func orPanic(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// copied/converted from https.go
+func dial(ctx context.Context, network, addr string) (c net.Conn, err error) {
+	if proxy.Tr.DialContext != nil {
+		return proxy.Tr.DialContext(ctx, network, addr)
+	}
+	var d net.Dialer
+	return d.DialContext(ctx, network, addr)
+}
+
+// copied/converted from https.go
+func connectDial(ctx context.Context, network, addr string) (c net.Conn, err error) {
+	if proxy.ConnectDial == nil {
+		return dial(ctx, network, addr)
+	}
+	return proxy.ConnectDial(network, addr)
 }
 
 func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
@@ -54,12 +72,23 @@ func handleConnect(_ *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
 			if handleVideoRequest(rw, req) {
 				continue
 			}
-			log.Println("Mismatched:", req.URL.Path)
-			rw.WriteHeader(http.StatusNotFound)
-			rw.Write([]byte("Not found"))
 		}
+
+		remote, err := connectDial(req.Context(), "tcp", req.Host+":80")
+		orPanic(err)
+		remoteBuf := bufio.NewReadWriter(bufio.NewReader(remote), bufio.NewWriter(remote))
+		orPanic(req.Write(remoteBuf))
+		orPanic(remoteBuf.Flush())
+		resp, err := http.ReadResponse(remoteBuf.Reader, req)
+		orPanic(err)
+		orPanic(resp.Write(clientBuf.Writer))
+		orPanic(clientBuf.Flush())
+
+		remote.Close()
 	}
 }
+
+// for https
 func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	if req.Method == http.MethodGet {
 		rw := NewRespWriterNoHeaderWritten()
@@ -71,10 +100,10 @@ func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http
 }
 
 func Start(sites []string, enableHttps bool, port int) {
-	proxy := goproxy.NewProxyHttpServer()
+	proxy = goproxy.NewProxyHttpServer()
 	proxy.Verbose = true
 
-	// for http proxy
+	// for http proxy using CONNECT first
 	for _, site := range sites {
 		proxy.OnRequest(goproxy.ReqHostIs(site + ":80")).HijackConnect(handleConnect)
 	}
@@ -87,7 +116,7 @@ func Start(sites []string, enableHttps bool, port int) {
 		}
 	}
 
-	// for Windows system proxy
+	// for Windows system proxy which won't start with CONNECT
 	for _, site := range sites {
 		proxy.OnRequest(goproxy.ReqHostIs(site)).DoFunc(handleRequest)
 	}
