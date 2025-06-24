@@ -61,9 +61,10 @@ var config struct {
 func FillDefaultSetting() {
 	config.Version = "2.2"
 	config.Hijack = HijackConfig{
-		ProxyPort:   7653,
-		EnableHttps: true,
-		EnablePWI:   false,
+		ProxyPort:        7653,
+		InterceptedSites: make([]string, len(allSites)),
+		EnableHttps:      true,
+		EnablePWI:        false,
 	}
 	copy(config.Hijack.InterceptedSites, allSites)
 	config.Proxy = ProxyConfig{
