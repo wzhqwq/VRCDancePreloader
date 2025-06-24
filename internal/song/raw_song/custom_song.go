@@ -2,8 +2,6 @@ package raw_song
 
 import (
 	"fmt"
-	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
-	"strings"
 	"sync"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -23,27 +21,24 @@ type CustomSong struct {
 	UniqueId string
 }
 
-func NewCustomSong(title, url string) CustomSong {
+func NewCustomSong(url string) CustomSong {
 	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
-		if title == "" || strings.Contains(title, id) {
-			title = third_party_api.GetYoutubeTitle(id)
-		}
 		return CustomSong{
-			Name:     title,
+			Name:     "Youtube " + id,
 			Url:      url,
 			UniqueId: fmt.Sprintf("yt_%s", id),
 		}
 	}
 	if id, isBiliBili := utils.CheckBiliURL(url); isBiliBili {
 		return CustomSong{
-			Name:     title,
+			Name:     "BiliBili " + id,
 			Url:      url,
 			UniqueId: fmt.Sprintf("bili_%s", id),
 		}
 	}
 	uniqueIdIncrement++
 	return CustomSong{
-		Name:     title,
+		Name:     "Custom " + url,
 		Url:      url,
 		UniqueId: fmt.Sprintf("custom_%d", uniqueIdIncrement),
 	}
@@ -67,26 +62,26 @@ func (m *CustomSongs) Find(url string) (*CustomSong, bool) {
 	return song, ok
 }
 
-func (m *CustomSongs) FindOrCreate(title, url string) *CustomSong {
+func (m *CustomSongs) FindOrCreate(url string) *CustomSong {
 	m.Lock()
 	defer m.Unlock()
 
-	key := findCustomKey(title)
+	key := findCustomKey(url)
 	if song, ok := m.songs[key]; ok {
 		return song
 	}
-	song := NewCustomSong(title, url)
+	song := NewCustomSong(url)
 	m.songs[key] = &song
 	return &song
 }
 
-func FindOrCreateCustomSong(title, url string) *CustomSong {
+func FindOrCreateCustomSong(url string) *CustomSong {
 	if customSongs == nil {
 		customSongs = &CustomSongs{
 			songs: make(map[string]*CustomSong),
 		}
 	}
-	return customSongs.FindOrCreate(title, url)
+	return customSongs.FindOrCreate(url)
 }
 
 func findCustomKey(url string) string {

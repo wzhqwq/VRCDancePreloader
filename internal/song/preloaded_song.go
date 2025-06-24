@@ -89,11 +89,11 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 	return ret
 }
 
-func CreatePreloadedCustomSong(title, url string) *PreloadedSong {
+func CreatePreloadedCustomSong(url string) *PreloadedSong {
 	ret := &PreloadedSong{
 		sm: NewSongStateMachine(),
 
-		CustomSong: raw_song.FindOrCreateCustomSong(title, url),
+		CustomSong: raw_song.FindOrCreateCustomSong(url),
 
 		em: utils.NewEventManager[ChangeType](),
 	}

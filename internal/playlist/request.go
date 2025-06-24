@@ -44,7 +44,7 @@ func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
 			return item
 		}
 	}
-	item := song.CreatePreloadedCustomSong("", url)
+	item := song.CreatePreloadedCustomSong(url)
 	// TODO: add to temporary list
 	return item
 }

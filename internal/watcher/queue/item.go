@@ -31,19 +31,19 @@ func (item *PyPyQueueItem) ToPreloaded() *song.PreloadedSong {
 	}
 	if item.SongNum < 0 {
 		// Custom Song
-		return song.CreatePreloadedCustomSong(item.VideoName, item.URL)
+		return song.CreatePreloadedCustomSong(item.URL)
 	}
 	return song.CreateUnknownSong()
 }
 
 func (item *PyPyQueueItem) MatchWithPreloaded(song *song.PreloadedSong) bool {
 	if item.SongNum < 0 {
-		return song.CustomSong != nil && song.CustomSong.MatchUrl(item.URL)
+		return song.MatchWithCustomUrl(item.URL)
 	}
 	if item.SongNum == 0 {
 		return song.PyPySong == nil && song.CustomSong == nil && !song.RandomPlay
 	}
-	return song.PyPySong != nil && song.PyPySong.ID == item.SongNum
+	return song.MatchWithPyPyId(item.SongNum)
 }
 
 func (item *PyPyQueueItem) GetAdder() string {
@@ -65,26 +65,41 @@ type WannaQueueItem struct {
 	Random bool
 }
 
+func extractUrlFromTitle(title string) string {
+	matches := regexp.MustCompile(`URL: (.*)`).FindSubmatch([]byte(title))
+	if len(matches) > 0 {
+		url := string(matches[1])
+		if url[:2] == "BV" {
+			// BiliBili
+			return utils.GetStandardBiliURL(url)
+		}
+	}
+	return ""
+}
+
 func (item *WannaQueueItem) ToPreloaded() *song.PreloadedSong {
 	if item.SongID > 0 {
 		// WannaDance Song
 		return song.CreatePreloadedWannaSong(item.SongID)
 	}
 	if item.SongID < 0 {
-		matches := regexp.MustCompile(`URL: (.*)`).FindSubmatch([]byte(item.Title))
-		if len(matches) > 0 {
-			url := string(matches[1])
-			if url[:2] == "BV" {
-				// BiliBili
-				return song.CreatePreloadedCustomSong(url, utils.GetStandardBiliURL(url))
-			}
+		url := extractUrlFromTitle(item.Title)
+		if url != "" {
+			return song.CreatePreloadedCustomSong(url)
 		}
 	}
 	return song.CreateUnknownSong()
 }
 
 func (item *WannaQueueItem) MatchWithPreloaded(song *song.PreloadedSong) bool {
-	return song.WannaSong != nil && song.WannaSong.DanceId == item.SongID
+	if item.SongID < 0 {
+		url := extractUrlFromTitle(item.Title)
+		if url != "" {
+			return song.MatchWithCustomUrl(url)
+		}
+		return false
+	}
+	return song.MatchWithWannaId(item.SongID)
 }
 
 func (item *WannaQueueItem) GetAdder() string {
