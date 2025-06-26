@@ -61,13 +61,9 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 		return basicInfo
 	}
 
-	title := i18n.T("placeholder_empty_song")
-	if ps.RandomPlay {
-		title = "random_play"
-	}
-	return PreloadedSongInfo{
-		Title: title,
-	}
+	basicInfo.Title = i18n.T("placeholder_unknown_song")
+	basicInfo.Group = i18n.T("placeholder_custom_song")
+	return basicInfo
 }
 
 // ProgressInfo, only change during download

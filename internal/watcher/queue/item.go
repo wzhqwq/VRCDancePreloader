@@ -29,21 +29,20 @@ func (item *PyPyQueueItem) ToPreloaded() *song.PreloadedSong {
 		// PyPyDance Song
 		return song.CreatePreloadedPyPySong(item.SongNum)
 	}
-	if item.SongNum < 0 {
-		// Custom Song
+	if item.SongNum < 0 && item.URL != "" {
 		return song.CreatePreloadedCustomSong(item.URL)
 	}
 	return song.CreateUnknownSong()
 }
 
 func (item *PyPyQueueItem) MatchWithPreloaded(song *song.PreloadedSong) bool {
-	if item.SongNum < 0 {
+	if item.SongNum > 0 {
+		return song.MatchWithPyPyId(item.SongNum)
+	}
+	if item.SongNum < 0 && item.URL != "" {
 		return song.MatchWithCustomUrl(item.URL)
 	}
-	if item.SongNum == 0 {
-		return song.PyPySong == nil && song.CustomSong == nil && !song.RandomPlay
-	}
-	return song.MatchWithPyPyId(item.SongNum)
+	return song.Unknown
 }
 
 func (item *PyPyQueueItem) GetAdder() string {
@@ -66,10 +65,10 @@ type WannaQueueItem struct {
 }
 
 func extractUrlFromTitle(title string) string {
-	matches := regexp.MustCompile(`URL: (.*)`).FindSubmatch([]byte(title))
+	matches := regexp.MustCompile(`URL: (.+)`).FindSubmatch([]byte(title))
 	if len(matches) > 0 {
 		url := string(matches[1])
-		if url[:2] == "BV" {
+		if len(url) > 2 && url[:2] == "BV" {
 			// BiliBili
 			return utils.GetStandardBiliURL(url)
 		}
@@ -79,7 +78,6 @@ func extractUrlFromTitle(title string) string {
 
 func (item *WannaQueueItem) ToPreloaded() *song.PreloadedSong {
 	if item.SongID > 0 {
-		// WannaDance Song
 		return song.CreatePreloadedWannaSong(item.SongID)
 	}
 	if item.SongID < 0 {
@@ -92,14 +90,16 @@ func (item *WannaQueueItem) ToPreloaded() *song.PreloadedSong {
 }
 
 func (item *WannaQueueItem) MatchWithPreloaded(song *song.PreloadedSong) bool {
+	if item.SongID > 0 {
+		return song.MatchWithWannaId(item.SongID)
+	}
 	if item.SongID < 0 {
 		url := extractUrlFromTitle(item.Title)
 		if url != "" {
 			return song.MatchWithCustomUrl(url)
 		}
-		return false
 	}
-	return song.MatchWithWannaId(item.SongID)
+	return song.Unknown
 }
 
 func (item *WannaQueueItem) GetAdder() string {

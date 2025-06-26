@@ -17,8 +17,8 @@ type PreloadedSong struct {
 	WannaSong  *raw_song.WannaDanceSong
 
 	// constant
-	Adder      string
-	RandomPlay bool
+	Adder   string
+	Unknown bool
 
 	// play progress states
 	Duration   float64
@@ -102,20 +102,9 @@ func CreatePreloadedCustomSong(url string) *PreloadedSong {
 	return ret
 }
 
-func CreateRandomPlaySong() *PreloadedSong {
-	ret := &PreloadedSong{
-		RandomPlay: true,
-
-		sm: NewSongStateMachine(),
-		em: utils.NewEventManager[ChangeType](),
-	}
-	ret.sm.ps = ret
-	return ret
-}
-
 func CreateUnknownSong() *PreloadedSong {
 	ret := &PreloadedSong{
-		RandomPlay: false,
+		Unknown: true,
 
 		sm: NewSongStateMachine(),
 		em: utils.NewEventManager[ChangeType](),
@@ -149,6 +138,10 @@ func (ps *PreloadedSong) GetDownloadUrl() string {
 	return ""
 }
 func (ps *PreloadedSong) GetId() string {
+	if ps.Unknown {
+		// TODO unique id for unknown song
+		return "unknown"
+	}
 	if ps.PyPySong != nil {
 		return fmt.Sprintf("pypy_%d", ps.PyPySong.ID)
 	}
@@ -157,9 +150,6 @@ func (ps *PreloadedSong) GetId() string {
 	}
 	if ps.CustomSong != nil {
 		return ps.CustomSong.UniqueId
-	}
-	if ps.RandomPlay {
-		return "random_play"
 	}
 	return "unknown"
 }

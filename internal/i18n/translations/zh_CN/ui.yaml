@@ -6,8 +6,8 @@
   Default: "未知大小"
 - Key: placeholder_random_play
   Default: "随机播放"
-- Key: placeholder_empty_song
-  Default: "没在播放"
+- Key: placeholder_unknown_song
+  Default: "无法识别的歌曲"
 - Key: placeholder_room_not_supported
   Default: "不支持的房间"
 

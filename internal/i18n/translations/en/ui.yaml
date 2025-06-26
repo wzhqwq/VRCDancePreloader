@@ -6,8 +6,8 @@
   Default: "Unknown Size"
 - Key: placeholder_random_play
   Default: "Random Play"
-- Key: placeholder_empty_song
-  Default: "Not Playing"
+- Key: placeholder_unknown_song
+  Default: "Unrecognized Song"
 - Key: placeholder_room_not_supported
   Default: "Unsupported Room"
 
