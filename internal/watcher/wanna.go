@@ -6,14 +6,18 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 	"log"
 	"regexp"
-	"strconv"
-	"time"
 )
 
-var wannaLastQueue string
-var wannaLastUserData string
-var wannaQueueChanged bool
-var wannaLastPlayedURL string
+var wannaQueueInfoRegex = regexp.MustCompile(`(?:syncedQueuedInfoJson =|queue info serialized:) (\[.*])`)
+var wannaUserDataRegex = regexp.MustCompile(`userData = (\{.*}|Wanna Dance)`)
+var wannaVideoLoadRegex = regexp.MustCompile(`Started video load for URL: ([^,]+)`)
+var wannaVideoSyncRegex = regexp.MustCompile(`Syncing video to ([.\d]+)`)
+
+var wannaLastQueue = NewLastValue("")
+var wannaLastUserData = NewLastValue("")
+var wannaQueueChanged = NewLastValue(false)
+var wannaLastPlayedURL = NewLastValue("")
+var wannaLastSyncTime = NewLastValue("")
 
 type wannaUserData struct {
 	//Version     string        `json:"version"`
@@ -43,46 +47,39 @@ func parseWannaQueue(data []byte) ([]queue.WannaQueueItem, error) {
 	return items, nil
 }
 
-func checkWannaLine(line []byte, timeStamp time.Time) bool {
+func checkWannaLine(version int32, prefix []byte, content []byte) bool {
 	// syncedQueuedInfoJson = [{
 	// queue info serialized: [{
-	matches := regexp.MustCompile(`(?:syncedQueuedInfoJson =|queue info serialized:) (\[.*])`).FindSubmatch(line)
+	matches := wannaQueueInfoRegex.FindSubmatch(content)
 	if len(matches) > 1 {
-		wannaLastQueue = string(matches[1])
-		wannaQueueChanged = true
+		wannaLastQueue.Set(version, string(matches[1]))
+		wannaQueueChanged.Set(version, true)
 		return true
 	}
 
 	// userData = {
 	// userData = Wanna Dance
-	matches = regexp.MustCompile(`userData = (\{.*})`).FindSubmatch(line)
+	matches = wannaUserDataRegex.FindSubmatch(content)
 	if len(matches) > 1 {
-		wannaLastUserData = string(matches[1])
-		wannaQueueChanged = true
+		wannaLastUserData.Set(version, string(matches[1]))
+		wannaQueueChanged.Set(version, true)
 		return true
 	}
 
 	// Started video load for URL: http://api.udon.dance/Api/Songs/play?id=3919, requested by
 	// It's always before "Syncing video to 12.37"
-	matches = regexp.MustCompile(`Started video load for URL: ([^,]+)`).FindSubmatch(line)
+	// So the old sync time is needed to cleared
+	matches = wannaVideoLoadRegex.FindSubmatch(content)
 	if len(matches) > 1 {
-		wannaLastPlayedURL = string(matches[1])
+		wannaLastPlayedURL.Set(version, string(matches[1]))
+		wannaLastSyncTime.Set(version, "")
 		return true
 	}
 
 	// Syncing video to 12.37
-	matches = regexp.MustCompile(`Syncing video to ([.\d]+)`).FindSubmatch(line)
+	matches = wannaVideoSyncRegex.FindSubmatch(content)
 	if len(matches) > 1 {
-		now := string(matches[1])
-
-		nowFloat, err := strconv.ParseFloat(now, 64)
-		if err != nil {
-			return false
-		}
-
-		nowFloat += time.Since(timeStamp).Seconds()
-
-		playTimeMap[wannaLastPlayedURL] = nowFloat
+		wannaLastSyncTime.Set(version, getTimeStampWithOffset(prefix, matches[1]))
 
 		return true
 	}
@@ -90,56 +87,82 @@ func checkWannaLine(line []byte, timeStamp time.Time) bool {
 	return false
 }
 
-func resetWannaLog() {
-	wannaLastQueue = ""
-	wannaLastUserData = ""
+func forceClearWannaState(version int32) {
+	wannaLastQueue.Set(version, "")
+	wannaLastUserData.Set(version, "")
+	wannaLastPlayedURL.Set(version, "")
+	wannaLastSyncTime.Set(version, "")
+	wannaQueueChanged.Set(version, false)
+}
+func forceResetWannaState() {
+	wannaLastQueue.Reset("")
+	wannaLastUserData.Reset("")
+	wannaLastPlayedURL.Reset("")
+	wannaLastSyncTime.Reset("")
+	wannaQueueChanged.Reset(false)
+}
+func wannaBacktraceDone() bool {
+	return wannaLastQueue.Get() != "" && wannaLastUserData.Get() != "" &&
+		wannaLastPlayedURL.Get() != "" && wannaLastSyncTime.Get() != ""
 }
 
 func wannaPostProcess() {
-	if wannaLastQueue != "" {
-		if wannaQueueChanged {
-			wannaQueueChanged = false
+	queueChanged := wannaQueueChanged.Get()
+	wannaQueueChanged.Reset(false)
+
+	lastQueue := wannaLastQueue.Get()
+	lastUserData := wannaLastUserData.Get()
+	wannaLastQueue.ResetVersion()
+	wannaLastUserData.ResetVersion()
+
+	if lastQueue != "" && lastUserData != "" {
+		if queueChanged {
 			log.Println("Unstable queue log, wait for one second.")
-			return
-		}
-		// process the last log
-		log.Println("Processing queue:\n" + wannaLastQueue)
+		} else {
+			wannaLastQueue.Reset("")
+			wannaLastUserData.Reset("")
+			// process the last log
+			log.Println("Processing queue:\n" + lastQueue)
 
-		var newQueue []queue.QueueItem
+			var newQueue []queue.QueueItem
 
-		q, err := parseWannaQueue([]byte(wannaLastQueue))
-		if err != nil {
-			log.Println("Error processing queue log:")
-			log.Println(err)
-			return
-		}
-		if wannaLastUserData != "" {
-			log.Println("And user data:\n" + wannaLastUserData)
-			var userData wannaUserData
-			err = json.Unmarshal([]byte(wannaLastUserData), &userData)
+			q, err := parseWannaQueue([]byte(lastQueue))
 			if err != nil {
-				log.Println("Error processing WannaDance user data log:")
+				log.Println("Error processing queue log:")
 				log.Println(err)
+				return
+			}
+			if lastUserData != "Wanna Dance" {
+				log.Println("And user data:\n" + lastUserData)
+				var userData wannaUserData
+				err = json.Unmarshal([]byte(lastUserData), &userData)
+				if err != nil {
+					log.Println("Error processing WannaDance user data log:")
+					log.Println(err)
+				}
+
+				newQueue = append(newQueue, &queue.WannaQueueItem{
+					SongID:      userData.SongID,
+					Title:       userData.VideoTitle,
+					PlayerNames: []string{userData.PlayerName},
+					Random:      userData.IsRandom,
+				})
 			}
 
-			newQueue = append(newQueue, &queue.WannaQueueItem{
-				SongID:      userData.SongID,
-				Title:       userData.VideoTitle,
-				PlayerNames: []string{userData.PlayerName},
-				Random:      userData.IsRandom,
-			})
-		}
+			for _, i := range q {
+				newQueue = append(newQueue, &i)
+			}
 
-		for _, i := range q {
-			newQueue = append(newQueue, &i)
+			diffQueues(playlist.GetQueue(), newQueue)
 		}
+	}
 
-		diffQueues(playlist.GetQueue(), newQueue)
-		if len(lastEnteredRoom) > 0 && lastEnteredRoom[0] != '*' {
-			lastEnteredRoom = "*" + lastEnteredRoom
-		}
+	lastPlayedURL := wannaLastPlayedURL.Get()
+	lastSyncTime := wannaLastSyncTime.Get()
+	wannaLastSyncTime.Reset("")
+	wannaLastPlayedURL.ResetVersion()
 
-		// clear the received logs
-		resetWannaLog()
+	if lastPlayedURL != "" && lastSyncTime != "" {
+		markURLPlaying(lastSyncTime, lastPlayedURL)
 	}
 }

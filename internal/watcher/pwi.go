@@ -5,7 +5,12 @@ import (
 	"errors"
 	"github.com/wzhqwq/VRCDancePreloader/internal/service"
 	"log"
+	"regexp"
 )
+
+var pwiRequestRegex = regexp.MustCompile(`^\[VRCX-World] (\{.*})`)
+
+var lastRequests = NewOrderedValues[string]()
 
 type pwiRequest struct {
 	RequestType   string `json:"requestType"`
@@ -75,4 +80,27 @@ func processPwiLog(data []byte) error {
 	}
 
 	return nil
+}
+
+func checkPWILine(version int32, content []byte) bool {
+	if service.IsPWIOn() {
+		matches := pwiRequestRegex.FindSubmatch(content)
+		if len(matches) > 1 {
+			lastRequests.Add(version, string(matches[1]))
+			return true
+		}
+	}
+	return false
+}
+
+func pwiPostProcess() {
+	if service.IsPWIOn() {
+		requests := lastRequests.Flush()
+		for _, request := range requests {
+			err := processPwiLog([]byte(request.value))
+			if err != nil {
+				log.Println("Error while processing PWI request: " + err.Error())
+			}
+		}
+	}
 }

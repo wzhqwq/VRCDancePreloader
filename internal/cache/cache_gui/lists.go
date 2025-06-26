@@ -14,7 +14,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"log"
 	"weak"
 )
 
@@ -161,7 +160,6 @@ func (r *LocalFilesGuiRenderer) updateItems() {
 			}
 		}
 		newGui := NewLocalFileGui(info, false)
-		log.Println("newGui:", info.ID)
 		r.itemMap[info.ID] = weak.Make(newGui)
 		return newGui
 	})
@@ -327,7 +325,6 @@ func (r *AllowListGuiRenderer) updateItems() {
 				return v
 			}
 		}
-		log.Println("newGui:", info.ID)
 		newGui := NewLocalFileGui(info, true)
 		r.itemMap[info.ID] = weak.Make(newGui)
 		return newGui

@@ -6,11 +6,14 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 	"log"
 	"regexp"
-	"strconv"
-	"time"
 )
 
-var pypyLastQueue string
+var pypyDanceQueueRegex = regexp.MustCompile(`^\[PyPyDanceQueue] (\[.*])`)
+var pypyVideoPlayRegex = regexp.MustCompile(`^\[VRCX] VideoPlay\(PyPyDance\) "(.*)",([.\d]{2,}),([.\d]+)`)
+
+var pypyLastQueue = NewLastValue("")
+var pypyLastPlayedTime = NewLastValue("")
+var pypyLastPlayedURL = NewLastValue("")
 
 func parsePyPyQueue(data []byte) ([]queue.PyPyQueueItem, error) {
 	var items []queue.PyPyQueueItem
@@ -22,53 +25,52 @@ func parsePyPyQueue(data []byte) ([]queue.PyPyQueueItem, error) {
 	return items, nil
 }
 
-func checkPyPyLine(line []byte, timeStamp time.Time) bool {
+func checkPyPyLine(version int32, prefix []byte, content []byte) bool {
 	// [PyPyDanceQueue] [{
-	matches := regexp.MustCompile(`\[PyPyDanceQueue] (\[.*])`).FindSubmatch(line)
+	matches := pypyDanceQueueRegex.FindSubmatch(content)
 	if len(matches) > 1 {
-		pypyLastQueue = string(matches[1])
+		pypyLastQueue.Set(version, string(matches[1]))
 		return true
 	}
 
-	// VideoPlay(PyPyDance) "http://jd.pypy.moe/api/v1/videos/3338.mp4",220,220
-	matches = regexp.MustCompile(`VideoPlay\(PyPyDance\) "(.*)",([.\d]+),([.\d]+)`).FindSubmatch(line)
-	if len(matches) > 1 {
-		url := string(matches[1])
-		now := string(matches[2])
-		dur := string(matches[3])
-
-		if now != "0" {
-			nowFloat, err := strconv.ParseFloat(now, 64)
-			if err != nil {
-				return false
-			}
-			durFloat, err := strconv.ParseFloat(dur, 64)
-			if err != nil {
-				return false
-			}
-
-			nowFloat += time.Since(timeStamp).Seconds()
-			if nowFloat > durFloat {
-				return false
-			}
-
-			playTimeMap[url] = nowFloat
-		}
-
+	// [VRCX] VideoPlay(PyPyDance) "http://jd.pypy.moe/api/v1/videos/3338.mp4",220,220
+	matches = pypyVideoPlayRegex.FindSubmatch(content)
+	if len(matches) > 3 {
+		pypyLastPlayedURL.Set(version, string(matches[1]))
+		pypyLastPlayedTime.Set(version, getTimeStampWithOffset(prefix, matches[2]))
 		return true
 	}
 
 	return false
 }
 
+func forceClearPypyState(version int32) {
+	pypyLastQueue.Set(version, "")
+	pypyLastPlayedURL.Set(version, "")
+	pypyLastPlayedTime.Set(version, "")
+}
+func forceResetPypyState() {
+	pypyLastQueue.Reset("")
+	pypyLastPlayedURL.Reset("")
+	pypyLastPlayedTime.Reset("")
+}
+func pypyBacktraceDone() bool {
+	return pypyLastQueue.Get() != "" && pypyLastPlayedURL.Get() != ""
+}
+
 func pypyPostProcess() {
-	if pypyLastQueue != "" {
+	lastQueue := pypyLastQueue.Get()
+	pypyLastQueue.Reset("")
+
+	if lastQueue != "" {
+		// clear the received logs
+
 		// process the last log
-		log.Println("Processing queue:\n" + pypyLastQueue)
+		log.Println("Processing queue:\n" + lastQueue)
 
 		var newQueue []queue.QueueItem
 
-		q, err := parsePyPyQueue([]byte(pypyLastQueue))
+		q, err := parsePyPyQueue([]byte(lastQueue))
 		if err != nil {
 			log.Println("Error processing queue log:")
 			log.Println(err)
@@ -79,11 +81,14 @@ func pypyPostProcess() {
 		}
 
 		diffQueues(playlist.GetQueue(), newQueue)
-		if len(lastEnteredRoom) > 0 && lastEnteredRoom[0] != '*' {
-			lastEnteredRoom = "*" + lastEnteredRoom
-		}
+	}
 
-		// clear the received logs
-		pypyLastQueue = ""
+	lastPlayedURL := pypyLastPlayedURL.Get()
+	lastPlayedTime := pypyLastPlayedTime.Get()
+	pypyLastPlayedURL.Reset("")
+	pypyLastPlayedTime.Reset("")
+
+	if lastPlayedURL != "" && lastPlayedTime != "" {
+		markURLPlaying(lastPlayedTime, lastPlayedURL)
 	}
 }

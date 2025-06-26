@@ -137,14 +137,14 @@ delete: [ ]
 
 ## TODO
 
-- [ ] 断点续传验证
+- [x] 断点续传验证
 - [ ] 完成临时加载歌曲的自动转移
 - [ ] 稳定性优化，减少死锁
-- [ ] 支持WannaDance
+- [x] 支持WannaDance
 - [ ] YouTube视频预加载（需要和yt-dlp完美配合，还没想好怎么做）
 - [ ] b站视频预加载（准备走[bilibili-real-url](https://github.com/gizmo-ds/bilibili-real-url)）
-- [x] 界面优化
-- [x] 实现播放历史查看、收藏管理
 - [ ] 整合一下VRCX的API，实现PyPyDance的收藏同步
 - [ ] 通过[OpenVROverlayPipe](https://github.com/BOLL7708/OpenVROverlayPipe)实现SteamVR内通知
 - [ ] 自由控制各类来源歌曲是否预加载
+- [ ] 欢迎屏幕
+- [ ] 展示更多的内部状态

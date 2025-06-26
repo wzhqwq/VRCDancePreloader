@@ -101,7 +101,6 @@ func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http
 
 func Start(sites []string, enableHttps bool, port int) {
 	proxy = goproxy.NewProxyHttpServer()
-	proxy.Verbose = true
 
 	// for http proxy using CONNECT first
 	for _, site := range sites {
