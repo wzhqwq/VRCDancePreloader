@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"log"
 	"net/http"
@@ -10,7 +11,7 @@ import (
 )
 
 func handlePypyRequest(w http.ResponseWriter, req *http.Request) bool {
-	if req.Host != "jd.pypy.moe" {
+	if !constants.IsPyPySite(req.Host) {
 		return false
 	}
 	if matches := regexp.MustCompile(`/api/v1/videos/(\d+)\.mp4`).FindStringSubmatch(req.URL.Path); len(matches) > 1 {

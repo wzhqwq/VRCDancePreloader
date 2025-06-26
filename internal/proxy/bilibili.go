@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"log"
 	"net/http"
@@ -9,11 +10,12 @@ import (
 )
 
 func handleBiliRequest(w http.ResponseWriter, req *http.Request) bool {
-	if req.Host != "api.xin.moe" {
+	if !constants.IsBiliSite(req.Host) {
 		return false
 	}
-	if regexp.MustCompile(`/BV[a-zA-Z0-9]+`).MatchString(req.URL.Path) {
-		id := req.URL.Path[1:]
+	matches := regexp.MustCompile(`/(BV[a-zA-Z0-9]+)`).FindStringSubmatch(req.URL.Path)
+	if len(matches) > 1 {
+		id := matches[1]
 		rangeHeader := req.Header.Get("Range")
 		if rangeHeader == "" {
 			log.Printf("Intercepted BiliBili video %s full request", id)

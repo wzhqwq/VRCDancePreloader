@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
@@ -62,11 +63,10 @@ func FillDefaultSetting() {
 	config.Version = "2.2"
 	config.Hijack = HijackConfig{
 		ProxyPort:        7653,
-		InterceptedSites: make([]string, len(allSites)),
+		InterceptedSites: constants.CopyAllSites(),
 		EnableHttps:      true,
 		EnablePWI:        false,
 	}
-	copy(config.Hijack.InterceptedSites, allSites)
 	config.Proxy = ProxyConfig{
 		Pypy:         "",
 		YoutubeVideo: "",

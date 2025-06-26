@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"log"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 )
 
 func handleWannaRequest(w http.ResponseWriter, req *http.Request) bool {
-	if req.Host != "api.udon.dance" {
+	if !constants.IsWannaSite(req.Host) {
 		return false
 	}
 	if req.URL.Path == "/Api/Songs/play" {
