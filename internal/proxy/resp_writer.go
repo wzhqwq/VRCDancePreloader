@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 )
 
 type RespWriter struct {
+	http.ResponseWriter
 	writer        io.Writer
 	header        http.Header
 	headerWritten bool
@@ -19,6 +19,9 @@ func (w *RespWriter) Header() http.Header {
 	return w.header
 }
 func (w *RespWriter) WriteHeader(statusCode int) {
+	if w.headerWritten {
+		return
+	}
 	w.writer.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n", statusCode, http.StatusText(statusCode))))
 	w.statusCode = statusCode
 
@@ -41,29 +44,28 @@ func NewRespWriter(w io.Writer) *RespWriter {
 	return &RespWriter{writer: w, header: make(http.Header)}
 }
 
-type RespWriterNoHeaderWritten struct {
+type StandaloneRespWriter struct {
 	RespWriter
 }
 
-func (w *RespWriterNoHeaderWritten) ToResponse(req *http.Request) *http.Response {
-	buf := w.writer.(*bytes.Buffer)
-	log.Println(w.header, buf.Len(), w.statusCode)
+func (w *StandaloneRespWriter) ToResponse(req *http.Request) *http.Response {
+	bodyBuf := w.writer.(*bytes.Buffer)
+	//log.Println(w.header, bodyBuf.Len(), w.statusCode)
 	return &http.Response{
 		Request:       req,
 		StatusCode:    w.statusCode,
 		Header:        w.header,
-		Body:          io.NopCloser(buf),
-		ContentLength: int64(buf.Len()),
+		Body:          io.NopCloser(bodyBuf),
+		ContentLength: int64(bodyBuf.Len()),
 	}
 }
 
-func NewRespWriterNoHeaderWritten() *RespWriterNoHeaderWritten {
-	buf := make([]byte, 0, 1024)
-	w := bytes.NewBuffer(buf)
-	return &RespWriterNoHeaderWritten{
+func NewStandaloneRespWriter() *StandaloneRespWriter {
+	return &StandaloneRespWriter{
 		RespWriter: RespWriter{
-			writer:        w,
-			header:        make(http.Header),
+			writer: bytes.NewBuffer(make([]byte, 0, 1024)),
+			header: make(http.Header),
+			// Do not respond to WriteHeader so that only body is written to buffer
 			headerWritten: true,
 			statusCode:    http.StatusOK,
 		},

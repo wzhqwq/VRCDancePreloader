@@ -91,7 +91,7 @@ func handleConnect(_ *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
 // for https
 func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	if req.Method == http.MethodGet {
-		rw := NewRespWriterNoHeaderWritten()
+		rw := NewStandaloneRespWriter()
 		if handleVideoRequest(rw, req) {
 			return req, rw.ToResponse(req)
 		}
