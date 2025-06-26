@@ -2,6 +2,7 @@ package song
 
 import (
 	"fmt"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -164,6 +165,19 @@ func (ps *PreloadedSong) GetId() string {
 }
 func (ps *PreloadedSong) GetPreloadStatus() DownloadStatus {
 	return ps.sm.DownloadStatus
+}
+func (ps *PreloadedSong) DownloadInstantly(complete bool) (cache.Entry, error) {
+	err := ps.sm.DownloadInstantly(complete)
+	if err != nil {
+		return nil, err
+	}
+
+	entry, err := cache.OpenCacheEntry(ps.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	return entry, nil
 }
 
 // compare

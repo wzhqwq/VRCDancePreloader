@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 func handleWannaRequest(w http.ResponseWriter, req *http.Request) bool {
@@ -28,7 +27,7 @@ func handleWannaRequest(w http.ResponseWriter, req *http.Request) bool {
 		} else {
 			log.Printf("Intercepted WannaDance video %d range: %s", id, rangeHeader)
 		}
-		reader, err := playlist.RequestWannaSong(id)
+		reader, modTime, err := playlist.RequestWannaSong(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			log.Println("Failed to load WannaDance video:", err)
@@ -36,7 +35,7 @@ func handleWannaRequest(w http.ResponseWriter, req *http.Request) bool {
 		}
 		log.Printf("Requested WannaDance video %d is available", id)
 
-		http.ServeContent(w, req, "video.mp4", time.Now(), reader)
+		http.ServeContent(w, req, "video.mp4", modTime, reader)
 		return true
 	}
 

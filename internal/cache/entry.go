@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type Entry interface {
@@ -17,6 +18,7 @@ type Entry interface {
 	Close() error
 	Save() error
 	IsComplete() bool
+	ModTime() time.Time
 }
 
 type BaseEntry struct {
@@ -118,6 +120,14 @@ func (e *BaseEntry) IsComplete() bool {
 
 func (e *BaseEntry) DownloadedSize() int64 {
 	return e.getIncompleteSize()
+}
+
+func (e *BaseEntry) ModTime() time.Time {
+	info, err := e.writingFile.file.Stat()
+	if err != nil {
+		return time.Now()
+	}
+	return info.ModTime()
 }
 
 func (e *BaseEntry) Write(bytes []byte) (int, error) {

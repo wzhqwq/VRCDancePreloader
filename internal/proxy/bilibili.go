@@ -6,15 +6,13 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"time"
 )
 
 func handleBiliRequest(w http.ResponseWriter, req *http.Request) bool {
 	if !constants.IsBiliSite(req.Host) {
 		return false
 	}
-	matches := regexp.MustCompile(`/(BV[a-zA-Z0-9]+)`).FindStringSubmatch(req.URL.Path)
-	if len(matches) > 1 {
+	if matches := regexp.MustCompile(`/(BV[a-zA-Z0-9]+)`).FindStringSubmatch(req.URL.Path); len(matches) > 1 {
 		id := matches[1]
 		rangeHeader := req.Header.Get("Range")
 		if rangeHeader == "" {
@@ -22,7 +20,7 @@ func handleBiliRequest(w http.ResponseWriter, req *http.Request) bool {
 		} else {
 			log.Printf("Intercepted BiliBili video %s range: %s", id, rangeHeader)
 		}
-		reader, err := playlist.RequestBiliSong(id)
+		reader, modTime, err := playlist.RequestBiliSong(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			log.Println("Failed to load BiliBili video:", err)
@@ -30,7 +28,7 @@ func handleBiliRequest(w http.ResponseWriter, req *http.Request) bool {
 		}
 		log.Printf("Requested BiliBili video %s is available", id)
 
-		http.ServeContent(w, req, "video.mp4", time.Now(), reader)
+		http.ServeContent(w, req, "video.mp4", modTime, reader)
 		return true
 	}
 

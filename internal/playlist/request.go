@@ -2,6 +2,7 @@ package playlist
 
 import (
 	"io"
+	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -49,31 +50,22 @@ func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
 	return item
 }
 
-func RequestPyPySong(id int) (io.ReadSeekCloser, error) {
-	item := currentPlaylist.FindPyPySong(id)
-	if asyncDownload {
-		return item.GetSongRSAsync()
-	} else {
-		return item.GetSongRSSync()
+func request(item *song.PreloadedSong) (io.ReadSeekCloser, time.Time, error) {
+	entry, err := item.DownloadInstantly(!asyncDownload)
+	if err != nil {
+		return nil, time.Time{}, err
 	}
+	return entry.GetReadSeekCloser(), entry.ModTime(), nil
 }
 
-func RequestWannaSong(id int) (io.ReadSeekCloser, error) {
-	item := currentPlaylist.FindWannaSong(id)
-	if asyncDownload {
-		return item.GetSongRSAsync()
-	} else {
-		return item.GetSongRSSync()
-	}
+func RequestPyPySong(id int) (io.ReadSeekCloser, time.Time, error) {
+	return request(currentPlaylist.FindPyPySong(id))
 }
-
-func RequestBiliSong(bvID string) (io.ReadSeekCloser, error) {
-	item := currentPlaylist.FindCustomSong(utils.GetStandardBiliURL(bvID))
-	if asyncDownload {
-		return item.GetSongRSAsync()
-	} else {
-		return item.GetSongRSSync()
-	}
+func RequestWannaSong(id int) (io.ReadSeekCloser, time.Time, error) {
+	return request(currentPlaylist.FindWannaSong(id))
+}
+func RequestBiliSong(bvID string) (io.ReadSeekCloser, time.Time, error) {
+	return request(currentPlaylist.FindCustomSong(utils.GetStandardBiliURL(bvID)))
 }
 
 // TODO

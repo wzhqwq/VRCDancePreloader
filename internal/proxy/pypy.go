@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"time"
 )
 
 func handlePypyRequest(w http.ResponseWriter, req *http.Request) bool {
@@ -28,7 +27,7 @@ func handlePypyRequest(w http.ResponseWriter, req *http.Request) bool {
 		} else {
 			log.Printf("Intercepted PyPyDance video %d range: %s", id, rangeHeader)
 		}
-		reader, err := playlist.RequestPyPySong(id)
+		reader, modTime, err := playlist.RequestPyPySong(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			log.Println("Failed to load PyPyDance video:", err)
@@ -36,7 +35,7 @@ func handlePypyRequest(w http.ResponseWriter, req *http.Request) bool {
 		}
 		log.Printf("Requested PyPyDance video %d is available", id)
 
-		http.ServeContent(w, req, "video.mp4", time.Now(), reader)
+		http.ServeContent(w, req, "video.mp4", modTime, reader)
 		return true
 	}
 
