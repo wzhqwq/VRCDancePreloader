@@ -48,7 +48,7 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 			Group:       0,
 			Name:        fmt.Sprintf("PyPyDance #%d", id),
 			Start:       0,
-			End:         1,
+			End:         0,
 			OriginalURL: []string{},
 		}
 	}
@@ -75,7 +75,7 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 			Group: "",
 			Name:  fmt.Sprintf("WannaDance #%d", id),
 			Start: 0,
-			End:   1,
+			End:   0,
 		}
 	}
 	ret := &PreloadedSong{
@@ -98,6 +98,7 @@ func CreatePreloadedCustomSong(url string) *PreloadedSong {
 
 		em: utils.NewEventManager[ChangeType](),
 	}
+	go ret.CustomSong.GetDuration()
 	ret.sm.ps = ret
 	return ret
 }
@@ -194,7 +195,19 @@ func (ps *PreloadedSong) MatchWithWannaId(id int) bool {
 // actions
 
 func (ps *PreloadedSong) PlaySongStartFrom(offset float64) {
-	ps.sm.PlaySongStartFrom(offset)
+	if ps.Duration > 1 {
+		ps.sm.PlaySongStartFrom(offset)
+		return
+	}
+
+	if ps.CustomSong != nil {
+		go func() {
+			ps.Duration = float64(ps.CustomSong.GetDuration())
+			if ps.Duration > 1 {
+				ps.sm.PlaySongStartFrom(offset)
+			}
+		}()
+	}
 }
 func (ps *PreloadedSong) PreloadSong() {
 	if ps.sm.DownloadStatus == NotAvailable {

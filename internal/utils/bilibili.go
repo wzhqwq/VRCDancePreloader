@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-// Thanks to https://github.com/gizmo-ds/bilibili-real-url for the share of the usage of BiliBili api
+// Thanks to https://github.com/gizmo-ds/bilibili-real-url and https://github.com/SocialSisterYi/bilibili-API-collect
+// for the share of the usage of BiliBili api
 
 func GetStandardBiliURL(bvID string) string {
 	return fmt.Sprintf("https://www.bilibili.com/video/%s", bvID)
@@ -19,12 +20,9 @@ func GetBiliVideoInfoURL(bvID string) string {
 
 func GetBiliVideoPlayerURL(bvID string, cid int64) string {
 	params := url.Values{
-		"bvid":         []string{bvID},
-		"cid":          []string{fmt.Sprintf("%d", cid)},
-		"qn":           []string{"80"},
-		"otype":        []string{"json"},
-		"platform":     []string{"html5"},
-		"high_quality": []string{"1"},
+		"bvid":     []string{bvID},
+		"cid":      []string{fmt.Sprintf("%d", cid)},
+		"platform": []string{"html5"},
 	}
 	return fmt.Sprintf("https://api.bilibili.com/x/player/playurl?%s", params.Encode())
 }
