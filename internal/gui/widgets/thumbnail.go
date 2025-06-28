@@ -24,19 +24,23 @@ type AsyncImage struct {
 
 var cache = utils.NewWeakCache[AsyncImage](100)
 
-func GetThumbnailImage(url string) image.Image {
-	if i, ok := cache.Get(url); ok {
+func GetThumbnailImage(id, url string) image.Image {
+	key := url
+	if id != "" {
+		key = "#" + id
+	}
+	if i, ok := cache.Get(key); ok {
 		return i.i.Get()
 	}
 
 	i := future.New(func() image.Image {
 		defer func() {
-			if i, ok := cache.Get(url); ok {
+			if i, ok := cache.Get(key); ok {
 				i.loaded = true
 			}
 		}()
 
-		log.Println("Get: ", url)
+		log.Println("Downloading thumbnail from ", url)
 		resp, err := requesting.RequestThumbnail(url)
 		if err != nil {
 			log.Println("Failed to get thumbnail:", err)
@@ -59,7 +63,7 @@ func GetThumbnailImage(url string) image.Image {
 		return resize.Resize(320, 0, img, resize.Bilinear)
 	})
 
-	cache.Set(url, AsyncImage{i: i, loaded: false})
+	cache.Set(key, AsyncImage{i: i, loaded: false})
 
 	return i.Get()
 }
@@ -172,7 +176,7 @@ func (t *Thumbnail) loadImage() {
 		t.image = nil
 	} else if HasThumbnailCachedAndLoaded(t.url) {
 		t.loading = false
-		t.image = GetThumbnailImage(t.url)
+		t.image = GetThumbnailImage(t.ID, t.url)
 	} else {
 		t.loading = true
 		t.image = nil
@@ -182,7 +186,7 @@ func (t *Thumbnail) loadImage() {
 				return
 			}
 
-			i := GetThumbnailImage(t.url)
+			i := GetThumbnailImage(t.ID, t.url)
 			if i == nil {
 				return
 			}
