@@ -2,36 +2,45 @@ package third_party_api
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"google.golang.org/api/youtube/v3"
+	"log"
 	"time"
 )
 
-func GetYoutubeTitle(videoID string) string {
-	if youtubeApiKey == "" {
-		return fmt.Sprintf("Youtube %s", videoID)
+func GetYoutubeTitleFromApi(videoID string) (string, error) {
+	if YoutubeApiKey == "" {
+		return "", errors.New("empty Youtube API key")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	svc, err := youtube.NewService(ctx, requesting.WithYoutubeApiClient(youtubeApiKey))
+	svc, err := youtube.NewService(ctx, requesting.WithYoutubeApiClient(YoutubeApiKey))
 	if err != nil {
-		return fmt.Sprintf("Youtube %s", videoID)
+		return "", err
 	}
 
 	call := svc.Videos.List([]string{"snippet"}).Id(videoID)
 	resp, err := call.Do()
 	if err != nil {
-		fmt.Println("Youtube API Error: ", err)
-		return fmt.Sprintf("Youtube %s", videoID)
+		return "", err
 	}
 
 	if len(resp.Items) == 0 {
-		fmt.Println("No items")
-		return fmt.Sprintf("Youtube %s", videoID)
+		return "", errors.New("video not found")
 	}
 
-	return resp.Items[0].Snippet.Title
+	return resp.Items[0].Snippet.Title, nil
+
+}
+
+func GetYoutubeTitle(videoID string) string {
+	title, err := GetYoutubeTitleFromApi(videoID)
+	if err != nil {
+		log.Println("Failed to get youtube title by api: " + videoID)
+		return "YouTube " + videoID
+	}
+	return title
 }

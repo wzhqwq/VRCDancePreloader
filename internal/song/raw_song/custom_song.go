@@ -28,7 +28,7 @@ type CustomSong struct {
 func NewCustomSong(url string) CustomSong {
 	if id, isYoutube := utils.CheckYoutubeURL(url); isYoutube {
 		return CustomSong{
-			Name:     "Youtube " + id,
+			Name:     "YouTube " + id,
 			Url:      url,
 			UniqueId: fmt.Sprintf("yt_%s", id),
 		}

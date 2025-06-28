@@ -28,7 +28,7 @@ func NewSongTitle(id, title string, color color.Color) *SongTitle {
 
 	go func() {
 		completedTitle := third_party_api.CompleteTitleByInternalID(id, title).Get()
-		if completedTitle == title {
+		if completedTitle == "" || completedTitle == title {
 			return
 		}
 

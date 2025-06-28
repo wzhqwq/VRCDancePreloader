@@ -89,7 +89,7 @@ func GetBiliVideoUrl(client *http.Client, bvID string) (string, error) {
 func GetBiliVideoTitle(client *http.Client, bvID string) (string, error) {
 	info, err := GetBvInfo(client, bvID)
 	if err != nil {
-		return "", err
+		return "BiliBili " + bvID, err
 	}
 
 	return info.Title, nil
