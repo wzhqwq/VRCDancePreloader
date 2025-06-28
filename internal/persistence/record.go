@@ -170,6 +170,10 @@ type Order struct {
 	DanceRoom string    `json:"dance_room"`
 }
 
+func (o Order) Key() string {
+	return o.ID + "_" + o.Time.Format("15:04:05")
+}
+
 func AddToHistory(id, title, username string, time time.Time) {
 	if localRecords.CurrentRecord == nil {
 		return

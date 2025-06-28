@@ -166,7 +166,7 @@ func (r *RecordGuiRenderer) Layout(size fyne.Size) {
 
 func (r *RecordGuiRenderer) pushOrders() {
 	items := lo.Map(r.g.Record.GetOrdersSnapshot(), func(order persistence.Order, _ int) *OrderGui {
-		if item, ok := r.itemMap[order.ID]; ok {
+		if item, ok := r.itemMap[order.Key()]; ok {
 			if v := item.Value(); v != nil {
 				return v
 			}
@@ -175,7 +175,7 @@ func (r *RecordGuiRenderer) pushOrders() {
 		orderGui.onRemove = func() {
 			r.g.HandleRemove(order)
 		}
-		r.itemMap[order.ID] = weak.Make(orderGui)
+		r.itemMap[order.Key()] = weak.Make(orderGui)
 		return orderGui
 	})
 
