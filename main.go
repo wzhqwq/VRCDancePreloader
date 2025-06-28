@@ -55,6 +55,7 @@ func main() {
 
 	// Apply config.yaml
 	config.LoadConfig()
+	config.GetYoutubeConfig().Init()
 	config.GetKeyConfig().Init()
 	config.GetProxyConfig().Init()
 

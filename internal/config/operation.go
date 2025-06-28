@@ -102,12 +102,30 @@ func (pc *ProxyConfig) Test(item string) (bool, string) {
 
 func (kc *KeyConfig) Init() {
 	if config.Youtube.EnableApi {
-		if kc.Youtube != "" {
-			third_party_api.SetYoutubeApiKey(kc.Youtube)
+		if kc.Youtube == "" {
+			third_party_api.YoutubeApiKey = kc.Youtube
 		} else {
-			log.Fatalf("Youtube API key must be set when Youtube API feature is enabled")
+			log.Println("Youtube API feature is disabled because Youtube API key is missing")
+			config.Youtube.UpdateEnableApi(false)
 		}
 	}
+}
+
+func (yc *YoutubeConfig) Init() {
+	third_party_api.EnableYoutubeApi = yc.EnableApi
+	third_party_api.EnableYoutubeThumbnail = yc.EnableThumbnail
+}
+
+func (yc *YoutubeConfig) UpdateEnableApi(enabled bool) {
+	yc.EnableApi = enabled
+	third_party_api.EnableYoutubeApi = enabled
+	SaveConfig()
+}
+
+func (yc *YoutubeConfig) UpdateEnableThumbnail(enabled bool) {
+	yc.EnableThumbnail = enabled
+	third_party_api.EnableYoutubeThumbnail = enabled
+	SaveConfig()
 }
 
 func (pc *PreloadConfig) Init() {

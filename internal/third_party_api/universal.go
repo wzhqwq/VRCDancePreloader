@@ -16,7 +16,9 @@ func GetThumbnailByInternalID(id string) future.Future[string] {
 		return future.Pure("")
 	}
 	if ytId, isYoutube := utils.CheckIdIsYoutube(id); isYoutube {
-		return future.Pure(utils.GetYoutubeMQThumbnailURL(ytId))
+		if EnableYoutubeThumbnail {
+			return future.Pure(utils.GetYoutubeMQThumbnailURL(ytId))
+		}
 	}
 	if bvId, isBiliBili := utils.CheckIdIsBili(id); isBiliBili {
 		return future.New(func() string {
@@ -39,7 +41,7 @@ func CompleteTitleByInternalID(id, title string) future.Future[string] {
 		return future.Pure(title)
 	}
 	if ytId, isYoutube := utils.CheckIdIsYoutube(id); isYoutube {
-		if strings.Contains(title, ytId) {
+		if strings.Contains(title, ytId) && EnableYoutubeApi {
 			return future.New(func() string {
 				return GetYoutubeTitle(ytId)
 			})
@@ -49,11 +51,7 @@ func CompleteTitleByInternalID(id, title string) future.Future[string] {
 	if bvId, isBiliBili := utils.CheckIdIsBili(id); isBiliBili {
 		if strings.Contains(title, bvId) {
 			return future.New(func() string {
-				t, err := GetBiliVideoTitle(requesting.GetBiliClient(), bvId)
-				if err != nil {
-					log.Println("error while getting bilibili video title:", err)
-				}
-				return t
+				return GetBiliVideoTitle(requesting.GetBiliClient(), bvId)
 			})
 		}
 		return future.Pure(title)

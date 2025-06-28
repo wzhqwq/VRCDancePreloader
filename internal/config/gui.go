@@ -64,8 +64,7 @@ func createYoutubeSettingsContent() fyne.CanvasObject {
 		if config.Youtube.EnableApi == b {
 			return
 		}
-		config.Youtube.EnableApi = b
-		SaveConfig()
+		config.Youtube.UpdateEnableApi(b)
 		if b && config.Proxy.ProxyControllers["youtube-api"].Status != ProxyStatusOk {
 			config.Proxy.ProxyControllers["youtube-api"].Test()
 		}
@@ -77,8 +76,7 @@ func createYoutubeSettingsContent() fyne.CanvasObject {
 		if config.Youtube.EnableThumbnail == b {
 			return
 		}
-		config.Youtube.EnableThumbnail = b
-		SaveConfig()
+		config.Youtube.UpdateEnableThumbnail(b)
 		if b && config.Proxy.ProxyControllers["youtube-image"].Status != ProxyStatusOk {
 			config.Proxy.ProxyControllers["youtube-image"].Test()
 		}

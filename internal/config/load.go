@@ -179,3 +179,6 @@ func GetCacheConfig() *CacheConfig {
 func GetDbConfig() *DbConfig {
 	return &config.Db
 }
+func GetYoutubeConfig() *YoutubeConfig {
+	return &config.Youtube
+}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"log"
 	"net/http"
 )
 
@@ -86,13 +87,14 @@ func GetBiliVideoUrl(client *http.Client, bvID string) (string, error) {
 	return playerInfo.Segments[0].URL, nil
 }
 
-func GetBiliVideoTitle(client *http.Client, bvID string) (string, error) {
+func GetBiliVideoTitle(client *http.Client, bvID string) string {
 	info, err := GetBvInfo(client, bvID)
 	if err != nil {
-		return "BiliBili " + bvID, err
+		log.Println("error while getting bilibili video title:", err)
+		return "BiliBili " + bvID
 	}
 
-	return info.Title, nil
+	return info.Title
 }
 
 func GetBiliVideoThumbnail(client *http.Client, bvID string) (string, error) {
