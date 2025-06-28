@@ -18,7 +18,7 @@ import (
 type OrderGui struct {
 	widget.BaseWidget
 
-	Entry *persistence.LocalSongEntry
+	entry *persistence.LocalSongEntry
 	order persistence.Order
 
 	onRemove func()
@@ -36,7 +36,7 @@ func NewOrderGui(order persistence.Order) *OrderGui {
 		}
 	}
 	ig := &OrderGui{
-		Entry: entry,
+		entry: entry,
 		order: order,
 	}
 
@@ -46,11 +46,11 @@ func NewOrderGui(order persistence.Order) *OrderGui {
 }
 
 func (ig *OrderGui) CreateRenderer() fyne.WidgetRenderer {
-	title := widgets.NewSongTitle(ig.order.ID, ig.order.Title, theme.Color(theme.ColorNameForeground))
+	title := widgets.NewSongTitle(ig.entry.ID, ig.entry.Title, theme.Color(theme.ColorNameForeground))
 	title.TextSize = 16
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	songInfo := fmt.Sprintf("%s (%s)", ig.order.ID, ig.order.DanceRoom)
+	songInfo := fmt.Sprintf("%s (%s)", ig.entry.ID, ig.order.DanceRoom)
 	songInfoLine := canvas.NewText(songInfo, theme.Color(theme.ColorNameForeground))
 	songInfoLine.TextSize = 12
 
@@ -61,7 +61,7 @@ func (ig *OrderGui) CreateRenderer() fyne.WidgetRenderer {
 	orderInfoLine := canvas.NewText(orderInfo, theme.Color(theme.ColorNamePlaceHolder))
 	orderInfoLine.TextSize = 12
 
-	favoriteBtn := button.NewFavoriteBtn(ig.Entry.ID, ig.Entry.Title)
+	favoriteBtn := button.NewFavoriteBtn(ig.entry.ID, ig.entry.Title)
 	favoriteBtn.SetMinSquareSize(36)
 	favoriteBtn.SetPadding(8)
 
@@ -88,8 +88,8 @@ func (ig *OrderGui) CreateRenderer() fyne.WidgetRenderer {
 		SongInfoLine:  songInfoLine,
 		OrderInfoLine: orderInfoLine,
 
-		LocalSong: widgets.NewLocalSongOperations(ig.Entry),
-		Thumbnail: widgets.NewThumbnailWithID(ig.Entry.ID),
+		LocalSong: widgets.NewLocalSongOperations(ig.entry),
+		Thumbnail: widgets.NewThumbnailWithID(ig.entry.ID),
 		Separator: widget.NewSeparator(),
 		Actions:   actions,
 	}
