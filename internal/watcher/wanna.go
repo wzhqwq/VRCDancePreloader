@@ -159,10 +159,11 @@ func wannaPostProcess() {
 
 	lastPlayedURL := wannaLastPlayedURL.Get()
 	lastSyncTime := wannaLastSyncTime.Get()
-	wannaLastSyncTime.Reset("")
+	wannaLastSyncTime.ResetVersion()
 	wannaLastPlayedURL.ResetVersion()
 
-	if lastPlayedURL != "" && lastSyncTime != "" {
+	if !queueChanged && lastPlayedURL != "" && lastSyncTime != "" {
+		wannaLastSyncTime.Reset("")
 		markURLPlaying(lastSyncTime, lastPlayedURL)
 	}
 }
