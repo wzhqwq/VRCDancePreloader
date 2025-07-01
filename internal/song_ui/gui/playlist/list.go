@@ -5,7 +5,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"time"
 	"weak"
 
 	"fyne.io/fyne/v2"
@@ -139,22 +138,14 @@ func (r *listGuiRenderer) updateItems() {
 	r.items = lo.Map(songs, func(ps *song.PreloadedSong, _ int) *ItemGui {
 		if item, ok := r.itemMap[ps.GetId()]; ok {
 			if v := item.Value(); v != nil {
-				if v.Staled {
-					v.Replaced = true
-				} else {
+				if v.ps == ps {
 					return v
 				}
 			}
 		}
 		newGui := NewItemGui(ps, r.dynamicList)
 		r.itemMap[ps.GetId()] = weak.Make(newGui)
-		r.dynamicList.AddItem(newGui.listItem)
-
-		newGui.Hide()
-		go func() {
-			time.Sleep(100 * time.Millisecond)
-			newGui.SlideIn()
-		}()
+		r.dynamicList.AddItem(newGui.listItem, true)
 		return newGui
 	})
 

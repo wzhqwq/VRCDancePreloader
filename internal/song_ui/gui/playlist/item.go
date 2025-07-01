@@ -25,12 +25,7 @@ type ItemGui struct {
 
 	listItem *containers.DynamicListItem
 
-	Staled   bool
-	Replaced bool
-
 	// static UI
-
-	RunningAnimation *fyne.Animation
 
 	stopCh     chan struct{}
 	songUpdate *utils.EventSubscriber[song.ChangeType]
@@ -59,31 +54,6 @@ func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
 	return ig
 }
 
-func (ig *ItemGui) SlideIn() {
-	fyne.DoAndWait(func() {
-		ig.Move(fyne.NewPos(ig.Size().Width, 0))
-		ig.Show()
-	})
-	ig.RunningAnimation = canvas.NewPositionAnimation(
-		fyne.NewPos(ig.Size().Width, 0),
-		fyne.NewPos(0, 0),
-		300*time.Millisecond,
-		ig.Move,
-	)
-	ig.RunningAnimation.Start()
-}
-func (ig *ItemGui) SlideOut() {
-	if ig.RunningAnimation != nil {
-		ig.RunningAnimation.Stop()
-	}
-	canvas.NewPositionAnimation(
-		fyne.NewPos(0, 0),
-		fyne.NewPos(-ig.Size().Width, 0),
-		300*time.Millisecond,
-		ig.Move,
-	).Start()
-}
-
 func (ig *ItemGui) RenderLoop() {
 	for {
 		select {
@@ -95,17 +65,7 @@ func (ig *ItemGui) RenderLoop() {
 				ig.statusChanged = true
 				switch ig.ps.GetPreloadStatus() {
 				case song.Removed:
-					ig.Staled = true
-					ig.SlideOut()
-					ig.listItem.MarkRemoving()
-					go func() {
-						time.Sleep(300 * time.Millisecond)
-						if !ig.Replaced {
-							fyne.Do(func() {
-								ig.dl.RemoveItem(ig.ps.GetId())
-							})
-						}
-					}()
+					ig.dl.RemoveItem(ig.ps.GetId(), true)
 					return
 				}
 			case song.ProgressChange:
@@ -140,25 +100,49 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	id.Alignment = fyne.TextAlignTrailing
 	id.TextSize = 12
 
+	progress := ig.ps.GetProgressInfo()
+
 	// Progress
-	progress := widgets.NewSizeProgressBar(0, 0)
-	progress.Text.TextSize = 10
+	progressBar := widgets.NewSizeProgressBar(0, 0)
+	progressBar.Text.TextSize = 10
+	progressBar.SetTotalSize(progress.Total)
+	progressBar.SetCurrentSize(progress.Downloaded)
 
 	// Size
-	sizeText := canvas.NewText("", theme.Color(theme.ColorNameForeground))
+	size := i18n.T("placeholder_unknown_size")
+	if progress.Total > 0 {
+		size = utils.PrettyByteSize(progress.Total)
+	}
+	sizeText := canvas.NewText(size, theme.Color(theme.ColorNameForeground))
 	sizeText.Alignment = fyne.TextAlignTrailing
 	sizeText.TextSize = 12
 
+	if progress.IsDownloading {
+		progressBar.Show()
+		sizeText.Hide()
+	} else {
+		progressBar.Hide()
+		sizeText.Show()
+	}
+
+	status := ig.ps.GetStatusInfo()
 	// Status
-	statusText := canvas.NewText("", theme.Color(theme.ColorNamePlaceHolder))
+	statusText := canvas.NewText(status.Status, theme.Color(status.Color))
 	statusText.TextSize = 16
 
 	// Error message
 	errorText := canvas.NewText("", theme.Color(theme.ColorNameError))
 	errorText.TextSize = 12
+	if status.PreloadError != nil {
+		errorText.Text = status.PreloadError.Error()
+		errorText.Show()
+	} else {
+		errorText.Hide()
+	}
 
 	// Play bar
 	playBar := widgets.NewPlayBar()
+	// no need to set up because time will flow
 	playBar.Hide()
 
 	cardBackground := canvas.NewRectangle(theme.Color(theme.ColorNameHeaderBackground))
@@ -179,10 +163,10 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 		Background:    cardBackground,
 		ThumbnailMask: thumbnailMask,
 		InfoLeft:      container.NewVBox(group, adder, statusText),
-		InfoRight:     container.NewVBox(id, progress, sizeText),
+		InfoRight:     container.NewVBox(id, progressBar, sizeText),
 		InfoBottom:    container.NewVBox(errorText, playBar),
 
-		ProgressBar: progress,
+		ProgressBar: progressBar,
 		StatusText:  statusText,
 		ErrorText:   errorText,
 		SizeText:    sizeText,
