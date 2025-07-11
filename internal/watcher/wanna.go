@@ -10,7 +10,7 @@ import (
 
 var wannaQueueInfoRegex = regexp.MustCompile(`(?:syncedQueuedInfoJson =|queue info serialized:) (\[.*])`)
 var wannaUserDataRegex = regexp.MustCompile(`userData = (\{.*}|Wanna Dance)`)
-var wannaVideoLoadRegex = regexp.MustCompile(`Started video load for URL: ([^,]+)`)
+var wannaVideoLoadRegex = regexp.MustCompile(`OnVideoStart: Started video: ([^,]+)`)
 var wannaVideoSyncRegex = regexp.MustCompile(`Syncing video to ([.\d]+)`)
 
 var wannaLastQueue = NewLastValue("")
@@ -66,7 +66,7 @@ func checkWannaLine(version int32, prefix []byte, content []byte) bool {
 		return true
 	}
 
-	// Started video load for URL: http://api.udon.dance/Api/Songs/play?id=3919, requested by
+	// OnVideoStart: Started video: http://api.udon.dance/Api/Songs/play?id=5247, since owner is playing
 	// It's always before "Syncing video to 12.37"
 	// So the old sync time is needed to cleared
 	matches = wannaVideoLoadRegex.FindSubmatch(content)
