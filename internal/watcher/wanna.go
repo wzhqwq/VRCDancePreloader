@@ -10,7 +10,8 @@ import (
 
 var wannaQueueInfoRegex = regexp.MustCompile(`(?:syncedQueuedInfoJson =|queue info serialized:) (\[.*])`)
 var wannaUserDataRegex = regexp.MustCompile(`userData = (\{.*}|Wanna Dance)`)
-var wannaVideoLoadRegex = regexp.MustCompile(`OnVideoStart: Started video: ([^,]+)`)
+var wannaVideoStartRegex = regexp.MustCompile(`OnVideoStart: Started video: ([^,]+)`)
+var wannaVideoEndRegex = regexp.MustCompile(`OnVideoEnd: Video \S+ ended`)
 var wannaVideoSyncRegex = regexp.MustCompile(`Syncing video to ([.\d]+)`)
 
 var wannaLastQueue = NewLastValue("")
@@ -69,10 +70,17 @@ func checkWannaLine(version int32, prefix []byte, content []byte) bool {
 	// OnVideoStart: Started video: http://api.udon.dance/Api/Songs/play?id=5247, since owner is playing
 	// It's always before "Syncing video to 12.37"
 	// So the old sync time is needed to cleared
-	matches = wannaVideoLoadRegex.FindSubmatch(content)
+	matches = wannaVideoStartRegex.FindSubmatch(content)
 	if len(matches) > 1 {
 		wannaLastPlayedURL.Set(version, string(matches[1]))
 		wannaLastSyncTime.Set(version, "")
+		return true
+	}
+
+	// OnVideoEnd: Video http://api.udon.dance/Api/Songs/play?id=4604 ended
+	// Clear lastPlayedURL to prevent video syncing before the next video which is not started yet
+	if wannaVideoEndRegex.Match(content) {
+		wannaLastPlayedURL.Set(version, "")
 		return true
 	}
 
@@ -162,8 +170,9 @@ func wannaPostProcess() {
 	wannaLastSyncTime.ResetVersion()
 	wannaLastPlayedURL.ResetVersion()
 
-	if !queueChanged && lastPlayedURL != "" && lastSyncTime != "" {
-		wannaLastSyncTime.Reset("")
-		markURLPlaying(lastSyncTime, lastPlayedURL)
+	if lastPlayedURL != "" && lastSyncTime != "" {
+		if markURLPlaying(lastSyncTime, lastPlayedURL) {
+			wannaLastSyncTime.Reset("")
+		}
 	}
 }

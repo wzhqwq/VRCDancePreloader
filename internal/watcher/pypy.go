@@ -85,10 +85,13 @@ func pypyPostProcess() {
 
 	lastPlayedURL := pypyLastPlayedURL.Get()
 	lastPlayedTime := pypyLastPlayedTime.Get()
-	pypyLastPlayedURL.Reset("")
-	pypyLastPlayedTime.Reset("")
+	pypyLastPlayedURL.ResetVersion()
+	pypyLastPlayedTime.ResetVersion()
 
 	if lastPlayedURL != "" && lastPlayedTime != "" {
-		markURLPlaying(lastPlayedTime, lastPlayedURL)
+		if markURLPlaying(lastPlayedTime, lastPlayedURL) {
+			pypyLastPlayedURL.Reset("")
+			pypyLastPlayedTime.Reset("")
+		}
 	}
 }

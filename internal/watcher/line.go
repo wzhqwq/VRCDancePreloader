@@ -77,8 +77,11 @@ func parseTimeStampWithOffset(pair string) float64 {
 
 	return nowFloat + time.Since(timeStamp).Seconds()
 }
-func markURLPlaying(pair string, url string) {
+func markURLPlaying(pair string, url string) bool {
 	now := parseTimeStampWithOffset(pair)
-	log.Println("Playing", url, "at", now)
-	playlist.MarkURLPlaying(url, now)
+	if playlist.MarkURLPlaying(url, now) {
+		log.Println("Playing", url, "at", now)
+		return true
+	}
+	return false
 }

@@ -21,9 +21,7 @@ func (pl *PlayList) FindPyPySong(id int) *song.PreloadedSong {
 			return item
 		}
 	}
-	item := song.CreatePreloadedPyPySong(id)
-	// TODO: add to temporary list
-	return item
+	return nil
 }
 
 func (pl *PlayList) FindWannaSong(id int) *song.PreloadedSong {
@@ -33,9 +31,7 @@ func (pl *PlayList) FindWannaSong(id int) *song.PreloadedSong {
 			return item
 		}
 	}
-	item := song.CreatePreloadedWannaSong(id)
-	// TODO: add to temporary list
-	return item
+	return nil
 }
 
 func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
@@ -45,6 +41,34 @@ func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
 			return item
 		}
 	}
+	return nil
+}
+
+func (pl *PlayList) FindPyPySongOrCreate(id int) *song.PreloadedSong {
+	if item := pl.FindPyPySong(id); item != nil {
+		return item
+	}
+
+	item := song.CreatePreloadedPyPySong(id)
+	// TODO: add to temporary list
+	return item
+}
+
+func (pl *PlayList) FindWannaSongOrCreate(id int) *song.PreloadedSong {
+	if item := pl.FindWannaSong(id); item != nil {
+		return item
+	}
+
+	item := song.CreatePreloadedWannaSong(id)
+	// TODO: add to temporary list
+	return item
+}
+
+func (pl *PlayList) FindCustomSongOrCreate(url string) *song.PreloadedSong {
+	if item := pl.FindCustomSong(url); item != nil {
+		return item
+	}
+
 	item := song.CreatePreloadedCustomSong(url)
 	// TODO: add to temporary list
 	return item
@@ -59,18 +83,18 @@ func request(item *song.PreloadedSong) (io.ReadSeekCloser, time.Time, error) {
 }
 
 func RequestPyPySong(id int) (io.ReadSeekCloser, time.Time, error) {
-	return request(currentPlaylist.FindPyPySong(id))
+	return request(currentPlaylist.FindPyPySongOrCreate(id))
 }
 func RequestWannaSong(id int) (io.ReadSeekCloser, time.Time, error) {
-	return request(currentPlaylist.FindWannaSong(id))
+	return request(currentPlaylist.FindWannaSongOrCreate(id))
 }
 func RequestBiliSong(bvID string) (io.ReadSeekCloser, time.Time, error) {
-	return request(currentPlaylist.FindCustomSong(utils.GetStandardBiliURL(bvID)))
+	return request(currentPlaylist.FindCustomSongOrCreate(utils.GetStandardBiliURL(bvID)))
 }
 
 // TODO
 
 func RequestYoutubeSong(id string) (io.ReadSeekCloser, error) {
-	item := currentPlaylist.FindCustomSong(utils.GetStandardYoutubeURL(id))
+	item := currentPlaylist.FindCustomSongOrCreate(utils.GetStandardYoutubeURL(id))
 	return item.GetSongRSSync()
 }

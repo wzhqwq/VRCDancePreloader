@@ -71,9 +71,9 @@ func (pl *PlayList) StopAll() {
 	pl.CriticalUpdate()
 }
 
-func (pl *PlayList) SyncWithTime(url string, now float64) {
+func (pl *PlayList) SyncWithTime(url string, now float64) bool {
 	if pl.stopped {
-		return
+		return false
 	}
 
 	var item *song.PreloadedSong
@@ -86,7 +86,9 @@ func (pl *PlayList) SyncWithTime(url string, now float64) {
 	}
 	if item != nil {
 		item.PlaySongStartFrom(now)
+		return true
 	}
+	return false
 }
 
 func (pl *PlayList) UpdateRoomBrand() {
@@ -97,11 +99,11 @@ func (pl *PlayList) UpdateRoomBrand() {
 	}
 }
 
-func MarkURLPlaying(url string, now float64) {
+func MarkURLPlaying(url string, now float64) bool {
 	if currentPlaylist == nil {
-		return
+		return false
 	}
-	currentPlaylist.SyncWithTime(url, now)
+	return currentPlaylist.SyncWithTime(url, now)
 }
 
 func UpdateRoomName(roomName string) {
