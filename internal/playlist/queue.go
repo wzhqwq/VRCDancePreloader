@@ -34,7 +34,7 @@ func (pl *PlayList) RemoveItem(index int) {
 	pl.ItemsLock.Unlock()
 
 	item.RemoveFromList()
-	log.Println("Removed item", item.GetInfo().Title)
+	log.Println("Removed item", item.GetId())
 
 	pl.notifyChange(ItemsChange)
 	pl.CriticalUpdate()
@@ -46,20 +46,19 @@ func (pl *PlayList) InsertItem(item *song.PreloadedSong, beforeIndex int) {
 		return
 	}
 
-	if beforeIndex == -1 {
+	if beforeIndex == -1 || beforeIndex >= len(pl.Items) {
 		pl.ItemsLock.Lock()
 		pl.Items = append(pl.Items, item)
 		pl.ItemsLock.Unlock()
 
-		log.Println("Appended item", item.GetInfo().Title)
-	} else if beforeIndex < len(pl.Items) {
+		log.Println("Appended item", item.GetId())
+	} else {
 		pl.ItemsLock.Lock()
+		beforeItem := pl.Items[beforeIndex]
 		pl.Items = slices.Insert(pl.Items, beforeIndex, item)
 		pl.ItemsLock.Unlock()
 
-		log.Println("Inserted item", item.GetInfo().Title, "before", beforeIndex)
-	} else {
-		return
+		log.Println("Inserted item", item.GetId(), "before", beforeItem.GetId())
 	}
 
 	pl.notifyChange(ItemsChange)

@@ -1,13 +1,24 @@
 package watcher
 
 import (
+	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
+	"log"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
 func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
+	log.Println(
+		lo.Map(old, func(item *song.PreloadedSong, _ int) string {
+			return item.GetId()
+		}),
+		"->",
+		lo.Map(new, func(item queue.QueueItem, _ int) string {
+			return item.ToString()
+		}),
+	)
 	// do the lcs
 	lengths := make([][]int, len(old)+1)
 	for i := 0; i <= len(old); i++ {
@@ -43,9 +54,7 @@ func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
 			playlist.RemoveItem(x)
 		} else if y > 0 && lengths[x][y] == lengths[x][y-1] {
 			y--
-			if x == len(old) {
-				playlist.InsertItem(new[y], -1)
-			} else if x == 0 {
+			if x == 0 {
 				// inserting before currently playing song is prohibited
 				// instead we should clear and refill the queue
 				// to prevent an incorrect playing state

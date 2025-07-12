@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"fmt"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"regexp"
@@ -11,6 +12,7 @@ type QueueItem interface {
 	ToPreloaded() *song.PreloadedSong
 	MatchWithPreloaded(song *song.PreloadedSong) bool
 	GetAdder() string
+	ToString() string
 }
 
 type PyPyQueueItem struct {
@@ -47,6 +49,10 @@ func (item *PyPyQueueItem) MatchWithPreloaded(song *song.PreloadedSong) bool {
 
 func (item *PyPyQueueItem) GetAdder() string {
 	return item.PlayerName
+}
+
+func (item *PyPyQueueItem) ToString() string {
+	return fmt.Sprintf("pypy_%d", item.SongNum)
 }
 
 type WannaQueueItem struct {
@@ -107,4 +113,8 @@ func (item *WannaQueueItem) GetAdder() string {
 		return "Random"
 	}
 	return strings.Join(item.PlayerNames, ",")
+}
+
+func (item *WannaQueueItem) ToString() string {
+	return fmt.Sprintf("wanna_%d", item.SongID)
 }
