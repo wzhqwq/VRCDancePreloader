@@ -127,15 +127,15 @@ func ClearAndSetQueue(items []queue.QueueItem) {
 		return
 	}
 
+	if len(currentPlaylist.Items) == 1 && len(items) == 1 {
+		// better experience for random play
+		currentPlaylist.RemoveItem(0)
+		currentPlaylist.InsertItem(createFromQueueItem(items[0]), -1)
+		return
+	}
+
 	if len(currentPlaylist.Items) > 0 {
-		lastRoomName := currentPlaylist.RoomName
-		currentPlaylist.StopAll()
-
-		currentPlaylist = newPlayList(currentPlaylist.maxPreload)
-		currentPlaylist.RoomName = lastRoomName
-		currentPlaylist.UpdateRoomBrand()
-		notifyNewList(currentPlaylist)
-
+		resetPlaylist(currentPlaylist.RoomName)
 		log.Println("New playlist")
 	}
 
@@ -156,14 +156,9 @@ func EnterNewRoom(roomName string) {
 	}
 
 	if len(currentPlaylist.Items) > 0 {
-		currentPlaylist.StopAll()
-
-		currentPlaylist = newPlayList(currentPlaylist.maxPreload)
-		currentPlaylist.RoomName = roomName
-		currentPlaylist.UpdateRoomBrand()
-		notifyNewList(currentPlaylist)
+		resetPlaylist(roomName)
 	} else {
-		UpdateRoomName(roomName)
+		updateRoomName(roomName)
 	}
 }
 

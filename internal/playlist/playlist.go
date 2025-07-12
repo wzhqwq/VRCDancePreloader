@@ -91,7 +91,7 @@ func (pl *PlayList) SyncWithTime(url string, now float64) bool {
 	return false
 }
 
-func (pl *PlayList) UpdateRoomBrand() {
+func (pl *PlayList) updateRoomBrand() {
 	if brand := utils.IdentifyRoomBrand(pl.RoomName); brand != "" {
 		pl.RoomBrand = brand
 	} else {
@@ -106,13 +106,22 @@ func MarkURLPlaying(url string, now float64) bool {
 	return currentPlaylist.SyncWithTime(url, now)
 }
 
-func UpdateRoomName(roomName string) {
+func updateRoomName(roomName string) {
 	if currentPlaylist == nil {
 		return
 	}
 	currentPlaylist.RoomName = roomName
-	currentPlaylist.UpdateRoomBrand()
+	currentPlaylist.updateRoomBrand()
 	currentPlaylist.notifyChange(RoomChange)
+}
+
+func resetPlaylist(roomName string) {
+	currentPlaylist.StopAll()
+
+	currentPlaylist = newPlayList(currentPlaylist.maxPreload)
+	currentPlaylist.RoomName = roomName
+	currentPlaylist.updateRoomBrand()
+	notifyNewList(currentPlaylist)
 }
 
 func GetCurrentPlaylist() *PlayList {
