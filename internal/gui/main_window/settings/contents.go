@@ -11,26 +11,6 @@ import (
 	"strconv"
 )
 
-func CreateSettingsContainer() fyne.CanvasObject {
-	wholeContent := container.NewVBox(
-		createProxySettingsContent(),
-		widget.NewSeparator(),
-		createKeySettingsContent(),
-		widget.NewSeparator(),
-		createYoutubeSettingsContent(),
-		widget.NewSeparator(),
-		createPreloadSettingsContent(),
-		widget.NewSeparator(),
-		createDownloadSettingsContent(),
-		widget.NewSeparator(),
-		createCacheSettingsContent(),
-	)
-	scroll := container.NewVScroll(wholeContent)
-	scroll.SetMinSize(fyne.NewSize(300, 300))
-	scroll.Refresh()
-	return scroll
-}
-
 func createProxySettingsContent() fyne.CanvasObject {
 	proxyConfig := config.GetProxyConfig()
 
