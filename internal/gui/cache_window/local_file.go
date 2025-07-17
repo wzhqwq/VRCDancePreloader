@@ -1,4 +1,4 @@
-package cache_gui
+package cache_window
 
 import (
 	"fyne.io/fyne/v2"

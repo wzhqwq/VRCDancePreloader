@@ -3,7 +3,9 @@ package main
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tui"
 	"log"
 
 	"github.com/alexflint/go-arg"
@@ -12,8 +14,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/proxy"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song_ui/gui"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song_ui/tui"
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher"
 
 	"os"
@@ -159,10 +159,10 @@ func main() {
 			return
 		default:
 		}
-		gui.Start()
+		main_window.Start()
 		defer func() {
 			log.Println("Stopping GUI")
-			gui.Stop()
+			main_window.Stop()
 		}()
 
 		go func() {

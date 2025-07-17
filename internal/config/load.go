@@ -18,7 +18,7 @@ type ProxyConfig struct {
 	YoutubeApi   string `yaml:"youtube-api"`
 	YoutubeImage string `yaml:"youtube-image"`
 
-	ProxyControllers map[string]*ProxyController `yaml:"-"`
+	ProxyControllers map[string]*ProxyTester `yaml:"-"`
 }
 type YoutubeConfig struct {
 	EnableApi       bool `yaml:"enable-youtube-api"`

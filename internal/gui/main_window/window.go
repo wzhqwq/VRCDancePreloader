@@ -1,14 +1,14 @@
-package gui
+package main_window
 
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"github.com/wzhqwq/VRCDancePreloader/internal/config"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window/favorite"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window/history"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window/settings"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/window_app"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song_ui/gui/favorite"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song_ui/gui/history"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song_ui/gui/playlist"
 )
 
 func Start() {
@@ -25,7 +25,7 @@ func MainWindow() fyne.Window {
 		container.NewTabItem(i18n.T("btn_playlist"), playlist.NewPlaylistManager()),
 		container.NewTabItem(i18n.T("btn_history"), history.NewHistoryGui()),
 		container.NewTabItem(i18n.T("btn_favorites"), favorite.NewFavoritesGui()),
-		container.NewTabItem(i18n.T("btn_settings"), config.CreateSettingsContainer()),
+		container.NewTabItem(i18n.T("btn_settings"), settings.CreateSettingsContainer()),
 	)
 	w.SetContent(tabs)
 	w.SetPadded(false)

@@ -1,10 +1,11 @@
-package config
+package settings
 
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache/cache_gui"
+	"github.com/wzhqwq/VRCDancePreloader/internal/config"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/cache_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"strconv"
@@ -31,25 +32,29 @@ func CreateSettingsContainer() fyne.CanvasObject {
 }
 
 func createProxySettingsContent() fyne.CanvasObject {
+	proxyConfig := config.GetProxyConfig()
+
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_proxy")))
-	wholeContent.Add(NewProxyInput(config.Proxy.ProxyControllers["pypydance-api"], i18n.T("label_pypy_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["pypydance-api"].GetInput(i18n.T("label_pypy_proxy")))
 	//TODO cancel comment after implemented youtube preloading
-	//wholeContent.Add(NewProxyInput(config.Proxy.ProxyControllers["youtube-video"], i18n.T("label_yt_video_proxy")))
-	wholeContent.Add(NewProxyInput(config.Proxy.ProxyControllers["youtube-api"], i18n.T("label_yt_api_proxy")))
-	wholeContent.Add(NewProxyInput(config.Proxy.ProxyControllers["youtube-image"], i18n.T("label_yt_image_proxy")))
+	//wholeContent.Add(proxyConfig.ProxyControllers["youtube-video"].GetInput(i18n.T("label_yt_video_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["youtube-api"].GetInput(i18n.T("label_yt_api_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["youtube-image"].GetInput(i18n.T("label_yt_image_proxy")))
 
 	return wholeContent
 }
 
 func createKeySettingsContent() fyne.CanvasObject {
+	keyConfig := config.GetKeyConfig()
+
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_keys")))
 
-	youtubeKeyInput := widgets.NewInputWithSave(config.Keys.Youtube, i18n.T("label_yt_api_key"))
+	youtubeKeyInput := widgets.NewInputWithSave(keyConfig.Youtube, i18n.T("label_yt_api_key"))
 	youtubeKeyInput.OnSave = func() {
-		config.Keys.Youtube = youtubeKeyInput.Value
-		SaveConfig()
+		keyConfig.Youtube = youtubeKeyInput.Value
+		config.SaveConfig()
 	}
 
 	wholeContent.Add(youtubeKeyInput)
@@ -57,31 +62,34 @@ func createKeySettingsContent() fyne.CanvasObject {
 }
 
 func createYoutubeSettingsContent() fyne.CanvasObject {
+	proxyConfig := config.GetProxyConfig()
+	youtubeConfig := config.GetYoutubeConfig()
+
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_youtube")))
 
 	enableApiCheck := widget.NewCheck(i18n.T("label_yt_api_enable"), func(b bool) {
-		if config.Youtube.EnableApi == b {
+		if youtubeConfig.EnableApi == b {
 			return
 		}
-		config.Youtube.UpdateEnableApi(b)
-		if b && config.Proxy.ProxyControllers["youtube-api"].Status != ProxyStatusOk {
-			config.Proxy.ProxyControllers["youtube-api"].Test()
+		youtubeConfig.UpdateEnableApi(b)
+		if b {
+			proxyConfig.ProxyControllers["youtube-api"].TestIfNotOk()
 		}
 	})
-	enableApiCheck.Checked = config.Youtube.EnableApi
+	enableApiCheck.Checked = youtubeConfig.EnableApi
 	wholeContent.Add(enableApiCheck)
 
 	enableThumbnailCheck := widget.NewCheck(i18n.T("label_yt_thumbnail_enable"), func(b bool) {
-		if config.Youtube.EnableThumbnail == b {
+		if youtubeConfig.EnableThumbnail == b {
 			return
 		}
-		config.Youtube.UpdateEnableThumbnail(b)
-		if b && config.Proxy.ProxyControllers["youtube-image"].Status != ProxyStatusOk {
-			config.Proxy.ProxyControllers["youtube-image"].Test()
+		youtubeConfig.UpdateEnableThumbnail(b)
+		if b {
+			proxyConfig.ProxyControllers["youtube-image"].TestIfNotOk()
 		}
 	})
-	enableThumbnailCheck.Checked = config.Youtube.EnableThumbnail
+	enableThumbnailCheck.Checked = youtubeConfig.EnableThumbnail
 	wholeContent.Add(enableThumbnailCheck)
 
 	//TODO cancel comment after implemented youtube preloading
@@ -102,17 +110,19 @@ func createYoutubeSettingsContent() fyne.CanvasObject {
 }
 
 func createPreloadSettingsContent() fyne.CanvasObject {
+	preloadConfig := config.GetPreloadConfig()
+
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_preload")))
 
-	maxPreloadInput := widgets.NewInputWithSave(strconv.Itoa(config.Preload.MaxPreload), i18n.T("label_max_preload_count"))
+	maxPreloadInput := widgets.NewInputWithSave(strconv.Itoa(preloadConfig.MaxPreload), i18n.T("label_max_preload_count"))
 	maxPreloadInput.ForceDigits = true
 	maxPreloadInput.OnSave = func() {
 		count, err := strconv.Atoi(maxPreloadInput.Value)
 		if err != nil {
 			return
 		}
-		config.Preload.UpdateMaxPreload(count)
+		preloadConfig.UpdateMaxPreload(count)
 	}
 	wholeContent.Add(maxPreloadInput)
 
@@ -120,17 +130,19 @@ func createPreloadSettingsContent() fyne.CanvasObject {
 }
 
 func createDownloadSettingsContent() fyne.CanvasObject {
+	downloadConfig := config.GetDownloadConfig()
+
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_download")))
 
-	maxDownloadInput := widgets.NewInputWithSave(strconv.Itoa(config.Download.MaxDownload), i18n.T("label_max_parallel_download_count"))
+	maxDownloadInput := widgets.NewInputWithSave(strconv.Itoa(downloadConfig.MaxDownload), i18n.T("label_max_parallel_download_count"))
 	maxDownloadInput.ForceDigits = true
 	maxDownloadInput.OnSave = func() {
 		count, err := strconv.Atoi(maxDownloadInput.Value)
 		if err != nil {
 			return
 		}
-		config.Download.UpdateMaxDownload(count)
+		downloadConfig.UpdateMaxDownload(count)
 	}
 	wholeContent.Add(maxDownloadInput)
 
@@ -138,36 +150,38 @@ func createDownloadSettingsContent() fyne.CanvasObject {
 }
 
 func createCacheSettingsContent() fyne.CanvasObject {
+	cacheConfig := config.GetCacheConfig()
+
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_cache")))
 
-	pathInput := widgets.NewInputWithSave(config.Cache.Path, i18n.T("label_cache_path"))
+	pathInput := widgets.NewInputWithSave(cacheConfig.Path, i18n.T("label_cache_path"))
 	pathInput.OnSave = func() {
-		config.Cache.Path = pathInput.Value
-		SaveConfig()
+		cacheConfig.Path = pathInput.Value
+		config.SaveConfig()
 	}
 	wholeContent.Add(pathInput)
 
-	maxCacheInput := widgets.NewInputWithSave(strconv.Itoa(config.Cache.MaxCacheSize), i18n.T("label_max_cache_size"))
+	maxCacheInput := widgets.NewInputWithSave(strconv.Itoa(cacheConfig.MaxCacheSize), i18n.T("label_max_cache_size"))
 	maxCacheInput.ForceDigits = true
 	maxCacheInput.OnSave = func() {
 		size, err := strconv.Atoi(maxCacheInput.Value)
 		if err != nil {
 			return
 		}
-		config.Cache.UpdateMaxSize(size)
+		cacheConfig.UpdateMaxSize(size)
 	}
 	maxCacheInput.InputAppendItems = []fyne.CanvasObject{widget.NewLabel("MB")}
 	wholeContent.Add(maxCacheInput)
 
 	keepFavoriteCheck := widget.NewCheck(i18n.T("label_keep_favorites"), func(b bool) {
-		config.Cache.UpdateKeepFavorites(b)
+		cacheConfig.UpdateKeepFavorites(b)
 	})
-	keepFavoriteCheck.Checked = config.Cache.KeepFavorites
+	keepFavoriteCheck.Checked = cacheConfig.KeepFavorites
 	wholeContent.Add(keepFavoriteCheck)
 
 	manageBtn := widget.NewButton(i18n.T("btn_manage_cache"), func() {
-		cache_gui.OpenCacheWindow()
+		cache_window.OpenCacheWindow()
 	})
 	wholeContent.Add(container.NewPadded(manageBtn))
 

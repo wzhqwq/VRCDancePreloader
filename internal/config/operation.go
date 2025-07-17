@@ -30,7 +30,7 @@ func (hc *HijackConfig) UpdateEnablePWI(b bool) {
 
 func (pc *ProxyConfig) Init() {
 	//TODO cancel comment after implemented youtube preloading
-	pc.ProxyControllers = map[string]*ProxyController{
+	pc.ProxyControllers = map[string]*ProxyTester{
 		"pypydance-api": NewProxyController("pypydance-api", pc.Pypy),
 		"youtube-video": NewProxyController("youtube-video", pc.YoutubeVideo),
 		"youtube-api":   NewProxyController("youtube-api", pc.YoutubeApi),
