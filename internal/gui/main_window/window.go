@@ -21,12 +21,22 @@ func Stop() {
 func MainWindow() fyne.Window {
 	w := window_app.NewMainWindow(i18n.T("app_name"))
 
+	playlistGui := playlist.NewPlaylistManager()
+	historyGui := history.NewHistoryGui()
+	favoritesGui := favorite.NewFavoritesGui()
+	settingsGui := settings.CreateSettingsContainer()
+
 	tabs := container.NewAppTabs(
-		container.NewTabItem(i18n.T("btn_playlist"), playlist.NewPlaylistManager()),
-		container.NewTabItem(i18n.T("btn_history"), history.NewHistoryGui()),
-		container.NewTabItem(i18n.T("btn_favorites"), favorite.NewFavoritesGui()),
-		container.NewTabItem(i18n.T("btn_settings"), settings.CreateSettingsContainer()),
+		container.NewTabItem(i18n.T("btn_playlist"), playlistGui),
+		container.NewTabItem(i18n.T("btn_history"), historyGui),
+		container.NewTabItem(i18n.T("btn_favorites"), favoritesGui),
+		container.NewTabItem(i18n.T("btn_settings"), settingsGui),
 	)
+	tabs.OnSelected = func(item *container.TabItem) {
+		if tabs.SelectedIndex() == 2 {
+			favoritesGui.Activate()
+		}
+	}
 	w.SetContent(tabs)
 	w.SetPadded(false)
 

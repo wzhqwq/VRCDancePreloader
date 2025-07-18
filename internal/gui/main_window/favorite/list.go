@@ -28,6 +28,8 @@ type FavoritesGui struct {
 
 	stopCh         chan struct{}
 	favoriteChange *utils.EventSubscriber[string]
+
+	active bool
 }
 
 const pageSize = 5
@@ -50,14 +52,11 @@ func NewFavoritesGui() *FavoritesGui {
 		OrderOptions:  orderOptions,
 
 		Favorites: favorites,
-		entries:   persistence.GetLocalSongs().ListFavorites(0, pageSize, "id", true),
 
-		sortBy:     "id",
-		ascending:  true,
-		totalPages: favorites.CalculateTotalPages(pageSize),
+		sortBy:    "id",
+		ascending: true,
 
-		stopCh:         make(chan struct{}),
-		favoriteChange: favorites.SubscribeEvent(),
+		stopCh: make(chan struct{}),
 	}
 
 	g.ExtendBaseWidget(g)
@@ -67,6 +66,7 @@ func NewFavoritesGui() *FavoritesGui {
 
 func (fg *FavoritesGui) refreshItems() {
 	fg.entries = persistence.GetLocalSongs().ListFavorites(fg.page, pageSize, fg.sortBy, fg.ascending)
+	fg.totalPages = fg.Favorites.CalculateTotalPages(pageSize)
 	fg.Refresh()
 }
 
@@ -76,7 +76,6 @@ func (fg *FavoritesGui) RenderLoop() {
 		case <-fg.stopCh:
 			return
 		case <-fg.favoriteChange.Channel:
-			fg.totalPages = fg.Favorites.CalculateTotalPages(pageSize)
 			fyne.Do(func() {
 				fg.refreshItems()
 			})
@@ -138,11 +137,17 @@ func (fg *FavoritesGui) CreateRenderer() fyne.WidgetRenderer {
 		g: fg,
 	}
 
-	r.updateItems()
-
-	go fg.RenderLoop()
-
 	return r
+}
+
+func (fg *FavoritesGui) Activate() {
+	if fg.active {
+		return
+	}
+	fg.active = true
+	fg.refreshItems()
+	fg.favoriteChange = fg.Favorites.SubscribeEvent()
+	go fg.RenderLoop()
 }
 
 type favoritesGuiRenderer struct {
@@ -210,5 +215,7 @@ func (r *favoritesGuiRenderer) Refresh() {
 
 func (r *favoritesGuiRenderer) Destroy() {
 	close(r.g.stopCh)
-	r.g.favoriteChange.Close()
+	if r.g.favoriteChange != nil {
+		r.g.favoriteChange.Close()
+	}
 }
