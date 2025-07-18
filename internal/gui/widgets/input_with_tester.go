@@ -8,15 +8,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 )
 
-type Status string
-
-const (
-	StatusUnknown Status = "unknown"
-	StatusOk      Status = "ok"
-	StatusError   Status = "error"
-	StatusTesting Status = "testing"
-)
-
 type Tester interface {
 	Save(value string)
 	Test()

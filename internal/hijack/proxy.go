@@ -1,9 +1,10 @@
-package proxy
+package hijack
 
 import (
 	"bufio"
 	"context"
 	"errors"
+	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 	"log"
 	"net"
 	"net/http"
@@ -99,7 +100,7 @@ func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http
 	return req, nil
 }
 
-func Start(sites []string, enableHttps bool, port int) {
+func Start(sites []string, enableHttps bool, port int) error {
 	proxy = goproxy.NewProxyHttpServer()
 
 	// for http proxy using CONNECT first
@@ -110,8 +111,10 @@ func Start(sites []string, enableHttps bool, port int) {
 	// for https proxy
 	if enableHttps {
 		for _, site := range sites {
-			proxy.OnRequest(goproxy.ReqHostIs(site + ":443")).HandleConnect(goproxy.AlwaysMitm)
-			proxy.OnRequest(goproxy.ReqHostIs(site + ":443")).DoFunc(handleRequest)
+			if constants.IsHttpsSite(site) {
+				proxy.OnRequest(goproxy.ReqHostIs(site + ":443")).HandleConnect(goproxy.AlwaysMitm)
+				proxy.OnRequest(goproxy.ReqHostIs(site + ":443")).DoFunc(handleRequest)
+			}
 		}
 	}
 
@@ -123,11 +126,10 @@ func Start(sites []string, enableHttps bool, port int) {
 	runningServer = &http.Server{Addr: "127.0.0.1:" + strconv.Itoa(port), Handler: proxy}
 	log.Println("Starting proxy server on port", port)
 
-	go func() {
-		if err := runningServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("HTTP server error: %v", err)
-		}
-	}()
+	if err := runningServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
 }
 
 func SelfCheck() {

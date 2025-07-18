@@ -28,6 +28,17 @@ var allSites = []string{
 	"api.xin.moe",
 }
 
+var httpsSites = []string{
+	// PyPyDance
+
+	// WannaDance
+
+	// BiliBili
+	"www.bilibili.com",
+	"b23.tv",
+	"api.xin.moe",
+}
+
 func IsPyPySite(host string) bool {
 	return lo.IndexOf(pypySites, host) >= 0
 }
@@ -36,6 +47,9 @@ func IsWannaSite(host string) bool {
 }
 func IsBiliSite(host string) bool {
 	return lo.IndexOf(biliSites, host) >= 0
+}
+func IsHttpsSite(host string) bool {
+	return lo.IndexOf(httpsSites, host) >= 0
 }
 
 func AllPyPySites() []string {

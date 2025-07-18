@@ -1,4 +1,4 @@
-package proxy
+package hijack
 
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"

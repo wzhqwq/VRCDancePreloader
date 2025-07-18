@@ -34,6 +34,8 @@ type HijackConfig struct {
 	InterceptedSites []string `yaml:"intercepted-sites"`
 	EnableHttps      bool     `yaml:"enable-https"`
 	EnablePWI        bool     `yaml:"enable-pwi"`
+
+	HijackRunner *HijackServerRunner `yaml:"-"`
 }
 type DownloadConfig struct {
 	MaxDownload int `yaml:"max-parallel-download-count"`

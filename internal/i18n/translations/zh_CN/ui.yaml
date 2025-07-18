@@ -41,6 +41,8 @@
 - Key: app_name
   Default: "VRC跳舞房预加载器"
 
+- Key: label_hijack
+  Default: "请求劫持设置"
 - Key: label_proxy
   Default: "代理服务器"
 - Key: label_keys
@@ -53,6 +55,18 @@
   Default: "下载设置"
 - Key: label_cache
   Default: "缓存设置"
+
+- Key: label_hijack_proxy_port
+  Default: "提供代理劫持的服务器端口"
+- Key: label_hijack_enable_https
+  Default: "启用HTTPS劫持"
+- Key: label_hijack_intercepted_sites
+  Default: "需要拦截的站点"
+
+- Key: tip_port_malformed
+  Default: "端口格式错误"
+- Key: tip_hijack_server_running
+  Default: "运行着呢"
 
 - Key: label_pypy_proxy
   Default: "PyPyDance API代理服务器"

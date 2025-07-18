@@ -22,7 +22,7 @@ type ProxyTester struct {
 	Item  string
 }
 
-func NewProxyController(item, value string) *ProxyTester {
+func NewProxyTester(item, value string) *ProxyTester {
 	return &ProxyTester{
 		Status: widgets.StatusUnknown,
 		Value:  value,

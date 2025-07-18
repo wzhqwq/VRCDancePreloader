@@ -14,6 +14,7 @@ func CreateSettingsContainer() fyne.CanvasObject {
 		containers.NewResponsiveFrame(
 			3,
 			300,
+			widgets.NewCard(createHijackSettingsContent()),
 			widgets.NewCard(createProxySettingsContent()),
 			widgets.NewCard(createKeySettingsContent()),
 			widgets.NewCard(createYoutubeSettingsContent()),

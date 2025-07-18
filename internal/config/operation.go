@@ -3,9 +3,9 @@ package config
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/hijack"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
-	"github.com/wzhqwq/VRCDancePreloader/internal/proxy"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/service"
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
@@ -13,10 +13,36 @@ import (
 )
 
 func (hc *HijackConfig) Init() {
-	proxy.Start(hc.InterceptedSites, hc.EnableHttps, hc.ProxyPort)
+	hc.HijackRunner = NewHijackServerRunner()
+	hc.HijackRunner.Run()
 	if hc.EnablePWI {
 		service.StartPWIServer()
 	}
+}
+
+func (hc *HijackConfig) Stop() {
+	hijack.Stop()
+}
+
+func (hc *HijackConfig) UpdatePort(port int) {
+	hc.ProxyPort = port
+	SaveConfig()
+}
+
+func (hc *HijackConfig) startHijack() error {
+	return hijack.Start(hc.InterceptedSites, hc.EnableHttps, hc.ProxyPort)
+}
+
+func (hc *HijackConfig) UpdateEnableHttps(b bool) {
+	hc.EnableHttps = b
+	hc.HijackRunner.Run()
+	SaveConfig()
+}
+
+func (hc *HijackConfig) UpdateSites(sites []string) {
+	hc.InterceptedSites = sites
+	hc.HijackRunner.Run()
+	SaveConfig()
 }
 
 func (hc *HijackConfig) UpdateEnablePWI(b bool) {
@@ -31,10 +57,10 @@ func (hc *HijackConfig) UpdateEnablePWI(b bool) {
 func (pc *ProxyConfig) Init() {
 	//TODO cancel comment after implemented youtube preloading
 	pc.ProxyControllers = map[string]*ProxyTester{
-		"pypydance-api": NewProxyController("pypydance-api", pc.Pypy),
-		"youtube-video": NewProxyController("youtube-video", pc.YoutubeVideo),
-		"youtube-api":   NewProxyController("youtube-api", pc.YoutubeApi),
-		"youtube-image": NewProxyController("youtube-image", pc.YoutubeImage),
+		"pypydance-api": NewProxyTester("pypydance-api", pc.Pypy),
+		"youtube-video": NewProxyTester("youtube-video", pc.YoutubeVideo),
+		"youtube-api":   NewProxyTester("youtube-api", pc.YoutubeApi),
+		"youtube-image": NewProxyTester("youtube-image", pc.YoutubeImage),
 	}
 
 	requesting.InitPypyClient(pc.Pypy)

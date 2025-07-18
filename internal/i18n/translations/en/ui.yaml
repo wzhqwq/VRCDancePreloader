@@ -41,6 +41,8 @@
 - Key: app_name
   Default: "VRC Dancing Room Preloader"
 
+- Key: label_hijack
+  Default: "Request hijacking settings"
 - Key: label_proxy
   Default: "Proxy server"
 - Key: label_keys
@@ -53,6 +55,18 @@
   Default: "Download settings"
 - Key: label_cache
   Default: "Cache settings"
+
+- Key: label_hijack_proxy_port
+  Default: "Server port for proxy hijacking"
+- Key: label_hijack_enable_https
+  Default: "Enable HTTPS hijacking"
+- Key: label_hijack_intercepted_sites
+  Default: "Sites to be intercepted"
+
+- Key: tip_port_malformed
+  Default: "Incorrect port format"
+- Key: tip_hijack_server_running
+  Default: "I'm running"
 
 - Key: label_pypy_proxy
   Default: "Proxy server for PyPyDance API"

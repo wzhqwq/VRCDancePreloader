@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tui"
@@ -13,7 +14,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/window_app"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
-	"github.com/wzhqwq/VRCDancePreloader/internal/proxy"
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher"
 
 	"os"
@@ -43,6 +43,11 @@ func main() {
 	// Apply build tag
 	if build_gui_on {
 		args.GuiEnabled = true
+	}
+
+	// gui state
+	if args.GuiEnabled {
+		global_state.RunInGui()
 	}
 
 	// Apply argument config
@@ -137,7 +142,7 @@ func main() {
 	config.GetHijackConfig().Init()
 	defer func() {
 		log.Println("Stopping proxy")
-		proxy.Stop()
+		config.GetHijackConfig().Stop()
 	}()
 
 	if args.TuiEnabled {
@@ -151,9 +156,7 @@ func main() {
 			log.Println("Stopping TUI")
 			tui.Stop()
 		}()
-	}
-
-	if args.GuiEnabled {
+	} else if args.GuiEnabled {
 		select {
 		case <-osSignalCh:
 			return

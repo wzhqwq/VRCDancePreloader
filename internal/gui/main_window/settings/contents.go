@@ -11,6 +11,27 @@ import (
 	"strconv"
 )
 
+func createHijackSettingsContent() fyne.CanvasObject {
+	hijackConfig := config.GetHijackConfig()
+
+	wholeContent := container.NewVBox()
+	wholeContent.Add(widget.NewLabel(i18n.T("label_hijack")))
+
+	wholeContent.Add(hijackConfig.HijackRunner.GetInput(i18n.T("label_hijack_proxy_port")))
+
+	enableHttpsCb := widget.NewCheck(i18n.T("label_hijack_enable_https"), func(b bool) {
+		if hijackConfig.EnableHttps == b {
+			return
+		}
+		hijackConfig.UpdateEnableHttps(b)
+	})
+	wholeContent.Add(enableHttpsCb)
+
+	wholeContent.Add(config.NewMultiSelectSites(hijackConfig.InterceptedSites))
+
+	return wholeContent
+}
+
 func createProxySettingsContent() fyne.CanvasObject {
 	proxyConfig := config.GetProxyConfig()
 
