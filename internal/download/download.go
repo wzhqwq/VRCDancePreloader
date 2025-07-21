@@ -1,13 +1,16 @@
 package download
 
 import (
+	"errors"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"io"
 	"log"
 	"sync"
 )
 
-type DownloadState struct {
+var ErrCanceled = errors.New("task canceled")
+
+type State struct {
 	sync.Mutex
 
 	ID string
@@ -21,82 +24,78 @@ type DownloadState struct {
 	Pending bool
 	Error   error
 
-	StateCh    chan *DownloadState
+	StateCh    chan *State
 	CancelCh   chan bool
 	PriorityCh chan int
 }
 
-func (ds *DownloadState) Write(p []byte) (int, error) {
+func (ds *State) Write(p []byte) (int, error) {
 	select {
 	case <-ds.CancelCh:
-		return 0, io.ErrClosedPipe
+		return 0, ErrCanceled
 	default:
-		ds.BlockIfPending()
-		n := len(p)
-		ds.DownloadedSize += int64(n)
-		ds.StateCh <- ds
-		return n, nil
+		if ds.BlockIfPending() {
+			n := len(p)
+			ds.DownloadedSize += int64(n)
+			ds.StateCh <- ds
+			return n, nil
+		} else {
+			return 0, ErrCanceled
+		}
 	}
 }
-func (ds *DownloadState) BlockIfPending() bool {
+
+// BlockIfPending keeps blocked until this task is able to continue or is canceled (returning false)
+func (ds *State) BlockIfPending() bool {
+	var priority int
 	select {
-	case p := <-ds.PriorityCh:
-		if dm.CanDownload(p) {
+	case priority = <-ds.PriorityCh:
+		// continue checking
+	default:
+		// This means the priority have not been changed since the previous pending check
+		// which approved the downloading task to continue
+		return true
+	}
+
+	for {
+		if dm.CanDownload(priority) {
 			if ds.Pending {
 				ds.Pending = false
 				ds.StateCh <- ds
+				log.Printf("Continue download task %s\n", ds.ID)
 			}
-			log.Printf("%s now can continue download\n", ds.ID)
 			return true
 		} else {
-			log.Printf("%s is now pending, priority %d\n", ds.ID, p)
 			if !ds.Pending {
 				ds.Pending = true
 				ds.StateCh <- ds
+				log.Printf("Paused download task %s, because its priority is %d\n", ds.ID, priority)
 			}
 		}
-	default:
-		return true
-	}
-	for {
 		select {
 		case <-ds.CancelCh:
 			return false
-		case p := <-ds.PriorityCh:
-			if dm.CanDownload(p) {
-				if ds.Pending {
-					ds.Pending = false
-					ds.StateCh <- ds
-				}
-				log.Printf("%s now can continue download\n", ds.ID)
-				return true
-			} else {
-				log.Printf("%s is now pending, priority %d\n", ds.ID, p)
-				if !ds.Pending {
-					ds.Pending = true
-					ds.StateCh <- ds
-				}
-			}
+		case priority = <-ds.PriorityCh:
+			// continue checking
 		}
 	}
 }
-func (ds *DownloadState) unlockAndNotify() {
+func (ds *State) unlockAndNotify() {
 	ds.Unlock()
 	ds.StateCh <- ds
 }
 
-func (ds *DownloadState) progressiveDownload(body io.ReadCloser, writer io.Writer) error {
+func (ds *State) progressiveDownload(body io.ReadCloser, writer io.Writer) error {
 	// Write the body to file, while showing progress of the download
 	_, err := io.Copy(writer, io.TeeReader(body, ds))
 	if err != nil {
-		log.Println(err.Error())
 		return err
 	}
 
 	return nil
 }
 
-func Download(id string) *DownloadState {
+func Download(id string) *State {
 	ds := dm.CreateOrGetState(id)
 	if ds == nil {
 		return nil
@@ -115,7 +114,10 @@ func Download(id string) *DownloadState {
 
 		// Otherwise we start downloading, the total size is unknown
 		ds.TotalSize = 0
-		ds.BlockIfPending()
+		if !ds.BlockIfPending() {
+			log.Printf("Canceled download task %s\n", ds.ID)
+			return
+		}
 
 		entry := ds.cacheEntry
 		ds.TotalSize = entry.TotalLen()
@@ -123,7 +125,7 @@ func Download(id string) *DownloadState {
 		body, err := entry.GetDownloadBody()
 		if err != nil {
 			ds.Error = err
-			log.Println("Start Downloading error")
+			log.Println("Start Downloading error:", err.Error())
 			return
 		}
 		defer body.Close()
@@ -137,14 +139,19 @@ func Download(id string) *DownloadState {
 		err = ds.progressiveDownload(body, entry)
 		if err != nil {
 			ds.Error = err
-			log.Println("Downloading error")
+			if errors.Is(err, ErrCanceled) {
+				// canceled task
+				log.Printf("Canceled download task %s\n", ds.ID)
+			} else {
+				log.Println("Downloading error:", err.Error())
+			}
 			return
 		}
 
 		err = entry.Save()
 		if err != nil {
 			ds.Error = err
-			log.Println("Saving error")
+			log.Println("Saving error:", err.Error())
 			return
 		}
 

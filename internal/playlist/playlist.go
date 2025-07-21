@@ -1,6 +1,8 @@
 package playlist
 
 import (
+	"github.com/samber/lo"
+	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -44,16 +46,7 @@ func (pl *PlayList) Start() {
 	}
 	pl.started = true
 
-	go func() {
-		pl.Preload()
-		for {
-			<-pl.criticalUpdateCh
-			if pl.stopped {
-				return
-			}
-			pl.Preload()
-		}
-	}()
+	go pl.preloadLoop()
 }
 
 func (pl *PlayList) StopAll() {
@@ -63,6 +56,11 @@ func (pl *PlayList) StopAll() {
 	pl.stopped = true
 
 	items := pl.GetItemsSnapshot()
+	download.CancelDownload(
+		lo.Map(items, func(item *song.PreloadedSong, _ int) string {
+			return item.GetId()
+		})...,
+	)
 	for _, item := range items {
 		item.RemoveFromList()
 	}

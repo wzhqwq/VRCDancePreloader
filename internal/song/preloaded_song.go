@@ -218,9 +218,10 @@ func (ps *PreloadedSong) PreloadSong() {
 	}
 }
 func (ps *PreloadedSong) PrioritizeSong() {
-	if ps.sm.DownloadStatus == Pending {
-		ps.sm.Prioritize()
-	}
+	ps.sm.Prioritize()
+}
+func (ps *PreloadedSong) InDownloadQueue() bool {
+	return ps.sm.IsDownloadLoopStarted()
 }
 func (ps *PreloadedSong) RemoveFromList() {
 	ps.sm.RemoveFromList()

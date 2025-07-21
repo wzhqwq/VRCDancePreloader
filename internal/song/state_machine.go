@@ -114,12 +114,12 @@ func (sm *StateMachine) StartDownload() {
 	}
 }
 func (sm *StateMachine) Prioritize() {
-	if sm.IsPlayingLoopStarted() {
+	if sm.IsDownloadLoopStarted() {
 		download.Prioritize(sm.ps.GetId())
 	}
 }
 
-func (sm *StateMachine) StartDownloadLoop(ds *download.DownloadState) {
+func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 	sm.completeSongWg.Add(1)
 	defer sm.completeSongWg.Done()
 	for {

@@ -6,12 +6,12 @@ func InitDownloadManager(maxParallel int) {
 	dm = newDownloadManager(maxParallel)
 }
 
-func CancelDownload(id string) {
-	dm.CancelDownload(id)
+func CancelDownload(ids ...string) {
+	dm.CancelDownload(ids...)
 }
 
-func Prioritize(id string) {
-	dm.Prioritize(id)
+func Prioritize(ids ...string) {
+	dm.Prioritize(ids...)
 }
 
 func StopAllAndWait() {

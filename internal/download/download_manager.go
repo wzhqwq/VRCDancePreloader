@@ -1,8 +1,8 @@
 package download
 
 import (
+	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
-	"log"
 	"sync"
 )
 
@@ -10,19 +10,19 @@ type downloadManager struct {
 	sync.Mutex
 	//utils.LoggingMutex
 
-	stateMap    map[string]*DownloadState
+	stateMap    map[string]*State
 	queue       []string
 	maxParallel int
 }
 
 func newDownloadManager(maxParallel int) *downloadManager {
 	return &downloadManager{
-		stateMap:    make(map[string]*DownloadState),
+		stateMap:    make(map[string]*State),
 		queue:       make([]string, 0),
 		maxParallel: maxParallel,
 	}
 }
-func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
+func (dm *downloadManager) CreateOrGetState(id string) *State {
 	dm.Lock()
 	defer dm.unlockAndUpdate()
 
@@ -32,12 +32,12 @@ func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 		if err != nil {
 			return nil
 		}
-		ds = &DownloadState{
+		ds = &State{
 			ID: id,
 
 			cacheEntry: cacheEntry,
 
-			StateCh:    make(chan *DownloadState, 10),
+			StateCh:    make(chan *State, 10),
 			CancelCh:   make(chan bool, 10),
 			PriorityCh: make(chan int, 10),
 
@@ -56,13 +56,15 @@ func (dm *downloadManager) CreateOrGetState(id string) *DownloadState {
 
 	return ds
 }
-func (dm *downloadManager) CancelDownload(id string) {
+func (dm *downloadManager) CancelDownload(ids ...string) {
 	dm.Lock()
 	defer dm.unlockAndUpdate()
 
-	if ds, ok := dm.stateMap[id]; ok {
-		close(ds.CancelCh)
-		delete(dm.stateMap, id)
+	for _, id := range ids {
+		if ds, ok := dm.stateMap[id]; ok {
+			close(ds.CancelCh)
+			delete(dm.stateMap, id)
+		}
 	}
 }
 func (dm *downloadManager) UpdatePriorities() {
@@ -72,13 +74,14 @@ func (dm *downloadManager) UpdatePriorities() {
 		return
 	}
 
-	for i := 0; i < len(dm.queue); i++ {
-		ds, ok := dm.stateMap[dm.queue[i]]
-		if !ok || ds.Done {
-			dm.queue = append(dm.queue[:i], dm.queue[i+1:]...)
-			i--
-		} else {
-			log.Printf("Priority of %s: %d\n", dm.queue[i], i)
+	dm.queue = lo.Filter(dm.queue, func(id string, _ int) bool {
+		ds, ok := dm.stateMap[id]
+		return ok && !ds.Done
+	})
+	//log.Println("Download queue:", dm.queue)
+	for i, id := range dm.queue {
+		ds := dm.stateMap[id]
+		if ds != nil {
 			ds.PriorityCh <- i
 		}
 	}
@@ -94,22 +97,16 @@ func (dm *downloadManager) SetMaxParallel(max int) {
 	dm.maxParallel = max
 	dm.UpdatePriorities()
 }
-func (dm *downloadManager) Prioritize(id string) {
+func (dm *downloadManager) Prioritize(ids ...string) {
 	dm.Lock()
 	defer dm.unlockAndUpdate()
-	if _, ok := dm.stateMap[id]; ok {
-		index := -1
-		for i, v := range dm.queue {
-			if v == id {
-				index = i
-				break
-			}
-		}
-		if index != -1 {
-			dm.queue = append(dm.queue[:index], dm.queue[index+1:]...)
-			dm.queue = append([]string{id}, dm.queue...)
-		}
-	}
+
+	dm.queue = append(
+		ids,
+		lo.Reject(dm.queue, func(id string, _ int) bool {
+			return lo.Contains(ids, id)
+		})...,
+	)
 }
 
 func (dm *downloadManager) CancelAllAndWait() {
