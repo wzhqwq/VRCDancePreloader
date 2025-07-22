@@ -1,6 +1,9 @@
 package download
 
+import "github.com/wzhqwq/VRCDancePreloader/internal/utils"
+
 var dm *downloadManager = nil
+var logger = utils.NewUniqueLogger()
 
 func InitDownloadManager(maxParallel int) {
 	dm = newDownloadManager(maxParallel)

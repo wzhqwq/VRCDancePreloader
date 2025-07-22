@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"io"
-	"log"
 	"sync"
 )
 
@@ -62,14 +61,14 @@ func (ds *State) BlockIfPending() bool {
 			if ds.Pending {
 				ds.Pending = false
 				ds.StateCh <- ds
-				log.Printf("Continue download task %s\n", ds.ID)
+				logger.InfoLn("Continue download task", ds.ID)
 			}
 			return true
 		} else {
 			if !ds.Pending {
 				ds.Pending = true
 				ds.StateCh <- ds
-				log.Printf("Paused download task %s, because its priority is %d\n", ds.ID, priority)
+				logger.InfoLnf("Paused download task %s, because its priority is %d", ds.ID, priority)
 			}
 		}
 		select {
@@ -115,7 +114,7 @@ func Download(id string) *State {
 		// Otherwise we start downloading, the total size is unknown
 		ds.TotalSize = 0
 		if !ds.BlockIfPending() {
-			log.Printf("Canceled download task %s\n", ds.ID)
+			logger.InfoLn("Canceled download task", ds.ID)
 			return
 		}
 
@@ -125,7 +124,7 @@ func Download(id string) *State {
 		body, err := entry.GetDownloadBody()
 		if err != nil {
 			ds.Error = err
-			log.Println("Start Downloading error:", err.Error())
+			logger.ErrorLn("Start Downloading error:", err.Error())
 			return
 		}
 		defer body.Close()
@@ -141,9 +140,9 @@ func Download(id string) *State {
 			ds.Error = err
 			if errors.Is(err, ErrCanceled) {
 				// canceled task
-				log.Printf("Canceled download task %s\n", ds.ID)
+				logger.InfoLn("Canceled download task", ds.ID)
 			} else {
-				log.Println("Downloading error:", err.Error())
+				logger.ErrorLn("Downloading error:", err.Error())
 			}
 			return
 		}
@@ -151,7 +150,7 @@ func Download(id string) *State {
 		err = entry.Save()
 		if err != nil {
 			ds.Error = err
-			log.Println("Saving error:", err.Error())
+			logger.ErrorLn("Saving error:", err.Error())
 			return
 		}
 

@@ -78,7 +78,7 @@ func (dm *downloadManager) UpdatePriorities() {
 		ds, ok := dm.stateMap[id]
 		return ok && !ds.Done
 	})
-	//log.Println("Download queue:", dm.queue)
+	logger.InfoLn("Download queue:", dm.queue)
 	for i, id := range dm.queue {
 		ds := dm.stateMap[id]
 		if ds != nil {
