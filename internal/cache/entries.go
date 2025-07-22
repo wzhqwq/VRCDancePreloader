@@ -80,7 +80,10 @@ func (e *DirectDownloadEntry) GetReadSeekCloser() io.ReadSeekCloser {
 }
 
 func (e *DirectDownloadEntry) GetDownloadBody() (io.ReadCloser, error) {
-	return e.requestBody(e.videoUrl, e.getIncompleteSize())
+	offset := e.getIncompleteSize()
+	rc, length, err := e.requestBody(e.videoUrl, offset)
+	e.totalLen = length + offset
+	return rc, err
 }
 
 type BiliBiliEntry struct {
@@ -126,7 +129,10 @@ func (e *BiliBiliEntry) GetDownloadBody() (io.ReadCloser, error) {
 			return nil, err
 		}
 	}
-	return e.requestBody(e.videoUrl, e.getIncompleteSize())
+	offset := e.getIncompleteSize()
+	rc, length, err := e.requestBody(e.videoUrl, offset)
+	e.totalLen = length + offset
+	return rc, err
 }
 
 type YouTubeEntry struct {

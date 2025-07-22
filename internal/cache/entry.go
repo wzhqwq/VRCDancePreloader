@@ -74,16 +74,15 @@ func (e *BaseEntry) requestInfo(url string) (int64, string) {
 	if res.StatusCode >= 400 {
 		return 0, url
 	}
-	location := res.Header.Get("Location")
-	if location == "" {
-		return res.ContentLength, url
+	if location := res.Header.Get("Location"); location != "" {
+		return res.ContentLength, location
 	}
-	return res.ContentLength, location
+	return res.ContentLength, url
 }
-func (e *BaseEntry) requestBody(url string, offset int64) (io.ReadCloser, error) {
+func (e *BaseEntry) requestBody(url string, offset int64) (io.ReadCloser, int64, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	if offset > 0 {
@@ -91,13 +90,20 @@ func (e *BaseEntry) requestBody(url string, offset int64) (io.ReadCloser, error)
 	}
 	res, err := e.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	if offset == 0 || res.StatusCode == http.StatusPartialContent {
-		return res.Body, nil
+	if offset > 0 {
+		if res.StatusCode != http.StatusPartialContent {
+			return nil, 0, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		}
+		return res.Body, res.ContentLength, nil
+	} else {
+		if res.StatusCode != http.StatusOK {
+			return nil, 0, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		}
+		return res.Body, res.ContentLength, nil
 	}
-	return nil, fmt.Errorf(res.Status)
 }
 
 // adapters
