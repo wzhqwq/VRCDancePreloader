@@ -209,11 +209,12 @@ func (ps *PreloadedSong) PlaySongStartFrom(offset float64) {
 		}()
 	}
 }
+func (ps *PreloadedSong) CancelPlaying() {
+	ps.sm.CancelPlayingLoop()
+}
+
 func (ps *PreloadedSong) PreloadSong() {
-	if ps.sm.DownloadStatus == NotAvailable {
-		return
-	}
-	if ps.sm.DownloadStatus == Initial || ps.sm.DownloadStatus == Failed {
+	if ps.sm.CanPreload() {
 		ps.sm.StartDownload()
 	}
 }

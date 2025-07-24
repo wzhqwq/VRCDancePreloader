@@ -1,12 +1,14 @@
 package playlist
 
 import (
+	"context"
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 	"log"
 	"slices"
+	"time"
 )
 
 func (pl *PlayList) GetItemsSnapshot() []*song.PreloadedSong {
@@ -36,8 +38,37 @@ func (pl *PlayList) RemoveItem(index int) {
 	item.RemoveFromList()
 	log.Println("Removed item", item.GetId())
 
-	pl.notifyChange(ItemsChange)
-	pl.CriticalUpdate()
+	if pl.bulk {
+		pl.dirty = true
+	} else {
+		pl.notifyChange(ItemsChange)
+		pl.CriticalUpdate()
+	}
+}
+
+// PullOutItem is the same as RemoveItem, except that it won't stop the lifecycle of selected item
+func (pl *PlayList) PullOutItem(index int) {
+	if pl.stopped {
+		return
+	}
+	if index >= len(pl.Items) {
+		return
+	}
+
+	item := pl.Items[index]
+
+	pl.ItemsLock.Lock()
+	pl.Items = slices.Delete(pl.Items, index, index+1)
+	pl.ItemsLock.Unlock()
+
+	log.Println("Pulled out item", item.GetId())
+
+	if pl.bulk {
+		pl.dirty = true
+	} else {
+		pl.notifyChange(ItemsChange)
+		pl.CriticalUpdate()
+	}
 }
 
 // InsertItem must be in the watcher routine
@@ -61,8 +92,32 @@ func (pl *PlayList) InsertItem(item *song.PreloadedSong, beforeIndex int) {
 		log.Println("Inserted item", item.GetId(), "before", beforeItem.GetId())
 	}
 
-	pl.notifyChange(ItemsChange)
-	pl.CriticalUpdate()
+	if pl.bulk {
+		pl.dirty = true
+	} else {
+		pl.notifyChange(ItemsChange)
+		pl.CriticalUpdate()
+	}
+}
+
+func (pl *PlayList) BulkUpdate(ctx context.Context) {
+	if pl.bulk {
+		return
+	}
+	pl.bulk = true
+	pl.dirty = false
+	go func() {
+		select {
+		case <-ctx.Done():
+			if !pl.stopped && pl.dirty {
+				pl.notifyChange(ItemsChange)
+				pl.CriticalUpdate()
+			}
+		case <-time.After(time.Second * 1):
+			// never reach here
+		}
+		pl.bulk = false
+	}()
 }
 
 // FromList must be in the watcher routine
@@ -119,6 +174,23 @@ func InsertItem(item queue.QueueItem, beforeIndex int) {
 		return
 	}
 	currentPlaylist.InsertItem(createFromQueueItem(item), beforeIndex)
+}
+
+func PullOutItem(index int) {
+	if currentPlaylist == nil {
+		return
+	}
+	currentPlaylist.PullOutItem(index)
+}
+
+// BulkUpdate freeze auto-update until cancel function is called or 300ms timeout is reached
+func BulkUpdate(ctx context.Context) context.CancelFunc {
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Millisecond*300)
+	if currentPlaylist == nil {
+		return cancel
+	}
+	currentPlaylist.BulkUpdate(timeoutCtx)
+	return cancel
 }
 
 // ClearAndSetQueue must be in the watcher routine

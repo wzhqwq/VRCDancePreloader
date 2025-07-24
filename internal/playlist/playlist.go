@@ -21,6 +21,9 @@ type PlayList struct {
 	started bool
 	stopped bool
 
+	bulk  bool
+	dirty bool
+
 	// event
 	em *utils.EventManager[ChangeType]
 

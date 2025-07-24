@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"context"
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 	"log"
@@ -9,7 +10,31 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
+type queueMutation struct {
+	index int
+	item  queue.QueueItem
+}
+
+func insertMutation(index int, item queue.QueueItem) queueMutation {
+	return queueMutation{index: index, item: item}
+}
+func deleteMutation(index int) queueMutation {
+	return queueMutation{index: index}
+}
+
 func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
+	if len(old) == len(new) {
+		allTheSame := true
+		for i := 0; i < len(old); i++ {
+			if !new[i].MatchWithPreloaded(old[i]) {
+				allTheSame = false
+			}
+		}
+		if allTheSame {
+			return
+		}
+	}
+
 	log.Println(
 		lo.Map(old, func(item *song.PreloadedSong, _ int) string {
 			return item.GetId()
@@ -46,26 +71,44 @@ func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
 		return
 	}
 
-	// read the substring out from the matrix
+	var insertedIndexes []int
+	var mutations []queueMutation
+
+	// collect all items to be inserted
 	x, y := len(old), len(new)
 	for x > 0 || y > 0 {
 		if x > 0 && lengths[x][y] == lengths[x-1][y] {
 			x--
-			playlist.RemoveItem(x)
+			mutations = append(mutations, deleteMutation(x))
 		} else if y > 0 && lengths[x][y] == lengths[x][y-1] {
 			y--
-			if x == 0 {
-				// inserting before currently playing song is prohibited
-				// instead we should clear and refill the queue
-				// to prevent an incorrect playing state
-				playlist.ClearAndSetQueue(new)
-				return
-			} else {
-				playlist.InsertItem(new[y], x)
-			}
+			insertedIndexes = append(insertedIndexes, y)
+			mutations = append(mutations, insertMutation(x, new[y]))
 		} else if x > 0 && y > 0 {
 			x--
 			y--
 		}
+	}
+
+	cancel := playlist.BulkUpdate(context.Background())
+	defer cancel()
+
+	for _, m := range mutations {
+		if m.item == nil {
+			insertMatched := lo.ContainsBy(insertedIndexes, func(i int) bool {
+				return new[i].MatchWithPreloaded(old[m.index])
+			})
+			if insertMatched {
+				playlist.PullOutItem(m.index)
+			} else {
+				playlist.RemoveItem(m.index)
+			}
+		} else {
+			playlist.InsertItem(m.item, m.index)
+		}
+	}
+
+	if len(old) > 0 && (len(new) == 0 || !new[0].MatchWithPreloaded(old[0])) {
+		old[0].CancelPlaying()
 	}
 }

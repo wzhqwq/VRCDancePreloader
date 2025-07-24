@@ -73,6 +73,9 @@ func (sm *StateMachine) IsDownloadLoopStarted() bool {
 func (sm *StateMachine) IsDownloadNeeded() bool {
 	return sm.DownloadStatus != Downloaded && sm.DownloadStatus != Removed && sm.DownloadStatus != NotAvailable
 }
+func (sm *StateMachine) CanPreload() bool {
+	return sm.DownloadStatus != NotAvailable && (sm.DownloadStatus == Initial || sm.DownloadStatus == Failed)
+}
 func (sm *StateMachine) IsPlayingLoopStarted() bool {
 	return sm.PlayStatus == Playing
 }
@@ -176,6 +179,16 @@ func (sm *StateMachine) PlaySongStartFrom(offset float64) {
 	if sm.PlayStatus == Queued {
 		go sm.StartPlayingLoop()
 	} else {
+		sm.ps.notifySubscribers(TimeChange)
+	}
+}
+
+func (sm *StateMachine) CancelPlayingLoop() {
+	if sm.DownloadStatus == Removed {
+		return
+	}
+	if sm.PlayStatus != Queued {
+		sm.PlayStatus = Queued
 		sm.ps.notifySubscribers(TimeChange)
 	}
 }
