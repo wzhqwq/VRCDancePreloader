@@ -7,6 +7,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"sync"
+	"time"
 )
 
 type PlayList struct {
@@ -72,7 +73,7 @@ func (pl *PlayList) StopAll() {
 	pl.CriticalUpdate()
 }
 
-func (pl *PlayList) SyncWithTime(url string, now float64) bool {
+func (pl *PlayList) SyncWithTime(url string, now time.Duration) bool {
 	if pl.stopped {
 		return false
 	}
@@ -100,7 +101,7 @@ func (pl *PlayList) updateRoomBrand() {
 	}
 }
 
-func MarkURLPlaying(url string, now float64) bool {
+func MarkURLPlaying(url string, now time.Duration) bool {
 	if currentPlaylist == nil {
 		return false
 	}

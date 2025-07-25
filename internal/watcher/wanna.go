@@ -6,12 +6,15 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 	"log"
 	"regexp"
+	"strings"
 )
 
 var wannaQueueInfoRegex = regexp.MustCompile(`(?:syncedQueuedInfoJson =|queue info serialized:) (\[.*])`)
 var wannaUserDataRegex = regexp.MustCompile(`userData = (\{.*}|Wanna Dance)`)
-var wannaVideoStartRegex = regexp.MustCompile(`OnVideoStart: Started video: ([^,]+)`)
+
+var wannaVideoStartRegex = regexp.MustCompile(`OnVideoStart: (Started|Paused) video: ([^,]+), since (.+)`)
 var wannaVideoEndRegex = regexp.MustCompile(`OnVideoEnd: Video \S+ ended`)
+
 var wannaVideoSyncRegex = regexp.MustCompile(`Syncing video to ([.\d]+)`)
 
 var wannaLastQueue = NewLastValue("")
@@ -68,12 +71,23 @@ func checkWannaLine(version int32, prefix []byte, content []byte) bool {
 	}
 
 	// OnVideoStart: Started video: http://api.udon.dance/Api/Songs/play?id=5247, since owner is playing
+	// OnVideoStart: Paused video: http://api.udon.dance/Api/Songs/play?id=1981, since owner isn't playing
+	// OnVideoStart: Started video: http://api.udon.dance/Api/Songs/play?id=3110, since I'm the owner
 	// It's always before "Syncing video to 12.37"
 	// So the old sync time is needed to cleared
 	matches = wannaVideoStartRegex.FindSubmatch(content)
 	if len(matches) > 1 {
-		wannaLastPlayedURL.Set(version, string(matches[1]))
-		wannaLastSyncTime.Set(version, "")
+		operation, url, reason := string(matches[1]), string(matches[2]), string(matches[3])
+		if operation == "Started" {
+			wannaLastPlayedURL.Set(version, url)
+			if strings.HasPrefix(reason, "I'm") {
+				// I'm the owner, so there's no offset
+				wannaLastSyncTime.Set(version, getTimeStampWithOffset(prefix, []byte("0.00")))
+			} else {
+				// clear old sync time
+				wannaLastSyncTime.Set(version, "")
+			}
+		}
 		return true
 	}
 

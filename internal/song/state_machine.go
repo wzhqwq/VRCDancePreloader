@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
-	"math"
 	"sync"
 	"time"
 )
@@ -50,6 +49,9 @@ type StateMachine struct {
 	// waiter
 	completeSongWg sync.WaitGroup
 
+	// channels
+	syncTimeCh chan time.Duration
+
 	// locks
 	timeMutex          sync.Mutex
 	startDownloadMutex sync.Mutex
@@ -60,6 +62,7 @@ func NewSongStateMachine() *StateMachine {
 		DownloadStatus: Initial,
 		PlayStatus:     Queued,
 		ps:             nil,
+		syncTimeCh:     make(chan time.Duration, 1),
 		completeSongWg: sync.WaitGroup{},
 		timeMutex:      sync.Mutex{},
 	}
@@ -167,14 +170,12 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 	}
 }
 
-func (sm *StateMachine) PlaySongStartFrom(offset float64) {
+func (sm *StateMachine) PlaySongStartFrom(offset time.Duration) {
 	if sm.PlayStatus == Ended {
 		return
 	}
 
-	sm.timeMutex.Lock()
-	sm.ps.TimePassed = offset
-	sm.timeMutex.Unlock()
+	sm.syncTimeCh <- offset
 
 	if sm.PlayStatus == Queued {
 		go sm.StartPlayingLoop()
@@ -195,19 +196,21 @@ func (sm *StateMachine) CancelPlayingLoop() {
 
 func (sm *StateMachine) StartPlayingLoop() {
 	sm.PlayStatus = Playing
-	sm.ps.notifySubscribers(TimeChange)
+	startTime := time.Now()
 	for {
 		if sm.PlayStatus != Playing {
 			break
 		}
 
-		sm.timeMutex.Lock()
-		nextTime := math.Floor(sm.ps.TimePassed+0.1) + 1.0
-		deltaSeconds := nextTime - sm.ps.TimePassed
-		sm.ps.TimePassed = nextTime
-		sm.timeMutex.Unlock()
-
-		<-time.After(time.Duration(deltaSeconds) * time.Second)
+		realTimePassed := time.Since(startTime)
+		nextTime := (sm.ps.TimePassed/time.Second + 1) * time.Second
+		delta := nextTime - realTimePassed
+		select {
+		case sm.ps.TimePassed = <-sm.syncTimeCh:
+			startTime = time.Now().Add(-sm.ps.TimePassed)
+		case <-time.After(delta):
+			sm.ps.TimePassed = nextTime
+		}
 
 		if nextTime >= sm.ps.Duration {
 			sm.PlayStatus = Ended
@@ -224,7 +227,9 @@ func (sm *StateMachine) RemoveFromList() {
 	sm.DownloadStatus = Removed
 	if sm.PlayStatus == Playing {
 		sm.PlayStatus = Ended
-		sm.ps.AddToHistory()
+		if sm.ps.TimePassed > 20*time.Second {
+			sm.ps.AddToHistory()
+		}
 	}
 	sm.ps.notifySubscribers(StatusChange)
 	download.CancelDownload(sm.ps.GetId())

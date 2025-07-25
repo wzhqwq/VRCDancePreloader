@@ -2,7 +2,6 @@ package song
 
 import (
 	"fmt"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 	"github.com/eduardolat/goeasyi18n"
@@ -104,7 +103,7 @@ func (ps *PreloadedSong) GetTimeInfo() PreloadedSongTimeInfo {
 		text = fmt.Sprintf("%s / %s", utils.PrettyTime(ps.TimePassed), text)
 	}
 	return PreloadedSongTimeInfo{
-		Progress:  ps.TimePassed / ps.Duration,
+		Progress:  float64(ps.TimePassed.Milliseconds()) / float64(ps.Duration.Milliseconds()),
 		Text:      text,
 		IsPlaying: ps.sm.PlayStatus == Playing,
 	}

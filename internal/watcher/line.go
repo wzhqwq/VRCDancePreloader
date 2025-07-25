@@ -61,21 +61,21 @@ func getTimeStampWithOffset(prefix []byte, offset []byte) string {
 	}
 	return string(timeStampText) + "-" + string(offset)
 }
-func parseTimeStampWithOffset(pair string) float64 {
+func parseTimeStampWithOffset(pair string) time.Duration {
 	timeStampText := pair[:19]
 	// TODO time zone
-	timeStamp, err := time.Parse("2006.01.02 15:04:05 -0700", string(timeStampText)+" +0800")
+	logTime, err := time.Parse("2006.01.02 15:04:05 -0700", string(timeStampText)+" +0800")
 	if err != nil {
 		return 0
 	}
 
 	offset := pair[20:]
-	nowFloat, err := strconv.ParseFloat(offset, 64)
+	syncSecond, err := strconv.ParseFloat(offset, 64)
 	if err != nil {
 		return 0
 	}
 
-	return nowFloat + time.Since(timeStamp).Seconds()
+	return time.Duration(syncSecond*float64(time.Second)) + time.Since(logTime)
 }
 func markURLPlaying(pair string, url string) bool {
 	now := parseTimeStampWithOffset(pair)

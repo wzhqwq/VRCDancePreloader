@@ -21,8 +21,8 @@ type PreloadedSong struct {
 	Unknown bool
 
 	// play progress states
-	Duration   float64
-	TimePassed float64
+	Duration   time.Duration
+	TimePassed time.Duration
 
 	// download progress states
 	TotalSize      int64
@@ -55,7 +55,7 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 	ret := &PreloadedSong{
 		sm: NewSongStateMachine(),
 
-		Duration: float64(song.End),
+		Duration: time.Duration(song.End) * time.Second,
 		PyPySong: song,
 
 		em: utils.NewEventManager[ChangeType](),
@@ -81,7 +81,7 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 	ret := &PreloadedSong{
 		sm: NewSongStateMachine(),
 
-		Duration:  float64(song.End),
+		Duration:  time.Duration(song.End) * time.Second,
 		WannaSong: song,
 
 		em: utils.NewEventManager[ChangeType](),
@@ -194,17 +194,18 @@ func (ps *PreloadedSong) MatchWithWannaId(id int) bool {
 
 // actions
 
-func (ps *PreloadedSong) PlaySongStartFrom(offset float64) {
+func (ps *PreloadedSong) PlaySongStartFrom(offset time.Duration) {
 	if ps.Duration > 1 {
 		ps.sm.PlaySongStartFrom(offset)
 		return
 	}
 
 	if ps.CustomSong != nil {
+		now := time.Now()
 		go func() {
-			ps.Duration = float64(ps.CustomSong.GetDuration())
+			ps.Duration = time.Duration(ps.CustomSong.GetDuration()) * time.Second
 			if ps.Duration > 1 {
-				ps.sm.PlaySongStartFrom(offset)
+				ps.sm.PlaySongStartFrom(offset + time.Now().Sub(now))
 			}
 		}()
 	}
@@ -229,6 +230,6 @@ func (ps *PreloadedSong) RemoveFromList() {
 }
 func (ps *PreloadedSong) AddToHistory() {
 	info := ps.GetInfo()
-	startTime := time.Now().Unix() - int64(ps.TimePassed)
+	startTime := time.Now().Add(-ps.TimePassed).Unix()
 	persistence.AddToHistory(info.ID, info.Title, ps.Adder, time.Unix(startTime, 0))
 }
