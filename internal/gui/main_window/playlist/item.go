@@ -267,6 +267,8 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 }
 
 func (r *ItemRenderer) Refresh() {
+	sizeChanged := false
+
 	if r.ig.statusChanged {
 		r.ig.statusChanged = false
 		status := r.ig.ps.GetStatusInfo()
@@ -276,9 +278,15 @@ func (r *ItemRenderer) Refresh() {
 
 		if status.PreloadError != nil {
 			r.ErrorText.Text = status.PreloadError.Error()
-			r.ErrorText.Show()
+			if r.ErrorText.Hidden {
+				r.ErrorText.Show()
+				sizeChanged = true
+			}
 		} else {
-			r.ErrorText.Hide()
+			if !r.ErrorText.Hidden {
+				r.ErrorText.Hide()
+				sizeChanged = true
+			}
 		}
 	}
 	if r.ig.progressChanged {
@@ -321,7 +329,7 @@ func (r *ItemRenderer) Refresh() {
 						r.Background.StrokeColor = c
 					},
 				).Start()
-				defer r.ig.listItem.NotifyUpdateMinSize()
+				sizeChanged = true
 			}
 		} else {
 			if r.PlayBar.Visible() {
@@ -334,12 +342,16 @@ func (r *ItemRenderer) Refresh() {
 						r.Background.StrokeColor = c
 					},
 				).Start()
-				defer r.ig.listItem.NotifyUpdateMinSize()
+				sizeChanged = true
 			}
 		}
 	}
 
 	canvas.Refresh(r.ig)
+
+	if sizeChanged {
+		r.ig.listItem.NotifyUpdateMinSize()
+	}
 }
 
 func (r *ItemRenderer) Objects() []fyne.CanvasObject {

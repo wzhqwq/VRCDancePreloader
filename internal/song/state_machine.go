@@ -128,6 +128,9 @@ func (sm *StateMachine) Prioritize() {
 func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 	sm.completeSongWg.Add(1)
 	defer sm.completeSongWg.Done()
+
+	sm.ps.PreloadError = nil
+
 	for {
 		select {
 		case <-ds.StateCh:
