@@ -128,7 +128,7 @@ func (pc *ProxyConfig) Test(item string) (bool, string) {
 
 func (kc *KeyConfig) Init() {
 	if config.Youtube.EnableApi {
-		if kc.Youtube == "" {
+		if kc.Youtube != "" {
 			third_party_api.YoutubeApiKey = kc.Youtube
 		} else {
 			log.Println("Youtube API feature is disabled because Youtube API key is missing")
