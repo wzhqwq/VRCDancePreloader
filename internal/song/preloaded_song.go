@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+var idIncrement int64 = 0
+
 type PreloadedSong struct {
 	sm         *StateMachine
 	PyPySong   *raw_song.PyPyDanceSong
@@ -19,6 +21,7 @@ type PreloadedSong struct {
 	// constant
 	Adder   string
 	Unknown bool
+	ID      int64
 
 	// play progress states
 	Duration   time.Duration
@@ -52,8 +55,11 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 			OriginalURL: []string{},
 		}
 	}
+	idIncrement++
 	ret := &PreloadedSong{
 		sm: NewSongStateMachine(),
+
+		ID: idIncrement,
 
 		Duration: time.Duration(song.End) * time.Second,
 		PyPySong: song,
@@ -78,8 +84,11 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 			End:   0,
 		}
 	}
+	idIncrement++
 	ret := &PreloadedSong{
 		sm: NewSongStateMachine(),
+
+		ID: idIncrement,
 
 		Duration:  time.Duration(song.End) * time.Second,
 		WannaSong: song,
@@ -91,10 +100,13 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 }
 
 func CreatePreloadedCustomSong(url string) *PreloadedSong {
+	idIncrement++
 	ret := &PreloadedSong{
 		sm: NewSongStateMachine(),
 
 		CustomSong: raw_song.FindOrCreateCustomSong(url),
+
+		ID: idIncrement,
 
 		em: utils.NewEventManager[ChangeType](),
 	}
@@ -104,8 +116,10 @@ func CreatePreloadedCustomSong(url string) *PreloadedSong {
 }
 
 func CreateUnknownSong() *PreloadedSong {
+	idIncrement++
 	ret := &PreloadedSong{
 		Unknown: true,
+		ID:      idIncrement,
 
 		sm: NewSongStateMachine(),
 		em: utils.NewEventManager[ChangeType](),
@@ -138,7 +152,7 @@ func (ps *PreloadedSong) GetDownloadUrl() string {
 	}
 	return ""
 }
-func (ps *PreloadedSong) GetId() string {
+func (ps *PreloadedSong) GetSongId() string {
 	if ps.Unknown {
 		// TODO unique id for unknown song
 		return "unknown"
@@ -163,7 +177,7 @@ func (ps *PreloadedSong) DownloadInstantly(complete bool) (cache.Entry, error) {
 		return nil, err
 	}
 
-	entry, err := cache.OpenCacheEntry(ps.GetId())
+	entry, err := cache.OpenCacheEntry(ps.GetSongId())
 	if err != nil {
 		return nil, err
 	}

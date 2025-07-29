@@ -58,11 +58,11 @@ func (it *ItemTui) RenderLoop() {
 				case song.Failed:
 					if it.pt != nil {
 						it.pt.MarkAsErrored()
-						log.Printf("Preload %s error: %s\n", it.ps.GetId(), it.ps.PreloadError.Error())
+						log.Printf("Preload %s error: %s\n", it.ps.GetSongId(), it.ps.PreloadError.Error())
 						it.pt = nil
 					}
 				case song.Removed:
-					it.plt.removeFromMap(it.ps.GetId())
+					it.plt.removeFromMap(it.ps.ID)
 					return
 				}
 				it.plt.Print()

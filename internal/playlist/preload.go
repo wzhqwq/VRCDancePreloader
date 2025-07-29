@@ -37,7 +37,7 @@ func (pl *PlayList) preload() {
 				if !item.InDownloadQueue() {
 					return "", false
 				}
-				return item.GetId(), true
+				return item.GetSongId(), true
 			},
 		)...,
 	)

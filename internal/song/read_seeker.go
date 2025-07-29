@@ -10,7 +10,7 @@ func (ps *PreloadedSong) GetSongRSSync() (io.ReadSeekCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	entry, err := cache.OpenCacheEntry(ps.GetId())
+	entry, err := cache.OpenCacheEntry(ps.GetSongId())
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,7 @@ func (ps *PreloadedSong) GetSongRSAsync() (io.ReadSeekCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	entry, err := cache.OpenCacheEntry(ps.GetId())
+	entry, err := cache.OpenCacheEntry(ps.GetSongId())
 	if err != nil {
 		return nil, err
 	}

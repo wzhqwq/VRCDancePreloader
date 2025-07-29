@@ -47,7 +47,7 @@ func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
 		timeChanged:     true,
 		progressChanged: true,
 	}
-	ig.listItem = containers.NewDynamicListItem(ps.GetId(), dl, ig)
+	ig.listItem = containers.NewDynamicListItem(ps.ID, dl, ig)
 
 	ig.ExtendBaseWidget(ig)
 
@@ -65,7 +65,7 @@ func (ig *ItemGui) RenderLoop() {
 				ig.statusChanged = true
 				switch ig.ps.GetPreloadStatus() {
 				case song.Removed:
-					ig.dl.RemoveItem(ig.ps.GetId(), true)
+					ig.dl.RemoveItem(ig.ps.ID, true)
 					return
 				}
 			case song.ProgressChange:

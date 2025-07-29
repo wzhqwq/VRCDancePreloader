@@ -16,7 +16,7 @@ type PlayListTui struct {
 
 	items   []*ItemTui
 	StopCh  chan struct{}
-	itemMap map[string]*ItemTui
+	itemMap map[int64]*ItemTui
 
 	stdoutMutex sync.Mutex
 	mapMutex    sync.Mutex
@@ -30,7 +30,7 @@ func NewPlayListTui(pl *playlist.PlayList) *PlayListTui {
 
 		items:   make([]*ItemTui, 0),
 		StopCh:  make(chan struct{}),
-		itemMap: make(map[string]*ItemTui),
+		itemMap: make(map[int64]*ItemTui),
 
 		stdoutMutex: sync.Mutex{},
 		mapMutex:    sync.Mutex{},
@@ -71,17 +71,17 @@ func (plt *PlayListTui) refreshItems() {
 	songs := plt.pl.GetItemsSnapshot()
 
 	plt.items = lo.Map(songs, func(ps *song.PreloadedSong, _ int) *ItemTui {
-		if item, ok := plt.itemMap[ps.GetId()]; ok {
+		if item, ok := plt.itemMap[ps.ID]; ok {
 			return item
 		}
 		newTui := NewSongTui(ps, plt)
-		plt.itemMap[ps.GetId()] = newTui
+		plt.itemMap[ps.ID] = newTui
 		go newTui.RenderLoop()
 		return newTui
 	})
 }
 
-func (plt *PlayListTui) removeFromMap(id string) {
+func (plt *PlayListTui) removeFromMap(id int64) {
 	plt.mapMutex.Lock()
 	defer plt.mapMutex.Unlock()
 	delete(plt.itemMap, id)

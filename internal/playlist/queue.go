@@ -36,7 +36,7 @@ func (pl *PlayList) RemoveItem(index int) {
 	pl.ItemsLock.Unlock()
 
 	item.RemoveFromList()
-	log.Println("Removed item", item.GetId())
+	log.Println("Removed item", item.GetSongId())
 
 	if pl.bulk {
 		pl.dirty = true
@@ -61,7 +61,7 @@ func (pl *PlayList) PullOutItem(index int) {
 	pl.Items = slices.Delete(pl.Items, index, index+1)
 	pl.ItemsLock.Unlock()
 
-	log.Println("Pulled out item", item.GetId())
+	log.Println("Pulled out item", item.GetSongId())
 
 	if pl.bulk {
 		pl.dirty = true
@@ -82,14 +82,14 @@ func (pl *PlayList) InsertItem(item *song.PreloadedSong, beforeIndex int) {
 		pl.Items = append(pl.Items, item)
 		pl.ItemsLock.Unlock()
 
-		log.Println("Appended item", item.GetId())
+		log.Println("Appended item", item.GetSongId())
 	} else {
 		pl.ItemsLock.Lock()
 		beforeItem := pl.Items[beforeIndex]
 		pl.Items = slices.Insert(pl.Items, beforeIndex, item)
 		pl.ItemsLock.Unlock()
 
-		log.Println("Inserted item", item.GetId(), "before", beforeItem.GetId())
+		log.Println("Inserted item", item.GetSongId(), "before", beforeItem.GetSongId())
 	}
 
 	if pl.bulk {
@@ -152,7 +152,7 @@ func createFromQueueItem(item queue.QueueItem) *song.PreloadedSong {
 
 	newSong.Adder = item.GetAdder()
 
-	id := newSong.GetId()
+	id := newSong.GetSongId()
 	if id != "unknown" && id != "random_play" {
 		persistence.GetLocalSongs().AddLocalSongIfNotExist(id, newSong.GetInfo().Title)
 	}
@@ -181,6 +181,13 @@ func PullOutItem(index int) {
 		return
 	}
 	currentPlaylist.PullOutItem(index)
+}
+
+func InsertPulledItem(item *song.PreloadedSong, beforeIndex int) {
+	if currentPlaylist == nil {
+		return
+	}
+	currentPlaylist.InsertItem(item, beforeIndex)
 }
 
 // BulkUpdate freeze auto-update until cancel function is called or 300ms timeout is reached

@@ -110,7 +110,7 @@ func (sm *StateMachine) StartDownload() {
 		sm.DownloadStatus = Pending
 		sm.ps.notifySubscribers(StatusChange)
 
-		ds := download.Download(sm.ps.GetId())
+		ds := download.Download(sm.ps.GetSongId())
 		if ds == nil {
 			sm.DownloadStatus = NotAvailable
 			sm.ps.notifySubscribers(StatusChange)
@@ -121,7 +121,7 @@ func (sm *StateMachine) StartDownload() {
 }
 func (sm *StateMachine) Prioritize() {
 	if sm.IsDownloadLoopStarted() {
-		download.Prioritize(sm.ps.GetId())
+		download.Prioritize(sm.ps.GetSongId())
 	}
 }
 
@@ -235,6 +235,6 @@ func (sm *StateMachine) RemoveFromList() {
 		}
 	}
 	sm.ps.notifySubscribers(StatusChange)
-	download.CancelDownload(sm.ps.GetId())
-	cache.CloseCacheEntry(sm.ps.GetId())
+	download.CancelDownload(sm.ps.GetSongId())
+	cache.CloseCacheEntry(sm.ps.GetSongId())
 }

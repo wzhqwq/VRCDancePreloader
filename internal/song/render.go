@@ -37,7 +37,7 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 	}
 
 	basicInfo := PreloadedSongInfo{
-		ID: ps.GetId(),
+		ID: ps.GetSongId(),
 
 		Adder:       adder,
 		Size:        size,

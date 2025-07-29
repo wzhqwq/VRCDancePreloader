@@ -9,7 +9,7 @@ import (
 )
 
 type SongTable struct {
-	lastStatus map[string]string
+	lastStatus map[int64]string
 }
 
 func NewSongTable() *SongTable {
@@ -18,16 +18,16 @@ func NewSongTable() *SongTable {
 	t.AppendHeader(table.Row{i18n.T("key_id"), i18n.T("key_status"), i18n.T("key_title")})
 
 	return &SongTable{
-		lastStatus: map[string]string{},
+		lastStatus: map[int64]string{},
 	}
 }
 
 func (st *SongTable) Print(items []*ItemTui) {
 	allTheSame := true
-	statusMap := map[string]string{}
+	statusMap := map[int64]string{}
 	for _, item := range items {
 		status := item.ps.GetStatusInfo().Status
-		id := item.ps.GetId()
+		id := item.ps.ID
 		statusMap[id] = status
 		if lastStatus, ok := st.lastStatus[id]; !ok || lastStatus != status {
 			allTheSame = false
@@ -45,7 +45,7 @@ func (st *SongTable) Print(items []*ItemTui) {
 		info := item.ps.GetInfo()
 		return table.Row{
 			info.ID,
-			st.lastStatus[info.ID],
+			st.lastStatus[item.ps.ID],
 			info.Title,
 		}
 	}))

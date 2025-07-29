@@ -17,8 +17,8 @@ type DynamicList struct {
 	Padding  float32
 	MinWidth float32
 
-	order   []string
-	itemMap map[string]*DynamicListItem
+	order   []int64
+	itemMap map[int64]*DynamicListItem
 
 	renderedItemsChanged bool
 
@@ -34,7 +34,7 @@ func (dl *DynamicList) AddItem(item *DynamicListItem, transition bool) {
 		item.enableEnteringTransition = true
 	}
 }
-func (dl *DynamicList) RemoveItem(id string, transition bool) {
+func (dl *DynamicList) RemoveItem(id int64, transition bool) {
 	item := dl.itemMap[id]
 	if item == nil {
 		return
@@ -46,7 +46,7 @@ func (dl *DynamicList) RemoveItem(id string, transition bool) {
 		dl.Refresh()
 	})
 }
-func (dl *DynamicList) SetOrder(order []string) {
+func (dl *DynamicList) SetOrder(order []int64) {
 	dl.order = order
 	dl.renderedItemsChanged = true
 	dl.Refresh()
@@ -56,7 +56,7 @@ func (dl *DynamicList) CreateRenderer() fyne.WidgetRenderer {
 		dl: dl,
 	}
 }
-func (dl *DynamicList) removeFromMap(id string) {
+func (dl *DynamicList) removeFromMap(id int64) {
 	delete(dl.itemMap, id)
 }
 
@@ -156,8 +156,8 @@ func NewDynamicList(minWidth float32) *DynamicList {
 		Padding: theme.Padding(),
 
 		MinWidth: minWidth,
-		order:    []string{},
-		itemMap:  map[string]*DynamicListItem{},
+		order:    make([]int64, 0),
+		itemMap:  map[int64]*DynamicListItem{},
 	}
 	dl.ExtendBaseWidget(dl)
 	return dl
@@ -182,7 +182,7 @@ const (
 
 type DynamicListItem struct {
 	widget.BaseWidget
-	ID     string
+	ID     int64
 	object fyne.CanvasObject
 	dl     *DynamicList
 
@@ -304,7 +304,7 @@ func (i *DynamicListItem) NotifyUpdateMinSize() {
 	}()
 }
 
-func NewDynamicListItem(ID string, dl *DynamicList, object fyne.CanvasObject) *DynamicListItem {
+func NewDynamicListItem(ID int64, dl *DynamicList, object fyne.CanvasObject) *DynamicListItem {
 	dli := &DynamicListItem{
 		ID:     ID,
 		object: object,

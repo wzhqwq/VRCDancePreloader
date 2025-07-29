@@ -5,21 +5,22 @@ import (
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 	"log"
+	"slices"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
 type queueMutation struct {
-	index int
-	item  queue.QueueItem
+	oldIndex int
+	newIndex int
 }
 
-func insertMutation(index int, item queue.QueueItem) queueMutation {
-	return queueMutation{index: index, item: item}
+func insertMutation(index int, from int) queueMutation {
+	return queueMutation{oldIndex: index, newIndex: from}
 }
 func deleteMutation(index int) queueMutation {
-	return queueMutation{index: index}
+	return queueMutation{oldIndex: index, newIndex: -1}
 }
 
 func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
@@ -37,7 +38,7 @@ func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
 
 	log.Println(
 		lo.Map(old, func(item *song.PreloadedSong, _ int) string {
-			return item.GetId()
+			return item.GetSongId()
 		}),
 		"->",
 		lo.Map(new, func(item queue.QueueItem, _ int) string {
@@ -83,7 +84,7 @@ func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
 		} else if y > 0 && lengths[x][y] == lengths[x][y-1] {
 			y--
 			insertedIndexes = append(insertedIndexes, y)
-			mutations = append(mutations, insertMutation(x, new[y]))
+			mutations = append(mutations, insertMutation(x, y))
 		} else if x > 0 && y > 0 {
 			x--
 			y--
@@ -93,18 +94,33 @@ func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
 	cancel := playlist.BulkUpdate(context.Background())
 	defer cancel()
 
+	pulledOutSongsInOld := make([]*song.PreloadedSong, len(old))
+	pulledOutSongsInNew := make([]*song.PreloadedSong, len(new))
 	for _, m := range mutations {
-		if m.item == nil {
-			insertMatched := lo.ContainsBy(insertedIndexes, func(i int) bool {
-				return new[i].MatchWithPreloaded(old[m.index])
+		if m.newIndex < 0 {
+			newIndex, recordIndex, matched := lo.FindIndexOf(insertedIndexes, func(i int) bool {
+				return new[i].MatchWithPreloaded(old[m.oldIndex])
 			})
-			if insertMatched {
-				playlist.PullOutItem(m.index)
+			if matched {
+				insertedIndexes = slices.Delete(insertedIndexes, recordIndex, recordIndex+1)
+				pulledOutSongsInOld[m.oldIndex] = old[m.oldIndex]
+				pulledOutSongsInNew[newIndex] = old[m.oldIndex]
+			}
+		}
+	}
+	for _, m := range mutations {
+		if m.newIndex < 0 {
+			if oldItem := pulledOutSongsInOld[m.oldIndex]; oldItem != nil {
+				playlist.PullOutItem(m.oldIndex)
 			} else {
-				playlist.RemoveItem(m.index)
+				playlist.RemoveItem(m.oldIndex)
 			}
 		} else {
-			playlist.InsertItem(m.item, m.index)
+			if oldItem := pulledOutSongsInNew[m.newIndex]; oldItem != nil {
+				playlist.InsertPulledItem(oldItem, m.oldIndex)
+			} else {
+				playlist.InsertItem(new[m.newIndex], m.oldIndex)
+			}
 		}
 	}
 

@@ -62,7 +62,7 @@ func (pl *PlayList) StopAll() {
 	items := pl.GetItemsSnapshot()
 	download.CancelDownload(
 		lo.Map(items, func(item *song.PreloadedSong, _ int) string {
-			return item.GetId()
+			return item.GetSongId()
 		})...,
 	)
 	for _, item := range items {

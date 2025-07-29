@@ -83,7 +83,7 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 		RoomName: roomName,
 		EmptyTip: emptyTip,
 
-		itemMap: make(map[string]weak.Pointer[ItemGui]),
+		itemMap: make(map[int64]weak.Pointer[ItemGui]),
 
 		dynamicList: dynamicList,
 	}
@@ -106,7 +106,7 @@ type listGuiRenderer struct {
 	EmptyTip *canvas.Text
 
 	items   []*ItemGui
-	itemMap map[string]weak.Pointer[ItemGui]
+	itemMap map[int64]weak.Pointer[ItemGui]
 
 	dynamicList *containers.DynamicList
 }
@@ -136,7 +136,7 @@ func (r *listGuiRenderer) updateItems() {
 	songs := r.list.pl.GetItemsSnapshot()
 
 	r.items = lo.Map(songs, func(ps *song.PreloadedSong, _ int) *ItemGui {
-		if item, ok := r.itemMap[ps.GetId()]; ok {
+		if item, ok := r.itemMap[ps.ID]; ok {
 			if v := item.Value(); v != nil {
 				if v.ps == ps {
 					return v
@@ -144,7 +144,7 @@ func (r *listGuiRenderer) updateItems() {
 			}
 		}
 		newGui := NewItemGui(ps, r.dynamicList)
-		r.itemMap[ps.GetId()] = weak.Make(newGui)
+		r.itemMap[ps.ID] = weak.Make(newGui)
 		r.dynamicList.AddItem(newGui.listItem, true)
 		return newGui
 	})
@@ -157,8 +157,8 @@ func (r *listGuiRenderer) updateItems() {
 		r.RoomName.TextSize = 14
 	}
 
-	r.dynamicList.SetOrder(lo.Map(r.items, func(item *ItemGui, _ int) string {
-		return item.ps.GetId()
+	r.dynamicList.SetOrder(lo.Map(r.items, func(item *ItemGui, _ int) int64 {
+		return item.ps.ID
 	}))
 
 	r.Container.Refresh()
