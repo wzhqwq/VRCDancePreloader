@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -41,6 +42,13 @@ func connectDial(ctx context.Context, network, addr string) (c net.Conn, err err
 }
 
 func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
+	defer func() {
+		if e := recover(); e != nil {
+			log.Printf("Error when processing request: %v", e)
+			log.Println(string(debug.Stack()))
+			log.Println("Fallback to direct access")
+		}
+	}()
 	if handlePypyRequest(w, req) {
 		return true
 	}
@@ -56,7 +64,7 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 func handleConnect(_ *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
 	defer func() {
 		if e := recover(); e != nil {
-			ctx.Logf("error connecting to remote: %v", e)
+			log.Printf("error connecting to remote: %v", e)
 			client.Write([]byte("HTTP/1.1 500 Cannot reach destination\r\n\r\n"))
 		}
 		client.Close()

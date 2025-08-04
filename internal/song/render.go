@@ -78,7 +78,7 @@ func (ps *PreloadedSong) GetProgressInfo() PreloadedSongProgressInfo {
 		Total:      ps.TotalSize,
 		Downloaded: ps.DownloadedSize,
 
-		IsDownloading: ps.sm.DownloadStatus == Downloading,
+		IsDownloading: ps.sm.DownloadStatus == Downloading || ps.sm.DownloadStatus == DownloadingSuffix,
 	}
 }
 
@@ -123,7 +123,7 @@ func (ps *PreloadedSong) GetStatusInfo() PreloadedSongStatusInfo {
 	switch ps.sm.DownloadStatus {
 	case Initial, Pending, Removed, NotAvailable:
 		color = theme.ColorNamePlaceHolder
-	case Requesting, Downloading:
+	case Requesting, Downloading, DownloadingSuffix:
 		color = theme.ColorNamePrimary
 	case Downloaded:
 		color = theme.ColorNameSuccess

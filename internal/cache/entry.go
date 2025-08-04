@@ -1,72 +1,86 @@
 package cache
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/fragmented"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/rw_file"
 	"io"
 	"net/http"
-	"strings"
+	"os"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
+var unixEpochTime = time.Unix(0, 0)
+
 type Entry interface {
 	io.Writer
-	Open() error
+	Open()
+	Release()
+	Active() bool
 	TotalLen() int64
 	DownloadedSize() int64
-	GetReadSeekCloser() io.ReadSeekCloser
-	GetDownloadBody() (io.ReadCloser, error)
+	GetReadSeeker(ctx context.Context) io.ReadSeeker
+	GetDownloadStream() (io.ReadCloser, error)
 	Close() error
-	Save() error
 	IsComplete() bool
 	ModTime() time.Time
+	UpdateReqRangeStart(start int64)
 }
 
 type BaseEntry struct {
 	id     string
 	client *http.Client
 
-	writingFile *ReadableWritingFile
+	openCount atomic.Int32
+
+	workingFileMutex sync.RWMutex
+
+	workingFile rw_file.DeferredReadableFile
 }
 
-func (e *BaseEntry) getSavedVideoName() string {
+func ConstructBaseEntry(id string, client *http.Client) BaseEntry {
+	return BaseEntry{
+		id:     id,
+		client: client,
+	}
+}
+
+func (e *BaseEntry) getVideoName() string {
 	return fmt.Sprintf("%s/%s.mp4", cachePath, e.id)
 }
-func (e *BaseEntry) getIncompleteVideoName() string {
-	return fmt.Sprintf("%s/%s.mp4.dl", cachePath, e.id)
-}
-func (e *BaseEntry) getSavedSize() int64 {
-	return getFileSize(e.getSavedVideoName())
-}
-func (e *BaseEntry) getIncompleteSize() int64 {
-	return getFileSize(e.getIncompleteVideoName())
-}
-func (e *BaseEntry) openFile() error {
-	if e.writingFile == nil {
-		if e.getSavedSize() > 0 {
-			e.writingFile = newReadableWritingFile(e.getSavedVideoName())
+func (e *BaseEntry) openFile() {
+	e.workingFileMutex.Lock()
+	defer e.workingFileMutex.Unlock()
+
+	if e.workingFile == nil {
+		if enableFragmented {
+			e.workingFile = fragmented.NewFile(e.getVideoName())
 		} else {
-			e.writingFile = newReadableWritingFile(e.getIncompleteVideoName())
-		}
-		if e.writingFile == nil {
-			return fmt.Errorf("cannot open or create video file")
+			e.workingFile = rw_file.NewFile(e.getVideoName())
 		}
 	}
-	return nil
-}
-func (e *BaseEntry) saveFile() error {
-	if e.writingFile != nil && strings.Contains(e.writingFile.file.Name(), ".dl") {
-		return e.writingFile.Rename(e.getSavedVideoName())
-	}
-	return nil
 }
 func (e *BaseEntry) closeFile() error {
-	if e.writingFile != nil {
-		return e.writingFile.Close()
+	e.workingFileMutex.Lock()
+	defer e.workingFileMutex.Unlock()
+
+	if e.workingFile == nil {
+		return nil
 	}
-	return nil
+
+	err := e.workingFile.Close()
+	if err == nil || errors.Is(err, os.ErrClosed) {
+		e.workingFile = nil
+	}
+
+	return err
 }
 
-func (e *BaseEntry) requestInfo(url string) (int64, string) {
+func (e *BaseEntry) requestHttpResInfo(url string) (int64, string) {
 	res, err := e.client.Head(url)
 	if err != nil {
 		return 0, url
@@ -75,14 +89,14 @@ func (e *BaseEntry) requestInfo(url string) (int64, string) {
 		return 0, url
 	}
 	if location := res.Header.Get("Location"); location != "" {
-		return res.ContentLength, location
+		url = location
 	}
 	return res.ContentLength, url
 }
-func (e *BaseEntry) requestBody(url string, offset int64) (io.ReadCloser, int64, error) {
+func (e *BaseEntry) requestHttpResBody(url string, offset int64) (io.ReadCloser, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	if offset > 0 {
@@ -90,56 +104,110 @@ func (e *BaseEntry) requestBody(url string, offset int64) (io.ReadCloser, int64,
 	}
 	res, err := e.client.Do(req)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	if offset > 0 {
-		if res.StatusCode != http.StatusPartialContent {
-			return nil, 0, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		if res.StatusCode == 416 {
+			return nil, nil
 		}
-		return res.Body, res.ContentLength, nil
+		if res.StatusCode != http.StatusPartialContent {
+			return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		}
+		return res.Body, nil
 	} else {
 		if res.StatusCode != http.StatusOK {
-			return nil, 0, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+			return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		}
-		return res.Body, res.ContentLength, nil
+		return res.Body, nil
 	}
 }
 
 // adapters
 
-func (e *BaseEntry) Open() error {
-	return e.openFile()
+func (e *BaseEntry) Open() {
+	e.openCount.Add(1)
+	e.openFile()
+}
+
+func (e *BaseEntry) Release() {
+	e.openCount.Add(-1)
+	if e.openCount.Load() <= 0 {
+		go func() {
+			<-time.After(time.Second)
+			if e.openCount.Load() <= 0 {
+				e.closeFile()
+			}
+		}()
+	}
+}
+
+func (e *BaseEntry) Active() bool {
+	return e.openCount.Load() > 0
 }
 
 func (e *BaseEntry) Close() error {
 	return e.closeFile()
 }
 
-func (e *BaseEntry) Save() error {
-	return e.saveFile()
-}
-
 func (e *BaseEntry) IsComplete() bool {
-	return e.getSavedSize() > 0
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil {
+		return false
+	}
+	return e.workingFile.IsComplete()
 }
 
 func (e *BaseEntry) DownloadedSize() int64 {
-	return e.getIncompleteSize()
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil {
+		return 0
+	}
+	return e.workingFile.GetDownloadedBytes()
+}
+
+func (e *BaseEntry) GetReadSeeker(ctx context.Context) io.ReadSeeker {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil {
+		return nil
+	}
+
+	r := e.workingFile.RequestRsc()
+
+	go func() {
+		<-ctx.Done()
+		r.Close()
+	}()
+
+	return r
 }
 
 func (e *BaseEntry) ModTime() time.Time {
-	info, err := e.writingFile.file.Stat()
-	if err != nil {
-		return time.Now()
-	}
-	return info.ModTime()
+	// TODO
+	return unixEpochTime
 }
 
 func (e *BaseEntry) Write(bytes []byte) (int, error) {
-	err := e.writingFile.Append(bytes)
-	if err != nil {
-		return 0, err
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil {
+		return 0, io.ErrClosedPipe
 	}
-	return len(bytes), nil
+	return e.workingFile.Append(bytes)
+}
+
+func (e *BaseEntry) UpdateReqRangeStart(start int64) {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile != nil {
+		e.workingFile.NotifyRequestStart(start)
+	}
 }

@@ -6,6 +6,8 @@
   Default: "Requesting Video"
 - Key: status_downloading
   Default: "Downloading Video"
+- Key: status_downloading_suffix
+  Default: "Downloading Suffix"
 - Key: status_downloaded
   Default: "Video Downloaded"
 - Key: status_failed

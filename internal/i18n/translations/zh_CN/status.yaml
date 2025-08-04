@@ -6,6 +6,8 @@
   Default: "请求视频中"
 - Key: status_downloading
   Default: "下载视频中"
+- Key: status_downloading_suffix
+  Default: "下载视频后缀"
 - Key: status_downloaded
   Default: "视频已下载"
 - Key: status_failed

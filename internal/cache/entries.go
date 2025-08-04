@@ -5,32 +5,26 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"io"
+	"log"
 )
 
 func NewEntry(id string) Entry {
 	if num, ok := utils.CheckIdIsPyPy(id); ok {
 		return &DirectDownloadEntry{
-			BaseEntry: BaseEntry{
-				id:     id,
-				client: requesting.GetPyPyClient(),
-			},
-			videoUrl: utils.GetPyPyVideoUrl(num),
+			BaseEntry: ConstructBaseEntry(id, requesting.GetPyPyClient()),
+			videoUrl:  utils.GetPyPyVideoUrl(num),
 		}
 	}
 	if num, ok := utils.CheckIdIsWanna(id); ok {
 		return &DirectDownloadEntry{
-			BaseEntry: BaseEntry{
-				id:     id,
-				client: requesting.GetWannaClient(),
-			},
-			videoUrl: utils.GetWannaVideoUrl(num),
+			BaseEntry: ConstructBaseEntry(id, requesting.GetWannaClient()),
+			videoUrl:  utils.GetWannaVideoUrl(num),
 		}
 	}
 	if bvID, ok := utils.CheckIdIsBili(id); ok {
 		return &BiliBiliEntry{
-			BaseEntry: BaseEntry{
-				id:     id,
-				client: requesting.GetBiliClient(),
+			DirectDownloadEntry: DirectDownloadEntry{
+				BaseEntry: ConstructBaseEntry(id, requesting.GetBiliClient()),
 			},
 			bvID: bvID,
 		}
@@ -39,89 +33,68 @@ func NewEntry(id string) Entry {
 	return nil
 }
 
-func OpenEntry(id string) Entry {
-	e := NewEntry(id)
-	if e == nil {
-		return nil
-	}
-
-	err := e.Open()
-	if err != nil {
-		panic(err)
-	}
-	return e
-}
-
 type DirectDownloadEntry struct {
 	BaseEntry
 	videoUrl string
-
-	totalLen int64
 }
+
+func (e *DirectDownloadEntry) getTotalLen() int64 {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil {
+		return 0
+	}
+
+	return e.workingFile.GetTotalLength(func() int64 {
+		totalLen, newUrl := e.requestHttpResInfo(e.videoUrl)
+		e.videoUrl = newUrl
+		return totalLen
+	})
+}
+
+func (e *DirectDownloadEntry) getDownloadStream() (io.ReadCloser, error) {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil {
+		return nil, io.ErrClosedPipe
+	}
+	e.workingFile.MarkDownloading()
+	offset := e.workingFile.GetDownloadOffset()
+
+	log.Printf("Download %s start from %d", e.id, offset)
+
+	return e.requestHttpResBody(e.videoUrl, offset)
+}
+
+// adapters
 
 func (e *DirectDownloadEntry) TotalLen() int64 {
-	if e.totalLen == 0 {
-		if savedSize := e.getSavedSize(); savedSize > 0 {
-			e.totalLen = savedSize
-		} else {
-			totalLen, newUrl := e.requestInfo(e.videoUrl)
-			e.videoUrl = newUrl
-			e.totalLen = totalLen
-		}
-	}
-	return e.totalLen
+	return e.getTotalLen()
 }
 
-func (e *DirectDownloadEntry) GetReadSeekCloser() io.ReadSeekCloser {
-	if totalLen := e.TotalLen(); totalLen > 0 {
-		return e.writingFile.RequestRsc(totalLen)
-	}
-	return nil
-}
-
-func (e *DirectDownloadEntry) GetDownloadBody() (io.ReadCloser, error) {
-	offset := e.getIncompleteSize()
-	rc, length, err := e.requestBody(e.videoUrl, offset)
-	e.totalLen = length + offset
-	return rc, err
+func (e *DirectDownloadEntry) GetDownloadStream() (io.ReadCloser, error) {
+	return e.getDownloadStream()
 }
 
 type BiliBiliEntry struct {
-	BaseEntry
+	DirectDownloadEntry
 
-	bvID     string
-	videoUrl string
-
-	totalLen int64
+	bvID string
 }
 
 func (e *BiliBiliEntry) TotalLen() int64 {
-	if e.totalLen == 0 {
-		if savedSize := e.getSavedSize(); savedSize > 0 {
-			e.totalLen = savedSize
-		} else {
-			if e.videoUrl == "" {
-				e.videoUrl, _ = third_party_api.GetBiliVideoUrl(e.client, e.bvID)
-				if e.videoUrl == "" {
-					return 0
-				}
-			}
-			totalLen, newUrl := e.requestInfo(e.videoUrl)
-			e.videoUrl = newUrl
-			e.totalLen = totalLen
+	if e.videoUrl == "" {
+		e.videoUrl, _ = third_party_api.GetBiliVideoUrl(e.client, e.bvID)
+		if e.videoUrl == "" {
+			return 0
 		}
 	}
-	return e.totalLen
+	return e.getTotalLen()
 }
 
-func (e *BiliBiliEntry) GetReadSeekCloser() io.ReadSeekCloser {
-	if totalLen := e.TotalLen(); totalLen > 0 {
-		return e.writingFile.RequestRsc(totalLen)
-	}
-	return nil
-}
-
-func (e *BiliBiliEntry) GetDownloadBody() (io.ReadCloser, error) {
+func (e *BiliBiliEntry) GetDownloadStream() (io.ReadCloser, error) {
 	if e.videoUrl == "" {
 		var err error
 		e.videoUrl, err = third_party_api.GetBiliVideoUrl(e.client, e.bvID)
@@ -129,10 +102,7 @@ func (e *BiliBiliEntry) GetDownloadBody() (io.ReadCloser, error) {
 			return nil, err
 		}
 	}
-	offset := e.getIncompleteSize()
-	rc, length, err := e.requestBody(e.videoUrl, offset)
-	e.totalLen = length + offset
-	return rc, err
+	return e.getDownloadStream()
 }
 
 type YouTubeEntry struct {

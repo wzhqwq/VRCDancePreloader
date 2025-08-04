@@ -1,11 +1,12 @@
 package playlist
 
 import (
-	"io"
-	"time"
-
+	"context"
+	"errors"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"strconv"
 )
 
 var asyncDownload = true
@@ -74,27 +75,52 @@ func (pl *PlayList) FindCustomSongOrCreate(url string) *song.PreloadedSong {
 	return item
 }
 
-func request(item *song.PreloadedSong) (io.ReadSeekCloser, time.Time, error) {
-	entry, err := item.DownloadInstantly(!asyncDownload)
+func request(item *song.PreloadedSong, ctx context.Context) (cache.Entry, error) {
+	entry, err := item.DownloadInstantly(!asyncDownload, ctx)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, err
 	}
-	return entry.GetReadSeekCloser(), entry.ModTime(), nil
+	return entry, nil
 }
 
-func RequestPyPySong(id int) (io.ReadSeekCloser, time.Time, error) {
-	return request(currentPlaylist.FindPyPySongOrCreate(id))
-}
-func RequestWannaSong(id int) (io.ReadSeekCloser, time.Time, error) {
-	return request(currentPlaylist.FindWannaSongOrCreate(id))
-}
-func RequestBiliSong(bvID string) (io.ReadSeekCloser, time.Time, error) {
-	return request(currentPlaylist.FindCustomSongOrCreate(utils.GetStandardBiliURL(bvID)))
+func Request(platform, id string, ctx context.Context) (cache.Entry, error) {
+	switch platform {
+	case "PyPyDance":
+		numId, err := strconv.Atoi(id)
+		if err != nil {
+			return nil, err
+		}
+		return request(currentPlaylist.FindPyPySongOrCreate(numId), ctx)
+	case "WannaDance":
+		numId, err := strconv.Atoi(id)
+		if err != nil {
+			return nil, err
+		}
+		return request(currentPlaylist.FindWannaSongOrCreate(numId), ctx)
+	case "BiliBili":
+		return request(currentPlaylist.FindCustomSongOrCreate(utils.GetStandardBiliURL(id)), ctx)
+		// TODO
+	default:
+		return nil, errors.New("invalid platform")
+	}
 }
 
-// TODO
-
-func RequestYoutubeSong(id string) (io.ReadSeekCloser, error) {
-	item := currentPlaylist.FindCustomSongOrCreate(utils.GetStandardYoutubeURL(id))
-	return item.GetSongRSSync()
+func DownloadSuffix(platform, id string, start int64) {
+	switch platform {
+	case "PyPyDance":
+		numId, err := strconv.Atoi(id)
+		if err != nil {
+			return
+		}
+		currentPlaylist.FindPyPySongOrCreate(numId).DownloadSuffix(start)
+	case "WannaDance":
+		numId, err := strconv.Atoi(id)
+		if err != nil {
+			return
+		}
+		currentPlaylist.FindWannaSongOrCreate(numId).DownloadSuffix(start)
+	case "BiliBili":
+		currentPlaylist.FindCustomSongOrCreate(utils.GetStandardBiliURL(id)).DownloadSuffix(start)
+		// TODO
+	}
 }

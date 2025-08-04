@@ -94,6 +94,34 @@ func (ds *State) progressiveDownload(body io.ReadCloser, writer io.Writer) error
 	return nil
 }
 
+func (ds *State) UpdateReqRangeStart(start int64) {
+	ds.cacheEntry.UpdateReqRangeStart(start)
+}
+
+func singleDownload(ds *State) error {
+	entry := ds.cacheEntry
+	ds.TotalSize = entry.TotalLen()
+
+	body, err := entry.GetDownloadStream()
+	if err != nil {
+		logger.ErrorLn("Start Downloading error:", err.Error())
+		return err
+	}
+	if body == nil {
+		// already downloaded, save fragments
+		return nil
+	}
+	defer body.Close()
+
+	ds.DownloadedSize = entry.DownloadedSize()
+
+	// Notify about the total size and that the request header is done
+	ds.StateCh <- ds
+
+	// Copy the body to the file, which will also update the download progress
+	return ds.progressiveDownload(body, entry)
+}
+
 func Download(id string) *State {
 	ds := dm.CreateOrGetState(id)
 	if ds == nil {
@@ -118,40 +146,30 @@ func Download(id string) *State {
 			return
 		}
 
-		entry := ds.cacheEntry
-		ds.TotalSize = entry.TotalLen()
+		for {
+			err := singleDownload(ds)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					if ds.cacheEntry.IsComplete() {
+						logger.InfoLn("All fragments complete")
+						break
+					} else {
+						logger.InfoLn("Switch to another offset")
+					}
+				} else {
+					ds.Error = err
 
-		body, err := entry.GetDownloadBody()
-		if err != nil {
-			ds.Error = err
-			logger.ErrorLn("Start Downloading error:", err.Error())
-			return
-		}
-		defer body.Close()
-
-		ds.DownloadedSize = entry.DownloadedSize()
-
-		// Notify about the total size and that the request header is done
-		ds.StateCh <- ds
-
-		// Copy the body to the file, which will also update the download progress
-		err = ds.progressiveDownload(body, entry)
-		if err != nil {
-			ds.Error = err
-			if errors.Is(err, ErrCanceled) {
-				// canceled task
-				logger.InfoLn("Canceled download task", ds.ID)
+					if errors.Is(err, ErrCanceled) {
+						// canceled task
+						logger.InfoLn("Canceled download task", ds.ID)
+					} else {
+						logger.ErrorLn("Downloading error:", err.Error())
+					}
+					return
+				}
 			} else {
-				logger.ErrorLn("Downloading error:", err.Error())
+				break
 			}
-			return
-		}
-
-		err = entry.Save()
-		if err != nil {
-			ds.Error = err
-			logger.ErrorLn("Saving error:", err.Error())
-			return
 		}
 
 		// Mark the download as done and update the priorities

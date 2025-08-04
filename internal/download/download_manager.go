@@ -65,6 +65,7 @@ func (dm *downloadManager) CancelDownload(ids ...string) {
 
 	for _, id := range ids {
 		if ds, ok := dm.stateMap[id]; ok {
+			cache.ReleaseCacheEntry(id)
 			close(ds.CancelCh)
 			delete(dm.stateMap, id)
 		}

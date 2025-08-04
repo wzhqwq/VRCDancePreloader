@@ -1,6 +1,7 @@
 package song
 
 import (
+	"context"
 	"fmt"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
@@ -33,6 +34,8 @@ type PreloadedSong struct {
 
 	// diagnostic states
 	PreloadError error
+
+	//
 
 	// event
 	em *utils.EventManager[ChangeType]
@@ -171,16 +174,22 @@ func (ps *PreloadedSong) GetSongId() string {
 func (ps *PreloadedSong) GetPreloadStatus() DownloadStatus {
 	return ps.sm.DownloadStatus
 }
-func (ps *PreloadedSong) DownloadInstantly(complete bool) (cache.Entry, error) {
+func (ps *PreloadedSong) DownloadInstantly(complete bool, ctx context.Context) (cache.Entry, error) {
 	err := ps.sm.DownloadInstantly(complete)
 	if err != nil {
 		return nil, err
 	}
 
+	// reference the cache entry until request closed
 	entry, err := cache.OpenCacheEntry(ps.GetSongId())
 	if err != nil {
 		return nil, err
 	}
+
+	go func() {
+		<-ctx.Done()
+		cache.ReleaseCacheEntry(ps.GetSongId())
+	}()
 
 	return entry, nil
 }
@@ -246,4 +255,8 @@ func (ps *PreloadedSong) AddToHistory() {
 	info := ps.GetInfo()
 	startTime := time.Now().Add(-ps.TimePassed).Unix()
 	persistence.AddToHistory(info.ID, info.Title, ps.Adder, time.Unix(startTime, 0))
+}
+
+func (ps *PreloadedSong) DownloadSuffix(start int64) {
+	ps.sm.StartDownloadSuffix(start)
 }

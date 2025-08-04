@@ -11,17 +11,20 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 )
 
 const (
-	AllCacheFileRegex      = `^((?:pypy|yt|wanna|bili)_.+)(?:\.mp4|\.mp4\.dl)$`
+	AllCacheFileRegex      = `^((?:pypy|yt|wanna|bili)_.+)\.(?:mp4|mp4\.(?:dl|dlf))$`
 	CompleteCacheFileRegex = `^((?:pypy|yt|wanna|bili)_.+)\.mp4$`
-	PartialCacheFileRegex  = `^((?:pypy|yt|wanna|bili)_.+)\.mp4\.dl$`
+	PartialCacheFileRegex  = `^((?:pypy|yt|wanna|bili)_.+)\.mp4\.(?:dl|dlf)$`
 )
 
 var cachePath string
 var maxSize int64
 var keepFavorites bool
+var enableFragmented bool
+
 var cacheMap = NewCacheMap()
 var cleanUpChan = make(chan struct{}, 1)
 
@@ -59,6 +62,9 @@ func GetMaxSize() int64 {
 }
 func SetKeepFavorites(b bool) {
 	keepFavorites = b
+}
+func SetEnableFragmented(b bool) {
+	enableFragmented = b
 }
 
 func InitSongList() error {
@@ -216,9 +222,14 @@ func OpenCacheEntry(id string) (Entry, error) {
 	return cacheMap.Open(id)
 }
 
-func CloseCacheEntry(id string) {
-	cacheMap.Close(id)
-	localFileEm.NotifySubscribers("*" + id)
+func ReleaseCacheEntry(id string) {
+	cacheMap.Release(id)
+	go func() {
+		<-time.After(time.Second)
+		if cacheMap.CloseIfInactive(id) {
+			localFileEm.NotifySubscribers("*" + id)
+		}
+	}()
 }
 
 func SubscribeLocalFileEvent() *utils.EventSubscriber[string] {
