@@ -3,6 +3,8 @@ package download
 import (
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"log"
 	"sync"
 )
 
@@ -30,6 +32,7 @@ func (dm *downloadManager) CreateOrGetState(id string) *State {
 	if !exists {
 		cacheEntry, err := cache.OpenCacheEntry(id)
 		if err != nil {
+			log.Println("Skipped: ", err)
 			return nil
 		}
 		ds = &State{
@@ -100,6 +103,10 @@ func (dm *downloadManager) SetMaxParallel(max int) {
 func (dm *downloadManager) Prioritize(ids ...string) {
 	dm.Lock()
 	defer dm.unlockAndUpdate()
+
+	if utils.IsPrefixOf(dm.queue, ids) {
+		return
+	}
 
 	dm.queue = append(
 		ids,

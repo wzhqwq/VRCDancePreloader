@@ -10,10 +10,16 @@ func InitDownloadManager(maxParallel int) {
 }
 
 func CancelDownload(ids ...string) {
+	if len(ids) == 0 {
+		return
+	}
 	dm.CancelDownload(ids...)
 }
 
 func Prioritize(ids ...string) {
+	if len(ids) == 0 {
+		return
+	}
 	dm.Prioritize(ids...)
 }
 
