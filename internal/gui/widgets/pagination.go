@@ -59,28 +59,28 @@ func (p *Pagination) setPage(page int) {
 }
 
 func (p *Pagination) CreateRenderer() fyne.WidgetRenderer {
-	prevBtn := button.NewPaddedIconBtn(icons.GetIcon("angle-left"))
+	prevBtn := button.NewPaddedIconBtn(icons.GetColoredIcon("angle-left", theme.ColorNameForeground))
 	prevBtn.OnClick = func() {
 		if p.CurrentPage > 1 {
 			p.setPage(p.CurrentPage - 1)
 		}
 	}
 	prevBtn.SetPadding(theme.Padding() * 2)
-	nextBtn := button.NewPaddedIconBtn(icons.GetIcon("angle-right"))
+	nextBtn := button.NewPaddedIconBtn(icons.GetColoredIcon("angle-right", theme.ColorNameForeground))
 	nextBtn.OnClick = func() {
 		if p.CurrentPage < p.TotalPage {
 			p.setPage(p.CurrentPage + 1)
 		}
 	}
 	nextBtn.SetPadding(theme.Padding() * 2)
-	firstBtn := button.NewPaddedIconBtn(icons.GetIcon("angles-left"))
+	firstBtn := button.NewPaddedIconBtn(icons.GetColoredIcon("angles-left", theme.ColorNameForeground))
 	firstBtn.OnClick = func() {
 		if p.CurrentPage > 1 {
 			p.setPage(1)
 		}
 	}
 	firstBtn.SetPadding(theme.Padding() * 2)
-	lastBtn := button.NewPaddedIconBtn(icons.GetIcon("angles-right"))
+	lastBtn := button.NewPaddedIconBtn(icons.GetColoredIcon("angles-right", theme.ColorNameForeground))
 	lastBtn.OnClick = func() {
 		if p.CurrentPage < p.TotalPage {
 			p.setPage(p.TotalPage)

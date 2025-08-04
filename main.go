@@ -11,7 +11,7 @@ import (
 
 	"github.com/alexflint/go-arg"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/window_app"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher"
@@ -171,9 +171,9 @@ func main() {
 		go func() {
 			<-osSignalCh
 			log.Println("Quitting...")
-			window_app.Quit()
+			custom_fyne.Quit()
 		}()
-		window_app.MainLoop()
+		custom_fyne.MainLoop()
 	} else {
 		<-osSignalCh
 	}

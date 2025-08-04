@@ -5,8 +5,8 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"image/color"
 )
 
 const cornerRadius = 4
@@ -25,9 +25,9 @@ type SizeProgressBar struct {
 }
 
 func NewSizeProgressBar(totalSize int64, currentSize int64) *SizeProgressBar {
-	bar := canvas.NewRectangle(theme.Color(theme.ColorNamePrimary))
+	bar := canvas.NewRectangle(theme.Color(custom_fyne.ColorNamePrimaryBackground))
 	barExceed := canvas.NewRectangle(theme.Color(theme.ColorNameError))
-	background := canvas.NewRectangle(color.Gray{Y: 180})
+	background := canvas.NewRectangle(theme.Color(custom_fyne.ColorNamePrimaryGrayscale))
 	text := canvas.NewText("", theme.Color(theme.ColorNameForegroundOnPrimary))
 	text.TextSize = 12
 

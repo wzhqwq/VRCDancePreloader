@@ -7,7 +7,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/eduardolat/goeasyi18n"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/window_app"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 )
@@ -50,7 +50,7 @@ func ConfirmDeleteRecord(id int) {
 				persistence.GetLocalRecords().DeleteRecord(id)
 			}
 		},
-		window_app.GetParent(),
+		custom_fyne.GetParent(),
 	).Show()
 }
 
@@ -117,6 +117,6 @@ func ShowCommentEditor(original string, onSubmit func(comment string)) {
 				}
 			}
 		},
-		window_app.GetParent(),
+		custom_fyne.GetParent(),
 	).Show()
 }

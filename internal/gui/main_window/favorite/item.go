@@ -8,7 +8,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"image/color"
 )
 
 type ItemGui struct {
@@ -44,7 +43,7 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	title.TextSize = 16
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	id := canvas.NewText(ig.Entry.ID, color.Gray{128})
+	id := canvas.NewText(ig.Entry.ID, theme.Color(theme.ColorNamePlaceHolder))
 	id.Alignment = fyne.TextAlignTrailing
 	id.TextSize = 12
 

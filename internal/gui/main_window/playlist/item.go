@@ -96,7 +96,7 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	adder.TextSize = 14
 
 	// ID
-	id := canvas.NewText(info.ID, color.Gray{128})
+	id := canvas.NewText(info.ID, theme.Color(theme.ColorNamePlaceHolder))
 	id.Alignment = fyne.TextAlignTrailing
 	id.TextSize = 12
 
@@ -145,15 +145,15 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	// no need to set up because time will flow
 	playBar.Hide()
 
-	cardBackground := canvas.NewRectangle(theme.Color(theme.ColorNameHeaderBackground))
+	cardBackground := canvas.NewRectangle(theme.Color(theme.ColorNameBackground))
 	cardBackground.CornerRadius = theme.Padding() * 2
 	cardBackground.StrokeWidth = 2
-	cardBackground.StrokeColor = theme.Color(theme.ColorNameSeparator)
+	cardBackground.StrokeColor = theme.Color(theme.ColorNameBackground)
 
 	thumbnailMask := canvas.NewRectangle(color.Transparent)
 	thumbnailMask.CornerRadius = theme.Padding() * 1.5
 	thumbnailMask.StrokeWidth = theme.Padding() / 2
-	thumbnailMask.StrokeColor = theme.Color(theme.ColorNameHeaderBackground)
+	thumbnailMask.StrokeColor = theme.Color(theme.ColorNameBackground)
 
 	go ig.RenderLoop()
 
@@ -322,7 +322,7 @@ func (r *ItemRenderer) Refresh() {
 			if !r.PlayBar.Visible() {
 				r.PlayBar.Show()
 				go canvas.NewColorRGBAAnimation(
-					theme.Color(theme.ColorNameSeparator),
+					theme.Color(theme.ColorNameBackground),
 					theme.Color(theme.ColorNamePrimary),
 					500*time.Millisecond,
 					func(c color.Color) {
@@ -336,7 +336,7 @@ func (r *ItemRenderer) Refresh() {
 				r.PlayBar.Hide()
 				go canvas.NewColorRGBAAnimation(
 					theme.Color(theme.ColorNamePrimary),
-					theme.Color(theme.ColorNameSeparator),
+					theme.Color(theme.ColorNameBackground),
 					500*time.Millisecond,
 					func(c color.Color) {
 						r.Background.StrokeColor = c

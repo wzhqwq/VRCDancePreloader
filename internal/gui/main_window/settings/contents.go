@@ -25,6 +25,7 @@ func createHijackSettingsContent() fyne.CanvasObject {
 		}
 		hijackConfig.UpdateEnableHttps(b)
 	})
+	enableHttpsCb.Checked = hijackConfig.EnableHttps
 	wholeContent.Add(enableHttpsCb)
 
 	wholeContent.Add(config.NewMultiSelectSites(hijackConfig.InterceptedSites))

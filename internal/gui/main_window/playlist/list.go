@@ -3,6 +3,7 @@ package playlist
 import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"weak"
@@ -78,7 +79,8 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 	r := &listGuiRenderer{
 		list: l,
 
-		Container: scroll,
+		Container:  scroll,
+		Background: canvas.NewRectangle(theme.Color(custom_fyne.ColorNameOuterBackground)),
 
 		RoomName: roomName,
 		EmptyTip: emptyTip,
@@ -100,7 +102,8 @@ var playlistTopHeight = float32(30)
 type listGuiRenderer struct {
 	list *ListGui
 
-	Container *container.Scroll
+	Container  *container.Scroll
+	Background *canvas.Rectangle
 
 	RoomName *canvas.Text
 	EmptyTip *canvas.Text
@@ -130,6 +133,9 @@ func (r *listGuiRenderer) Layout(size fyne.Size) {
 
 	r.Container.Resize(fyne.NewSize(size.Width, size.Height-playlistTopHeight))
 	r.Container.Move(fyne.NewPos(0, playlistTopHeight))
+
+	r.Background.Resize(size)
+	r.Background.Move(fyne.NewSquareOffsetPos(0))
 }
 
 func (r *listGuiRenderer) updateItems() {
@@ -180,6 +186,7 @@ func (r *listGuiRenderer) Refresh() {
 
 func (r *listGuiRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{
+		r.Background,
 		r.Container,
 		r.RoomName,
 		r.EmptyTip,

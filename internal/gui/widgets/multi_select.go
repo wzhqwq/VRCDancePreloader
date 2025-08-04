@@ -31,7 +31,7 @@ func NewMultiSelect(options, values []string) *MultiSelect {
 }
 
 func (m *MultiSelect) CreateRenderer() fyne.WidgetRenderer {
-	m.OptionSelected = make([]bool, len(m.Values))
+	m.OptionSelected = make([]bool, len(m.Options))
 	options := lo.Map(m.Options, func(value string, index int) *Option {
 		selected := lo.IndexOf(m.Values, value) >= 0
 		m.OptionSelected[index] = selected
@@ -143,7 +143,7 @@ func NewOption(label string, selected bool, onChange func(bool)) *Option {
 func (o *Option) CreateRenderer() fyne.WidgetRenderer {
 	label := canvas.NewText(o.Label, theme.Color(theme.ColorNameForeground))
 	label.Alignment = fyne.TextAlignCenter
-	rect := canvas.NewRectangle(color.Gray{Y: 240})
+	rect := canvas.NewRectangle(theme.Color(theme.ColorNameInputBackground))
 	rect.CornerRadius = theme.Padding()
 	check := widget.NewIcon(theme.NewColoredResource(theme.ConfirmIcon(), theme.ColorNameForegroundOnPrimary))
 
@@ -207,7 +207,7 @@ func (o *OptionRenderer) Refresh() {
 		o.check.Show()
 	} else {
 		o.label.Color = theme.Color(theme.ColorNameForeground)
-		o.rect.FillColor = color.Gray{Y: 240}
+		o.rect.FillColor = theme.Color(theme.ColorNameInputBackground)
 		o.check.Hide()
 	}
 }

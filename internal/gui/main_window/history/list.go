@@ -4,9 +4,11 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -14,7 +16,7 @@ import (
 	"weak"
 )
 
-type HistoryGui struct {
+type Gui struct {
 	widget.BaseWidget
 
 	activeId int
@@ -28,13 +30,13 @@ type HistoryGui struct {
 	activeChanged  bool
 }
 
-func NewHistoryGui() *HistoryGui {
+func NewGui() *Gui {
 	records, err := persistence.GetLocalRecords().GetRecords()
 	if err != nil {
 		log.Println("Error getting records:", err)
 	}
 
-	g := &HistoryGui{
+	g := &Gui{
 		activeId: -1,
 
 		Records: records,
@@ -48,7 +50,7 @@ func NewHistoryGui() *HistoryGui {
 	return g
 }
 
-func (g *HistoryGui) UpdateRecords() {
+func (g *Gui) UpdateRecords() {
 	records, err := persistence.GetLocalRecords().GetRecords()
 	if err != nil {
 		log.Println("Error getting records:", err)
@@ -62,7 +64,7 @@ func (g *HistoryGui) UpdateRecords() {
 	})
 }
 
-func (g *HistoryGui) SetActive(id int) {
+func (g *Gui) SetActive(id int) {
 	if g.activeId == id {
 		return
 	}
@@ -75,7 +77,7 @@ func (g *HistoryGui) SetActive(id int) {
 	})
 }
 
-func (g *HistoryGui) RenderLoop() {
+func (g *Gui) RenderLoop() {
 	for {
 		select {
 		case <-g.stopCh:
@@ -86,7 +88,7 @@ func (g *HistoryGui) RenderLoop() {
 	}
 }
 
-func (g *HistoryGui) CreateRenderer() fyne.WidgetRenderer {
+func (g *Gui) CreateRenderer() fyne.WidgetRenderer {
 	left := container.NewVBox()
 	right := container.NewCenter(widget.NewLabel(i18n.T("tip_select_record")))
 
@@ -94,7 +96,7 @@ func (g *HistoryGui) CreateRenderer() fyne.WidgetRenderer {
 
 	go g.RenderLoop()
 
-	r := &HistoryGuiRenderer{
+	r := &GuiRenderer{
 		g: g,
 
 		Left:       left,
@@ -102,7 +104,7 @@ func (g *HistoryGui) CreateRenderer() fyne.WidgetRenderer {
 
 		Right: right,
 
-		Separator: widget.NewSeparator(),
+		LeftBackground: canvas.NewRectangle(theme.Color(custom_fyne.ColorNameOuterBackground)),
 
 		buttonMap: make(map[int]weak.Pointer[button.RecordButton]),
 	}
@@ -112,35 +114,35 @@ func (g *HistoryGui) CreateRenderer() fyne.WidgetRenderer {
 	return r
 }
 
-type HistoryGuiRenderer struct {
-	g *HistoryGui
+type GuiRenderer struct {
+	g *Gui
 
 	Left       *fyne.Container
 	LeftScroll fyne.CanvasObject
 
 	Right fyne.CanvasObject
 
-	Separator *widget.Separator
+	LeftBackground *canvas.Rectangle
 
 	buttonMap map[int]weak.Pointer[button.RecordButton]
 }
 
-func (r *HistoryGuiRenderer) MinSize() fyne.Size {
+func (r *GuiRenderer) MinSize() fyne.Size {
 	return fyne.NewSize(r.LeftScroll.MinSize().Width+r.Right.MinSize().Width, r.Right.MinSize().Height)
 }
 
-func (r *HistoryGuiRenderer) Layout(size fyne.Size) {
+func (r *GuiRenderer) Layout(size fyne.Size) {
 	separateX := r.LeftScroll.MinSize().Width
 	r.LeftScroll.Resize(fyne.NewSize(separateX, size.Height))
 	r.LeftScroll.Move(fyne.NewPos(0, 0))
 	r.Right.Resize(fyne.NewSize(size.Width-separateX, size.Height))
 	r.Right.Move(fyne.NewPos(separateX, 0))
 
-	r.Separator.Resize(fyne.NewSize(1, size.Height))
-	r.Separator.Move(fyne.NewPos(separateX, 0))
+	r.LeftBackground.Resize(fyne.NewSize(separateX, size.Height))
+	r.LeftBackground.Move(fyne.NewSquareOffsetPos(0))
 }
 
-func (r *HistoryGuiRenderer) PushRecordButtons() {
+func (r *GuiRenderer) PushRecordButtons() {
 	buttons := lo.Map(r.g.Records, func(record *persistence.DanceRecord, _ int) *button.RecordButton {
 		if item, ok := r.buttonMap[record.ID]; ok {
 			if v := item.Value(); v != nil {
@@ -165,7 +167,7 @@ func (r *HistoryGuiRenderer) PushRecordButtons() {
 	r.LeftScroll.Refresh()
 }
 
-func (r *HistoryGuiRenderer) Refresh() {
+func (r *GuiRenderer) Refresh() {
 	if r.g.recordsChanged {
 		r.g.recordsChanged = false
 
@@ -215,15 +217,15 @@ func (r *HistoryGuiRenderer) Refresh() {
 	canvas.Refresh(r.g)
 }
 
-func (r *HistoryGuiRenderer) Objects() []fyne.CanvasObject {
+func (r *GuiRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{
+		r.LeftBackground,
 		r.LeftScroll,
 		r.Right,
-		r.Separator,
 	}
 }
 
-func (r *HistoryGuiRenderer) Destroy() {
+func (r *GuiRenderer) Destroy() {
 	close(r.g.stopCh)
 	r.g.recordsChange.Close()
 }

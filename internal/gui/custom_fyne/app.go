@@ -1,4 +1,4 @@
-package window_app
+package custom_fyne
 
 import (
 	"fyne.io/fyne/v2"

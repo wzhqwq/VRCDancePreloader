@@ -5,7 +5,6 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"image/color"
 )
 
 type Card struct {
@@ -15,7 +14,7 @@ type Card struct {
 }
 
 func (c *Card) CreateRenderer() fyne.WidgetRenderer {
-	rect := canvas.NewRectangle(color.White)
+	rect := canvas.NewRectangle(theme.Color(theme.ColorNameBackground))
 	rect.CornerRadius = theme.Padding() * 2
 	return &CardRenderer{
 		rect: rect,
