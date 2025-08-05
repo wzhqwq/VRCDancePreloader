@@ -14,8 +14,9 @@ type StateMachine struct {
 	DownloadStatus DownloadStatus
 	PlayStatus     PlayStatus
 
-	SuffixMode bool
-	EntryOpen  bool
+	SuffixMode  bool
+	EntryOpen   bool
+	CoolingDown bool
 
 	ps *PreloadedSong
 
@@ -62,18 +63,22 @@ func (sm *StateMachine) DownloadInstantly(waitComplete bool) error {
 	}
 }
 func (sm *StateMachine) StartDownload() {
+	sm.startDownloadMutex.Lock()
+	defer sm.startDownloadMutex.Unlock()
+
 	if !sm.IsDownloadNeeded() {
 		return
 	}
 
-	sm.startDownloadMutex.Lock()
-	defer sm.startDownloadMutex.Unlock()
-
 	if sm.DownloadStatus == Initial {
-		// Errors won't happen here
 		// Call OpenCacheEntry to increase the reference count
 		// We will release it in RemoveFromList
-		cache.OpenCacheEntry(sm.ps.GetSongId())
+		_, err := cache.OpenCacheEntry(sm.ps.GetSongId())
+		if err != nil {
+			sm.DownloadStatus = NotAvailable
+			sm.ps.notifySubscribers(StatusChange)
+			return
+		}
 		sm.EntryOpen = true
 	}
 
@@ -118,6 +123,7 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 					sm.DownloadStatus = Failed
 					sm.ps.PreloadError = ds.Error
 					sm.ps.notifySubscribers(StatusChange)
+					sm.planNextRetry()
 				}
 				return
 			}
@@ -154,6 +160,15 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 			ds.UpdateReqRangeStart(offset)
 		}
 	}
+}
+
+func (sm *StateMachine) planNextRetry() {
+	sm.CoolingDown = true
+	go func() {
+		<-time.After(time.Second * 3)
+		sm.CoolingDown = false
+		sm.StartDownload()
+	}()
 }
 
 func (sm *StateMachine) StartDownloadSuffix(start int64) {

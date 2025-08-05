@@ -11,7 +11,7 @@
 - Key: status_downloaded
   Default: "Video Downloaded"
 - Key: status_failed
-  Default: "Preload Failed"
+  Default: "Preload Failed (retry in 3s)"
 - Key: status_removed
   Default: "Video Ended"
 - Key: status_playing

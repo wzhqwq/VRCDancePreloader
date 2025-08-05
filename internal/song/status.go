@@ -40,7 +40,7 @@ func (sm *StateMachine) IsDownloadLoopStarted() bool {
 	return sm.DownloadStatus == Pending || sm.DownloadStatus == Requesting || sm.DownloadStatus == Downloading
 }
 func (sm *StateMachine) IsDownloadNeeded() bool {
-	return sm.DownloadStatus != Downloaded && sm.DownloadStatus != Removed && sm.DownloadStatus != NotAvailable
+	return sm.DownloadStatus != Downloaded && sm.DownloadStatus != Removed && sm.DownloadStatus != NotAvailable && !sm.CoolingDown
 }
 func (sm *StateMachine) CanPreload() bool {
 	return sm.DownloadStatus != NotAvailable && (sm.DownloadStatus == Initial || sm.DownloadStatus == Failed)
