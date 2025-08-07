@@ -1,6 +1,8 @@
 package config
 
 import (
+	"log"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/hijack"
@@ -9,7 +11,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/service"
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
-	"log"
 )
 
 func (hc *HijackConfig) Init() {
@@ -57,10 +58,11 @@ func (hc *HijackConfig) UpdateEnablePWI(b bool) {
 func (pc *ProxyConfig) Init() {
 	//TODO cancel comment after implemented youtube preloading
 	pc.ProxyControllers = map[string]*ProxyTester{
-		"pypydance-api": NewProxyTester("pypydance-api", pc.Pypy),
-		"youtube-video": NewProxyTester("youtube-video", pc.YoutubeVideo),
-		"youtube-api":   NewProxyTester("youtube-api", pc.YoutubeApi),
-		"youtube-image": NewProxyTester("youtube-image", pc.YoutubeImage),
+		"pypydance-api":  NewProxyTester("pypydance-api", pc.Pypy),
+		"wannadance-api": NewProxyTester("wannadance-api", pc.Wanna),
+		"youtube-video":  NewProxyTester("youtube-video", pc.YoutubeVideo),
+		"youtube-api":    NewProxyTester("youtube-api", pc.YoutubeApi),
+		"youtube-image":  NewProxyTester("youtube-image", pc.YoutubeImage),
 	}
 
 	requesting.InitPypyClient(pc.Pypy)
@@ -72,6 +74,7 @@ func (pc *ProxyConfig) Init() {
 
 	if !skipTest {
 		pc.ProxyControllers["pypydance-api"].Test()
+		pc.ProxyControllers["wannadance-api"].Test()
 	}
 	//if config.Youtube.EnableVideo {
 	//	if !skipTest {
@@ -95,6 +98,9 @@ func (pc *ProxyConfig) Update(item, value string) {
 	case "pypydance-api":
 		pc.Pypy = value
 		requesting.InitPypyClient(value)
+	case "wannadance-api":
+		pc.Wanna = value
+		requesting.InitWannaClient(value)
 	case "youtube-video":
 		pc.YoutubeVideo = value
 		requesting.InitYoutubeVideoClient(value)
@@ -114,6 +120,8 @@ func (pc *ProxyConfig) Test(item string) (bool, string) {
 	switch item {
 	case "pypydance-api":
 		return requesting.TestPypyClient()
+	case "wannadance-api":
+		return requesting.TestWannaClient()
 	case "youtube-video":
 		return requesting.TestYoutubeVideoClient()
 	case "youtube-api":

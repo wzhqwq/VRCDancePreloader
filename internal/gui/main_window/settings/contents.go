@@ -1,6 +1,8 @@
 package settings
 
 import (
+	"strconv"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
@@ -8,7 +10,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/cache_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"strconv"
 )
 
 func createHijackSettingsContent() fyne.CanvasObject {
@@ -39,6 +40,7 @@ func createProxySettingsContent() fyne.CanvasObject {
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_proxy")))
 	wholeContent.Add(proxyConfig.ProxyControllers["pypydance-api"].GetInput(i18n.T("label_pypy_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["wannadance-api"].GetInput(i18n.T("label_wanna_proxy")))
 	//TODO cancel comment after implemented youtube preloading
 	//wholeContent.Add(proxyConfig.ProxyControllers["youtube-video"].GetInput(i18n.T("label_yt_video_proxy")))
 	wholeContent.Add(proxyConfig.ProxyControllers["youtube-api"].GetInput(i18n.T("label_yt_api_proxy")))

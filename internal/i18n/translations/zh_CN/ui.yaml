@@ -69,7 +69,9 @@
   Default: "运行着呢"
 
 - Key: label_pypy_proxy
-  Default: "PyPyDance API代理服务器"
+  Default: "PyPyDance API代理服务器 (国内一般无需设置)"
+- Key: label_wanna_proxy
+  Default: "WannaDance API代理服务器 (国内一般无需设置)"
 - Key: label_yt_video_proxy
   Default: "YouTube视频代理服务器"
 - Key: label_yt_api_proxy

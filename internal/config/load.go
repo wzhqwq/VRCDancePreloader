@@ -2,18 +2,21 @@ package config
 
 import (
 	"errors"
-	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
-	"gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"sync"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
+	"gopkg.in/yaml.v3"
 )
 
 type KeyConfig struct {
 	Youtube string `yaml:"youtube-api"`
 }
 type ProxyConfig struct {
-	Pypy         string `yaml:"pypydance-api"`
+	Pypy  string `yaml:"pypydance-api"`
+	Wanna string `yaml:"wannadance-api"`
+
 	YoutubeVideo string `yaml:"youtube-video"`
 	YoutubeApi   string `yaml:"youtube-api"`
 	YoutubeImage string `yaml:"youtube-image"`
@@ -70,7 +73,9 @@ func FillDefaultSetting() {
 		EnablePWI:        false,
 	}
 	config.Proxy = ProxyConfig{
-		Pypy:         "",
+		Pypy:  "",
+		Wanna: "",
+
 		YoutubeVideo: "",
 		YoutubeApi:   "",
 		YoutubeImage: "",
