@@ -2,9 +2,6 @@ package raw_song
 
 import (
 	"fmt"
-	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
-	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
-	"log"
 	"sync"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -22,7 +19,6 @@ type CustomSong struct {
 	Name     string
 	Url      string
 	UniqueId string
-	Duration int
 }
 
 func NewCustomSong(url string) CustomSong {
@@ -56,20 +52,6 @@ func (cs *CustomSong) MatchUrl(url string) bool {
 		return cs.UniqueId == fmt.Sprintf("bili_%s", id)
 	}
 	return cs.Url == url
-}
-
-func (cs *CustomSong) GetDuration() int {
-	if cs.Duration == 0 {
-		if id, isBili := utils.CheckBiliURL(cs.Url); isBili {
-			d, err := third_party_api.GetBiliVideoDuration(requesting.GetBiliClient(), id)
-			if err != nil {
-				log.Println("Failed to get the duration of BiliBili video:", err)
-			} else {
-				cs.Duration = d
-			}
-		}
-	}
-	return cs.Duration
 }
 
 func (m *CustomSongs) Find(url string) (*CustomSong, bool) {

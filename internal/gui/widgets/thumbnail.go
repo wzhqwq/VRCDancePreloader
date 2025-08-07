@@ -1,80 +1,15 @@
 package widgets
 
 import (
-	"bytes"
+	"image"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/widget"
-	"github.com/nfnt/resize"
-	"github.com/stephennancekivell/go-future/future"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
-	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/images/thumbnails"
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"image"
-	"image/jpeg"
-	"io"
-	"log"
 )
-
-type AsyncImage struct {
-	i      future.Future[image.Image]
-	loaded bool
-}
-
-var cache = utils.NewWeakCache[AsyncImage](100)
-
-func GetThumbnailImage(id, url string) image.Image {
-	key := url
-	if id != "" {
-		key = "#" + id
-	}
-	if i, ok := cache.Get(key); ok {
-		return i.i.Get()
-	}
-
-	i := future.New(func() image.Image {
-		defer func() {
-			if i, ok := cache.Get(key); ok {
-				i.loaded = true
-			}
-		}()
-
-		log.Println("Downloading thumbnail from ", url)
-		resp, err := requesting.RequestThumbnail(url)
-		if err != nil {
-			log.Println("Failed to get thumbnail:", err)
-			return nil
-		}
-		defer resp.Body.Close()
-
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			fyne.LogError("Unable to read image data", err)
-			return nil
-		}
-
-		img, err := jpeg.Decode(bytes.NewReader(data))
-		if err != nil {
-			log.Println("Failed to decode image:", err)
-			return nil
-		}
-
-		return resize.Resize(320, 0, img, resize.Bilinear)
-	})
-
-	cache.Set(key, AsyncImage{i: i, loaded: false})
-
-	return i.Get()
-}
-
-func HasThumbnailCachedAndLoaded(url string) bool {
-	f, ok := cache.Get(url)
-	if ok {
-		return f.loaded
-	}
-	return false
-}
 
 type Thumbnail struct {
 	widget.BaseWidget
@@ -174,9 +109,9 @@ func (t *Thumbnail) loadImage() {
 			}()
 		}
 		t.image = nil
-	} else if HasThumbnailCachedAndLoaded(t.url) {
+	} else if thumbnails.HasThumbnailCachedAndLoaded(t.url) {
 		t.loading = false
-		t.image = GetThumbnailImage(t.ID, t.url)
+		t.image = thumbnails.GetThumbnailImage(t.ID, t.url)
 	} else {
 		t.loading = true
 		t.image = nil
@@ -186,7 +121,7 @@ func (t *Thumbnail) loadImage() {
 				return
 			}
 
-			i := GetThumbnailImage(t.ID, t.url)
+			i := thumbnails.GetThumbnailImage(t.ID, t.url)
 			if i == nil {
 				return
 			}

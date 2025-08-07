@@ -2,10 +2,11 @@ package icons
 
 import (
 	"embed"
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/theme"
 	"io"
 	"sync"
+
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/theme"
 )
 
 //go:embed *.svg
@@ -29,10 +30,13 @@ func readFile(name string) (fyne.Resource, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
+
 	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
+
 	return fyne.NewStaticResource(name, data), nil
 }
 

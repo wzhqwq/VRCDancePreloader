@@ -3,12 +3,14 @@ package song
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"log"
-	"time"
 )
 
 var idIncrement int64 = 0
@@ -113,7 +115,7 @@ func CreatePreloadedCustomSong(url string) *PreloadedSong {
 
 		em: utils.NewEventManager[ChangeType](),
 	}
-	go ret.CustomSong.GetDuration()
+	go completeDuration(ret)
 	ret.sm.ps = ret
 	return ret
 }
@@ -130,6 +132,13 @@ func CreateUnknownSong() *PreloadedSong {
 	ret.sm.ps = ret
 	ret.sm.DownloadStatus = NotAvailable
 	return ret
+}
+
+func completeDuration(ps *PreloadedSong) {
+	if ps.Duration > 1 {
+		return
+	}
+	ps.Duration = time.Duration(third_party_api.GetDurationByInternalID(ps.CustomSong.UniqueId).Get()) * time.Second
 }
 
 // getters
@@ -226,9 +235,9 @@ func (ps *PreloadedSong) PlaySongStartFrom(offset time.Duration) {
 	if ps.CustomSong != nil {
 		now := time.Now()
 		go func() {
-			ps.Duration = time.Duration(ps.CustomSong.GetDuration()) * time.Second
+			completeDuration(ps)
 			if ps.Duration > 1 {
-				ps.sm.PlaySongStartFrom(offset + time.Now().Sub(now))
+				ps.sm.PlaySongStartFrom(offset + time.Since(now))
 			}
 		}()
 	}

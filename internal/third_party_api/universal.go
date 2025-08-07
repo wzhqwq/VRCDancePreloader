@@ -1,18 +1,24 @@
 package third_party_api
 
 import (
-	"github.com/stephennancekivell/go-future/future"
-	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
 	"strings"
+
+	"github.com/stephennancekivell/go-future/future"
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 func GetThumbnailByInternalID(id string) future.Future[string] {
 	if pypyId, isPypy := utils.CheckIdIsPyPy(id); isPypy {
 		return future.Pure(utils.GetPyPyThumbnailUrl(pypyId))
 	}
-	if _, isWanna := utils.CheckIdIsWanna(id); isWanna {
+	if wannaId, isWanna := utils.CheckIdIsWanna(id); isWanna {
+		song, ok := raw_song.FindWannaSong(wannaId)
+		if ok {
+			return future.Pure("group:" + song.Group)
+		}
 		return future.Pure("")
 	}
 	if ytId, isYoutube := utils.CheckIdIsYoutube(id); isYoutube {
@@ -57,4 +63,26 @@ func CompleteTitleByInternalID(id, title string) future.Future[string] {
 		return future.Pure(title)
 	}
 	return future.Pure(title)
+}
+
+func GetDurationByInternalID(id string) future.Future[int] {
+	// if ytId, isYoutube := utils.CheckIdIsYoutube(id); isYoutube {
+	// 	if EnableYoutubeApi {
+	// 		return future.New(func() int {
+	// 			return GetYoutubeDuration(ytId)
+	// 		})
+	// 	}
+	// 	return future.Pure(0)
+	// }
+	if bvId, isBiliBili := utils.CheckIdIsBili(id); isBiliBili {
+		return future.New(func() int {
+			d, err := GetBiliVideoDuration(requesting.GetBiliClient(), bvId)
+			if err != nil {
+				log.Println("error while getting bilibili video duration:", err)
+				return 0
+			}
+			return d
+		})
+	}
+	return future.Pure(0)
 }
