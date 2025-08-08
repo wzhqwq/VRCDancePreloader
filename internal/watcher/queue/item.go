@@ -2,10 +2,11 @@ package queue
 
 import (
 	"fmt"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"regexp"
 	"strings"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type QueueItem interface {
@@ -29,10 +30,10 @@ type PyPyQueueItem struct {
 func (item *PyPyQueueItem) ToPreloaded() *song.PreloadedSong {
 	if item.SongNum > 0 {
 		// PyPyDance Song
-		return song.CreatePreloadedPyPySong(item.SongNum)
+		return song.GetPyPySongForList(item.SongNum)
 	}
 	if item.SongNum < 0 && item.URL != "" {
-		return song.CreatePreloadedCustomSong(item.URL)
+		return song.GetCustomSongForList(item.URL)
 	}
 	return song.CreateUnknownSong()
 }
@@ -84,12 +85,12 @@ func extractUrlFromTitle(title string) string {
 
 func (item *WannaQueueItem) ToPreloaded() *song.PreloadedSong {
 	if item.SongID > 0 {
-		return song.CreatePreloadedWannaSong(item.SongID)
+		return song.GetWannaSongForList(item.SongID)
 	}
 	if item.SongID < 0 {
 		url := extractUrlFromTitle(item.Title)
 		if url != "" {
-			return song.CreatePreloadedCustomSong(url)
+			return song.GetCustomSongForList(url)
 		}
 	}
 	return song.CreateUnknownSong()
