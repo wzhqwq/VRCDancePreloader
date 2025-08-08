@@ -96,18 +96,21 @@ type AsyncImage struct {
 var cache = utils.NewWeakCache[AsyncImage](100)
 
 func GetThumbnailImage(id, url string) image.Image {
+	if group, ok := strings.CutPrefix(url, "group:"); ok {
+		i := GetGroupThumbnail(group)
+		return i
+	}
+
 	key := url
 	if id != "" {
-		key = "#" + id
+		key = id
 	}
 	if i, ok := cache.Get(key); ok {
 		return i.i.Get()
 	}
 
-	if group, ok := strings.CutPrefix(url, "group:"); ok {
-		i := GetGroupThumbnail(group)
-		cache.Set(key, AsyncImage{i: future.Pure(i), loaded: true})
-		return i
+	if url == "" {
+		return getThumbnail(defaultThumbnail)
 	}
 
 	i := future.New(func() image.Image {
@@ -121,20 +124,20 @@ func GetThumbnailImage(id, url string) image.Image {
 		resp, err := requesting.RequestThumbnail(url)
 		if err != nil {
 			log.Println("Failed to get thumbnail:", err)
-			return nil
+			return getThumbnail(defaultThumbnail)
 		}
 		defer resp.Body.Close()
 
 		data, err := io.ReadAll(resp.Body)
 		if err != nil {
 			log.Println("Unable to read image data", err)
-			return nil
+			return getThumbnail(defaultThumbnail)
 		}
 
 		img, err := jpeg.Decode(bytes.NewReader(data))
 		if err != nil {
 			log.Println("Failed to decode image:", err)
-			return nil
+			return getThumbnail(defaultThumbnail)
 		}
 
 		return resize.Resize(320, 0, img, resize.Bilinear)
@@ -145,8 +148,8 @@ func GetThumbnailImage(id, url string) image.Image {
 	return i.Get()
 }
 
-func HasThumbnailCachedAndLoaded(url string) bool {
-	f, ok := cache.Get(url)
+func HasThumbnailCachedAndLoaded(key string) bool {
+	f, ok := cache.Get(key)
 	if ok {
 		return f.loaded
 	}

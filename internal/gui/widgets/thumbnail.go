@@ -98,6 +98,9 @@ func (t *Thumbnail) loadImage() {
 	if t.url == "" {
 		if t.ID == "" || t.invalid {
 			t.loading = false
+		} else if thumbnails.HasThumbnailCachedAndLoaded(t.ID) {
+			t.loading = false
+			t.image = thumbnails.GetThumbnailImage(t.ID, "")
 		} else {
 			t.loading = true
 			defer func() {
