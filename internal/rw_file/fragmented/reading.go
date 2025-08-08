@@ -1,6 +1,7 @@
 package fragmented
 
 import (
+	"context"
 	"io"
 )
 
@@ -9,14 +10,14 @@ func (f *File) checkRange(offset, length int64) bool {
 	defer f.fragmentsMutex.RUnlock()
 
 	for _, frag := range f.fragments {
-		if frag.start <= offset && offset+length < frag.start+frag.length {
+		if frag.Includes(offset, length) {
 			return true
 		}
 	}
 	return false
 }
 
-func (f *File) RequestRange(offset, length int64, closeCh chan struct{}) error {
+func (f *File) RequestRange(offset, length int64, ctx context.Context) error {
 	if f.IsComplete() {
 		return nil
 	}
@@ -31,33 +32,27 @@ func (f *File) RequestRange(offset, length int64, closeCh chan struct{}) error {
 	for {
 		select {
 		case frag := <-ch.Channel:
-			if frag.start <= offset && offset+length < frag.start+frag.length {
+			if frag.Includes(offset, length) {
 				return nil
 			}
-		case <-closeCh:
+		case <-ctx.Done():
 			return io.ErrClosedPipe
 		}
 	}
 }
 
 func (f *File) ReadAt(p []byte, offset int64) (int, error) {
-	f.fileMutex.RLock()
-	defer f.fileMutex.RUnlock()
-
-	if f.completeFile != nil {
-		return f.completeFile.ReadAt(p, offset)
-	}
-	if f.Complete.Load() {
-		return f.incompleteFile.ReadAt(p, offset)
+	if f.IsComplete() {
+		return f.File.ReadAt(p, offset)
 	}
 
 	f.fragmentsMutex.RLock()
 	defer f.fragmentsMutex.RUnlock()
 
 	for _, frag := range f.fragments {
-		if frag.start <= offset && offset < frag.start+frag.length {
-			readLen := min(len(p), int(frag.start+frag.length-offset))
-			return f.incompleteFile.ReadAt(p[:readLen], offset)
+		if frag.Contains(offset) {
+			readLen := min(len(p), int(frag.End()-offset))
+			return f.File.ReadAt(p[:readLen], offset)
 		}
 	}
 

@@ -61,7 +61,7 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 	return false
 }
 
-func handleConnect(_ *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
+func handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
 	defer func() {
 		if e := recover(); e != nil {
 			log.Printf("error connecting to remote: %v", e)

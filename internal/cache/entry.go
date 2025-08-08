@@ -4,14 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache/fragmented"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache/rw_file"
 	"io"
 	"net/http"
 	"os"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file"
+	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/continuous"
+	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/fragmented"
+	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/legacy_file"
 )
 
 var unixEpochTime = time.Unix(0, 0)
@@ -23,7 +26,7 @@ type Entry interface {
 	Active() bool
 	TotalLen() int64
 	DownloadedSize() int64
-	GetReadSeeker(ctx context.Context) io.ReadSeeker
+	GetReadSeeker(ctx context.Context) (io.ReadSeeker, error)
 	GetDownloadStream() (io.ReadCloser, error)
 	Close() error
 	IsComplete() bool
@@ -52,18 +55,43 @@ func ConstructBaseEntry(id string, client *http.Client) BaseEntry {
 func (e *BaseEntry) getVideoName() string {
 	return fmt.Sprintf("%s/%s.mp4", cachePath, e.id)
 }
+
+func (e *BaseEntry) checkLegacy() bool {
+	if _, err := os.Stat(e.getVideoName()); err == nil {
+		return true
+	}
+	if _, err := os.Stat(e.getVideoName() + ".dl"); err == nil {
+		return true
+	}
+	return false
+}
+
+// extendable operations
+
 func (e *BaseEntry) openFile() {
 	e.workingFileMutex.Lock()
 	defer e.workingFileMutex.Unlock()
 
+	if e.workingFile != nil {
+		return
+	}
+
+	if e.checkLegacy() {
+		e.workingFile = legacy_file.NewFile(e.getVideoName())
+	}
+
 	if e.workingFile == nil {
-		if enableFragmented {
+		switch fileFormat {
+		case 1:
+			e.workingFile = continuous.NewFile(e.getVideoName())
+		case 2:
 			e.workingFile = fragmented.NewFile(e.getVideoName())
-		} else {
-			e.workingFile = rw_file.NewFile(e.getVideoName())
+		default:
+			e.workingFile = legacy_file.NewFile(e.getVideoName())
 		}
 	}
 }
+
 func (e *BaseEntry) closeFile() error {
 	e.workingFileMutex.Lock()
 	defer e.workingFileMutex.Unlock()
@@ -80,18 +108,43 @@ func (e *BaseEntry) closeFile() error {
 	return err
 }
 
-func (e *BaseEntry) requestHttpResInfo(url string) (int64, string) {
+func (e *BaseEntry) getReadSeeker(ctx context.Context) (io.ReadSeeker, error) {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil {
+		return nil, io.ErrClosedPipe
+	}
+
+	r := e.workingFile.RequestRs(ctx)
+	if r == nil {
+		return nil, errors.New("failed to download this video")
+	}
+
+	return r, nil
+}
+
+// http utils
+
+func (e *BaseEntry) requestHttpResInfo(url string) (int64, time.Time, string) {
+	lastModified := time.Unix(0, 0)
+
 	res, err := e.client.Head(url)
 	if err != nil {
-		return 0, url
+		return 0, lastModified, url
 	}
-	if res.StatusCode >= 400 {
-		return 0, url
+	if res.StatusCode != http.StatusOK {
+		return 0, lastModified, url
 	}
+
 	if location := res.Header.Get("Location"); location != "" {
 		url = location
 	}
-	return res.ContentLength, url
+	if lastModifiedText := res.Header.Get("Last-Modified"); lastModifiedText != "" {
+		lastModified, _ = http.ParseTime(lastModifiedText)
+	}
+
+	return res.ContentLength, lastModified, url
 }
 func (e *BaseEntry) requestHttpResBody(url string, offset int64) (io.ReadCloser, error) {
 	req, err := http.NewRequest("GET", url, nil)
@@ -168,24 +221,6 @@ func (e *BaseEntry) DownloadedSize() int64 {
 		return 0
 	}
 	return e.workingFile.GetDownloadedBytes()
-}
-
-func (e *BaseEntry) GetReadSeeker(ctx context.Context) io.ReadSeeker {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
-
-	if e.workingFile == nil {
-		return nil
-	}
-
-	r := e.workingFile.RequestRsc()
-
-	go func() {
-		<-ctx.Done()
-		r.Close()
-	}()
-
-	return r
 }
 
 func (e *BaseEntry) ModTime() time.Time {

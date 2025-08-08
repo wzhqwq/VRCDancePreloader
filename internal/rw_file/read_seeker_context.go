@@ -1,50 +1,43 @@
 package rw_file
 
 import (
+	"context"
 	"io"
 )
 
-var rscIncrement = 0
-
-type Rsc struct {
+type RSWithContext struct {
 	file DeferredReader
-
-	ID int
 
 	totalLength int64
 	cursor      int64
 
-	Closed bool
-
-	closeCh chan struct{}
+	ctx context.Context
 }
 
-func NewRsc(file DeferredReader, total int64) *Rsc {
-	rscIncrement++
-	return &Rsc{
+func NewRSWithContext(file DeferredReader, total int64, ctx context.Context) *RSWithContext {
+	return &RSWithContext{
 		file: file,
 
-		ID: rscIncrement,
-
 		totalLength: total,
+		cursor:      0,
 
-		cursor: 0,
-		Closed: false,
-
-		closeCh: make(chan struct{}),
+		ctx: ctx,
 	}
 }
 
-func (rs *Rsc) Read(p []byte) (int, error) {
-	if rs.Closed {
+func (rs *RSWithContext) Read(p []byte) (int, error) {
+	select {
+	case <-rs.ctx.Done():
 		return 0, io.ErrClosedPipe
+	default:
 	}
+
 	if rs.cursor >= rs.totalLength {
 		return 0, io.EOF
 	}
 
 	//log.Println(rs.ID, "Request offset:", rs.cursor)
-	err := rs.file.RequestRange(rs.cursor, int64(len(p)), rs.closeCh)
+	err := rs.file.RequestRange(rs.cursor, int64(len(p)), rs.ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -57,10 +50,13 @@ func (rs *Rsc) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-func (rs *Rsc) Seek(offset int64, whence int) (int64, error) {
-	if rs.Closed {
+func (rs *RSWithContext) Seek(offset int64, whence int) (int64, error) {
+	select {
+	case <-rs.ctx.Done():
 		return 0, io.ErrClosedPipe
+	default:
 	}
+
 	switch whence {
 	case io.SeekStart:
 		rs.cursor = offset
@@ -79,11 +75,4 @@ func (rs *Rsc) Seek(offset int64, whence int) (int64, error) {
 	}
 	//log.Println(rs.ID, "Seek offset:", rs.cursor)
 	return rs.cursor, nil
-}
-
-func (rs *Rsc) Close() error {
-	//log.Println(rs.ID, "rsc closed, cursor:", rs.cursor)
-	close(rs.closeCh)
-	rs.Closed = true
-	return nil
 }

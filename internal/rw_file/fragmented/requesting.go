@@ -1,22 +1,24 @@
 package fragmented
 
-func (f *File) findAvailableFragment(start int64) *Fragment {
+import "github.com/wzhqwq/VRCDancePreloader/internal/rw_file/trunk"
+
+func (f *File) findAvailableFragment(start int64) *trunk.Fragment {
 	f.fragmentsMutex.RLock()
 	defer f.fragmentsMutex.RUnlock()
 	f.activeFragMutex.RLock()
 	defer f.activeFragMutex.RUnlock()
 
 	for _, frag := range f.fragments {
-		if frag.start <= start {
-			offset := start - frag.start
+		if frag.Start <= start {
+			offset := start - frag.Start
 
 			if f.activeFragment == frag {
-				if offset < frag.length+continueThreshold {
+				if offset < frag.Length+continueThreshold {
 					// continue the current fragment
 					return f.activeFragment
 				}
 			} else {
-				if offset < frag.length {
+				if offset < frag.Length {
 					// the starting point is in another fragment
 					return frag
 				}
@@ -37,14 +39,14 @@ func (f *File) activeOrCreateFragment(start int64) {
 }
 
 func (f *File) NotifyRequestStart(start int64) {
-	if f.Complete.Load() {
+	if f.File.Completed {
 		return
 	}
 	f.activeOrCreateFragment(start)
 }
 
 func (f *File) GetDownloadOffset() int64 {
-	return f.downloadingFragment.start + f.downloadingFragment.length
+	return f.downloadingFragment.End()
 }
 
 func (f *File) MarkDownloading() {

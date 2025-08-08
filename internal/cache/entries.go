@@ -1,11 +1,13 @@
 package cache
 
 import (
+	"context"
+	"io"
+	"log"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"io"
-	"log"
 )
 
 func NewEntry(id string) Entry {
@@ -38,6 +40,19 @@ type DirectDownloadEntry struct {
 	videoUrl string
 }
 
+func (e *DirectDownloadEntry) init() {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil || e.workingFile.TotalLen() > 0 {
+		return
+	}
+
+	totalLen, lastModified, newUrl := e.requestHttpResInfo(e.videoUrl)
+	e.videoUrl = newUrl
+	e.workingFile.Init(totalLen, lastModified)
+}
+
 func (e *DirectDownloadEntry) getTotalLen() int64 {
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()
@@ -45,12 +60,9 @@ func (e *DirectDownloadEntry) getTotalLen() int64 {
 	if e.workingFile == nil {
 		return 0
 	}
+	e.init()
 
-	return e.workingFile.GetTotalLength(func() int64 {
-		totalLen, newUrl := e.requestHttpResInfo(e.videoUrl)
-		e.videoUrl = newUrl
-		return totalLen
-	})
+	return e.workingFile.TotalLen()
 }
 
 func (e *DirectDownloadEntry) getDownloadStream() (io.ReadCloser, error) {
@@ -60,6 +72,8 @@ func (e *DirectDownloadEntry) getDownloadStream() (io.ReadCloser, error) {
 	if e.workingFile == nil {
 		return nil, io.ErrClosedPipe
 	}
+	e.init()
+
 	e.workingFile.MarkDownloading()
 	offset := e.workingFile.GetDownloadOffset()
 
@@ -68,14 +82,28 @@ func (e *DirectDownloadEntry) getDownloadStream() (io.ReadCloser, error) {
 	return e.requestHttpResBody(e.videoUrl, offset)
 }
 
+func (e *DirectDownloadEntry) getReadSeekerWithInit(ctx context.Context) (io.ReadSeeker, error) {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil {
+		return nil, io.ErrClosedPipe
+	}
+	e.init()
+
+	return e.getReadSeeker(ctx)
+}
+
 // adapters
 
 func (e *DirectDownloadEntry) TotalLen() int64 {
 	return e.getTotalLen()
 }
-
 func (e *DirectDownloadEntry) GetDownloadStream() (io.ReadCloser, error) {
 	return e.getDownloadStream()
+}
+func (e *DirectDownloadEntry) GetReadSeeker(ctx context.Context) (io.ReadSeeker, error) {
+	return e.getReadSeekerWithInit(ctx)
 }
 
 type BiliBiliEntry struct {
@@ -103,6 +131,17 @@ func (e *BiliBiliEntry) GetDownloadStream() (io.ReadCloser, error) {
 		}
 	}
 	return e.getDownloadStream()
+}
+
+func (e *BiliBiliEntry) GetReadSeeker(ctx context.Context) (io.ReadSeeker, error) {
+	if e.videoUrl == "" {
+		var err error
+		e.videoUrl, err = third_party_api.GetBiliVideoUrl(e.client, e.bvID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return e.getReadSeekerWithInit(ctx)
 }
 
 type YouTubeEntry struct {

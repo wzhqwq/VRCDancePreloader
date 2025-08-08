@@ -2,9 +2,10 @@ package download
 
 import (
 	"errors"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"io"
 	"sync"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 )
 
 var ErrCanceled = errors.New("task canceled")
@@ -92,10 +93,6 @@ func (ds *State) progressiveDownload(body io.ReadCloser, writer io.Writer) error
 	}
 
 	return nil
-}
-
-func (ds *State) UpdateReqRangeStart(start int64) {
-	ds.cacheEntry.UpdateReqRangeStart(start)
 }
 
 func singleDownload(ds *State) error {

@@ -3,10 +3,11 @@ package song
 import (
 	"errors"
 	"fmt"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
-	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"sync"
 	"time"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 )
 
 // StateMachine is the state machine for a song
@@ -15,17 +16,16 @@ type StateMachine struct {
 	PlayStatus     PlayStatus
 
 	SuffixMode  bool
-	EntryOpen   bool
 	CoolingDown bool
 
 	ps *PreloadedSong
+	ce cache.Entry
 
 	// waiter
 	completeSongWg sync.WaitGroup
 
 	// channels
-	syncTimeCh  chan time.Duration
-	suffixReqCh chan int64
+	syncTimeCh chan time.Duration
 
 	// locks
 	timeMutex          sync.Mutex
@@ -36,11 +36,7 @@ func NewSongStateMachine() *StateMachine {
 	sm := &StateMachine{
 		DownloadStatus: Initial,
 		PlayStatus:     Queued,
-		ps:             nil,
 		syncTimeCh:     make(chan time.Duration, 1),
-		suffixReqCh:    make(chan int64, 1),
-		completeSongWg: sync.WaitGroup{},
-		timeMutex:      sync.Mutex{},
 	}
 
 	return sm
@@ -73,13 +69,13 @@ func (sm *StateMachine) StartDownload() {
 	if sm.DownloadStatus == Initial {
 		// Call OpenCacheEntry to increase the reference count
 		// We will release it in RemoveFromList
-		_, err := cache.OpenCacheEntry(sm.ps.GetSongId())
+		entry, err := cache.OpenCacheEntry(sm.ps.GetSongId())
 		if err != nil {
 			sm.DownloadStatus = NotAvailable
 			sm.ps.notifySubscribers(StatusChange)
 			return
 		}
-		sm.EntryOpen = true
+		sm.ce = entry
 	}
 
 	if !sm.IsDownloadLoopStarted() {
@@ -155,9 +151,6 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 			sm.ps.TotalSize = ds.TotalSize
 			sm.ps.DownloadedSize = ds.DownloadedSize
 			sm.ps.notifySubscribers(ProgressChange)
-		case offset := <-sm.suffixReqCh:
-			sm.SuffixMode = true
-			ds.UpdateReqRangeStart(offset)
 		}
 	}
 }
@@ -169,13 +162,6 @@ func (sm *StateMachine) planNextRetry() {
 		sm.CoolingDown = false
 		sm.StartDownload()
 	}()
-}
-
-func (sm *StateMachine) StartDownloadSuffix(start int64) {
-	if !sm.IsDownloadNeeded() {
-		return
-	}
-	sm.suffixReqCh <- start
 }
 
 func (sm *StateMachine) PlaySongStartFrom(offset time.Duration) {
@@ -241,7 +227,8 @@ func (sm *StateMachine) RemoveFromList() {
 	}
 	sm.ps.notifySubscribers(StatusChange)
 	download.CancelDownload(sm.ps.GetSongId())
-	if sm.EntryOpen {
+	if sm.ce != nil {
 		cache.ReleaseCacheEntry(sm.ps.GetSongId())
+		sm.ce = nil
 	}
 }

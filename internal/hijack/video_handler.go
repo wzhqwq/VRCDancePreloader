@@ -2,11 +2,12 @@ package hijack
 
 import (
 	"context"
-	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
-	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"log"
 	"net/http"
 	"regexp"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 )
 
 var (
@@ -21,21 +22,34 @@ func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req 
 
 	entry, err := playlist.Request(platform, id, ctx)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
 		log.Printf("Failed to load %s video: %v", platform, err)
-		return
+		return false
 	}
 	log.Printf("Requested %s video %s is available", platform, id)
+
+	rs, err := entry.GetReadSeeker(ctx)
+	if err != nil {
+		log.Printf("Failed to load %s video: %v", platform, err)
+		return false
+	}
+
+	contentLength := entry.TotalLen()
+	if contentLength == 0 {
+		log.Printf("Failed to load %s video", platform)
+		return false
+	}
 
 	rangeHeader := req.Header.Get("Range")
 	if rangeHeader == "" {
 		log.Printf("Intercepted %s video %s full request", platform, id)
 	} else {
 		log.Printf("Intercepted %s video %s range: %s", platform, id, rangeHeader)
-		playlist.DownloadSuffix(platform, id, parseRange(rangeHeader, entry.TotalLen()))
+		entry.UpdateReqRangeStart(parseRange(rangeHeader, contentLength))
 	}
 
-	http.ServeContent(w, req, "video.mp4", entry.ModTime(), entry.GetReadSeeker(ctx))
+	http.ServeContent(w, req, "video.mp4", entry.ModTime(), rs)
+
+	return true
 }
 
 func handlePypyRequest(w http.ResponseWriter, req *http.Request) bool {
@@ -45,8 +59,7 @@ func handlePypyRequest(w http.ResponseWriter, req *http.Request) bool {
 	if matches := pypyVideoPathRegex.FindStringSubmatch(req.URL.Path); len(matches) > 1 {
 		id := matches[1]
 
-		handlePlatformVideoRequest("PyPyDance", id, w, req)
-		return true
+		return handlePlatformVideoRequest("PyPyDance", id, w, req)
 	}
 	return false
 }
@@ -63,8 +76,7 @@ func handleWannaRequest(w http.ResponseWriter, req *http.Request) bool {
 			return false
 		}
 
-		handlePlatformVideoRequest("WannaDance", id, w, req)
-		return true
+		return handlePlatformVideoRequest("WannaDance", id, w, req)
 	}
 	return false
 }
@@ -76,8 +88,7 @@ func handleBiliRequest(w http.ResponseWriter, req *http.Request) bool {
 	if matches := biliVideoPathRegex.FindStringSubmatch(req.URL.Path); len(matches) > 1 {
 		id := matches[1]
 
-		handlePlatformVideoRequest("BiliBili", id, w, req)
-		return true
+		return handlePlatformVideoRequest("BiliBili", id, w, req)
 	}
 	return false
 }

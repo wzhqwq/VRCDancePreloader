@@ -2,9 +2,10 @@ package fragmented
 
 import (
 	"errors"
-	"github.com/samber/lo"
 	"io"
 	"log"
+
+	"github.com/samber/lo"
 )
 
 // only be called by Append
@@ -12,10 +13,12 @@ func (f *File) checkAppend(bytes []byte) (int, error) {
 	f.fragmentsMutex.RLock()
 	defer f.fragmentsMutex.RUnlock()
 
+	fullSize := f.File.FullSize
+
 	cursor := f.downloadingFragment.End()
-	if cursor >= f.totalLen {
+	if cursor >= fullSize {
 		// It can't be
-		log.Printf("file %s is oversized, may be we have damanged the video file TAT", f.baseName)
+		log.Printf("file %s is oversized, may be we have damanged the video file TAT", f.File.Name())
 		return 0, io.EOF
 	}
 
@@ -27,16 +30,16 @@ func (f *File) checkAppend(bytes []byte) (int, error) {
 	// trim if needed
 	if downloadingIndex+1 < len(f.fragments) {
 		nextFrag := f.fragments[downloadingIndex+1]
-		if cursor >= nextFrag.start {
+		if cursor >= nextFrag.Start {
 			// current fragment is done, seek new position
 			return 0, io.EOF
 		}
-		return min(len(bytes), int(nextFrag.start-cursor)), nil
+		return min(len(bytes), int(nextFrag.Start-cursor)), nil
 	} else {
-		if len(bytes) > int(f.totalLen-cursor) {
+		if len(bytes) > int(fullSize-cursor) {
 			// It can't be
-			log.Printf("file %s is oversized, may be we have damanged the video file TAT", f.baseName)
-			return int(f.totalLen - cursor), nil
+			log.Printf("file %s is oversized, may be we have damanged the video file TAT", f.File.Name())
+			return int(fullSize - cursor), nil
 		}
 		return len(bytes), nil
 	}
@@ -56,7 +59,7 @@ func (f *File) Append(bytes []byte) (int, error) {
 		return 0, err
 	}
 
-	err = f.incompleteFile.AppendTo(f.downloadingFragment, bytes[:n])
+	err = f.File.AppendTo(f.downloadingFragment, bytes[:n])
 	if err != nil {
 		return 0, err
 	}
@@ -69,7 +72,7 @@ func (f *File) Append(bytes []byte) (int, error) {
 		// which also force the downloader to restart with new offset
 		return n, io.EOF
 	}
-	if f.downloadingFragment.End() == f.totalLen {
+	if f.downloadingFragment.End() == f.File.FullSize {
 		// We have reached the end, back to the first fragment if there's no other request
 		f.backToFirst()
 		return n, io.EOF

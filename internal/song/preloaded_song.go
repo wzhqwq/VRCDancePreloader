@@ -265,7 +265,3 @@ func (ps *PreloadedSong) AddToHistory() {
 	startTime := time.Now().Add(-ps.TimePassed).Unix()
 	persistence.AddToHistory(info.ID, info.Title, ps.Adder, time.Unix(startTime, 0))
 }
-
-func (ps *PreloadedSong) DownloadSuffix(start int64) {
-	ps.sm.StartDownloadSuffix(start)
-}

@@ -1,10 +1,6 @@
 package cache
 
 import (
-	"github.com/fsnotify/fsnotify"
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"github.com/wzhqwq/VRCDancePreloader/internal/types"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,18 +8,23 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/types"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 const (
-	AllCacheFileRegex      = `^((?:pypy|yt|wanna|bili)_.+)\.(?:mp4|mp4\.(?:dl|dlf))$`
+	AllCacheFileRegex      = `^((?:pypy|yt|wanna|bili)_.+)\.(?:mp4|mp4\.(?:dl|vrcdp))$`
 	CompleteCacheFileRegex = `^((?:pypy|yt|wanna|bili)_.+)\.mp4$`
-	PartialCacheFileRegex  = `^((?:pypy|yt|wanna|bili)_.+)\.mp4\.(?:dl|dlf)$`
+	PartialCacheFileRegex  = `^((?:pypy|yt|wanna|bili)_.+)\.mp4\.(?:dl|vrcdp)$`
 )
 
 var cachePath string
 var maxSize int64
 var keepFavorites bool
-var enableFragmented bool
+var fileFormat int
 
 var cacheMap = NewCacheMap()
 var cleanUpChan = make(chan struct{}, 1)
@@ -63,8 +64,8 @@ func GetMaxSize() int64 {
 func SetKeepFavorites(b bool) {
 	keepFavorites = b
 }
-func SetEnableFragmented(b bool) {
-	enableFragmented = b
+func SetFileFormat(format int) {
+	fileFormat = format
 }
 
 func InitSongList() error {
@@ -201,8 +202,17 @@ func RemoveLocalCacheById(id string) error {
 	if cacheMap.IsActive(id) {
 		return nil
 	}
+
+	videoTrunkPath := filepath.Join(cachePath, id+".mp4.vrcdp")
 	videoPath := filepath.Join(cachePath, id+".mp4")
 	videoDlPath := filepath.Join(cachePath, id+".mp4.dl")
+
+	if _, err := os.Stat(videoTrunkPath); err == nil {
+		err := os.Remove(videoTrunkPath)
+		if err != nil {
+			return err
+		}
+	}
 	if _, err := os.Stat(videoPath); err == nil {
 		err := os.Remove(videoPath)
 		if err != nil {
