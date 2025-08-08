@@ -21,5 +21,5 @@ func (f *Fragment) Contains(offset int64) bool {
 }
 
 func (f *Fragment) Includes(offset, length int64) bool {
-	return f.Start <= offset && offset+length < f.End()
+	return f.Start <= offset && offset+length <= f.End()
 }

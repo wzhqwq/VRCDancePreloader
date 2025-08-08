@@ -97,6 +97,5 @@ func (f *File) MarkCompleted() {
 	f.writeStates()
 }
 func (f *File) IsSuffix(frag *Fragment) bool {
-	log.Println(f.FullSize, frag.End())
 	return f.FullSize > 0 && frag.End() >= f.FullSize
 }
