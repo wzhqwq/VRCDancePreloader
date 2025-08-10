@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log"
 
@@ -40,27 +41,36 @@ type DirectDownloadEntry struct {
 	videoUrl string
 }
 
-func (e *DirectDownloadEntry) init() {
+func (e *DirectDownloadEntry) init(ctx context.Context) error {
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()
 
-	if e.workingFile == nil || e.workingFile.TotalLen() > 0 {
-		return
+	if e.workingFile == nil {
+		return io.ErrClosedPipe
+	}
+	if e.workingFile.TotalLen() > 0 {
+		return nil
 	}
 
-	totalLen, lastModified, newUrl := e.requestHttpResInfo(e.videoUrl)
+	totalLen, lastModified, newUrl := e.requestHttpResInfo(e.videoUrl, ctx)
+	if totalLen == 0 {
+		return errors.New("failed to get the total length of video, maybe it was canceled")
+	}
+
 	e.videoUrl = newUrl
 	e.workingFile.Init(totalLen, lastModified)
+
+	return nil
 }
 
 func (e *DirectDownloadEntry) getTotalLen() int64 {
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()
 
-	if e.workingFile == nil {
+	err := e.init(context.Background())
+	if err != nil {
 		return 0
 	}
-	e.init()
 
 	return e.workingFile.TotalLen()
 }
@@ -69,17 +79,17 @@ func (e *DirectDownloadEntry) getDownloadStream() (io.ReadCloser, error) {
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()
 
-	if e.workingFile == nil {
-		return nil, io.ErrClosedPipe
+	err := e.init(context.Background())
+	if err != nil {
+		return nil, err
 	}
-	e.init()
 
 	e.workingFile.MarkDownloading()
 	offset := e.workingFile.GetDownloadOffset()
 
 	log.Printf("Download %s start from %d", e.id, offset)
 
-	return e.requestHttpResBody(e.videoUrl, offset)
+	return e.requestHttpResBody(e.videoUrl, offset, context.Background())
 }
 
 func (e *DirectDownloadEntry) getReadSeekerWithInit(ctx context.Context) (io.ReadSeeker, error) {
@@ -89,7 +99,11 @@ func (e *DirectDownloadEntry) getReadSeekerWithInit(ctx context.Context) (io.Rea
 	if e.workingFile == nil {
 		return nil, io.ErrClosedPipe
 	}
-	e.init()
+
+	err := e.init(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	return e.getReadSeeker(ctx)
 }
@@ -114,7 +128,7 @@ type BiliBiliEntry struct {
 
 func (e *BiliBiliEntry) TotalLen() int64 {
 	if e.videoUrl == "" {
-		e.videoUrl, _ = third_party_api.GetBiliVideoUrl(e.client, e.bvID)
+		e.videoUrl, _ = third_party_api.GetBiliVideoUrl(e.client, e.bvID, context.Background())
 		if e.videoUrl == "" {
 			return 0
 		}
@@ -125,7 +139,7 @@ func (e *BiliBiliEntry) TotalLen() int64 {
 func (e *BiliBiliEntry) GetDownloadStream() (io.ReadCloser, error) {
 	if e.videoUrl == "" {
 		var err error
-		e.videoUrl, err = third_party_api.GetBiliVideoUrl(e.client, e.bvID)
+		e.videoUrl, err = third_party_api.GetBiliVideoUrl(e.client, e.bvID, context.Background())
 		if err != nil {
 			return nil, err
 		}
@@ -136,7 +150,7 @@ func (e *BiliBiliEntry) GetDownloadStream() (io.ReadCloser, error) {
 func (e *BiliBiliEntry) GetReadSeeker(ctx context.Context) (io.ReadSeeker, error) {
 	if e.videoUrl == "" {
 		var err error
-		e.videoUrl, err = third_party_api.GetBiliVideoUrl(e.client, e.bvID)
+		e.videoUrl, err = third_party_api.GetBiliVideoUrl(e.client, e.bvID, ctx)
 		if err != nil {
 			return nil, err
 		}

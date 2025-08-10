@@ -126,10 +126,15 @@ func (e *BaseEntry) getReadSeeker(ctx context.Context) (io.ReadSeeker, error) {
 
 // http utils
 
-func (e *BaseEntry) requestHttpResInfo(url string) (int64, time.Time, string) {
+func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (int64, time.Time, string) {
 	lastModified := time.Unix(0, 0)
 
-	res, err := e.client.Head(url)
+	req, err := http.NewRequestWithContext(ctx, "HEAD", url, nil)
+	if err != nil {
+		return 0, lastModified, url
+	}
+
+	res, err := e.client.Do(req)
 	if err != nil {
 		return 0, lastModified, url
 	}
@@ -146,8 +151,8 @@ func (e *BaseEntry) requestHttpResInfo(url string) (int64, time.Time, string) {
 
 	return res.ContentLength, lastModified, url
 }
-func (e *BaseEntry) requestHttpResBody(url string, offset int64) (io.ReadCloser, error) {
-	req, err := http.NewRequest("GET", url, nil)
+func (e *BaseEntry) requestHttpResBody(url string, offset int64, ctx context.Context) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}

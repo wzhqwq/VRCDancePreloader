@@ -1,11 +1,13 @@
 package third_party_api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
 	"net/http"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type BiliApiResponse[T any] struct {
@@ -32,8 +34,13 @@ type BvInfo struct {
 	} `json:"pages"`
 }
 
-func requestBiliApi[T any](client *http.Client, url string) (*T, error) {
-	res, err := client.Get(url)
+func requestBiliApi[T any](client *http.Client, url string, ctx context.Context) (*T, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -54,8 +61,8 @@ func requestBiliApi[T any](client *http.Client, url string) (*T, error) {
 	return &resp.Data, nil
 }
 
-func GetBvInfo(client *http.Client, bvID string) (*BvInfo, error) {
-	return requestBiliApi[BvInfo](client, utils.GetBiliVideoInfoURL(bvID))
+func GetBvInfo(client *http.Client, bvID string, ctx context.Context) (*BvInfo, error) {
+	return requestBiliApi[BvInfo](client, utils.GetBiliVideoInfoURL(bvID), ctx)
 }
 
 type BiliPlayerInfo struct {
@@ -73,13 +80,13 @@ type BiliPlayerInfo struct {
 	} `json:"durl"`
 }
 
-func GetBiliVideoUrl(client *http.Client, bvID string) (string, error) {
-	info, err := GetBvInfo(client, bvID)
+func GetBiliVideoUrl(client *http.Client, bvID string, ctx context.Context) (string, error) {
+	info, err := GetBvInfo(client, bvID, ctx)
 	if err != nil {
 		return "", err
 	}
 
-	playerInfo, err := requestBiliApi[BiliPlayerInfo](client, utils.GetBiliVideoPlayerURL(bvID, info.Cid))
+	playerInfo, err := requestBiliApi[BiliPlayerInfo](client, utils.GetBiliVideoPlayerURL(bvID, info.Cid), ctx)
 	if err != nil {
 		return "", err
 	}
@@ -88,7 +95,7 @@ func GetBiliVideoUrl(client *http.Client, bvID string) (string, error) {
 }
 
 func GetBiliVideoTitle(client *http.Client, bvID string) string {
-	info, err := GetBvInfo(client, bvID)
+	info, err := GetBvInfo(client, bvID, context.Background())
 	if err != nil {
 		log.Println("error while getting bilibili video title:", err)
 		return "BiliBili " + bvID
@@ -98,7 +105,7 @@ func GetBiliVideoTitle(client *http.Client, bvID string) string {
 }
 
 func GetBiliVideoThumbnail(client *http.Client, bvID string) (string, error) {
-	info, err := GetBvInfo(client, bvID)
+	info, err := GetBvInfo(client, bvID, context.Background())
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +114,7 @@ func GetBiliVideoThumbnail(client *http.Client, bvID string) (string, error) {
 }
 
 func GetBiliVideoDuration(client *http.Client, bvID string) (int, error) {
-	info, err := GetBvInfo(client, bvID)
+	info, err := GetBvInfo(client, bvID, context.Background())
 	if err != nil {
 		return 0, err
 	}
