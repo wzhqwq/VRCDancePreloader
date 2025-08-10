@@ -4,13 +4,15 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 	"log"
 	"net"
 	"net/http"
 	"runtime/debug"
 	"strconv"
+	"sync"
 	"time"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 
 	"github.com/elazarl/goproxy"
 )
@@ -41,7 +43,7 @@ func connectDial(ctx context.Context, network, addr string) (c net.Conn, err err
 	return proxy.ConnectDial(network, addr)
 }
 
-func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
+func handleVideoRequest(w http.ResponseWriter, req *http.Request) (ok bool, wg *sync.WaitGroup) {
 	defer func() {
 		if e := recover(); e != nil {
 			log.Printf("Error when processing request: %v", e)
@@ -49,16 +51,19 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) bool {
 			log.Println("Fallback to direct access")
 		}
 	}()
-	if handlePypyRequest(w, req) {
-		return true
+	ok, wg = handlePypyRequest(w, req)
+	if ok {
+		return
 	}
-	if handleWannaRequest(w, req) {
-		return true
+	ok, wg = handleWannaRequest(w, req)
+	if ok {
+		return
 	}
-	if handleBiliRequest(w, req) {
-		return true
+	ok, wg = handleBiliRequest(w, req)
+	if ok {
+		return
 	}
-	return false
+	return
 }
 
 func handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
@@ -77,8 +82,9 @@ func handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
 		orPanic(err)
 
 		if req.Method == http.MethodGet {
-			rw := NewRespWriter(client)
-			if handleVideoRequest(rw, req) {
+			rw := NewWriterGivenRespWriter(client)
+			if ok, wg := handleVideoRequest(rw, req); ok {
+				wg.Wait()
 				continue
 			}
 		}
@@ -97,12 +103,24 @@ func handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
 	}
 }
 
-// for https
+// for common request
 func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+	defer func() {
+		if e := recover(); e != nil {
+			log.Printf("Error when processing request: %v", e)
+			log.Println(string(debug.Stack()))
+			log.Println("Fallback to direct access")
+		}
+	}()
+
 	if req.Method == http.MethodGet {
-		rw := NewStandaloneRespWriter()
-		if handleVideoRequest(rw, req) {
-			return req, rw.ToResponse(req)
+		rw, respCh := NewDeferredRespWriter(req)
+		if ok, wg := handleVideoRequest(rw, req); ok {
+			go func() {
+				defer rw.CloseWriter()
+				wg.Wait()
+			}()
+			return req, <-respCh
 		}
 	}
 	return req, nil

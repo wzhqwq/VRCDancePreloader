@@ -1,73 +1,125 @@
 package hijack
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 )
 
-type RespWriter struct {
-	http.ResponseWriter
-	writer        io.Writer
+type DeferredHeaderWriter struct {
 	header        http.Header
 	headerWritten bool
 	statusCode    int
+
+	headerMutex sync.Mutex
+
+	handleWrittenHeader func(header http.Header, statusCode int)
 }
 
-func (w *RespWriter) Header() http.Header {
-	return w.header
+func (rw *DeferredHeaderWriter) Header() http.Header {
+	return rw.header
 }
-func (w *RespWriter) WriteHeader(statusCode int) {
-	if w.headerWritten {
+func (rw *DeferredHeaderWriter) WriteHeader(statusCode int) {
+	rw.headerMutex.Lock()
+	defer rw.headerMutex.Unlock()
+
+	if rw.headerWritten {
 		return
 	}
-	w.writer.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n", statusCode, http.StatusText(statusCode))))
-	w.statusCode = statusCode
 
-	for k, v := range w.header {
-		for _, vv := range v {
-			w.writer.Write([]byte(fmt.Sprintf("%s: %s\r\n", k, vv)))
-		}
+	rw.statusCode = statusCode
+	rw.handleWrittenHeader(rw.header, statusCode)
+	rw.headerWritten = true
+}
+func (rw *DeferredHeaderWriter) BeforeWrite() {
+	if !rw.headerWritten {
+		rw.WriteHeader(http.StatusOK)
 	}
-	w.writer.Write([]byte("\r\n"))
-	w.headerWritten = true
 }
-func (w *RespWriter) Write(b []byte) (int, error) {
-	if !w.headerWritten {
-		w.WriteHeader(http.StatusOK)
-		w.headerWritten = true
+
+func ConstructDeferredHeaderWriter(handler func(header http.Header, statusCode int)) DeferredHeaderWriter {
+	return DeferredHeaderWriter{
+		header: make(http.Header),
+
+		handleWrittenHeader: handler,
 	}
-	return w.writer.Write(b)
-}
-func NewRespWriter(w io.Writer) *RespWriter {
-	return &RespWriter{writer: w, header: make(http.Header)}
 }
 
-type StandaloneRespWriter struct {
-	RespWriter
+type WriterGivenRespWriter struct {
+	DeferredHeaderWriter
+
+	writer io.Writer
 }
 
-func (w *StandaloneRespWriter) ToResponse(req *http.Request) *http.Response {
-	bodyBuf := w.writer.(*bytes.Buffer)
-	//log.Println(w.header, bodyBuf.Len(), w.statusCode)
-	return &http.Response{
+func (rw *WriterGivenRespWriter) Write(data []byte) (int, error) {
+	rw.BeforeWrite()
+	return rw.writer.Write(data)
+}
+
+func NewWriterGivenRespWriter(writer io.Writer) *WriterGivenRespWriter {
+	return &WriterGivenRespWriter{
+		DeferredHeaderWriter: ConstructDeferredHeaderWriter(func(header http.Header, statusCode int) {
+			writer.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n", statusCode, http.StatusText(statusCode))))
+
+			for k, v := range header {
+				for _, vv := range v {
+					writer.Write([]byte(fmt.Sprintf("%s: %s\r\n", k, vv)))
+				}
+			}
+			writer.Write([]byte("\r\n"))
+		}),
+	}
+}
+
+type DeferredRespWriter struct {
+	DeferredHeaderWriter
+
+	pr *io.PipeReader
+	pw *io.PipeWriter
+
+	resp *http.Response
+
+	closeOnce sync.Once
+}
+
+func (rw *DeferredRespWriter) Write(data []byte) (int, error) {
+	rw.BeforeWrite()
+	return rw.pw.Write(data)
+}
+
+func (rw *DeferredRespWriter) CloseWriter() {
+	rw.closeOnce.Do(func() {
+		_ = rw.pw.Close()
+	})
+}
+
+func NewDeferredRespWriter(req *http.Request) (*DeferredRespWriter, chan *http.Response) {
+	pr, pw := io.Pipe()
+
+	resp := &http.Response{
 		Request:       req,
-		StatusCode:    w.statusCode,
-		Header:        w.header,
-		Body:          io.NopCloser(bodyBuf),
-		ContentLength: int64(bodyBuf.Len()),
+		Body:          pr,
+		ContentLength: -1,
+		ProtoMajor:    1,
+		ProtoMinor:    1,
 	}
-}
+	respCh := make(chan *http.Response, 1)
 
-func NewStandaloneRespWriter() *StandaloneRespWriter {
-	return &StandaloneRespWriter{
-		RespWriter: RespWriter{
-			writer: bytes.NewBuffer(make([]byte, 0, 1024)),
-			header: make(http.Header),
-			// Do not respond to WriteHeader so that only body is written to buffer
-			headerWritten: true,
-			statusCode:    http.StatusOK,
-		},
+	rw := &DeferredRespWriter{
+		DeferredHeaderWriter: ConstructDeferredHeaderWriter(func(header http.Header, statusCode int) {
+			resp.Status = fmt.Sprintf("%d %s", statusCode, http.StatusText(statusCode))
+			resp.StatusCode = statusCode
+			resp.Header = header
+			// resp.ContentLength
+			respCh <- resp
+		}),
+
+		pr: pr,
+		pw: pw,
+
+		resp: resp,
 	}
+
+	return rw, respCh
 }
