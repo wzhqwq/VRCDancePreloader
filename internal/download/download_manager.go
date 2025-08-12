@@ -1,11 +1,9 @@
 package download
 
 import (
-	"log"
 	"sync"
 
 	"github.com/samber/lo"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -31,28 +29,14 @@ func (dm *downloadManager) CreateOrGetState(id string) *State {
 
 	ds, exists := dm.stateMap[id]
 	if !exists {
-		cacheEntry, err := cache.OpenCacheEntry(id, "[DownloadManager]")
-		if err != nil {
-			log.Println("Skipped: ", err)
-			return nil
-		}
 		ds = &State{
 			ID: id,
-
-			cacheEntry: cacheEntry,
 
 			StateCh:    make(chan *State, 10),
 			CancelCh:   make(chan bool, 10),
 			PriorityCh: make(chan int, 10),
 
 			Pending: true,
-		}
-		// Check if file is already downloaded
-		if cacheEntry.IsComplete() {
-			size := cacheEntry.TotalLen()
-			ds.TotalSize = size
-			ds.DownloadedSize = size
-			ds.Done = true
 		}
 		dm.stateMap[id] = ds
 		dm.queue = append(dm.queue, id)
@@ -66,7 +50,6 @@ func (dm *downloadManager) CancelDownload(ids ...string) {
 
 	for _, id := range ids {
 		if ds, ok := dm.stateMap[id]; ok {
-			cache.ReleaseCacheEntry(id, "[DownloadManager]")
 			close(ds.CancelCh)
 			delete(dm.stateMap, id)
 		}

@@ -2,6 +2,7 @@ package song
 
 import (
 	"fmt"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 	"github.com/eduardolat/goeasyi18n"
@@ -78,7 +79,7 @@ func (ps *PreloadedSong) GetProgressInfo() PreloadedSongProgressInfo {
 		Total:      ps.TotalSize,
 		Downloaded: ps.DownloadedSize,
 
-		IsDownloading: ps.sm.DownloadStatus == Downloading || ps.sm.DownloadStatus == DownloadingSuffix,
+		IsDownloading: ps.sm.DownloadStatus == Downloading,
 	}
 }
 
@@ -123,7 +124,7 @@ func (ps *PreloadedSong) GetStatusInfo() PreloadedSongStatusInfo {
 	switch ps.sm.DownloadStatus {
 	case Initial, Pending, Removed, NotAvailable:
 		color = theme.ColorNamePlaceHolder
-	case Requesting, Downloading, DownloadingSuffix:
+	case Requesting, Downloading:
 		color = theme.ColorNamePrimary
 	case Downloaded:
 		color = theme.ColorNameSuccess

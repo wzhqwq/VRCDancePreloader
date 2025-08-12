@@ -3,6 +3,7 @@ package download
 import (
 	"errors"
 	"io"
+	"log"
 	"sync"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
@@ -15,14 +16,13 @@ type State struct {
 
 	ID string
 
-	cacheEntry cache.Entry
-
 	TotalSize      int64
 	DownloadedSize int64
 
-	Done    bool
-	Pending bool
-	Error   error
+	Requesting bool
+	Done       bool
+	Pending    bool
+	Error      error
 
 	StateCh    chan *State
 	CancelCh   chan bool
@@ -95,10 +95,7 @@ func (ds *State) progressiveDownload(body io.ReadCloser, writer io.Writer) error
 	return nil
 }
 
-func singleDownload(ds *State) error {
-	entry := ds.cacheEntry
-	ds.TotalSize = entry.TotalLen()
-
+func (ds *State) singleDownload(entry cache.Entry) error {
 	body, err := entry.GetDownloadStream()
 	if err != nil {
 		logger.ErrorLn("Start Downloading error:", err.Error())
@@ -111,6 +108,7 @@ func singleDownload(ds *State) error {
 	defer body.Close()
 
 	ds.DownloadedSize = entry.DownloadedSize()
+	ds.Requesting = false
 
 	// Notify about the total size and that the request header is done
 	ds.StateCh <- ds
@@ -119,58 +117,78 @@ func singleDownload(ds *State) error {
 	return ds.progressiveDownload(body, entry)
 }
 
+func (ds *State) markAsDone() {
+	ds.DownloadedSize = ds.TotalSize
+	ds.Done = true
+}
+
+func (ds *State) Download() {
+	// Lock the state so that there is always only one download happening
+	ds.Lock()
+	defer ds.unlockAndNotify()
+
+	cacheEntry, err := cache.OpenCacheEntry(ds.ID, "[Downloader]")
+	if err != nil {
+		log.Println("Skipped: ", err)
+	}
+	defer cache.ReleaseCacheEntry(ds.ID, "[Downloader]")
+
+	ds.Error = nil
+	ds.Requesting = true
+	ds.StateCh <- ds
+
+	ds.TotalSize = cacheEntry.TotalLen()
+	if ds.TotalSize == 0 {
+		ds.Error = errors.New("failed to get total size")
+		logger.ErrorLn("Failed to get total size")
+		return
+	}
+	ds.StateCh <- ds
+
+	// Check if file is already downloaded
+	if cacheEntry.IsComplete() {
+		logger.InfoLn("Already downloaded", ds.ID)
+		ds.markAsDone()
+		return
+	}
+
+	for {
+		if !ds.BlockIfPending() {
+			ds.Error = ErrCanceled
+			logger.InfoLn("Canceled download task", ds.ID)
+			return
+		}
+
+		err = ds.singleDownload(cacheEntry)
+		if err == nil || cacheEntry.IsComplete() {
+			logger.InfoLn("Downloading complete", ds.ID)
+			ds.markAsDone()
+			return
+		}
+
+		if !errors.Is(err, io.EOF) {
+			ds.Error = err
+
+			if errors.Is(err, ErrCanceled) {
+				// canceled task
+				logger.InfoLn("Canceled download task", ds.ID)
+			} else {
+				logger.ErrorLn("Downloading error:", err.Error(), ds.ID)
+			}
+			return
+		}
+
+		logger.InfoLn("Switch to another offset", ds.ID)
+	}
+}
+
 func Download(id string) *State {
 	ds := dm.CreateOrGetState(id)
 	if ds == nil {
 		return nil
 	}
 	go func() {
-		// Lock the state so that there is always only one download happening
-		ds.Lock()
-		defer ds.unlockAndNotify()
-
-		// Clear error every time we start downloading
-		ds.Error = nil
-
-		if ds.Done {
-			return
-		}
-
-		// Otherwise we start downloading, the total size is unknown
-		ds.TotalSize = 0
-		if !ds.BlockIfPending() {
-			logger.InfoLn("Canceled download task", ds.ID)
-			return
-		}
-
-		for {
-			err := singleDownload(ds)
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					if ds.cacheEntry.IsComplete() {
-						logger.InfoLn("All fragments complete")
-						break
-					} else {
-						logger.InfoLn("Switch to another offset")
-					}
-				} else {
-					ds.Error = err
-
-					if errors.Is(err, ErrCanceled) {
-						// canceled task
-						logger.InfoLn("Canceled download task", ds.ID)
-					} else {
-						logger.ErrorLn("Downloading error:", err.Error())
-					}
-					return
-				}
-			} else {
-				break
-			}
-		}
-
-		// Mark the download as done and update the priorities
-		ds.Done = true
+		ds.Download()
 		dm.UpdatePriorities()
 	}()
 

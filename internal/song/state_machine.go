@@ -128,7 +128,7 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 				sm.ps.notifySubscribers(StatusChange)
 				continue
 			}
-			if ds.TotalSize == 0 && sm.DownloadStatus != Requesting {
+			if ds.Requesting && sm.DownloadStatus != Requesting {
 				sm.DownloadStatus = Requesting
 				sm.ps.notifySubscribers(StatusChange)
 				continue
@@ -137,16 +137,9 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 			if sm.DownloadStatus == Removed {
 				return
 			}
-			if sm.SuffixMode {
-				if sm.DownloadStatus != DownloadingSuffix {
-					sm.DownloadStatus = DownloadingSuffix
-					sm.ps.notifySubscribers(StatusChange)
-				}
-			} else {
-				if sm.DownloadStatus != Downloading {
-					sm.DownloadStatus = Downloading
-					sm.ps.notifySubscribers(StatusChange)
-				}
+			if sm.DownloadStatus != Downloading {
+				sm.DownloadStatus = Downloading
+				sm.ps.notifySubscribers(StatusChange)
 			}
 			sm.ps.TotalSize = ds.TotalSize
 			sm.ps.DownloadedSize = ds.DownloadedSize

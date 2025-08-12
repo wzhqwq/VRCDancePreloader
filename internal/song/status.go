@@ -14,8 +14,6 @@ const (
 	Requesting DownloadStatus = "requesting"
 	// Downloading is when the song is downloading
 	Downloading DownloadStatus = "downloading"
-	// DownloadingSuffix is when the song is downloading from the previous requested offset
-	DownloadingSuffix DownloadStatus = "downloading_suffix"
 	// Downloaded is when the song is downloaded to the disk
 	Downloaded DownloadStatus = "downloaded"
 
