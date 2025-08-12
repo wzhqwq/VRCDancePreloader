@@ -2,7 +2,6 @@ package cache
 
 import (
 	"fmt"
-	"log"
 	"sync"
 )
 
@@ -30,7 +29,6 @@ func (cm *CacheMap) Open(id string) (Entry, error) {
 		cm.cache[id] = e
 	}
 	e.Open()
-	log.Println("Open cache entry:", id)
 
 	return e, nil
 }
@@ -43,7 +41,6 @@ func (cm *CacheMap) Release(id string) {
 		return
 	}
 	e.Release()
-	log.Println("Release cache entry:", id)
 }
 func (cm *CacheMap) CloseIfInactive(id string) bool {
 	cm.Lock()
@@ -57,7 +54,6 @@ func (cm *CacheMap) CloseIfInactive(id string) bool {
 	e.Close()
 	delete(cm.cache, id)
 	CleanUpCache()
-	log.Println("Close cache entry:", id)
 
 	return true
 }

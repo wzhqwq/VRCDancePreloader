@@ -2,7 +2,9 @@ package hijack
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"regexp"
 	"sync"
@@ -11,7 +13,9 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 )
 
-//var reqIncrement = 0
+var reqIncrement = 0
+
+const reqIdMax = math.MaxInt32
 
 var (
 	numericIdRegex     = regexp.MustCompile("[0-9]+")
@@ -25,44 +29,49 @@ func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req 
 	wg.Add(1)
 
 	go func() {
-		defer wg.Done()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		reqIncrement = (reqIncrement + 1) % reqIdMax
+		reqId := reqIncrement
 
-		//reqIncrement++
-		//reqId := reqIncrement
-		//log.Printf("handle request %d", reqId)
-		//defer log.Printf("request finished %d", reqId)
+		rangeHeader := req.Header.Get("Range")
+		if rangeHeader == "" {
+			log.Printf("[Request %d] Intercepted %s video %s full request", reqId, platform, id)
+		} else {
+			log.Printf("[Request %d] Intercepted %s video %s range: %s", reqId, platform, id, rangeHeader)
+		}
+		defer log.Printf("[Request %d] Finished", reqId)
+
+		defer wg.Done()
+		ctx, cancel := context.WithCancel(
+			context.WithValue(context.Background(), "trace_id", fmt.Sprintf("Request %d", reqId)),
+		)
+		// TODO consider using req.Context?
+		defer cancel()
 
 		entry, err := playlist.Request(platform, id, ctx)
 		if err != nil {
-			log.Printf("Failed to load %s video: %v", platform, err)
+			log.Printf("[Request %d] Failed to load %s video: %v", reqId, platform, err)
 			handledCh <- false
 			return
 		}
 
 		rs, err := entry.GetReadSeeker(ctx)
 		if err != nil {
-			log.Printf("Failed to load %s video: %v", platform, err)
+			log.Printf("[Request %d] Failed to load %s video: %v", reqId, platform, err)
 			handledCh <- false
 			return
 		}
 
 		contentLength := entry.TotalLen()
 		if contentLength == 0 {
-			log.Printf("Failed to load %s video", platform)
+			log.Printf("[Request %d] Failed to load %s video", reqId, platform)
 			handledCh <- false
 			return
 		}
 
-		log.Printf("Requested %s video %s is available", platform, id)
+		log.Printf("[Request %d] Requested %s video %s is available", reqId, platform, id)
 		handledCh <- true
 
-		rangeHeader := req.Header.Get("Range")
-		if rangeHeader == "" {
-			log.Printf("Intercepted %s video %s full request", platform, id)
-		} else {
-			log.Printf("Intercepted %s video %s range: %s", platform, id, rangeHeader)
+		if rangeHeader != "" {
 			entry.UpdateReqRangeStart(parseRange(rangeHeader, contentLength))
 		}
 

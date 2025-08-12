@@ -189,15 +189,20 @@ func (ps *PreloadedSong) DownloadInstantly(complete bool, ctx context.Context) (
 		return nil, err
 	}
 
+	logPrefix := ""
+	if traceID, ok := ctx.Value("trace_id").(string); ok {
+		logPrefix = "[" + traceID + "]"
+	}
+
 	// reference the cache entry until request closed
-	entry, err := cache.OpenCacheEntry(ps.GetSongId())
+	entry, err := cache.OpenCacheEntry(ps.GetSongId(), logPrefix)
 	if err != nil {
 		return nil, err
 	}
 
 	go func() {
 		<-ctx.Done()
-		cache.ReleaseCacheEntry(ps.GetSongId())
+		cache.ReleaseCacheEntry(ps.GetSongId(), logPrefix)
 	}()
 
 	return entry, nil

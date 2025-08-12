@@ -228,15 +228,18 @@ func RemoveLocalCacheById(id string) error {
 	return nil
 }
 
-func OpenCacheEntry(id string) (Entry, error) {
+func OpenCacheEntry(id, prefix string) (Entry, error) {
+	log.Println(prefix, "Open cache entry:", id)
 	return cacheMap.Open(id)
 }
 
-func ReleaseCacheEntry(id string) {
+func ReleaseCacheEntry(id, prefix string) {
+	log.Println(prefix, "Release cache entry:", id)
 	cacheMap.Release(id)
 	go func() {
 		<-time.After(time.Second)
 		if cacheMap.CloseIfInactive(id) {
+			log.Println("Closed cache entry:", id)
 			localFileEm.NotifySubscribers("*" + id)
 		}
 	}()

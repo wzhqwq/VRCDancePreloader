@@ -1,11 +1,12 @@
 package download
 
 import (
+	"log"
+	"sync"
+
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"log"
-	"sync"
 )
 
 type downloadManager struct {
@@ -30,7 +31,7 @@ func (dm *downloadManager) CreateOrGetState(id string) *State {
 
 	ds, exists := dm.stateMap[id]
 	if !exists {
-		cacheEntry, err := cache.OpenCacheEntry(id)
+		cacheEntry, err := cache.OpenCacheEntry(id, "[DownloadManager]")
 		if err != nil {
 			log.Println("Skipped: ", err)
 			return nil
@@ -65,7 +66,7 @@ func (dm *downloadManager) CancelDownload(ids ...string) {
 
 	for _, id := range ids {
 		if ds, ok := dm.stateMap[id]; ok {
-			cache.ReleaseCacheEntry(id)
+			cache.ReleaseCacheEntry(id, "[DownloadManager]")
 			close(ds.CancelCh)
 			delete(dm.stateMap, id)
 		}

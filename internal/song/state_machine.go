@@ -69,7 +69,7 @@ func (sm *StateMachine) StartDownload() {
 	if sm.DownloadStatus == Initial {
 		// Call OpenCacheEntry to increase the reference count
 		// We will release it in RemoveFromList
-		entry, err := cache.OpenCacheEntry(sm.ps.GetSongId())
+		entry, err := cache.OpenCacheEntry(sm.ps.GetSongId(), "[ActiveSong]")
 		if err != nil {
 			sm.DownloadStatus = NotAvailable
 			sm.ps.notifySubscribers(StatusChange)
@@ -228,7 +228,7 @@ func (sm *StateMachine) RemoveFromList() {
 	sm.ps.notifySubscribers(StatusChange)
 	download.CancelDownload(sm.ps.GetSongId())
 	if sm.ce != nil {
-		cache.ReleaseCacheEntry(sm.ps.GetSongId())
+		cache.ReleaseCacheEntry(sm.ps.GetSongId(), "[RemovedSong]")
 		sm.ce = nil
 	}
 }
