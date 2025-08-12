@@ -63,27 +63,19 @@ func (r *thumbnailRenderer) MinSize() fyne.Size {
 }
 
 func (r *thumbnailRenderer) Layout(size fyne.Size) {
-	if r.t.loading || r.t.image == nil {
-		r.i.Resize(fyne.NewSize(40, 40))
-		r.i.Move(fyne.NewPos(size.Width/2-20, size.Height/2-20))
-	} else {
-		r.i.Resize(size)
-		r.i.Move(fyne.NewPos(0, 0))
-	}
+	r.i.Resize(size)
+	r.i.Move(fyne.NewPos(0, 0))
 }
 
 func (r *thumbnailRenderer) Refresh() {
 	if r.t.imageChanged {
 		r.t.imageChanged = false
-		if r.t.loading {
-			// TODO spinner
-			r.i = canvas.NewImageFromResource(icons.GetIcon("movie"))
-		} else if r.t.image == nil {
-			r.i = canvas.NewImageFromResource(icons.GetIcon("movie"))
+		if r.t.loading || r.t.image == nil {
+			r.i = canvas.NewImageFromImage(thumbnails.GetDefaultThumbnail())
 		} else {
 			r.i = canvas.NewImageFromImage(r.t.image)
-			r.i.FillMode = canvas.ImageFillContain
 		}
+		r.i.FillMode = canvas.ImageFillContain
 		canvas.Refresh(r.t)
 	}
 }
@@ -117,7 +109,6 @@ func (t *Thumbnail) loadImage() {
 		t.image = thumbnails.GetThumbnailImage(t.ID, t.url)
 	} else {
 		t.loading = true
-		t.image = nil
 
 		defer func() {
 			if t.url == "" {

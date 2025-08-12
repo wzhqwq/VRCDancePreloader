@@ -88,6 +88,10 @@ func GetGroupThumbnail(groupName string) image.Image {
 	return getThumbnail(defaultThumbnail)
 }
 
+func GetDefaultThumbnail() image.Image {
+	return getThumbnail(defaultThumbnail)
+}
+
 type AsyncImage struct {
 	i      future.Future[image.Image]
 	loaded bool
