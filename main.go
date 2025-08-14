@@ -1,13 +1,15 @@
 package main
 
 import (
+	"log"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window"
+	"github.com/wzhqwq/VRCDancePreloader/internal/live"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tui"
-	"log"
 
 	"github.com/alexflint/go-arg"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
@@ -144,6 +146,9 @@ func main() {
 		log.Println("Stopping proxy")
 		config.GetHijackConfig().Stop()
 	}()
+
+	live.StartLiveServer()
+	defer live.StopLiveServer()
 
 	if args.TuiEnabled {
 		select {
