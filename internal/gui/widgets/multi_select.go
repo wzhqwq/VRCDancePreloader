@@ -1,13 +1,14 @@
 package widgets
 
 import (
+	"image/color"
+	"math"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/samber/lo"
-	"image/color"
-	"math"
 )
 
 type MultiSelect struct {
@@ -72,7 +73,7 @@ func (r *MultiSelectRenderer) getMaxOptionWidth() float32 {
 }
 
 func (r *MultiSelectRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(r.getMaxOptionWidth()+theme.Padding()*2, r.minHeight)
+	return fyne.NewSize(r.getMaxOptionWidth(), r.minHeight)
 }
 
 func (r *MultiSelectRenderer) Layout(size fyne.Size) {
@@ -81,10 +82,10 @@ func (r *MultiSelectRenderer) Layout(size fyne.Size) {
 	}
 	p := theme.Padding()
 
-	columns := min(len(r.options), int(size.Width/(r.getMaxOptionWidth()+p)))
+	columns := min(len(r.options), int((size.Width+p)/(r.getMaxOptionWidth()+p)))
 	rows := (len(r.options) + columns - 1) / columns
 
-	itemWidth := (size.Width-p)/float32(columns) - p
+	itemWidth := (size.Width+p)/float32(columns) - p
 
 	accY := p
 	for i := 0; i < rows; i++ {
@@ -97,10 +98,11 @@ func (r *MultiSelectRenderer) Layout(size fyne.Size) {
 		)
 		for j, option := range rowItems {
 			option.Resize(fyne.NewSize(itemWidth, maxItemHeight))
-			option.Move(fyne.NewPos(p+(itemWidth+p)*float32(j), accY))
+			option.Move(fyne.NewPos((itemWidth+p)*float32(j), accY))
 		}
 		accY += maxItemHeight + p
 	}
+	accY -= p
 
 	if math.Abs(float64(accY-r.minHeight)) > 1e-1 {
 		r.minHeight = accY

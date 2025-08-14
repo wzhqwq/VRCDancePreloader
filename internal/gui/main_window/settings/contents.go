@@ -200,7 +200,7 @@ func createCacheSettingsContent() fyne.CanvasObject {
 	manageBtn := widget.NewButton(i18n.T("btn_manage_cache"), func() {
 		cache_window.OpenCacheWindow()
 	})
-	wholeContent.Add(container.NewPadded(manageBtn))
+	wholeContent.Add(manageBtn)
 
 	return wholeContent
 }
