@@ -91,13 +91,22 @@
 - Key: label_max_parallel_download_count
   Default: "Maximal concurrent download tasks"
 - Key: label_cache_path
-  Default: "Video Cache path (effective after restart)"
+  Default: "Video cache path (effective after restart)"
+- Key: label_cache_format
+  Default: "Cache file format"
 - Key: label_max_cache_size
   Default: "Maximal cache size"
 - Key: label_keep_favorites
   Default: "Keep favorite videos in cache when cleaning"
 - Key: btn_manage_cache
   Default: "Manage Cache..."
+
+- Key: option_continuous
+  Default: "Continuous"
+- Key: option_fragmented
+  Default: "Fragmented"
+- Key: option_legacy
+  Default: "Legacy"
 
 - Key: label_cache_local
   Default: "Local Cache"
@@ -172,6 +181,6 @@
   Default: "Discard"
 
 - Key: btn_tip_close
-  Default: "OK"
+  Default: "Got it"
 - Key: message_title_tip
   Default: "Explanation"

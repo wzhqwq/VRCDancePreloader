@@ -188,6 +188,7 @@ func (cc *CacheConfig) Init() {
 	cache.SetupCache(cc.Path)
 	cache.SetMaxSize(int64(cc.MaxCacheSize) * 1024 * 1024)
 	cache.SetKeepFavorites(cc.KeepFavorites)
+	cache.SetFileFormat(cc.FileFormat)
 }
 
 func (cc *CacheConfig) UpdateMaxSize(sizeInMb int) {
@@ -199,6 +200,12 @@ func (cc *CacheConfig) UpdateMaxSize(sizeInMb int) {
 func (cc *CacheConfig) UpdateKeepFavorites(b bool) {
 	cc.KeepFavorites = b
 	cache.SetKeepFavorites(b)
+	SaveConfig()
+}
+
+func (cc *CacheConfig) UpdateFileFormat(fileFormat int) {
+	cc.FileFormat = fileFormat
+	cache.SetFileFormat(fileFormat)
 	SaveConfig()
 }
 

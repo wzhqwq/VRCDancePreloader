@@ -4,8 +4,11 @@ import (
 	"strconv"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/cache_window"
@@ -178,6 +181,25 @@ func createCacheSettingsContent() fyne.CanvasObject {
 		config.SaveConfig()
 	}
 	wholeContent.Add(pathInput)
+
+	formatOptions := []string{
+		i18n.T("option_legacy"),
+		i18n.T("option_continuous"),
+		i18n.T("option_fragmented"),
+	}
+
+	formatLabel := canvas.NewText(i18n.T("label_cache_format"), theme.Color(theme.ColorNamePlaceHolder))
+	formatLabel.TextSize = 12
+	formatSelect := widget.NewRadioGroup(formatOptions, func(option string) {
+		index := lo.IndexOf(formatOptions, option)
+		if index == -1 {
+			index = 0
+		}
+		cacheConfig.UpdateFileFormat(index)
+	})
+	formatSelect.Selected = formatOptions[cacheConfig.FileFormat]
+	formatSelect.Horizontal = true
+	wholeContent.Add(container.NewVBox(formatLabel, formatSelect))
 
 	maxCacheInput := widgets.NewInputWithSave(strconv.Itoa(cacheConfig.MaxCacheSize), i18n.T("label_max_cache_size"))
 	maxCacheInput.ForceDigits = true

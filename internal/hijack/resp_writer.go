@@ -69,6 +69,7 @@ func NewWriterGivenRespWriter(writer io.Writer) *WriterGivenRespWriter {
 			}
 			writer.Write([]byte("\r\n"))
 		}),
+		writer: writer,
 	}
 }
 

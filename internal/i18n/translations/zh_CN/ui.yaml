@@ -92,12 +92,21 @@
   Default: "最大并行下载数量"
 - Key: label_cache_path
   Default: "缓存路径（重启后修改生效）"
+- Key: label_cache_format
+  Default: "缓存文件格式"
 - Key: label_max_cache_size
   Default: "缓存最大大小"
 - Key: label_keep_favorites
   Default: "清理缓存时保留收藏夹视频"
 - Key: btn_manage_cache
   Default: "管理缓存..."
+
+- Key: option_continuous
+  Default: "连续型"
+- Key: option_fragmented
+  Default: "片段型"
+- Key: option_legacy
+  Default: "旧版"
 
 - Key: label_cache_local
   Default: "本地缓存"

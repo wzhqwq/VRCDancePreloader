@@ -47,6 +47,9 @@ type CacheConfig struct {
 	Path          string `yaml:"path"`
 	MaxCacheSize  int    `yaml:"max-cache-size"`
 	KeepFavorites bool   `yaml:"keep-favorites"`
+	//RWBufferSize  int    `yaml:"rw-buffer-size"`
+	// 0: legacy, 1: continuous, 2: fragmented
+	FileFormat int `yaml:"file-format"`
 }
 type DbConfig struct {
 	Path string `yaml:"path"`
@@ -107,6 +110,8 @@ func FillDefaultSetting() {
 		Path:          "./cache",
 		MaxCacheSize:  300,
 		KeepFavorites: false,
+		//RWBufferSize:  1,
+		FileFormat: 1,
 	}
 	config.Db = DbConfig{
 		Path: "./data.db",
