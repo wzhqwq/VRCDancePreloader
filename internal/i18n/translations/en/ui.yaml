@@ -170,3 +170,8 @@
   Default: "Update"
 - Key: discard_edit_comment
   Default: "Discard"
+
+- Key: btn_tip_close
+  Default: "OK"
+- Key: message_title_tip
+  Default: "Explanation"

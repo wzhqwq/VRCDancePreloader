@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/cache_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
@@ -16,7 +17,10 @@ func createHijackSettingsContent() fyne.CanvasObject {
 	hijackConfig := config.GetHijackConfig()
 
 	wholeContent := container.NewVBox()
-	wholeContent.Add(widget.NewLabel(i18n.T("label_hijack")))
+	wholeContent.Add(container.NewHBox(
+		widget.NewLabel(i18n.T("label_hijack")),
+		container.NewCenter(button.NewTipButton("tip_on_hijack")),
+	))
 
 	wholeContent.Add(hijackConfig.HijackRunner.GetInput(i18n.T("label_hijack_proxy_port")))
 
@@ -38,7 +42,10 @@ func createProxySettingsContent() fyne.CanvasObject {
 	proxyConfig := config.GetProxyConfig()
 
 	wholeContent := container.NewVBox()
-	wholeContent.Add(widget.NewLabel(i18n.T("label_proxy")))
+	wholeContent.Add(container.NewHBox(
+		widget.NewLabel(i18n.T("label_proxy")),
+		container.NewCenter(button.NewTipButton("tip_on_proxy")),
+	))
 	wholeContent.Add(proxyConfig.ProxyControllers["pypydance-api"].GetInput(i18n.T("label_pypy_proxy")))
 	wholeContent.Add(proxyConfig.ProxyControllers["wannadance-api"].GetInput(i18n.T("label_wanna_proxy")))
 	//TODO cancel comment after implemented youtube preloading
@@ -53,7 +60,10 @@ func createKeySettingsContent() fyne.CanvasObject {
 	keyConfig := config.GetKeyConfig()
 
 	wholeContent := container.NewVBox()
-	wholeContent.Add(widget.NewLabel(i18n.T("label_keys")))
+	wholeContent.Add(container.NewHBox(
+		widget.NewLabel(i18n.T("label_keys")),
+		container.NewCenter(button.NewTipButton("tip_on_keys")),
+	))
 
 	youtubeKeyInput := widgets.NewInputWithSave(keyConfig.Youtube, i18n.T("label_yt_api_key"))
 	youtubeKeyInput.OnSave = func() {
@@ -157,7 +167,10 @@ func createCacheSettingsContent() fyne.CanvasObject {
 	cacheConfig := config.GetCacheConfig()
 
 	wholeContent := container.NewVBox()
-	wholeContent.Add(widget.NewLabel(i18n.T("label_cache")))
+	wholeContent.Add(container.NewHBox(
+		widget.NewLabel(i18n.T("label_cache")),
+		container.NewCenter(button.NewTipButton("tip_on_cache")),
+	))
 
 	pathInput := widgets.NewInputWithSave(cacheConfig.Path, i18n.T("label_cache_path"))
 	pathInput.OnSave = func() {

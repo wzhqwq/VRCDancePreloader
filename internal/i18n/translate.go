@@ -2,10 +2,12 @@ package i18n
 
 import (
 	"embed"
-	"gopkg.in/yaml.v3"
 	"log"
 	"strconv"
 	"time"
+
+	"fyne.io/fyne/v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/cloudfoundry/jibber_jabber"
 	"github.com/eduardolat/goeasyi18n"
@@ -87,4 +89,11 @@ func ParseDate(date time.Time) map[string]string {
 		"Day":   strconv.Itoa(day),
 		"Time":  date.Format("15:04"),
 	}
+}
+
+func GetLangWrapping() fyne.TextWrap {
+	if lang == "zh-CN" {
+		return fyne.TextWrapBreak
+	}
+	return fyne.TextWrapWord
 }

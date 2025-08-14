@@ -170,3 +170,8 @@
   Default: "更新"
 - Key: discard_edit_comment
   Default: "放弃修改"
+
+- Key: btn_tip_close
+  Default: "善"
+- Key: message_title_tip
+  Default: "解惑"
