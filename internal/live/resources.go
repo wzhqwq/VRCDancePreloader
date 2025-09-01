@@ -10,7 +10,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 )
 
-func (s *LiveServer) handleThumbnail(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleThumbnail(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		w.WriteHeader(http.StatusBadRequest)
