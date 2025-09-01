@@ -37,10 +37,9 @@ type PreloadedSong struct {
 	// diagnostic states
 	PreloadError error
 
-	//
-
 	// event
-	em *utils.EventManager[ChangeType]
+	em     *utils.EventManager[ChangeType]
+	lazyEm *utils.EventManager[ChangeType]
 }
 
 // constructors
@@ -69,7 +68,8 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 		Duration: time.Duration(song.End) * time.Second,
 		PyPySong: song,
 
-		em: utils.NewEventManager[ChangeType](),
+		em:     utils.NewEventManager[ChangeType](),
+		lazyEm: utils.NewEventManager[ChangeType](),
 	}
 	ret.sm.ps = ret
 	return ret
@@ -98,7 +98,8 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 		Duration:  time.Duration(song.End) * time.Second,
 		WannaSong: song,
 
-		em: utils.NewEventManager[ChangeType](),
+		em:     utils.NewEventManager[ChangeType](),
+		lazyEm: utils.NewEventManager[ChangeType](),
 	}
 	ret.sm.ps = ret
 	return ret
@@ -113,7 +114,8 @@ func CreatePreloadedCustomSong(url string) *PreloadedSong {
 
 		ID: idIncrement,
 
-		em: utils.NewEventManager[ChangeType](),
+		em:     utils.NewEventManager[ChangeType](),
+		lazyEm: utils.NewEventManager[ChangeType](),
 	}
 	go completeDuration(ret)
 	ret.sm.ps = ret
@@ -127,7 +129,9 @@ func CreateUnknownSong() *PreloadedSong {
 		ID:      idIncrement,
 
 		sm: NewSongStateMachine(),
-		em: utils.NewEventManager[ChangeType](),
+
+		em:     utils.NewEventManager[ChangeType](),
+		lazyEm: utils.NewEventManager[ChangeType](),
 	}
 	ret.sm.ps = ret
 	ret.sm.DownloadStatus = NotAvailable

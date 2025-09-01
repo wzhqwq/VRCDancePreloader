@@ -1,13 +1,14 @@
 package playlist
 
 import (
+	"image/color"
+	"time"
+
 	"fyne.io/fyne/v2/container"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/containers"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"image/color"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -41,7 +42,7 @@ func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
 		dl: dl,
 
 		stopCh:     make(chan struct{}, 10),
-		songUpdate: ps.SubscribeEvent(),
+		songUpdate: ps.SubscribeEvent(false),
 
 		statusChanged:   true,
 		timeChanged:     true,

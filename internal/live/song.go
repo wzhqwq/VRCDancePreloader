@@ -20,7 +20,7 @@ func NewSongWatcher(s *Server, song *song.PreloadedSong) *SongWatcher {
 		song: song,
 
 		stopCh:     make(chan struct{}),
-		songUpdate: song.SubscribeEvent(),
+		songUpdate: song.SubscribeEvent(true),
 	}
 	go w.Loop()
 
