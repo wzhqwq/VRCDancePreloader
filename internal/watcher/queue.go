@@ -1,26 +1,30 @@
 package watcher
 
 import (
-	"context"
-	"github.com/samber/lo"
-	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 	"log"
 	"slices"
+
+	"github.com/samber/lo"
+	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
-type queueMutation struct {
-	oldIndex int
-	newIndex int
+type candidateList struct {
+	indices []int
 }
 
-func insertMutation(index int, from int) queueMutation {
-	return queueMutation{oldIndex: index, newIndex: from}
+func (c *candidateList) add(index int) {
+	c.indices = append(c.indices, index)
 }
-func deleteMutation(index int) queueMutation {
-	return queueMutation{oldIndex: index, newIndex: -1}
+func (c *candidateList) pullOutMatched(predicate func(index int) bool) (int, bool) {
+	index, indexInList, matched := lo.FindIndexOf(c.indices, predicate)
+	if matched {
+		c.indices = slices.Delete(c.indices, indexInList, indexInList+1)
+		return index, true
+	}
+	return 0, false
 }
 
 func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
@@ -71,58 +75,62 @@ func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
 		playlist.ClearAndSetQueue(new)
 		return
 	}
+	// otherwise we fine-tune the playlist
 
-	var insertedIndexes []int
-	var mutations []queueMutation
+	var replacementCandidates candidateList
+	var deletions []int
+	reused := make([]*song.PreloadedSong, len(new))
 
-	// collect all items to be inserted
+	// collect all items to be created or be deleted
 	x, y := len(old), len(new)
 	for x > 0 || y > 0 {
 		if x > 0 && lengths[x][y] == lengths[x-1][y] {
 			x--
-			mutations = append(mutations, deleteMutation(x))
+			// record the removing mutation and call RemoveFromList if it can't be reused anymore
+			deletions = append(deletions, x)
 		} else if y > 0 && lengths[x][y] == lengths[x][y-1] {
 			y--
-			insertedIndexes = append(insertedIndexes, y)
-			mutations = append(mutations, insertMutation(x, y))
+			// record the candidate spaces for the reused items
+			replacementCandidates.add(y)
 		} else if x > 0 && y > 0 {
 			x--
 			y--
+			// it's the same part, we can simply reuse it
+			reused[y] = old[x]
 		}
 	}
 
-	cancel := playlist.BulkUpdate(context.Background())
-	defer cancel()
-
-	pulledOutSongsInOld := make([]*song.PreloadedSong, len(old))
-	pulledOutSongsInNew := make([]*song.PreloadedSong, len(new))
-	for _, m := range mutations {
-		if m.newIndex < 0 {
-			newIndex, recordIndex, matched := lo.FindIndexOf(insertedIndexes, func(i int) bool {
-				return new[i].MatchWithPreloaded(old[m.oldIndex])
-			})
-			if matched {
-				insertedIndexes = slices.Delete(insertedIndexes, recordIndex, recordIndex+1)
-				pulledOutSongsInOld[m.oldIndex] = old[m.oldIndex]
-				pulledOutSongsInNew[newIndex] = old[m.oldIndex]
-			}
+	// check same song replacement
+	if len(deletions) > 0 {
+		if deletions[0] == 1 && old[0].Match(old[1]) {
+			deletions[0] = 0
 		}
 	}
-	for _, m := range mutations {
-		if m.newIndex < 0 {
-			if oldItem := pulledOutSongsInOld[m.oldIndex]; oldItem != nil {
-				playlist.PullOutItem(m.oldIndex)
-			} else {
-				playlist.RemoveItem(m.oldIndex)
-			}
+
+	// we first look at all the deletions
+	for _, index := range deletions {
+		// find a proper position to put on
+		dst, ok := replacementCandidates.pullOutMatched(func(i int) bool {
+			return new[i].MatchWithPreloaded(old[index])
+		})
+		if ok {
+			// reuse it directly if we find one position
+			reused[dst] = old[index]
 		} else {
-			if oldItem := pulledOutSongsInNew[m.newIndex]; oldItem != nil {
-				playlist.InsertPulledItem(oldItem, m.oldIndex)
-			} else {
-				playlist.InsertItem(new[m.newIndex], m.oldIndex)
-			}
+			// otherwise terminate the lifecycle of this song
+			old[index].RemoveFromList()
 		}
 	}
+
+	newList := lo.Map(reused, func(item *song.PreloadedSong, index int) *song.PreloadedSong {
+		if item != nil {
+			return item
+		}
+		// create if empty
+		return playlist.CreateFromQueueItem(new[index])
+	})
+
+	playlist.UpdateQueue(newList)
 
 	if len(old) > 0 && (len(new) == 0 || !new[0].MatchWithPreloaded(old[0])) {
 		old[0].CancelPlaying()

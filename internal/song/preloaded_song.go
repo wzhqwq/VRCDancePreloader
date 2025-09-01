@@ -228,6 +228,18 @@ func (ps *PreloadedSong) MatchWithWannaId(id int) bool {
 	}
 	return ps.WannaSong.DanceId == id
 }
+func (ps *PreloadedSong) Match(another *PreloadedSong) bool {
+	if ps.PyPySong != nil && another.PyPySong != nil {
+		return ps.PyPySong.ID == another.PyPySong.ID
+	}
+	if ps.WannaSong != nil && another.WannaSong != nil {
+		return ps.WannaSong.DanceId == another.WannaSong.DanceId
+	}
+	if ps.CustomSong != nil && another.CustomSong != nil {
+		return ps.CustomSong.UniqueId == another.CustomSong.UniqueId
+	}
+	return false
+}
 
 // actions
 
