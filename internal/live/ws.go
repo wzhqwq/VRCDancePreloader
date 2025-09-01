@@ -46,6 +46,10 @@ func (s *Server) handleWs(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error upgrading to websocket:", err)
 		return
 	}
+	conn.SetCloseHandler(func(code int, text string) error {
+		log.Println("WebSocket closed:", code, text)
+		return nil
+	})
 
 	session := &WsSession{
 		conn: conn,
@@ -65,8 +69,5 @@ func (s *Server) Send(t string, payload interface{}) {
 		return
 	}
 	log.Println(string(j))
-
-	for _, session := range s.sessions {
-		session.SendText(j)
-	}
+	s.sendCh <- j
 }

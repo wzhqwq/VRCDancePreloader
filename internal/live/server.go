@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
@@ -20,8 +21,12 @@ type Server struct {
 	watcher *PlaylistWatcher
 
 	listUpdate *utils.EventSubscriber[*playlist.PlayList]
-	newSession chan *WsSession
-	stopCh     chan struct{}
+
+	newSession    chan *WsSession
+	closedSession chan *WsSession
+
+	stopCh chan struct{}
+	sendCh chan []byte
 
 	running bool
 }
@@ -38,6 +43,7 @@ func NewLiveServer(port int) *Server {
 		listUpdate: playlist.SubscribeNewListEvent(),
 		newSession: make(chan *WsSession),
 		stopCh:     make(chan struct{}),
+		sendCh:     make(chan []byte, 50),
 	}
 	s.watcher = NewPlaylistWatcher(s, playlist.GetCurrentPlaylist())
 
@@ -68,6 +74,17 @@ func (s *Server) Loop() {
 			s.Send("PL_NEW", "")
 		case session := <-s.newSession:
 			s.sessions = append(s.sessions, session)
+		case session := <-s.closedSession:
+			for i, ss := range s.sessions {
+				if ss == session {
+					s.sessions = slices.Delete(s.sessions, i, i+1)
+					break
+				}
+			}
+		case data := <-s.sendCh:
+			for _, session := range s.sessions {
+				session.SendText(data)
+			}
 		}
 	}
 }
