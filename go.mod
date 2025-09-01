@@ -1,6 +1,6 @@
 module github.com/wzhqwq/VRCDancePreloader
 
-go 1.24
+go 1.25
 
 require (
 	fyne.io/fyne/v2 v2.6.1
