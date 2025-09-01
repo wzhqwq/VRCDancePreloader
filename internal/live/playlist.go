@@ -77,7 +77,7 @@ func (w *PlaylistWatcher) UpdateItems() {
 		return nil
 	})
 
-	var newSongs []song.LiveFullInfo
+	newSongs := []song.LiveFullInfo{}
 	for i, item := range items {
 		if songs[i] == nil {
 			s := NewSongWatcher(w.s, item)
@@ -87,7 +87,7 @@ func (w *PlaylistWatcher) UpdateItems() {
 		}
 	}
 
-	var removedSongs []ShortSongInfo
+	removedSongs := []ShortSongInfo{}
 	for id, s := range w.songMap {
 		if value := s.Value(); value == nil {
 			removedSongs = append(removedSongs, ShortSongInfo{ID: id})
