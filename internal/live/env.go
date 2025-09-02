@@ -7,14 +7,12 @@ import (
 
 var liveUaRegex = regexp.MustCompile("OBS|livehime")
 
-type liveCheckResult struct {
-	IsLive bool `json:"is_live"`
-}
-
 func (s *Server) handleCheckLive(w http.ResponseWriter, r *http.Request) {
 	ua := r.Header.Get("User-Agent")
 
-	writeOk(w, &liveCheckResult{
-		IsLive: liveUaRegex.MatchString(ua),
-	})
+	writeOk(w, liveUaRegex.MatchString(ua))
+}
+
+func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	writeOk(w, GetSettings())
 }

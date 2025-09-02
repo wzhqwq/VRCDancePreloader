@@ -6,6 +6,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/hijack"
+	"github.com/wzhqwq/VRCDancePreloader/internal/live"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
@@ -23,6 +24,9 @@ func (hc *HijackConfig) Init() {
 
 func (hc *HijackConfig) Stop() {
 	hijack.Stop()
+	if hc.EnablePWI {
+		service.StopPWIServer()
+	}
 }
 
 func (hc *HijackConfig) UpdatePort(port int) {
@@ -53,6 +57,7 @@ func (hc *HijackConfig) UpdateEnablePWI(b bool) {
 	} else {
 		service.StopPWIServer()
 	}
+	SaveConfig()
 }
 
 func (pc *ProxyConfig) Init() {
@@ -215,4 +220,41 @@ func (dc *DbConfig) Init() error {
 		return err
 	}
 	return nil
+}
+
+func (lc *LiveConfig) Init() {
+	live.OnSettingsChanged = func(settings string) {
+		lc.UpdateSettings(settings)
+	}
+	live.GetSettings = func() string {
+		return lc.Settings
+	}
+	if lc.Enabled {
+		live.StartLiveServer(lc.Port)
+	}
+}
+
+func (lc *LiveConfig) UpdateEnable(b bool) {
+	lc.Enabled = b
+	if lc.Enabled {
+		live.StartLiveServer(lc.Port)
+	} else {
+		live.StopLiveServer()
+	}
+	SaveConfig()
+}
+
+func (lc *LiveConfig) UpdatePort(port int) {
+	lc.Port = port
+	live.StartLiveServer(port)
+	SaveConfig()
+}
+
+func (lc *LiveConfig) UpdateSettings(settings string) {
+	lc.Settings = settings
+	SaveConfig()
+}
+
+func (lc *LiveConfig) Stop() {
+	live.StopLiveServer()
 }

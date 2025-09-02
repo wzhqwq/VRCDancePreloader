@@ -7,7 +7,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window"
-	"github.com/wzhqwq/VRCDancePreloader/internal/live"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tui"
 
@@ -147,8 +146,11 @@ func main() {
 		config.GetHijackConfig().Stop()
 	}()
 
-	live.StartLiveServer()
-	defer live.StopLiveServer()
+	config.GetLiveConfig().Init()
+	defer func() {
+		log.Println("Stopping live")
+		config.GetLiveConfig().Stop()
+	}()
 
 	if args.TuiEnabled {
 		select {

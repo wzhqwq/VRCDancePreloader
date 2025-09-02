@@ -54,6 +54,11 @@ type CacheConfig struct {
 type DbConfig struct {
 	Path string `yaml:"path"`
 }
+type LiveConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	Port     int    `yaml:"port"`
+	Settings string `yaml:"settings"`
+}
 
 var config struct {
 	Version  string         `yaml:"version"`
@@ -65,6 +70,7 @@ var config struct {
 	Download DownloadConfig `yaml:"download"`
 	Cache    CacheConfig    `yaml:"cache"`
 	Db       DbConfig       `yaml:"db"`
+	Live     LiveConfig     `yaml:"live"`
 }
 
 func FillDefaultSetting() {
@@ -115,6 +121,11 @@ func FillDefaultSetting() {
 	}
 	config.Db = DbConfig{
 		Path: "./data.db",
+	}
+	config.Live = LiveConfig{
+		Enabled:  false,
+		Port:     7652,
+		Settings: "{}",
 	}
 }
 
@@ -193,4 +204,7 @@ func GetDbConfig() *DbConfig {
 }
 func GetYoutubeConfig() *YoutubeConfig {
 	return &config.Youtube
+}
+func GetLiveConfig() *LiveConfig {
+	return &config.Live
 }

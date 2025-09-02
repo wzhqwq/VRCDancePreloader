@@ -18,6 +18,8 @@ var upgrader = websocket.Upgrader{
 
 type WsSession struct {
 	conn *websocket.Conn
+
+	lastSettings string
 }
 
 type Message struct {
@@ -25,8 +27,9 @@ type Message struct {
 	Payload interface{} `json:"payload"`
 }
 
-func (ws *WsSession) Init() {
-
+type BroadcastMessage struct {
+	Content []byte
+	Except  *WsSession
 }
 
 func (ws *WsSession) Close() {
@@ -46,19 +49,55 @@ func (s *Server) handleWs(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error upgrading to websocket:", err)
 		return
 	}
-	conn.SetCloseHandler(func(code int, text string) error {
-		log.Println("WebSocket closed:", code, text)
-		return nil
-	})
 
 	session := &WsSession{
 		conn: conn,
 	}
-	session.Init()
+	conn.SetCloseHandler(func(code int, text string) error {
+		log.Println("WebSocket closed:", code, text)
+		if s.running {
+			s.closedSession <- session
+		}
+		return nil
+	})
+	go func() {
+		defer session.Close()
+		for {
+			mType, data, err := conn.ReadMessage()
+			if err != nil {
+				log.Println("Error reading message from session:", err)
+				break
+			}
+			if mType == websocket.TextMessage {
+				log.Println("Received message:", string(data))
+				s.HandleClientMessage(session, data)
+			}
+		}
+	}()
 	s.newSession <- session
 }
 
-func (s *Server) Send(t string, payload interface{}) {
+type SettingsChange struct {
+	Settings  string
+	Initiator *WsSession
+}
+
+func (s *Server) HandleClientMessage(session *WsSession, data []byte) {
+	msg := Message{}
+	err := json.Unmarshal(data, &msg)
+	if err != nil {
+		log.Println("Error unmarshalling message:", err)
+	}
+
+	switch msg.Type {
+	case "SETTINGS":
+		if settings, ok := msg.Payload.(string); ok {
+			s.settingsCh <- SettingsChange{Settings: settings, Initiator: session}
+		}
+	}
+}
+
+func toJsonMessage(t string, payload interface{}) ([]byte, bool) {
 	m := Message{
 		Type:    t,
 		Payload: payload,
@@ -66,8 +105,22 @@ func (s *Server) Send(t string, payload interface{}) {
 	j, err := json.Marshal(m)
 	if err != nil {
 		log.Println("Error sending", t, ":", err)
-		return
+		return nil, false
 	}
-	log.Println(string(j))
-	s.sendCh <- j
+	log.Println("Send:", string(j))
+	return j, true
+}
+
+func (s *Server) Broadcast(t string, payload interface{}) {
+	j, ok := toJsonMessage(t, payload)
+	if ok {
+		s.sendCh <- BroadcastMessage{Content: j}
+	}
+}
+
+func (s *Server) ExclusiveBroadcast(t string, payload interface{}, except *WsSession) {
+	j, ok := toJsonMessage(t, payload)
+	if ok {
+		s.sendCh <- BroadcastMessage{Content: j, Except: except}
+	}
 }

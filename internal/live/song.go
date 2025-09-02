@@ -39,12 +39,12 @@ func (w *SongWatcher) Loop() {
 				if status == song.Removed {
 					w.Stop()
 				} else {
-					w.s.Send("ITEM_UPDATE", w.song.LiveStatusChange())
+					w.s.Broadcast("SONG_UPDATE", w.song.LiveStatusChange())
 				}
 			case song.ProgressChange:
-				w.s.Send("ITEM_UPDATE", w.song.LiveProgressChange())
+				w.s.Broadcast("SONG_UPDATE", w.song.LiveProgressChange())
 			case song.TimeChange:
-				w.s.Send("ITEM_UPDATE", w.song.LivePlayStatusChange())
+				w.s.Broadcast("SONG_UPDATE", w.song.LivePlayStatusChange())
 			}
 		}
 	}

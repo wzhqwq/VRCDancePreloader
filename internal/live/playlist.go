@@ -95,7 +95,7 @@ func (w *PlaylistWatcher) UpdateItems() {
 		}
 	}
 
-	w.s.Send("PL_UPDATE", PlaylistUpdateMessage{
+	w.s.Broadcast("PL_UPDATE", PlaylistUpdateMessage{
 		Current: lo.Map(songs, func(s *SongWatcher, _ int) ShortSongInfo {
 			return ShortSongInfo{ID: s.song.ID}
 		}),

@@ -6,12 +6,15 @@ import (
 
 var currentLiveServer *Server
 
-func StartLiveServer() {
+var OnSettingsChanged func(settings string)
+var GetSettings func() string
+
+func StartLiveServer(port int) {
 	if currentLiveServer != nil {
 		currentLiveServer.Stop()
 	}
 	log.Println("Starting Live Server")
-	currentLiveServer = NewLiveServer(7652)
+	currentLiveServer = NewLiveServer(port)
 	currentLiveServer.Start()
 }
 
