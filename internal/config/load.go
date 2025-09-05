@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"gopkg.in/yaml.v3"
 )
 
@@ -38,7 +39,7 @@ type HijackConfig struct {
 	EnableHttps      bool     `yaml:"enable-https"`
 	EnablePWI        bool     `yaml:"enable-pwi"`
 
-	HijackRunner *HijackServerRunner `yaml:"-"`
+	HijackRunner *widgets.ServerRunner `yaml:"-"`
 }
 type DownloadConfig struct {
 	MaxDownload int `yaml:"max-parallel-download-count"`
@@ -58,6 +59,8 @@ type LiveConfig struct {
 	Enabled  bool   `yaml:"enabled"`
 	Port     int    `yaml:"port"`
 	Settings string `yaml:"settings"`
+
+	LiveRunner *widgets.ServerRunner `yaml:"-"`
 }
 
 var config struct {

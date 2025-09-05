@@ -9,13 +9,13 @@ var currentLiveServer *Server
 var OnSettingsChanged func(settings string)
 var GetSettings func() string
 
-func StartLiveServer(port int) {
+func StartLiveServer(port int) error {
 	if currentLiveServer != nil {
 		currentLiveServer.Stop()
 	}
 	log.Println("Starting Live Server")
 	currentLiveServer = NewLiveServer(port)
-	currentLiveServer.Start()
+	return currentLiveServer.Start()
 }
 
 func StopLiveServer() {

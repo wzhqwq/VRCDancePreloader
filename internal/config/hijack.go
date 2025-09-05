@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -10,84 +9,9 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
-	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"log"
-	"strconv"
 )
-
-type HijackServerRunner struct {
-	Running     bool
-	Port        int
-	serverError error
-
-	input *widgets.InputWithRunner
-}
-
-func (h *HijackServerRunner) Save(value string) {
-	port, err := strconv.Atoi(value)
-	if err != nil {
-		h.serverError = errors.New(i18n.T("tip_port_malformed"))
-	}
-	config.Hijack.UpdatePort(port)
-}
-
-func (h *HijackServerRunner) Run() {
-	if h.Running {
-		config.Hijack.Stop()
-	}
-	go func() {
-		h.Running = true
-		h.serverError = nil
-		if h.input != nil {
-			h.input.UpdateStatus()
-		}
-		if err := config.Hijack.startHijack(); err != nil {
-			if global_state.IsInGui() {
-				h.serverError = err
-				h.Running = false
-				if h.input != nil {
-					h.input.UpdateStatus()
-				}
-			} else {
-				log.Fatalf("HTTP server error: %v", err)
-			}
-		}
-	}()
-}
-
-func (h *HijackServerRunner) GetStatus() widgets.Status {
-	if h.serverError != nil {
-		return widgets.StatusError
-	}
-	return widgets.StatusRunning
-}
-
-func (h *HijackServerRunner) GetValue() string {
-	return strconv.Itoa(h.Port)
-}
-
-func (h *HijackServerRunner) GetMessage() string {
-	if h.serverError != nil {
-		return h.serverError.Error()
-	}
-	return i18n.T("tip_hijack_server_running")
-}
-
-func (h *HijackServerRunner) GetInput(label string) *widgets.InputWithRunner {
-	if h.input == nil {
-		h.input = widgets.NewInputWithRunner(h, label)
-	}
-	return h.input
-}
-
-func NewHijackServerRunner() *HijackServerRunner {
-	return &HijackServerRunner{
-		Running: false,
-		Port:    config.Hijack.ProxyPort,
-	}
-}
 
 type MultiSelectSites struct {
 	widget.BaseWidget

@@ -65,7 +65,7 @@
 
 - Key: tip_port_malformed
   Default: "端口格式错误"
-- Key: tip_hijack_server_running
+- Key: tip_server_running
   Default: "运行着呢"
 
 - Key: label_pypy_proxy
@@ -184,3 +184,13 @@
   Default: "善"
 - Key: message_title_tip
   Default: "解惑"
+
+- Key: btn_close
+  Default: "关闭"
+- Key: message_title_broadcast
+  Default: "H5直播选项"
+
+- Key: label_enable_broadcast
+  Default: "启动列表广播"
+- Key: label_broadcast_port
+  Default: "提供列表广播的服务器端口"

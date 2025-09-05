@@ -104,15 +104,15 @@ func (s *Server) Loop() {
 	}
 }
 
-func (s *Server) Start() {
+func (s *Server) Start() error {
 	s.running = true
 	go s.Loop()
-	go func() {
-		if err := s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			log.Println("Error starting Live Server:", err)
-			s.running = false
-		}
-	}()
+	if err := s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		log.Println("Error starting Live Server:", err)
+		s.running = false
+		return err
+	}
+	return nil
 }
 
 func (s *Server) Stop() {

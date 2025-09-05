@@ -65,7 +65,7 @@
 
 - Key: tip_port_malformed
   Default: "Incorrect port format"
-- Key: tip_hijack_server_running
+- Key: tip_server_running
   Default: "I'm running"
 
 - Key: label_pypy_proxy
@@ -184,3 +184,13 @@
   Default: "Got it"
 - Key: message_title_tip
   Default: "Explanation"
+
+- Key: btn_close
+  Default: "Close"
+- Key: message_title_broadcast
+  Default: "Browser-based broadcast"
+
+- Key: label_enable_broadcast
+  Default: "Enable broadcast"
+- Key: label_broadcast_port
+  Default: "Server port for broadcast"
