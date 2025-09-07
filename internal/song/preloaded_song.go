@@ -55,7 +55,6 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 			ID:          id,
 			Group:       0,
 			Name:        fmt.Sprintf("PyPyDance #%d", id),
-			Start:       0,
 			End:         0,
 			OriginalURL: []string{},
 		}

@@ -14,7 +14,7 @@ func FindPyPySong(id int) (*PyPyDanceSong, bool) {
 }
 
 type PyPyDanceListResponse struct {
-	UpdatedAt int             `json:"updatedAt"`
+	Timestamp int             `json:"timestamp"`
 	Groups    []string        `json:"groups"`
 	Songs     []PyPyDanceSong `json:"songs"`
 }

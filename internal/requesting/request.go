@@ -1,9 +1,10 @@
 package requesting
 
 import (
+	"net/http"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"google.golang.org/api/option"
-	"net/http"
 )
 
 type mixedTransport struct {
@@ -29,7 +30,7 @@ func WithYoutubeApiClient(key string) option.ClientOption {
 }
 
 func RequestThumbnail(url string) (resp *http.Response, err error) {
-	if utils.CheckPyPyThumbnailUrl(url) {
+	if utils.CheckPyPyResource(url) {
 		return pypyClient.Get(url)
 	}
 	if utils.CheckYoutubeThumbnailURL(url) {

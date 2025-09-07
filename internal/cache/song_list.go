@@ -12,7 +12,7 @@ func loadSongs() error {
 	var savedResponse []byte
 
 	log.Println("loading PyPyDance songs")
-	resp, err := http.Get("https://jd.pypy.moe/api/v2/songs")
+	resp, err := http.Get("https://api.pypy.dance/bundle")
 	if err != nil {
 		return err
 	}

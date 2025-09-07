@@ -7,21 +7,21 @@ import (
 )
 
 func GetPyPyVideoUrl(id int) string {
-	return fmt.Sprintf("http://jd.pypy.moe/api/v1/videos/%d.mp4", id)
+	return fmt.Sprintf("https://api.pypy.dance/video?id=%d", id)
 }
 func GetPyPyThumbnailUrl(id int) string {
-	return fmt.Sprintf("http://jd.pypy.moe/api/v1/thumbnails/%d.jpg", id)
+	return fmt.Sprintf("https://api.pypy.dance/thumb?id=%d", id)
 }
 
 func CheckPyPyUrl(url string) (int, bool) {
-	// jd.pypy.moe/api/v1/videos/VIDEO_ID.mp4
+	// http://api.pypy.dance/video?id=VIDEO_ID
 
-	if len(url) < 37 {
+	if len(url) < 31 {
 		return 0, false
 	}
 
 	var id int
-	_, err := fmt.Sscanf(url, "http://jd.pypy.moe/api/v1/videos/%d.mp4", &id)
+	_, err := fmt.Sscanf(url, "http://api.pypy.dance/video?id=%d", &id)
 	if err == nil {
 		return id, true
 	}
@@ -29,8 +29,8 @@ func CheckPyPyUrl(url string) (int, bool) {
 	return 0, false
 }
 
-func CheckPyPyThumbnailUrl(url string) bool {
-	return strings.Contains(url, "jd.pypy.moe")
+func CheckPyPyResource(url string) bool {
+	return strings.Contains(url, "api.pypy.dance")
 }
 
 func CheckIdIsPyPy(id string) (int, bool) {
