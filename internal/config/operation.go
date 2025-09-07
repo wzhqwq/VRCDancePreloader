@@ -5,7 +5,10 @@ import (
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/hijack"
+	"github.com/wzhqwq/VRCDancePreloader/internal/live"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
@@ -14,8 +17,22 @@ import (
 )
 
 func (hc *HijackConfig) Init() {
-	hc.HijackRunner = NewHijackServerRunner()
-	hc.HijackRunner.Run()
+	runner := widgets.NewServerRunner(hc.ProxyPort)
+	runner.OnSave = hc.UpdatePort
+	runner.StartServer = func() error {
+		if err := hijack.Start(hc.InterceptedSites, hc.EnableHttps, hc.ProxyPort); err != nil {
+			if global_state.IsInGui() {
+				return err
+			} else {
+				log.Fatalf("Failed to start hijack server: %v", err)
+			}
+		}
+		return nil
+	}
+	runner.StopServer = config.Hijack.Stop
+	runner.Run()
+
+	hc.HijackRunner = runner
 	if hc.EnablePWI {
 		service.StartPWIServer()
 	}
@@ -23,15 +40,14 @@ func (hc *HijackConfig) Init() {
 
 func (hc *HijackConfig) Stop() {
 	hijack.Stop()
+	if hc.EnablePWI {
+		service.StopPWIServer()
+	}
 }
 
 func (hc *HijackConfig) UpdatePort(port int) {
 	hc.ProxyPort = port
 	SaveConfig()
-}
-
-func (hc *HijackConfig) startHijack() error {
-	return hijack.Start(hc.InterceptedSites, hc.EnableHttps, hc.ProxyPort)
 }
 
 func (hc *HijackConfig) UpdateEnableHttps(b bool) {
@@ -53,6 +69,7 @@ func (hc *HijackConfig) UpdateEnablePWI(b bool) {
 	} else {
 		service.StopPWIServer()
 	}
+	SaveConfig()
 }
 
 func (pc *ProxyConfig) Init() {
@@ -215,4 +232,56 @@ func (dc *DbConfig) Init() error {
 		return err
 	}
 	return nil
+}
+
+func (lc *LiveConfig) Init() {
+	live.OnSettingsChanged = func(settings string) {
+		lc.UpdateSettings(settings)
+	}
+	live.GetSettings = func() string {
+		return lc.Settings
+	}
+
+	runner := widgets.NewServerRunner(lc.Port)
+	runner.OnSave = lc.UpdatePort
+	runner.StartServer = func() error {
+		if err := live.StartLiveServer(lc.Port); err != nil {
+			if global_state.IsInGui() {
+				return err
+			} else {
+				log.Fatalf("Failed to start live server: %s", err)
+			}
+		}
+		return nil
+	}
+	runner.StopServer = config.Hijack.Stop
+	lc.LiveRunner = runner
+
+	if lc.Enabled {
+		runner.Run()
+	}
+}
+
+func (lc *LiveConfig) UpdateEnable(b bool) {
+	lc.Enabled = b
+	if lc.Enabled {
+		lc.LiveRunner.Run()
+	} else {
+		live.StopLiveServer()
+	}
+	SaveConfig()
+}
+
+func (lc *LiveConfig) UpdatePort(port int) {
+	lc.Port = port
+	SaveConfig()
+}
+
+func (lc *LiveConfig) UpdateSettings(settings string) {
+	lc.Settings = settings
+	SaveConfig()
+}
+
+func (lc *LiveConfig) Stop() {
+	live.StopLiveServer()
 }

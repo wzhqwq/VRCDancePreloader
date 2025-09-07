@@ -47,3 +47,16 @@
 
     - Legacy: Saves in the mp4 and dl formats and supports resumable downloads. These formats are now deprecated.
     If you experience issues with the first two formats, try using the legacy format instead.
+
+- Key: tip_on_live
+  Default: >
+    This software can provide real-time playlist information of the dance room to other services via WebSocket.
+    It also includes a static HTML5 page, providing a ready-to-use live streaming tool.
+    The appearance and behavior of the live streaming tool can be configured in your browser by clicking [here](http://localhost:7652).
+
+
+    - For OBS: Click "Add Source", select "Browser", and enter [http://localhost:7652](http://localhost:7652) in the URL field.
+    You can also set the width and height if needed.
+
+    - For BiliBili Live: Click "+ Source", select "Browser", and enter [http://localhost:7652](http://localhost:7652) in the URL field.
+    You can set the width and height in the advanced settings.

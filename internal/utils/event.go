@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"github.com/samber/lo"
 	"sync"
 	"weak"
+
+	"github.com/samber/lo"
 )
 
 type EventManager[T any] struct {

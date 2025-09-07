@@ -10,6 +10,7 @@ require (
 	github.com/elazarl/goproxy v1.7.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646

@@ -12,10 +12,29 @@ const (
 	TimeChange     ChangeType = "time"
 )
 
-func (ps *PreloadedSong) SubscribeEvent() *utils.EventSubscriber[ChangeType] {
-	return ps.em.SubscribeEvent()
+func (ps *PreloadedSong) SubscribeEvent(lazy bool) *utils.EventSubscriber[ChangeType] {
+	if lazy {
+		return ps.lazyEm.SubscribeEvent()
+	} else {
+		return ps.em.SubscribeEvent()
+	}
 }
 
 func (ps *PreloadedSong) notifySubscribers(changeType ChangeType) {
 	ps.em.NotifySubscribers(changeType)
+}
+func (ps *PreloadedSong) notifyLazySubscribers(changeType ChangeType) {
+	ps.lazyEm.NotifySubscribers(changeType)
+}
+
+func (ps *PreloadedSong) notifyStatusChange() {
+	ps.notifySubscribers(StatusChange)
+	ps.notifyLazySubscribers(StatusChange)
+}
+
+func (ps *PreloadedSong) notifyTimeChange(routine bool) {
+	ps.notifySubscribers(TimeChange)
+	if !routine {
+		ps.notifyLazySubscribers(TimeChange)
+	}
 }

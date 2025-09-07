@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"gopkg.in/yaml.v3"
 )
 
@@ -38,7 +39,7 @@ type HijackConfig struct {
 	EnableHttps      bool     `yaml:"enable-https"`
 	EnablePWI        bool     `yaml:"enable-pwi"`
 
-	HijackRunner *HijackServerRunner `yaml:"-"`
+	HijackRunner *widgets.ServerRunner `yaml:"-"`
 }
 type DownloadConfig struct {
 	MaxDownload int `yaml:"max-parallel-download-count"`
@@ -54,6 +55,13 @@ type CacheConfig struct {
 type DbConfig struct {
 	Path string `yaml:"path"`
 }
+type LiveConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	Port     int    `yaml:"port"`
+	Settings string `yaml:"settings"`
+
+	LiveRunner *widgets.ServerRunner `yaml:"-"`
+}
 
 var config struct {
 	Version  string         `yaml:"version"`
@@ -65,6 +73,7 @@ var config struct {
 	Download DownloadConfig `yaml:"download"`
 	Cache    CacheConfig    `yaml:"cache"`
 	Db       DbConfig       `yaml:"db"`
+	Live     LiveConfig     `yaml:"live"`
 }
 
 func FillDefaultSetting() {
@@ -115,6 +124,11 @@ func FillDefaultSetting() {
 	}
 	config.Db = DbConfig{
 		Path: "./data.db",
+	}
+	config.Live = LiveConfig{
+		Enabled:  false,
+		Port:     7652,
+		Settings: "{}",
 	}
 }
 
@@ -193,4 +207,7 @@ func GetDbConfig() *DbConfig {
 }
 func GetYoutubeConfig() *YoutubeConfig {
 	return &config.Youtube
+}
+func GetLiveConfig() *LiveConfig {
+	return &config.Live
 }

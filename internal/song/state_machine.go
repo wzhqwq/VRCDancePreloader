@@ -8,6 +8,7 @@ import (
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 // StateMachine is the state machine for a song
@@ -72,7 +73,7 @@ func (sm *StateMachine) StartDownload() {
 		entry, err := cache.OpenCacheEntry(sm.ps.GetSongId(), "[ActiveSong]")
 		if err != nil {
 			sm.DownloadStatus = NotAvailable
-			sm.ps.notifySubscribers(StatusChange)
+			sm.ps.notifyStatusChange()
 			return
 		}
 		sm.ce = entry
@@ -80,12 +81,12 @@ func (sm *StateMachine) StartDownload() {
 
 	if !sm.IsDownloadLoopStarted() {
 		sm.DownloadStatus = Pending
-		sm.ps.notifySubscribers(StatusChange)
+		sm.ps.notifyStatusChange()
 
 		ds := download.Download(sm.ps.GetSongId())
 		if ds == nil {
 			sm.DownloadStatus = NotAvailable
-			sm.ps.notifySubscribers(StatusChange)
+			sm.ps.notifyStatusChange()
 			return
 		}
 		go sm.StartDownloadLoop(ds)
@@ -103,6 +104,10 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 
 	sm.ps.PreloadError = nil
 
+	lazy := utils.NewLazy(func() {
+		sm.ps.notifyLazySubscribers(ProgressChange)
+	})
+
 	for {
 		select {
 		case <-ds.StateCh:
@@ -111,26 +116,26 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 				sm.ps.TotalSize = ds.TotalSize
 				sm.ps.DownloadedSize = ds.DownloadedSize
 				sm.ps.notifySubscribers(ProgressChange)
-				sm.ps.notifySubscribers(StatusChange)
+				sm.ps.notifyStatusChange()
 				return
 			}
 			if ds.Error != nil {
 				if !errors.Is(ds.Error, download.ErrCanceled) {
 					sm.DownloadStatus = Failed
 					sm.ps.PreloadError = ds.Error
-					sm.ps.notifySubscribers(StatusChange)
+					sm.ps.notifyStatusChange()
 					sm.planNextRetry()
 				}
 				return
 			}
 			if ds.Pending && sm.DownloadStatus != Pending {
 				sm.DownloadStatus = Pending
-				sm.ps.notifySubscribers(StatusChange)
+				sm.ps.notifyStatusChange()
 				continue
 			}
 			if ds.Requesting && sm.DownloadStatus != Requesting {
 				sm.DownloadStatus = Requesting
-				sm.ps.notifySubscribers(StatusChange)
+				sm.ps.notifyStatusChange()
 				continue
 			}
 			// Otherwise, it's downloading
@@ -139,11 +144,15 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 			}
 			if sm.DownloadStatus != Downloading {
 				sm.DownloadStatus = Downloading
-				sm.ps.notifySubscribers(StatusChange)
+				sm.ps.notifyStatusChange()
 			}
 			sm.ps.TotalSize = ds.TotalSize
 			sm.ps.DownloadedSize = ds.DownloadedSize
+
 			sm.ps.notifySubscribers(ProgressChange)
+			lazy.Change()
+		case <-lazy.WaitUpdate():
+			lazy.Update()
 		}
 	}
 }
@@ -166,8 +175,6 @@ func (sm *StateMachine) PlaySongStartFrom(offset time.Duration) {
 
 	if sm.PlayStatus == Queued {
 		go sm.StartPlayingLoop()
-	} else {
-		sm.ps.notifySubscribers(TimeChange)
 	}
 }
 
@@ -177,7 +184,7 @@ func (sm *StateMachine) CancelPlayingLoop() {
 	}
 	if sm.PlayStatus != Queued {
 		sm.PlayStatus = Queued
-		sm.ps.notifySubscribers(TimeChange)
+		sm.ps.notifyTimeChange(false)
 	}
 }
 
@@ -192,11 +199,13 @@ func (sm *StateMachine) StartPlayingLoop() {
 		realTimePassed := time.Since(startTime)
 		nextTime := (sm.ps.TimePassed/time.Second + 1) * time.Second
 		delta := nextTime - realTimePassed
+		routine := false
 		select {
 		case sm.ps.TimePassed = <-sm.syncTimeCh:
 			startTime = time.Now().Add(-sm.ps.TimePassed)
 		case <-time.After(delta):
 			sm.ps.TimePassed = nextTime
+			routine = true
 		}
 
 		if nextTime >= sm.ps.Duration {
@@ -204,10 +213,10 @@ func (sm *StateMachine) StartPlayingLoop() {
 			sm.ps.AddToHistory()
 			break
 		} else {
-			sm.ps.notifySubscribers(TimeChange)
+			sm.ps.notifyTimeChange(routine)
 		}
 	}
-	sm.ps.notifySubscribers(TimeChange)
+	sm.ps.notifyTimeChange(false)
 }
 
 func (sm *StateMachine) RemoveFromList() {
@@ -218,7 +227,7 @@ func (sm *StateMachine) RemoveFromList() {
 			sm.ps.AddToHistory()
 		}
 	}
-	sm.ps.notifySubscribers(StatusChange)
+	sm.ps.notifyStatusChange()
 	download.CancelDownload(sm.ps.GetSongId())
 	if sm.ce != nil {
 		cache.ReleaseCacheEntry(sm.ps.GetSongId(), "[RemovedSong]")

@@ -3,6 +3,7 @@ package playlist
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -57,6 +58,8 @@ func (m *Manager) CreateRenderer() fyne.WidgetRenderer {
 	return &managerRender{
 		manager: m,
 		list:    list,
+
+		broadcastBtn: NewBroadcastButton(),
 	}
 }
 
@@ -64,6 +67,8 @@ type managerRender struct {
 	manager *Manager
 
 	list *ListGui
+
+	broadcastBtn *BroadcastButton
 }
 
 func (r *managerRender) MinSize() fyne.Size {
@@ -74,10 +79,16 @@ func (r *managerRender) MinSize() fyne.Size {
 }
 
 func (r *managerRender) Layout(size fyne.Size) {
+	p := theme.Padding()
+
 	if r.list != nil {
 		r.list.Resize(size)
 		r.list.Move(fyne.NewPos(0, 0))
 	}
+
+	btnSize := r.broadcastBtn.MinSize()
+	r.broadcastBtn.Resize(btnSize)
+	r.broadcastBtn.Move(fyne.NewPos(size.Width-btnSize.Width-p, p))
 }
 
 func (r *managerRender) Refresh() {
@@ -89,6 +100,7 @@ func (r *managerRender) Refresh() {
 			r.list = NewListGui(r.manager.currentList)
 		}
 	}
+	r.broadcastBtn.Refresh()
 	canvas.Refresh(r.manager)
 }
 
@@ -96,7 +108,10 @@ func (r *managerRender) Objects() []fyne.CanvasObject {
 	if r.list == nil {
 		return []fyne.CanvasObject{}
 	}
-	return []fyne.CanvasObject{r.list}
+	return []fyne.CanvasObject{
+		r.list,
+		r.broadcastBtn,
+	}
 }
 
 func (r *managerRender) Destroy() {
