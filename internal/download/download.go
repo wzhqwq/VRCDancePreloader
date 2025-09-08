@@ -37,7 +37,7 @@ func (ds *State) Write(p []byte) (int, error) {
 		if ds.BlockIfPending() {
 			n := len(p)
 			ds.DownloadedSize += int64(n)
-			ds.StateCh <- ds
+			ds.notify()
 			return n, nil
 		} else {
 			return 0, ErrCanceled
@@ -61,14 +61,14 @@ func (ds *State) BlockIfPending() bool {
 		if dm.CanDownload(priority) {
 			if ds.Pending {
 				ds.Pending = false
-				ds.StateCh <- ds
+				ds.notify()
 				logger.InfoLn("Continue download task", ds.ID)
 			}
 			return true
 		} else {
 			if !ds.Pending {
 				ds.Pending = true
-				ds.StateCh <- ds
+				ds.notify()
 				logger.InfoLnf("Paused download task %s, because its priority is %d", ds.ID, priority)
 			}
 		}
@@ -82,7 +82,14 @@ func (ds *State) BlockIfPending() bool {
 }
 func (ds *State) unlockAndNotify() {
 	ds.Unlock()
-	ds.StateCh <- ds
+	ds.notify()
+}
+
+func (ds *State) notify() {
+	select {
+	case ds.StateCh <- ds:
+	default:
+	}
 }
 
 func (ds *State) progressiveDownload(body io.ReadCloser, writer io.Writer) error {
@@ -111,7 +118,7 @@ func (ds *State) singleDownload(entry cache.Entry) error {
 	ds.Requesting = false
 
 	// Notify about the total size and that the request header is done
-	ds.StateCh <- ds
+	ds.notify()
 
 	// Copy the body to the file, which will also update the download progress
 	return ds.progressiveDownload(body, entry)
@@ -135,7 +142,7 @@ func (ds *State) Download() {
 
 	ds.Error = nil
 	ds.Requesting = true
-	ds.StateCh <- ds
+	ds.notify()
 
 	ds.TotalSize = cacheEntry.TotalLen()
 	if ds.TotalSize == 0 {
@@ -143,7 +150,7 @@ func (ds *State) Download() {
 		logger.ErrorLn("Failed to get total size")
 		return
 	}
-	ds.StateCh <- ds
+	ds.notify()
 
 	// Check if file is already downloaded
 	if cacheEntry.IsComplete() {

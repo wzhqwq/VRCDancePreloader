@@ -33,8 +33,8 @@ func (dm *downloadManager) CreateOrGetState(id string) *State {
 			ID: id,
 
 			StateCh:    make(chan *State, 10),
-			CancelCh:   make(chan bool, 10),
-			PriorityCh: make(chan int, 10),
+			CancelCh:   make(chan bool),
+			PriorityCh: make(chan int, 1),
 
 			Pending: true,
 		}
@@ -70,6 +70,11 @@ func (dm *downloadManager) UpdatePriorities() {
 	for i, id := range dm.queue {
 		ds := dm.stateMap[id]
 		if ds != nil {
+			// flush first
+			select {
+			case <-ds.PriorityCh:
+			default:
+			}
 			ds.PriorityCh <- i
 		}
 	}
