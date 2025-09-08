@@ -157,15 +157,6 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 	}
 }
 
-func (sm *StateMachine) planNextRetry() {
-	sm.CoolingDown = true
-	go func() {
-		<-time.After(time.Second * 3)
-		sm.CoolingDown = false
-		sm.StartDownload()
-	}()
-}
-
 func (sm *StateMachine) PlaySongStartFrom(offset time.Duration) {
 	if sm.PlayStatus == Ended {
 		return

@@ -11,7 +11,7 @@
 - Key: status_downloaded
   Default: "视频已下载"
 - Key: status_failed
-  Default: "预加载失败（3秒后重试）"
+  Default: "预加载失败（稍后重试）"
 - Key: status_removed
   Default: "视频已结束"
 - Key: status_playing
