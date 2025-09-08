@@ -2,10 +2,13 @@ package utils
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 )
+
+var biliVideoPathRegex = regexp.MustCompile(`/(BV[a-zA-Z0-9]+)`)
 
 // Thanks to https://github.com/gizmo-ds/bilibili-real-url and https://github.com/SocialSisterYi/bilibili-API-collect
 // for the share of the usage of BiliBili api
@@ -36,11 +39,21 @@ func CheckBiliURL(url string) (string, bool) {
 		return "", false
 	}
 
-	matched := regexp.MustCompile(`(?:bilibili\.com/video|b23.tv|api.xin.moe)/([a-zA-Z0-9]+)`).FindStringSubmatch(url)
-	if len(matched) > 1 {
+	if matched := biliVideoPathRegex.FindStringSubmatch(url); len(matched) > 1 {
 		return matched[1], true
 	}
 
+	return "", false
+}
+
+func CheckBiliRequest(req *http.Request) (string, bool) {
+	if len(req.URL.Path) < 12 {
+		return "", false
+	}
+
+	if matched := biliVideoPathRegex.FindStringSubmatch(req.URL.Path); len(matched) > 1 {
+		return matched[1], true
+	}
 	return "", false
 }
 

@@ -107,7 +107,6 @@ func toJsonMessage(t string, payload interface{}) ([]byte, bool) {
 		log.Println("Error sending", t, ":", err)
 		return nil, false
 	}
-	log.Println("Send:", string(j))
 	return j, true
 }
 

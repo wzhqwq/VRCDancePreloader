@@ -6,22 +6,16 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"regexp"
 	"sync"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var reqIncrement = 0
 
 const reqIdMax = math.MaxInt32
-
-var (
-	numericIdRegex     = regexp.MustCompile("[0-9]+")
-	pypyVideoPathRegex = regexp.MustCompile(`/api/v1/videos/(\d+)\.mp4`)
-	biliVideoPathRegex = regexp.MustCompile(`/(BV[a-zA-Z0-9]+)`)
-)
 
 func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req *http.Request) (bool, *sync.WaitGroup) {
 	handledCh := make(chan bool, 1)
@@ -85,13 +79,7 @@ func handlePypyRequest(w http.ResponseWriter, req *http.Request) (bool, *sync.Wa
 	if !constants.IsPyPySite(req.Host) {
 		return false, nil
 	}
-	if matches := pypyVideoPathRegex.FindStringSubmatch(req.URL.Path); len(matches) > 1 {
-		id := matches[1]
-		if !numericIdRegex.MatchString(id) {
-			log.Printf("Invalid PyPyDance id %s", id)
-			return false, nil
-		}
-
+	if id, ok := utils.CheckPyPyRequest(req); ok {
 		return handlePlatformVideoRequest("PyPyDance", id, w, req)
 	}
 	return false, nil
@@ -101,14 +89,7 @@ func handleWannaRequest(w http.ResponseWriter, req *http.Request) (bool, *sync.W
 	if !constants.IsWannaSite(req.Host) {
 		return false, nil
 	}
-	if req.URL.Path == "/Api/Songs/play" {
-		q := req.URL.Query()
-		id := q.Get("id")
-		if !numericIdRegex.MatchString(id) {
-			log.Printf("Invalid WannaDance id %s", id)
-			return false, nil
-		}
-
+	if id, ok := utils.CheckWannaRequest(req); ok {
 		return handlePlatformVideoRequest("WannaDance", id, w, req)
 	}
 	return false, nil
@@ -118,9 +99,7 @@ func handleBiliRequest(w http.ResponseWriter, req *http.Request) (bool, *sync.Wa
 	if !constants.IsBiliSite(req.Host) {
 		return false, nil
 	}
-	if matches := biliVideoPathRegex.FindStringSubmatch(req.URL.Path); len(matches) > 1 {
-		id := matches[1]
-
+	if id, ok := utils.CheckBiliRequest(req); ok {
 		return handlePlatformVideoRequest("BiliBili", id, w, req)
 	}
 	return false, nil

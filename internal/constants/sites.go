@@ -6,6 +6,7 @@ import (
 
 var pypySites = []string{
 	"jd.pypy.moe",
+	"api.pypy.dance",
 }
 var wannaSites = []string{
 	"api.udon.dance",
@@ -19,6 +20,7 @@ var biliSites = []string{
 var allSites = []string{
 	// PyPyDance
 	"jd.pypy.moe",
+	"api.pypy.dance",
 	// WannaDance
 	"api.udon.dance",
 	"api.wannadance.online",
