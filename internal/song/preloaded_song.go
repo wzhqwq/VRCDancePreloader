@@ -48,7 +48,7 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 	song, ok := raw_song.FindPyPySong(id)
 	if !ok {
 		// maybe caused by corrupted song list
-		// TODO: reload song list to fix it
+		cache.DownloadPyPySongs()
 		log.Println("Warning: failed to find PyPyDance song ", id)
 		song = &raw_song.PyPyDanceSong{
 			ID:          id,
@@ -78,7 +78,7 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 	song, ok := raw_song.FindWannaSong(id)
 	if !ok {
 		// maybe caused by corrupted song list
-		// TODO: reload song list to fix it
+		cache.DownloadWannaSongs()
 		log.Println("Warning: failed to find WannaDance song ", id)
 		song = &raw_song.WannaDanceSong{
 			ID:    id,
@@ -284,4 +284,24 @@ func (ps *PreloadedSong) AddToHistory() {
 	info := ps.GetInfo()
 	startTime := time.Now().Add(-ps.TimePassed).Unix()
 	persistence.AddToHistory(info.ID, info.Title, ps.Adder, time.Unix(startTime, 0))
+}
+
+func (ps *PreloadedSong) UpdateSong() bool {
+	if ps.PyPySong != nil && ps.PyPySong.End == 0 {
+		song, ok := raw_song.FindPyPySong(ps.PyPySong.ID)
+		if ok {
+			ps.PyPySong = song
+			ps.notifySubscribers(BasicInfoChange)
+			return true
+		}
+	}
+	if ps.WannaSong != nil && ps.WannaSong.End == 0 {
+		song, ok := raw_song.FindWannaSong(ps.WannaSong.DanceId)
+		if ok {
+			ps.WannaSong = song
+			ps.notifySubscribers(BasicInfoChange)
+			return true
+		}
+	}
+	return false
 }

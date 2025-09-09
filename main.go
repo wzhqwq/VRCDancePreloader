@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
@@ -72,13 +73,11 @@ func main() {
 	// The ending note
 	defer log.Println("Gracefully stopped")
 
-	err := cache.InitSongList()
-	if err != nil {
-		log.Println("Failed to fetch pypy song list:", err)
-		return
-	}
+	songListCtx, cancel := context.WithCancel(context.Background())
+	cache.InitSongList(songListCtx)
+	defer cancel()
 
-	err = config.GetDbConfig().Init()
+	err := config.GetDbConfig().Init()
 	if err != nil {
 		log.Println("Failed to init database:", err)
 		return

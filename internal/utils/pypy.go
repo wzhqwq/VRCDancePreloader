@@ -16,8 +16,13 @@ var pypyVideoNewPath = "/video"
 func GetPyPyVideoUrl(id int) string {
 	return fmt.Sprintf("http://api.pypy.dance/video?id=%d", id)
 }
+
 func GetPyPyThumbnailUrl(id int) string {
 	return fmt.Sprintf("https://api.pypy.dance/thumb?id=%d", id)
+}
+
+func GetPyPyListUrl() string {
+	return "https://api.pypy.dance/bundle"
 }
 
 func CheckPyPyUrl(url string) (int, bool) {

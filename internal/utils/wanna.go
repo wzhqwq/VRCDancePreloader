@@ -30,6 +30,10 @@ func CheckWannaUrl(url string) (int, bool) {
 	return 0, false
 }
 
+func GetWannaListUrl() string {
+	return "http://api.udon.dance/Api/Songs/list"
+}
+
 func CheckWannaRequest(req *http.Request) (string, bool) {
 	if req.URL.Path == wannaVideoPath {
 		id := req.URL.Query().Get("id")

@@ -1,15 +1,30 @@
 package raw_song
 
 import (
-	"bytes"
-	"encoding/json"
+	"sync"
+	"time"
 )
 
 var wannaSongMap map[int]WannaDanceSong
+var mu sync.RWMutex
+var wannaUpdateTime time.Time
 
 func FindWannaSong(id int) (*WannaDanceSong, bool) {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	if wannaSongMap == nil {
+		return nil, false
+	}
 	song, ok := wannaSongMap[id]
 	return &song, ok
+}
+
+func GetWannaUpdateTime() (time.Time, bool) {
+	if wannaSongMap == nil {
+		return time.Time{}, false
+	}
+	return wannaUpdateTime, true
 }
 
 type WannaDanceListResponse struct {
@@ -25,11 +40,12 @@ type WannaDanceGroupContent struct {
 	Songs []WannaDanceSong `json:"songInfos"`
 }
 
-func ProcessWannaDanceList(resp []byte) error {
-	var data WannaDanceListResponse
-	err := json.NewDecoder(bytes.NewReader(resp)).Decode(&data)
-	if err != nil {
-		return err
+func ProcessWannaDanceList(data *WannaDanceListResponse) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if data == nil {
+		return
 	}
 
 	wannaSongMap = make(map[int]WannaDanceSong)
@@ -41,6 +57,7 @@ func ProcessWannaDanceList(resp []byte) error {
 			wannaSongMap[song.DanceId] = song
 		}
 	}
+	wannaUpdateTime, _ = time.Parse("20060102150405", data.Time)
 
-	return nil
+	em.NotifySubscribers("WannaDance")
 }

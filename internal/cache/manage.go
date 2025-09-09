@@ -68,14 +68,6 @@ func SetFileFormat(format int) {
 	fileFormat = format
 }
 
-func InitSongList() error {
-	err := loadSongs()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func CleanUpCache() {
 	// Only one cleanup operation can be running at a time
 	select {

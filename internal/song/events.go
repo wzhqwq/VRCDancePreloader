@@ -7,9 +7,10 @@ import (
 type ChangeType string
 
 const (
-	StatusChange   ChangeType = "status"
-	ProgressChange ChangeType = "progress"
-	TimeChange     ChangeType = "time"
+	StatusChange    ChangeType = "status"
+	ProgressChange  ChangeType = "progress"
+	TimeChange      ChangeType = "time"
+	BasicInfoChange ChangeType = "basic"
 )
 
 func (ps *PreloadedSong) SubscribeEvent(lazy bool) *utils.EventSubscriber[ChangeType] {

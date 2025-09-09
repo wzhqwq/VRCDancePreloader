@@ -194,3 +194,10 @@
   Default: "启动列表广播"
 - Key: label_broadcast_port
   Default: "提供列表广播的服务器端口"
+
+- Key: message_title_song_list
+  Default: "歌曲清单状态"
+- Key: label_song_list_downloading
+  Default: "正在下载 {{.Name}} 歌曲清单"
+- Key: label_song_list_downloaded
+  Default: "{{.Name}} 歌曲清单已下载\n版本{{.Time}}"

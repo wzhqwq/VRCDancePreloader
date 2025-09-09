@@ -1,16 +1,24 @@
 package raw_song
 
-import (
-	"bytes"
-	"encoding/json"
-)
+import "time"
 
-var pyPySongMap map[int]PyPyDanceSong
+var pypySongMap map[int]PyPyDanceSong
 var pypyGroups []string
+var pypyUpdateTime time.Time
 
 func FindPyPySong(id int) (*PyPyDanceSong, bool) {
-	song, ok := pyPySongMap[id]
+	if pypySongMap == nil {
+		return nil, false
+	}
+	song, ok := pypySongMap[id]
 	return &song, ok
+}
+
+func GetPyPyUpdateTime() (time.Time, bool) {
+	if pypySongMap == nil {
+		return time.Time{}, false
+	}
+	return pypyUpdateTime, true
 }
 
 type PyPyDanceListResponse struct {
@@ -19,18 +27,17 @@ type PyPyDanceListResponse struct {
 	Songs     []PyPyDanceSong `json:"songs"`
 }
 
-func ProcessPyPyDanceList(resp []byte) error {
-	var data PyPyDanceListResponse
-	err := json.NewDecoder(bytes.NewReader(resp)).Decode(&data)
-	if err != nil {
-		return err
+func ProcessPyPyDanceList(data *PyPyDanceListResponse) {
+	if data == nil {
+		return
 	}
 
-	pyPySongMap = make(map[int]PyPyDanceSong)
+	pypySongMap = make(map[int]PyPyDanceSong)
 	for _, song := range data.Songs {
-		pyPySongMap[song.ID] = song
+		pypySongMap[song.ID] = song
 	}
 	pypyGroups = data.Groups
+	pypyUpdateTime = time.Unix(int64(data.Timestamp/1000), 0)
 
-	return nil
+	em.NotifySubscribers("PyPyDance")
 }

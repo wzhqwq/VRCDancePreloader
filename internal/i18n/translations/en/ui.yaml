@@ -194,3 +194,10 @@
   Default: "Enable broadcast"
 - Key: label_broadcast_port
   Default: "Server port for broadcast"
+
+- Key: message_title_song_list
+  Default: "Song Manifest Status"
+- Key: label_song_list_downloading
+  Default: "Downloading song manifest of {{.Name}}"
+- Key: label_song_list_downloaded
+  Default: "Downloaded manifest for {{.Name}}\nVersion{{.Time}}"

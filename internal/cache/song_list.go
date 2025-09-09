@@ -1,49 +1,38 @@
 package cache
 
 import (
-	"io"
-	"log"
-	"net/http"
+	"context"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-func loadSongs() error {
-	var savedResponse []byte
+var pypyListResource *utils.RemoteResource[raw_song.PyPyDanceListResponse]
+var wannaListResource *utils.RemoteResource[raw_song.WannaDanceListResponse]
 
-	log.Println("loading PyPyDance songs")
-	resp, err := http.Get("https://api.pypy.dance/bundle")
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+var songCtx context.Context
 
-	savedResponse, err = io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
+func InitSongList(ctx context.Context) {
+	pypyListResource = utils.NewJsonRemoteResource[raw_song.PyPyDanceListResponse](utils.GetPyPyListUrl(), requesting.GetPyPyClient())
+	wannaListResource = utils.NewJsonRemoteResource[raw_song.WannaDanceListResponse](utils.GetWannaListUrl(), requesting.GetWannaClient())
+	songCtx = ctx
+	DownloadPyPySongs()
+	DownloadWannaSongs()
+}
 
-	err = raw_song.ProcessPyPyDanceList(savedResponse)
-	if err != nil {
-		return err
-	}
+func DownloadPyPySongs() {
+	go func() {
+		if pypyListResource.StartDownload(songCtx) {
+			raw_song.ProcessPyPyDanceList(pypyListResource.Get())
+		}
+	}()
+}
 
-	log.Println("loading WannaDance songs")
-	resp, err = http.Get("https://api.udon.dance/Api/Songs/list")
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	savedResponse, err = io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	err = raw_song.ProcessWannaDanceList(savedResponse)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func DownloadWannaSongs() {
+	go func() {
+		if wannaListResource.StartDownload(songCtx) {
+			raw_song.ProcessWannaDanceList(wannaListResource.Get())
+		}
+	}()
 }

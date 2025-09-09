@@ -13,14 +13,18 @@ func (pl *PlayList) CriticalUpdate() {
 	}
 }
 
-func (pl *PlayList) preloadLoop() {
+func (pl *PlayList) loop() {
 	pl.preload()
 	for {
-		<-pl.criticalUpdateCh
-		if pl.stopped {
-			return
+		select {
+		case <-pl.criticalUpdateCh:
+			if pl.stopped {
+				return
+			}
+			pl.preload()
+		case <-pl.songListUpdate.Channel:
+
 		}
-		pl.preload()
 	}
 }
 
@@ -41,4 +45,11 @@ func (pl *PlayList) preload() {
 			},
 		)...,
 	)
+}
+
+func (pl *PlayList) refresh() {
+	items := lo.Slice(pl.GetItemsSnapshot(), 0, pl.maxPreload+1)
+	for _, item := range items {
+		item.UpdateSong()
+	}
 }

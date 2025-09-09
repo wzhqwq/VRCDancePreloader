@@ -1,13 +1,15 @@
 package playlist
 
 import (
+	"sync"
+	"time"
+
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"sync"
-	"time"
 )
 
 type PlayList struct {
@@ -17,7 +19,9 @@ type PlayList struct {
 	RoomBrand string
 
 	criticalUpdateCh chan struct{}
-	maxPreload       int
+	songListUpdate   *utils.EventSubscriber[string]
+
+	maxPreload int
 
 	started bool
 	stopped bool
@@ -37,10 +41,14 @@ var temporaryItem *song.PreloadedSong
 
 func newPlayList(maxPreload int) *PlayList {
 	return &PlayList{
-		Items:            make([]*song.PreloadedSong, 0),
+		Items: make([]*song.PreloadedSong, 0),
+
 		criticalUpdateCh: make(chan struct{}, 1),
-		maxPreload:       maxPreload,
-		em:               utils.NewEventManager[ChangeType](),
+		songListUpdate:   raw_song.SubscribeSongListChange(),
+
+		maxPreload: maxPreload,
+
+		em: utils.NewEventManager[ChangeType](),
 	}
 }
 
@@ -50,7 +58,7 @@ func (pl *PlayList) Start() {
 	}
 	pl.started = true
 
-	go pl.preloadLoop()
+	go pl.loop()
 }
 
 func (pl *PlayList) StopAll() {
