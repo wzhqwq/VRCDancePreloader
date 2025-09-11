@@ -100,3 +100,21 @@ func (ps *PreloadedSong) LivePlayStatusChange() LivePlayStatusChange {
 		PlayStatus: string(ps.sm.PlayStatus),
 	}
 }
+
+type LiveBasicInfoChange struct {
+	ID int64 `json:"id"`
+
+	Title    string `json:"title"`
+	Group    string `json:"group"`
+	Duration int    `json:"duration"`
+}
+
+func (ps *PreloadedSong) LiveBasicInfoChange() LiveBasicInfoChange {
+	basic := ps.GetInfo()
+	return LiveBasicInfoChange{
+		ID:       ps.ID,
+		Title:    basic.Title,
+		Group:    basic.Group,
+		Duration: int(ps.Duration.Milliseconds()),
+	}
+}

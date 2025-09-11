@@ -1,7 +1,5 @@
 package raw_song
 
-import "log"
-
 type WannaDanceSong struct {
 	ID      int    `json:"id"`
 	DanceId int    `json:"danceid"`
@@ -19,12 +17,12 @@ func (s *WannaDanceSong) FullTitle() string {
 	if s.Title == "" {
 		s.Title = s.Name + " - " + s.Artist + " | " + s.Dancer
 	}
-	log.Println("get title", s.ID, s.Title)
+	//log.Println("get title", s.ID, s.Title)
 	return s.Title
 }
 
 func (s *WannaDanceSong) Complete(title, group string, end int) {
-	log.Println("complete", s.ID)
+	//log.Println("complete", s.ID)
 	s.Title = title
 	s.Group = group
 	s.End = end

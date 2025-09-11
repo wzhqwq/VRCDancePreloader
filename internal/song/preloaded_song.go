@@ -3,7 +3,6 @@ package song
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
@@ -14,6 +13,8 @@ import (
 )
 
 var idIncrement int64 = 0
+
+var logger = utils.NewUniqueLogger()
 
 type PreloadedSong struct {
 	sm         *StateMachine
@@ -51,7 +52,7 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 	if !ok {
 		// maybe caused by corrupted song list
 		cache.DownloadPyPySongs()
-		log.Println("Warning: failed to find PyPyDance song", id)
+		logger.WarnLn("Cannot find PyPyDance song", id, "in the manifest")
 		song = &raw_song.PyPyDanceSong{
 			ID: id,
 		}
@@ -68,7 +69,7 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 		em:     utils.NewEventManager[ChangeType](),
 		lazyEm: utils.NewEventManager[ChangeType](),
 	}
-	completeDuration(ret)
+	ret.completeDuration()
 	ret.sm.ps = ret
 	return ret
 }
@@ -78,7 +79,7 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 	if !ok {
 		// maybe caused by corrupted song list
 		cache.DownloadWannaSongs()
-		log.Println("Warning: failed to find WannaDance song", id)
+		logger.WarnLn("Cannot find WannaDance song", id, "in the manifest")
 		song = &raw_song.WannaDanceSong{
 			ID: id,
 		}
@@ -95,7 +96,7 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 		em:     utils.NewEventManager[ChangeType](),
 		lazyEm: utils.NewEventManager[ChangeType](),
 	}
-	completeDuration(ret)
+	ret.completeDuration()
 	ret.sm.ps = ret
 	return ret
 }
@@ -111,7 +112,7 @@ func CreatePreloadedCustomSong(url string) *PreloadedSong {
 		em:     utils.NewEventManager[ChangeType](),
 		lazyEm: utils.NewEventManager[ChangeType](),
 	}
-	completeDuration(ret)
+	ret.completeDuration()
 	ret.sm.ps = ret
 	return ret
 }
@@ -132,7 +133,7 @@ func CreateUnknownSong() *PreloadedSong {
 	return ret
 }
 
-func completeDuration(ps *PreloadedSong) {
+func (ps *PreloadedSong) completeDuration() {
 	if ps.Duration > 1 {
 		return
 	}
@@ -258,7 +259,7 @@ func (ps *PreloadedSong) PlaySongStartFrom(offset time.Duration) bool {
 		ps.sm.PlaySongStartFrom(offset)
 		return true
 	}
-	completeDuration(ps)
+	ps.completeDuration()
 	return false
 }
 func (ps *PreloadedSong) CancelPlaying() {
@@ -290,6 +291,7 @@ func (ps *PreloadedSong) UpdateSong() bool {
 		song, ok := raw_song.FindPyPySong(ps.PyPySong.ID)
 		if ok {
 			ps.PyPySong = song
+			ps.completeDuration()
 			ps.notifySubscribers(BasicInfoChange)
 			return true
 		}
@@ -298,6 +300,7 @@ func (ps *PreloadedSong) UpdateSong() bool {
 		song, ok := raw_song.FindWannaSong(ps.WannaSong.DanceId)
 		if ok {
 			ps.WannaSong = song
+			ps.completeDuration()
 			ps.notifySubscribers(BasicInfoChange)
 			return true
 		}

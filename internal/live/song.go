@@ -45,6 +45,8 @@ func (w *SongWatcher) Loop() {
 				w.s.Broadcast("SONG_UPDATE", w.song.LiveProgressChange())
 			case song.TimeChange:
 				w.s.Broadcast("SONG_UPDATE", w.song.LivePlayStatusChange())
+			case song.BasicInfoChange:
+				w.s.Broadcast("SONG_UPDATE", w.song.LiveBasicInfoChange())
 			}
 		}
 	}

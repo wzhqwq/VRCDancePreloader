@@ -23,7 +23,10 @@ func (pl *PlayList) loop() {
 			}
 			pl.preload()
 		case <-pl.songListUpdate.Channel:
-
+			if pl.stopped {
+				return
+			}
+			pl.refresh()
 		}
 	}
 }

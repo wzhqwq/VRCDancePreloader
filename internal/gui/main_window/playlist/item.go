@@ -34,6 +34,7 @@ type ItemGui struct {
 	statusChanged   bool
 	timeChanged     bool
 	progressChanged bool
+	infoChanged     bool
 }
 
 func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
@@ -73,6 +74,8 @@ func (ig *ItemGui) RenderLoop() {
 				ig.progressChanged = true
 			case song.TimeChange:
 				ig.timeChanged = true
+			case song.BasicInfoChange:
+				ig.infoChanged = true
 			}
 			fyne.Do(func() {
 				ig.Refresh()
@@ -82,25 +85,6 @@ func (ig *ItemGui) RenderLoop() {
 }
 
 func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
-	info := ig.ps.GetInfo()
-	// Title
-	title := widgets.NewSongTitle(info.ID, info.Title, theme.Color(theme.ColorNameForeground))
-	title.TextSize = 16
-	title.TextStyle = fyne.TextStyle{Bold: true}
-
-	// Group
-	group := canvas.NewText(info.Group, theme.Color(theme.ColorNameForeground))
-	group.TextSize = 14
-
-	// Adder
-	adder := canvas.NewText(info.Adder, theme.Color(theme.ColorNamePlaceHolder))
-	adder.TextSize = 14
-
-	// ID
-	id := canvas.NewText(info.ID, theme.Color(theme.ColorNamePlaceHolder))
-	id.Alignment = fyne.TextAlignTrailing
-	id.TextSize = 12
-
 	progress := ig.ps.GetProgressInfo()
 
 	// Progress
@@ -158,13 +142,11 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 
 	go ig.RenderLoop()
 
-	return &ItemRenderer{
+	r := &ItemRenderer{
 		ig: ig,
 
 		Background:    cardBackground,
 		ThumbnailMask: thumbnailMask,
-		InfoLeft:      container.NewVBox(group, adder, statusText),
-		InfoRight:     container.NewVBox(id, progressBar, sizeText),
 		InfoBottom:    container.NewVBox(errorText, playBar),
 
 		ProgressBar: progressBar,
@@ -172,10 +154,12 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 		ErrorText:   errorText,
 		SizeText:    sizeText,
 		PlayBar:     playBar,
-		FavoriteBtn: button.NewFavoriteBtn(info.ID, info.Title),
-		Thumbnail:   widgets.NewThumbnailWithID(info.ID),
-		TitleWidget: title,
+		Thumbnail:   widgets.NewThumbnailWithID(ig.ps.GetSongId()),
 	}
+
+	r.setupInfo()
+
+	return r
 }
 
 var playItemMinWidth float32 = 260
@@ -272,80 +256,18 @@ func (r *ItemRenderer) Refresh() {
 
 	if r.ig.statusChanged {
 		r.ig.statusChanged = false
-		status := r.ig.ps.GetStatusInfo()
-
-		r.StatusText.Text = status.Status
-		r.StatusText.Color = theme.Color(status.Color)
-
-		if status.PreloadError != nil {
-			r.ErrorText.Text = status.PreloadError.Error()
-			if r.ErrorText.Hidden {
-				r.ErrorText.Show()
-				sizeChanged = true
-			}
-		} else {
-			if !r.ErrorText.Hidden {
-				r.ErrorText.Hide()
-				sizeChanged = true
-			}
-		}
+		sizeChanged = r.refreshStatus()
 	}
 	if r.ig.progressChanged {
 		r.ig.progressChanged = false
-		progress := r.ig.ps.GetProgressInfo()
-
-		r.ProgressBar.SetTotalSize(progress.Total)
-		r.ProgressBar.SetCurrentSize(progress.Downloaded)
-
-		if progress.Total > 0 {
-			r.SizeText.Text = utils.PrettyByteSize(progress.Total)
-		} else {
-			r.SizeText.Text = i18n.T("placeholder_unknown_size")
-		}
-
-		if progress.IsDownloading {
-			r.ProgressBar.Show()
-			r.SizeText.Hide()
-		} else {
-			r.ProgressBar.Hide()
-			r.SizeText.Show()
-		}
 	}
 	if r.ig.timeChanged {
 		r.ig.timeChanged = false
-		timeInfo := r.ig.ps.GetTimeInfo()
-
-		if timeInfo.IsPlaying {
-			r.PlayBar.Progress = float32(timeInfo.Progress)
-			r.PlayBar.Text = timeInfo.Text
-
-			r.PlayBar.Refresh()
-			if !r.PlayBar.Visible() {
-				r.PlayBar.Show()
-				go canvas.NewColorRGBAAnimation(
-					theme.Color(theme.ColorNameBackground),
-					theme.Color(theme.ColorNamePrimary),
-					500*time.Millisecond,
-					func(c color.Color) {
-						r.Background.StrokeColor = c
-					},
-				).Start()
-				sizeChanged = true
-			}
-		} else {
-			if r.PlayBar.Visible() {
-				r.PlayBar.Hide()
-				go canvas.NewColorRGBAAnimation(
-					theme.Color(theme.ColorNamePrimary),
-					theme.Color(theme.ColorNameBackground),
-					500*time.Millisecond,
-					func(c color.Color) {
-						r.Background.StrokeColor = c
-					},
-				).Start()
-				sizeChanged = true
-			}
-		}
+		sizeChanged = r.refreshTime()
+	}
+	if r.ig.infoChanged {
+		r.ig.infoChanged = false
+		r.setupInfo()
 	}
 
 	canvas.Refresh(r.ig)
@@ -353,6 +275,111 @@ func (r *ItemRenderer) Refresh() {
 	if sizeChanged {
 		r.ig.listItem.NotifyUpdateMinSize()
 	}
+}
+
+func (r *ItemRenderer) refreshStatus() bool {
+	status := r.ig.ps.GetStatusInfo()
+
+	r.StatusText.Text = status.Status
+	r.StatusText.Color = theme.Color(status.Color)
+
+	if status.PreloadError != nil {
+		r.ErrorText.Text = status.PreloadError.Error()
+		if r.ErrorText.Hidden {
+			r.ErrorText.Show()
+			return true
+		}
+	} else {
+		if !r.ErrorText.Hidden {
+			r.ErrorText.Hide()
+			return true
+		}
+	}
+	return false
+}
+
+func (r *ItemRenderer) refreshProgress() {
+	progress := r.ig.ps.GetProgressInfo()
+
+	r.ProgressBar.SetTotalSize(progress.Total)
+	r.ProgressBar.SetCurrentSize(progress.Downloaded)
+
+	if progress.Total > 0 {
+		r.SizeText.Text = utils.PrettyByteSize(progress.Total)
+	} else {
+		r.SizeText.Text = i18n.T("placeholder_unknown_size")
+	}
+
+	if progress.IsDownloading {
+		r.ProgressBar.Show()
+		r.SizeText.Hide()
+	} else {
+		r.ProgressBar.Hide()
+		r.SizeText.Show()
+	}
+}
+
+func (r *ItemRenderer) refreshTime() bool {
+	timeInfo := r.ig.ps.GetTimeInfo()
+
+	if timeInfo.IsPlaying {
+		r.PlayBar.Progress = float32(timeInfo.Progress)
+		r.PlayBar.Text = timeInfo.Text
+
+		r.PlayBar.Refresh()
+		if !r.PlayBar.Visible() {
+			r.PlayBar.Show()
+			go canvas.NewColorRGBAAnimation(
+				theme.Color(theme.ColorNameBackground),
+				theme.Color(theme.ColorNamePrimary),
+				500*time.Millisecond,
+				func(c color.Color) {
+					r.Background.StrokeColor = c
+				},
+			).Start()
+			return true
+		}
+	} else {
+		if r.PlayBar.Visible() {
+			r.PlayBar.Hide()
+			go canvas.NewColorRGBAAnimation(
+				theme.Color(theme.ColorNamePrimary),
+				theme.Color(theme.ColorNameBackground),
+				500*time.Millisecond,
+				func(c color.Color) {
+					r.Background.StrokeColor = c
+				},
+			).Start()
+			return true
+		}
+	}
+	return false
+}
+
+func (r *ItemRenderer) setupInfo() {
+	info := r.ig.ps.GetInfo()
+	// Title
+	title := widgets.NewSongTitle(info.ID, info.Title, theme.Color(theme.ColorNameForeground))
+	title.TextSize = 16
+	title.TextStyle = fyne.TextStyle{Bold: true}
+
+	// Group
+	group := canvas.NewText(info.Group, theme.Color(theme.ColorNameForeground))
+	group.TextSize = 14
+
+	// Adder
+	adder := canvas.NewText(info.Adder, theme.Color(theme.ColorNamePlaceHolder))
+	adder.TextSize = 14
+
+	// ID
+	id := canvas.NewText(info.ID, theme.Color(theme.ColorNamePlaceHolder))
+	id.Alignment = fyne.TextAlignTrailing
+	id.TextSize = 12
+
+	r.TitleWidget = title
+	r.InfoLeft = container.NewVBox(group, adder, r.StatusText)
+	r.InfoRight = container.NewVBox(id, r.ProgressBar, r.SizeText)
+	r.FavoriteBtn = button.NewFavoriteBtn(info.ID, info.Title)
 }
 
 func (r *ItemRenderer) Objects() []fyne.CanvasObject {
