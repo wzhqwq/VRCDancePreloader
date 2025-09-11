@@ -140,6 +140,12 @@ func (ds *State) Download() {
 	}
 	defer cache.ReleaseCacheEntry(ds.ID, "[Downloader]")
 
+	if !ds.BlockIfPending() {
+		ds.Error = ErrCanceled
+		logger.InfoLn("Canceled download task", ds.ID)
+		return
+	}
+
 	ds.Error = nil
 	ds.Requesting = true
 	ds.notify()
