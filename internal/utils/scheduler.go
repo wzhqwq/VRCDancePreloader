@@ -37,3 +37,9 @@ func (s *Scheduler) Reserve() time.Duration {
 	}
 	return wait
 }
+
+func (s *Scheduler) SlowDown() {
+	s.mu.Lock()
+	s.minInterval += time.Second
+	s.mu.Unlock()
+}

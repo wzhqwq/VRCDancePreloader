@@ -2,6 +2,7 @@ package download
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"sync"
@@ -105,7 +106,6 @@ func (ds *State) progressiveDownload(body io.ReadCloser, writer io.Writer) error
 func (ds *State) singleDownload(entry cache.Entry) error {
 	body, err := entry.GetDownloadStream()
 	if err != nil {
-		logger.ErrorLn("Start Downloading error:", err.Error())
 		return err
 	}
 	if body == nil {
@@ -150,9 +150,9 @@ func (ds *State) Download() {
 	ds.Requesting = true
 	ds.notify()
 
-	ds.TotalSize = cacheEntry.TotalLen()
-	if ds.TotalSize == 0 {
-		ds.Error = errors.New("failed to get total size")
+	ds.TotalSize, err = cacheEntry.TotalLen()
+	if err != nil {
+		ds.Error = fmt.Errorf("failed to get total size, reason: %v", err)
 		logger.ErrorLn("Failed to get total size")
 		return
 	}

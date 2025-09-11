@@ -43,21 +43,21 @@ func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req 
 
 		entry, err := playlist.Request(platform, id, ctx)
 		if err != nil {
-			log.Printf("[Request %d] Failed to load %s video: %v", reqId, platform, err)
+			log.Printf("[Request %d] Failed to load %s video, reason: %v", reqId, platform, err)
 			handledCh <- false
 			return
 		}
 
 		rs, err := entry.GetReadSeeker(ctx)
 		if err != nil {
-			log.Printf("[Request %d] Failed to load %s video: %v", reqId, platform, err)
+			log.Printf("[Request %d] Failed to load %s video, reason: %v", reqId, platform, err)
 			handledCh <- false
 			return
 		}
 
-		contentLength := entry.TotalLen()
-		if contentLength == 0 {
-			log.Printf("[Request %d] Failed to load %s video", reqId, platform)
+		contentLength, err := entry.TotalLen()
+		if err != nil {
+			log.Printf("[Request %d] Failed to load %s video, reason: %v", reqId, platform, err)
 			handledCh <- false
 			return
 		}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -19,12 +20,14 @@ import (
 
 var unixEpochTime = time.Unix(0, 0)
 
+var ErrThrottle = errors.New("too many requests, slow down")
+
 type Entry interface {
 	io.Writer
 	Open()
 	Release()
 	Active() bool
-	TotalLen() int64
+	TotalLen() (int64, error)
 	DownloadedSize() int64
 	GetReadSeeker(ctx context.Context) (io.ReadSeeker, error)
 	GetDownloadStream() (io.ReadCloser, error)
@@ -126,59 +129,68 @@ func (e *BaseEntry) getReadSeeker(ctx context.Context) (io.ReadSeeker, error) {
 
 // http utils
 
-func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (int64, time.Time, string) {
-	lastModified := time.Unix(0, 0)
-
-	req, err := http.NewRequestWithContext(ctx, "HEAD", url, nil)
-	if err != nil {
-		return 0, lastModified, url
-	}
-
-	res, err := e.client.Do(req)
-	if err != nil {
-		return 0, lastModified, url
-	}
-	if res.StatusCode != http.StatusOK {
-		return 0, lastModified, url
-	}
-
-	if location := res.Header.Get("Location"); location != "" {
-		url = location
-	}
-	if lastModifiedText := res.Header.Get("Last-Modified"); lastModifiedText != "" {
-		lastModified, _ = http.ParseTime(lastModifiedText)
-	}
-
-	return res.ContentLength, lastModified, url
+type RemoteVideoInfo struct {
+	FinalUrl     string
+	TotalSize    int64
+	LastModified time.Time
 }
-func (e *BaseEntry) requestHttpResBody(url string, offset int64, ctx context.Context) (io.ReadCloser, error) {
+
+func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*RemoteVideoInfo, error) {
+	log.Println("request info", url)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if offset > 0 {
-		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
+	res, err := e.client.Do(req)
+	if err != nil {
+		log.Println("Failed to get ", url, "reason:", err)
+		return nil, err
 	}
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrThrottle
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+	}
+
+	lastModified := time.Unix(0, 0)
+	if lastModifiedText := res.Header.Get("Last-Modified"); lastModifiedText != "" {
+		lastModified, _ = http.ParseTime(lastModifiedText)
+	}
+
+	return &RemoteVideoInfo{
+		FinalUrl:     res.Request.URL.String(),
+		TotalSize:    res.ContentLength,
+		LastModified: lastModified,
+	}, nil
+}
+func (e *BaseEntry) requestHttpResBody(url string, offset int64, ctx context.Context) (io.ReadCloser, error) {
+	log.Println("request body", url, offset)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
 	res, err := e.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if offset > 0 {
-		if res.StatusCode == 416 {
-			return nil, nil
-		}
-		if res.StatusCode != http.StatusPartialContent {
-			return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
-		}
-		return res.Body, nil
-	} else {
-		if res.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
-		}
-		return res.Body, nil
+	if res.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrThrottle
 	}
+	if res.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+		return nil, nil
+	}
+	if res.StatusCode != http.StatusPartialContent {
+		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+	}
+	return res.Body, nil
 }
 
 // adapters

@@ -124,7 +124,7 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 					sm.DownloadStatus = Failed
 					sm.ps.PreloadError = ds.Error
 					sm.ps.notifyStatusChange()
-					sm.planNextRetry()
+					sm.planNextRetry(errors.Is(ds.Error, cache.ErrThrottle))
 				}
 				return
 			}

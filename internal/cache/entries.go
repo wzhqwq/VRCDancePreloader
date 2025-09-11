@@ -2,7 +2,6 @@ package cache
 
 import (
 	"context"
-	"errors"
 	"io"
 	"log"
 
@@ -42,9 +41,6 @@ type DirectDownloadEntry struct {
 }
 
 func (e *DirectDownloadEntry) init(ctx context.Context) error {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
-
 	if e.workingFile == nil {
 		return io.ErrClosedPipe
 	}
@@ -52,37 +48,32 @@ func (e *DirectDownloadEntry) init(ctx context.Context) error {
 		return nil
 	}
 
-	totalLen, lastModified, newUrl := e.requestHttpResInfo(e.videoUrl, ctx)
-	if totalLen == 0 {
-		return errors.New("failed to get the total length of video, maybe it was canceled")
+	info, err := e.requestHttpResInfo(e.videoUrl, ctx)
+	if err != nil {
+		return err
 	}
 
-	e.videoUrl = newUrl
-	e.workingFile.Init(totalLen, lastModified)
+	e.videoUrl = info.FinalUrl
+	e.workingFile.Init(info.TotalSize, info.LastModified)
 
 	return nil
 }
 
-func (e *DirectDownloadEntry) getTotalLen() int64 {
+func (e *DirectDownloadEntry) getTotalLen() (int64, error) {
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()
 
 	err := e.init(context.Background())
 	if err != nil {
-		return 0
+		return 0, err
 	}
 
-	return e.workingFile.TotalLen()
+	return e.workingFile.TotalLen(), nil
 }
 
 func (e *DirectDownloadEntry) getDownloadStream() (io.ReadCloser, error) {
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()
-
-	err := e.init(context.Background())
-	if err != nil {
-		return nil, err
-	}
 
 	e.workingFile.MarkDownloading()
 	offset := e.workingFile.GetDownloadOffset()
@@ -110,7 +101,7 @@ func (e *DirectDownloadEntry) getReadSeekerWithInit(ctx context.Context) (io.Rea
 
 // adapters
 
-func (e *DirectDownloadEntry) TotalLen() int64 {
+func (e *DirectDownloadEntry) TotalLen() (int64, error) {
 	return e.getTotalLen()
 }
 func (e *DirectDownloadEntry) GetDownloadStream() (io.ReadCloser, error) {
@@ -126,11 +117,12 @@ type BiliBiliEntry struct {
 	bvID string
 }
 
-func (e *BiliBiliEntry) TotalLen() int64 {
+func (e *BiliBiliEntry) TotalLen() (int64, error) {
 	if e.videoUrl == "" {
-		e.videoUrl, _ = third_party_api.GetBiliVideoUrl(e.client, e.bvID, context.Background())
-		if e.videoUrl == "" {
-			return 0
+		var err error
+		e.videoUrl, err = third_party_api.GetBiliVideoUrl(e.client, e.bvID, context.Background())
+		if err != nil {
+			return 0, err
 		}
 	}
 	return e.getTotalLen()
