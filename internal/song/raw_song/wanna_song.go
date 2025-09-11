@@ -1,7 +1,7 @@
 package raw_song
 
 type WannaDanceSong struct {
-	ID      int    `json:"id"`
+	//ID      int    `json:"id"`
 	DanceId int    `json:"danceid"`
 	Name    string `json:"name"`
 	Artist  string `json:"artist"`

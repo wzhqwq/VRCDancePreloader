@@ -81,7 +81,7 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 		cache.DownloadWannaSongs()
 		logger.WarnLn("Cannot find WannaDance song", id, "in the manifest")
 		song = &raw_song.WannaDanceSong{
-			ID: id,
+			DanceId: id,
 		}
 	}
 	idIncrement++
@@ -168,7 +168,7 @@ func (ps *PreloadedSong) GetDownloadUrl() string {
 		return utils.GetPyPyVideoUrl(ps.PyPySong.ID)
 	}
 	if ps.WannaSong != nil {
-		return utils.GetWannaVideoUrl(ps.WannaSong.ID)
+		return utils.GetWannaVideoUrl(ps.WannaSong.DanceId)
 	}
 	if ps.CustomSong != nil {
 		return ps.CustomSong.Url
@@ -184,7 +184,7 @@ func (ps *PreloadedSong) GetSongId() string {
 		return fmt.Sprintf("pypy_%d", ps.PyPySong.ID)
 	}
 	if ps.WannaSong != nil {
-		return fmt.Sprintf("wanna_%d", ps.WannaSong.ID)
+		return fmt.Sprintf("wanna_%d", ps.WannaSong.DanceId)
 	}
 	if ps.CustomSong != nil {
 		return ps.CustomSong.UniqueId
@@ -291,6 +291,7 @@ func (ps *PreloadedSong) UpdateSong() bool {
 		song, ok := raw_song.FindPyPySong(ps.PyPySong.ID)
 		if ok {
 			ps.PyPySong = song
+			ps.InfoNa = false
 			ps.completeDuration()
 			ps.notifySubscribers(BasicInfoChange)
 			return true
@@ -300,6 +301,7 @@ func (ps *PreloadedSong) UpdateSong() bool {
 		song, ok := raw_song.FindWannaSong(ps.WannaSong.DanceId)
 		if ok {
 			ps.WannaSong = song
+			ps.InfoNa = false
 			ps.completeDuration()
 			ps.notifySubscribers(BasicInfoChange)
 			return true

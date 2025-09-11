@@ -85,6 +85,25 @@ func (ig *ItemGui) RenderLoop() {
 }
 
 func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
+	info := ig.ps.GetInfo()
+	// Title
+	title := widgets.NewSongTitle(info.ID, info.Title, theme.Color(theme.ColorNameForeground))
+	title.TextSize = 16
+	title.TextStyle = fyne.TextStyle{Bold: true}
+
+	// Group
+	groupText := canvas.NewText(info.Group, theme.Color(theme.ColorNameForeground))
+	groupText.TextSize = 14
+
+	// Adder
+	adder := canvas.NewText(info.Adder, theme.Color(theme.ColorNamePlaceHolder))
+	adder.TextSize = 14
+
+	// ID
+	id := canvas.NewText(info.ID, theme.Color(theme.ColorNamePlaceHolder))
+	id.Alignment = fyne.TextAlignTrailing
+	id.TextSize = 12
+
 	progress := ig.ps.GetProgressInfo()
 
 	// Progress
@@ -145,6 +164,7 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	r := &ItemRenderer{
 		ig: ig,
 
+		TitleWidget:   title,
 		Background:    cardBackground,
 		ThumbnailMask: thumbnailMask,
 		InfoBottom:    container.NewVBox(errorText, playBar),
@@ -153,11 +173,13 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 		StatusText:  statusText,
 		ErrorText:   errorText,
 		SizeText:    sizeText,
+		GroupText:   groupText,
 		PlayBar:     playBar,
-		Thumbnail:   widgets.NewThumbnailWithID(ig.ps.GetSongId()),
+		Thumbnail:   widgets.NewThumbnailWithID(info.ID),
+		InfoLeft:    container.NewVBox(groupText, adder, statusText),
+		InfoRight:   container.NewVBox(id, progressBar, sizeText),
+		FavoriteBtn: button.NewFavoriteBtn(info.ID, info.Title),
 	}
-
-	r.setupInfo()
 
 	return r
 }
@@ -181,6 +203,7 @@ type ItemRenderer struct {
 	ErrorText   *canvas.Text
 	StatusText  *canvas.Text
 	SizeText    *canvas.Text
+	GroupText   *canvas.Text
 	PlayBar     *widgets.PlayBar
 	FavoriteBtn *button.FavoriteBtn
 	TitleWidget *widgets.SongTitle
@@ -254,20 +277,21 @@ func (r *ItemRenderer) Layout(size fyne.Size) {
 func (r *ItemRenderer) Refresh() {
 	sizeChanged := false
 
+	if r.ig.infoChanged {
+		r.ig.infoChanged = false
+		r.refreshInfo()
+	}
 	if r.ig.statusChanged {
 		r.ig.statusChanged = false
 		sizeChanged = r.refreshStatus()
 	}
 	if r.ig.progressChanged {
 		r.ig.progressChanged = false
+		r.refreshProgress()
 	}
 	if r.ig.timeChanged {
 		r.ig.timeChanged = false
 		sizeChanged = r.refreshTime()
-	}
-	if r.ig.infoChanged {
-		r.ig.infoChanged = false
-		r.setupInfo()
 	}
 
 	canvas.Refresh(r.ig)
@@ -356,30 +380,13 @@ func (r *ItemRenderer) refreshTime() bool {
 	return false
 }
 
-func (r *ItemRenderer) setupInfo() {
+func (r *ItemRenderer) refreshInfo() {
 	info := r.ig.ps.GetInfo()
-	// Title
-	title := widgets.NewSongTitle(info.ID, info.Title, theme.Color(theme.ColorNameForeground))
-	title.TextSize = 16
-	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	// Group
-	group := canvas.NewText(info.Group, theme.Color(theme.ColorNameForeground))
-	group.TextSize = 14
+	r.TitleWidget.Text = info.Title
+	r.TitleWidget.Refresh()
 
-	// Adder
-	adder := canvas.NewText(info.Adder, theme.Color(theme.ColorNamePlaceHolder))
-	adder.TextSize = 14
-
-	// ID
-	id := canvas.NewText(info.ID, theme.Color(theme.ColorNamePlaceHolder))
-	id.Alignment = fyne.TextAlignTrailing
-	id.TextSize = 12
-
-	r.TitleWidget = title
-	r.InfoLeft = container.NewVBox(group, adder, r.StatusText)
-	r.InfoRight = container.NewVBox(id, r.ProgressBar, r.SizeText)
-	r.FavoriteBtn = button.NewFavoriteBtn(info.ID, info.Title)
+	r.GroupText.Text = info.Group
 }
 
 func (r *ItemRenderer) Objects() []fyne.CanvasObject {

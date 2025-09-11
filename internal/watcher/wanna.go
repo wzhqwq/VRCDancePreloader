@@ -170,6 +170,8 @@ func wannaPostProcess() {
 					Group:       userData.VideoGroup,
 					PlayerNames: []string{userData.PlayerName},
 					Random:      userData.IsRandom,
+					// The only thing we can't get is the duration
+					//Duration:    0,
 				})
 			}
 

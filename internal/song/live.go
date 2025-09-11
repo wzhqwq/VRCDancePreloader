@@ -78,6 +78,13 @@ type LiveProgressChange struct {
 }
 
 func (ps *PreloadedSong) LiveProgressChange() LiveProgressChange {
+	if ps.TotalSize == 0 {
+		return LiveProgressChange{
+			ID: ps.ID,
+
+			DownloadProgress: 0,
+		}
+	}
 	return LiveProgressChange{
 		ID: ps.ID,
 

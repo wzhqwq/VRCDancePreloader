@@ -57,7 +57,7 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 	}
 	if ps.WannaSong != nil {
 		if ps.InfoNa {
-			basicInfo.Title = fmt.Sprintf("WannaDance %d", ps.WannaSong.ID)
+			basicInfo.Title = fmt.Sprintf("WannaDance %d", ps.WannaSong.DanceId)
 			basicInfo.Group = ""
 		} else {
 			basicInfo.Title = ps.WannaSong.FullTitle()
