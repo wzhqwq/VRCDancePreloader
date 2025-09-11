@@ -2,11 +2,12 @@ package watcher
 
 import (
 	"encoding/json"
-	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
-	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 	"log"
 	"regexp"
 	"strings"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 )
 
 var wannaQueueInfoRegex = regexp.MustCompile(`(?:syncedQueuedInfoJson =|queue info serialized:) (\[.*])`)
@@ -34,7 +35,7 @@ type wannaUserData struct {
 	//Flip        bool          `json:"flip"`
 	//Volume      float64       `json:"volume"`
 	//DoubleWidth bool          `json:"doubleWidth"`
-	//VideoGroup  string        `json:"videoGroup"`
+	VideoGroup string `json:"videoGroup"`
 	//VideoMajor  string        `json:"videoMajor"`
 	//PlayerCount string        `json:"playerCount"`
 	//Motion      []interface{} `json:"motion"`
@@ -166,6 +167,7 @@ func wannaPostProcess() {
 				newQueue = append(newQueue, &queue.WannaQueueItem{
 					SongID:      userData.SongID,
 					Title:       userData.VideoTitle,
+					Group:       userData.VideoGroup,
 					PlayerNames: []string{userData.PlayerName},
 					Random:      userData.IsRandom,
 				})

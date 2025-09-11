@@ -46,13 +46,23 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 	}
 
 	if ps.PyPySong != nil {
-		basicInfo.Title = ps.PyPySong.Name
-		basicInfo.Group = ps.PyPySong.GetGroupName()
+		if ps.InfoNa {
+			basicInfo.Title = fmt.Sprintf("PyPyDance %d", ps.PyPySong.ID)
+			basicInfo.Group = ""
+		} else {
+			basicInfo.Title = ps.PyPySong.Name
+			basicInfo.Group = ps.PyPySong.GetGroupName()
+		}
 		return basicInfo
 	}
 	if ps.WannaSong != nil {
-		basicInfo.Title = ps.WannaSong.FullTitle()
-		basicInfo.Group = ps.WannaSong.Group
+		if ps.InfoNa {
+			basicInfo.Title = fmt.Sprintf("WannaDance %d", ps.WannaSong.ID)
+			basicInfo.Group = ""
+		} else {
+			basicInfo.Title = ps.WannaSong.FullTitle()
+			basicInfo.Group = ps.WannaSong.Group
+		}
 		return basicInfo
 	}
 	if ps.CustomSong != nil {

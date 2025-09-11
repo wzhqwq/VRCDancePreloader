@@ -21,6 +21,8 @@ type PreloadedSong struct {
 	CustomSong *raw_song.CustomSong
 	WannaSong  *raw_song.WannaDanceSong
 
+	InfoNa bool
+
 	// constant
 	Adder   string
 	Unknown bool
@@ -49,27 +51,24 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 	if !ok {
 		// maybe caused by corrupted song list
 		cache.DownloadPyPySongs()
-		log.Println("Warning: failed to find PyPyDance song ", id)
+		log.Println("Warning: failed to find PyPyDance song", id)
 		song = &raw_song.PyPyDanceSong{
-			ID:          id,
-			Group:       0,
-			Name:        fmt.Sprintf("PyPyDance #%d", id),
-			End:         0,
-			OriginalURL: []string{},
+			ID: id,
 		}
 	}
 	idIncrement++
 	ret := &PreloadedSong{
-		sm: NewSongStateMachine(),
+		sm:       NewSongStateMachine(),
+		PyPySong: song,
+
+		InfoNa: !ok,
 
 		ID: idIncrement,
-
-		Duration: time.Duration(song.End) * time.Second,
-		PyPySong: song,
 
 		em:     utils.NewEventManager[ChangeType](),
 		lazyEm: utils.NewEventManager[ChangeType](),
 	}
+	completeDuration(ret)
 	ret.sm.ps = ret
 	return ret
 }
@@ -79,27 +78,24 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 	if !ok {
 		// maybe caused by corrupted song list
 		cache.DownloadWannaSongs()
-		log.Println("Warning: failed to find WannaDance song ", id)
+		log.Println("Warning: failed to find WannaDance song", id)
 		song = &raw_song.WannaDanceSong{
-			ID:    id,
-			Group: "",
-			Name:  fmt.Sprintf("WannaDance #%d", id),
-			Start: 0,
-			End:   0,
+			ID: id,
 		}
 	}
 	idIncrement++
 	ret := &PreloadedSong{
-		sm: NewSongStateMachine(),
+		sm:        NewSongStateMachine(),
+		WannaSong: song,
+
+		InfoNa: !ok,
 
 		ID: idIncrement,
-
-		Duration:  time.Duration(song.End) * time.Second,
-		WannaSong: song,
 
 		em:     utils.NewEventManager[ChangeType](),
 		lazyEm: utils.NewEventManager[ChangeType](),
 	}
+	completeDuration(ret)
 	ret.sm.ps = ret
 	return ret
 }
@@ -107,8 +103,7 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 func CreatePreloadedCustomSong(url string) *PreloadedSong {
 	idIncrement++
 	ret := &PreloadedSong{
-		sm: NewSongStateMachine(),
-
+		sm:         NewSongStateMachine(),
 		CustomSong: raw_song.FindOrCreateCustomSong(url),
 
 		ID: idIncrement,
@@ -116,7 +111,7 @@ func CreatePreloadedCustomSong(url string) *PreloadedSong {
 		em:     utils.NewEventManager[ChangeType](),
 		lazyEm: utils.NewEventManager[ChangeType](),
 	}
-	go completeDuration(ret)
+	completeDuration(ret)
 	ret.sm.ps = ret
 	return ret
 }
@@ -141,7 +136,19 @@ func completeDuration(ps *PreloadedSong) {
 	if ps.Duration > 1 {
 		return
 	}
-	ps.Duration = time.Duration(third_party_api.GetDurationByInternalID(ps.CustomSong.UniqueId).Get()) * time.Second
+	if ps.PyPySong != nil {
+		ps.Duration = time.Duration(ps.PyPySong.End) * time.Second
+		return
+	}
+	if ps.WannaSong != nil {
+		ps.Duration = time.Duration(ps.WannaSong.End) * time.Second
+		return
+	}
+	if ps.CustomSong != nil {
+		go func() {
+			ps.Duration = time.Duration(third_party_api.GetDurationByInternalID(ps.CustomSong.UniqueId).Get()) * time.Second
+		}()
+	}
 }
 
 // getters
@@ -246,21 +253,13 @@ func (ps *PreloadedSong) Match(another *PreloadedSong) bool {
 
 // actions
 
-func (ps *PreloadedSong) PlaySongStartFrom(offset time.Duration) {
+func (ps *PreloadedSong) PlaySongStartFrom(offset time.Duration) bool {
 	if ps.Duration > 1 {
 		ps.sm.PlaySongStartFrom(offset)
-		return
+		return true
 	}
-
-	if ps.CustomSong != nil {
-		now := time.Now()
-		go func() {
-			completeDuration(ps)
-			if ps.Duration > 1 {
-				ps.sm.PlaySongStartFrom(offset + time.Since(now))
-			}
-		}()
-	}
+	completeDuration(ps)
+	return false
 }
 func (ps *PreloadedSong) CancelPlaying() {
 	ps.sm.CancelPlayingLoop()
@@ -287,7 +286,7 @@ func (ps *PreloadedSong) AddToHistory() {
 }
 
 func (ps *PreloadedSong) UpdateSong() bool {
-	if ps.PyPySong != nil && ps.PyPySong.End == 0 {
+	if ps.PyPySong != nil {
 		song, ok := raw_song.FindPyPySong(ps.PyPySong.ID)
 		if ok {
 			ps.PyPySong = song
@@ -295,7 +294,7 @@ func (ps *PreloadedSong) UpdateSong() bool {
 			return true
 		}
 	}
-	if ps.WannaSong != nil && ps.WannaSong.End == 0 {
+	if ps.WannaSong != nil {
 		song, ok := raw_song.FindWannaSong(ps.WannaSong.DanceId)
 		if ok {
 			ps.WannaSong = song

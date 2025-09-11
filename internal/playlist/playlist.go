@@ -95,8 +95,7 @@ func (pl *PlayList) SyncWithTime(url string, now time.Duration) bool {
 		item = pl.FindCustomSong(url)
 	}
 	if item != nil {
-		item.PlaySongStartFrom(now)
-		return true
+		return item.PlaySongStartFrom(now)
 	}
 	return false
 }
