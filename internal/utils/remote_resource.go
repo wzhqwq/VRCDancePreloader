@@ -117,7 +117,7 @@ func (r *RemoteResource[T]) planNextRetry(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			r.coolingDown = false
-		case <-time.After(r.scheduler.Reserve()):
+		case <-time.After(r.scheduler.ReserveWithDelay()):
 			r.coolingDown = false
 			r.StartDownload(ctx)
 		}
