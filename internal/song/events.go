@@ -33,6 +33,11 @@ func (ps *PreloadedSong) notifyStatusChange() {
 	ps.notifyLazySubscribers(StatusChange)
 }
 
+func (ps *PreloadedSong) notifyInfoChange() {
+	ps.notifySubscribers(BasicInfoChange)
+	ps.notifyLazySubscribers(BasicInfoChange)
+}
+
 func (ps *PreloadedSong) notifyTimeChange(routine bool) {
 	ps.notifySubscribers(TimeChange)
 	if !routine {

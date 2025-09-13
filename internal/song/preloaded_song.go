@@ -296,7 +296,7 @@ func (ps *PreloadedSong) UpdateSong() bool {
 			ps.PyPySong = song
 			ps.InfoNa = false
 			ps.completeDuration()
-			ps.notifySubscribers(BasicInfoChange)
+			ps.notifyInfoChange()
 			return true
 		}
 	}
@@ -306,7 +306,7 @@ func (ps *PreloadedSong) UpdateSong() bool {
 			ps.WannaSong = song
 			ps.InfoNa = false
 			ps.completeDuration()
-			ps.notifySubscribers(BasicInfoChange)
+			ps.notifyInfoChange()
 			return true
 		}
 	}
