@@ -3,10 +3,11 @@ package persistence
 import (
 	"database/sql"
 	"errors"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
 	"strings"
 	"sync"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var currentLocalSongs *LocalSongs
@@ -125,7 +126,7 @@ func (f *LocalSongs) UnsetFavorite(id string) {
 	f.notifySubscribers(id)
 }
 
-func (f *LocalSongs) AddLocalSongIfNotExist(id, title string) {
+func (f *LocalSongs) AddLocalSongIfNotExist(id, title string) *LocalSongEntry {
 	f.Lock()
 	defer f.Unlock()
 
@@ -145,6 +146,7 @@ func (f *LocalSongs) AddLocalSongIfNotExist(id, title string) {
 		}
 		f.addEntry(entry)
 	}
+	return entry
 }
 
 func (f *LocalSongs) LoadEntries() error {
@@ -324,4 +326,11 @@ func GetEntry(id string) (*LocalSongEntry, error) {
 		return nil, errors.New("entry not found")
 	}
 	return e, nil
+}
+
+func UpdateSavedTitle(id, title string) {
+	entry := currentLocalSongs.AddLocalSongIfNotExist(id, title)
+	if entry.Title != title {
+		entry.UpdateTitle(title)
+	}
 }

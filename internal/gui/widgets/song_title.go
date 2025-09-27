@@ -1,12 +1,12 @@
 package widgets
 
 import (
+	"image/color"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
-	"image/color"
-	"log"
 )
 
 type SongTitle struct {
@@ -32,17 +32,8 @@ func NewSongTitle(id, title string, color color.Color) *SongTitle {
 			return
 		}
 
-		persistence.GetLocalSongs().AddLocalSongIfNotExist(id, completedTitle)
-		entry, err := persistence.GetEntry(id)
-		if err != nil {
-			log.Println("failed to get entry: " + err.Error())
-			return
-		}
-
-		if entry.Title != completedTitle {
-			entry.UpdateTitle(completedTitle)
-		}
-		t.Text = entry.Title
+		persistence.UpdateSavedTitle(id, completedTitle)
+		t.Text = completedTitle
 
 		fyne.Do(func() {
 			t.Refresh()

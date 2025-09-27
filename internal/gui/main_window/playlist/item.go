@@ -87,7 +87,8 @@ func (ig *ItemGui) RenderLoop() {
 func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	info := ig.ps.GetInfo()
 	// Title
-	title := widgets.NewSongTitle(info.ID, info.Title, theme.Color(theme.ColorNameForeground))
+	//title := widgets.NewSongTitle(info.ID, info.Title, theme.Color(theme.ColorNameForeground))
+	title := widgets.NewEllipseText(info.Title, theme.Color(theme.ColorNameForeground))
 	title.TextSize = 16
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
@@ -206,7 +207,8 @@ type ItemRenderer struct {
 	GroupText   *canvas.Text
 	PlayBar     *widgets.PlayBar
 	FavoriteBtn *button.FavoriteBtn
-	TitleWidget *widgets.SongTitle
+	//TitleWidget *widgets.SongTitle
+	TitleWidget *widgets.EllipseText
 	Thumbnail   *widgets.Thumbnail
 }
 

@@ -8,7 +8,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
-	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -43,113 +42,6 @@ type PreloadedSong struct {
 	// event
 	em     *utils.EventManager[ChangeType]
 	lazyEm *utils.EventManager[ChangeType]
-}
-
-// constructors
-
-func CreatePreloadedPyPySong(id int) *PreloadedSong {
-	song, ok := raw_song.FindPyPySong(id)
-	if !ok {
-		// maybe caused by corrupted song list
-		cache.DownloadPyPySongs()
-		logger.WarnLn("Cannot find PyPyDance song", id, "in the manifest")
-		song = &raw_song.PyPyDanceSong{
-			ID: id,
-		}
-	}
-	idIncrement++
-	ret := &PreloadedSong{
-		sm:       NewSongStateMachine(),
-		PyPySong: song,
-
-		InfoNa: !ok,
-
-		ID: idIncrement,
-
-		em:     utils.NewEventManager[ChangeType](),
-		lazyEm: utils.NewEventManager[ChangeType](),
-	}
-	ret.completeDuration()
-	ret.sm.ps = ret
-	return ret
-}
-
-func CreatePreloadedWannaSong(id int) *PreloadedSong {
-	song, ok := raw_song.FindWannaSong(id)
-	if !ok {
-		// maybe caused by corrupted song list
-		cache.DownloadWannaSongs()
-		logger.WarnLn("Cannot find WannaDance song", id, "in the manifest")
-		song = &raw_song.WannaDanceSong{
-			DanceId: id,
-		}
-	}
-	idIncrement++
-	ret := &PreloadedSong{
-		sm:        NewSongStateMachine(),
-		WannaSong: song,
-
-		InfoNa: !ok,
-
-		ID: idIncrement,
-
-		em:     utils.NewEventManager[ChangeType](),
-		lazyEm: utils.NewEventManager[ChangeType](),
-	}
-	ret.completeDuration()
-	ret.sm.ps = ret
-	return ret
-}
-
-func CreatePreloadedCustomSong(url string) *PreloadedSong {
-	idIncrement++
-	ret := &PreloadedSong{
-		sm:         NewSongStateMachine(),
-		CustomSong: raw_song.FindOrCreateCustomSong(url),
-
-		ID: idIncrement,
-
-		em:     utils.NewEventManager[ChangeType](),
-		lazyEm: utils.NewEventManager[ChangeType](),
-	}
-	ret.completeDuration()
-	ret.sm.ps = ret
-	return ret
-}
-
-func CreateUnknownSong() *PreloadedSong {
-	idIncrement++
-	ret := &PreloadedSong{
-		Unknown: true,
-		ID:      idIncrement,
-
-		sm: NewSongStateMachine(),
-
-		em:     utils.NewEventManager[ChangeType](),
-		lazyEm: utils.NewEventManager[ChangeType](),
-	}
-	ret.sm.ps = ret
-	ret.sm.DownloadStatus = NotAvailable
-	return ret
-}
-
-func (ps *PreloadedSong) completeDuration() {
-	if ps.Duration > 1 {
-		return
-	}
-	if ps.PyPySong != nil {
-		ps.Duration = time.Duration(ps.PyPySong.End) * time.Second
-		return
-	}
-	if ps.WannaSong != nil {
-		ps.Duration = time.Duration(ps.WannaSong.End) * time.Second
-		return
-	}
-	if ps.CustomSong != nil {
-		go func() {
-			ps.Duration = time.Duration(third_party_api.GetDurationByInternalID(ps.CustomSong.UniqueId).Get()) * time.Second
-		}()
-	}
 }
 
 // getters
@@ -287,28 +179,4 @@ func (ps *PreloadedSong) AddToHistory() {
 	info := ps.GetInfo()
 	startTime := time.Now().Add(-ps.TimePassed).Unix()
 	persistence.AddToHistory(info.ID, info.Title, ps.Adder, time.Unix(startTime, 0))
-}
-
-func (ps *PreloadedSong) UpdateSong() bool {
-	if ps.PyPySong != nil {
-		song, ok := raw_song.FindPyPySong(ps.PyPySong.ID)
-		if ok {
-			ps.PyPySong = song
-			ps.InfoNa = false
-			ps.completeDuration()
-			ps.notifyInfoChange()
-			return true
-		}
-	}
-	if ps.WannaSong != nil {
-		song, ok := raw_song.FindWannaSong(ps.WannaSong.DanceId)
-		if ok {
-			ps.WannaSong = song
-			ps.InfoNa = false
-			ps.completeDuration()
-			ps.notifyInfoChange()
-			return true
-		}
-	}
-	return false
 }

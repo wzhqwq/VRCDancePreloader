@@ -56,3 +56,12 @@ func (pl *PlayList) refresh() {
 		item.UpdateSong()
 	}
 }
+
+func (pl *PlayList) UpdateBySongID(ID string) {
+	items := lo.Slice(pl.GetItemsSnapshot(), 0, pl.maxPreload+1)
+	for _, item := range items {
+		if item.GetSongId() == ID {
+			item.UpdateSong()
+		}
+	}
+}

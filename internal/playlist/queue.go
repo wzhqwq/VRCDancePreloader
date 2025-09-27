@@ -48,7 +48,7 @@ func CreateFromQueueItem(item queue.QueueItem) *song.PreloadedSong {
 	newSong.Adder = item.GetAdder()
 
 	id := newSong.GetSongId()
-	if id != "unknown" && id != "random_play" {
+	if id != "unknown" {
 		persistence.GetLocalSongs().AddLocalSongIfNotExist(id, newSong.GetInfo().Title)
 	}
 
