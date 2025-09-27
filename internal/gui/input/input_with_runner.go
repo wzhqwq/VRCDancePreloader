@@ -1,9 +1,10 @@
-package widgets
+package input
 
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
 )
 
 type Runner interface {
@@ -20,7 +21,7 @@ type InputWithRunner struct {
 
 	runner Runner
 
-	StatusIcon *IconWithMessage
+	StatusIcon *icons.IconWithMessage
 }
 
 func NewInputWithRunner(runner Runner, label string) *InputWithRunner {
@@ -28,7 +29,7 @@ func NewInputWithRunner(runner Runner, label string) *InputWithRunner {
 		InputWithSave: InputWithSave{},
 		runner:        runner,
 
-		StatusIcon: NewIconWithMessage(nil),
+		StatusIcon: icons.NewIconWithMessage(nil),
 	}
 
 	t.InputAppendItems = []fyne.CanvasObject{container.NewPadded(t.StatusIcon)}

@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 )
 
@@ -12,11 +12,11 @@ func SetSkipTest(b bool) {
 }
 
 type ProxyTester struct {
-	widgets.Tester
+	input.Tester
 
-	Status  widgets.Status
+	Status  input.Status
 	Message string
-	Input   *widgets.InputWithTester
+	Input   *input.InputWithTester
 
 	Value string
 	Item  string
@@ -24,17 +24,17 @@ type ProxyTester struct {
 
 func NewProxyTester(item, value string) *ProxyTester {
 	return &ProxyTester{
-		Status: widgets.StatusUnknown,
+		Status: input.StatusUnknown,
 		Value:  value,
 		Item:   item,
 	}
 }
 
 func (t *ProxyTester) Test() {
-	if t.Status == widgets.StatusTesting {
+	if t.Status == input.StatusTesting {
 		return
 	}
-	t.Status = widgets.StatusTesting
+	t.Status = input.StatusTesting
 	if t.Input != nil {
 		t.Input.SetTestBtn(true)
 	}
@@ -42,10 +42,10 @@ func (t *ProxyTester) Test() {
 		ok, message := config.Proxy.Test(t.Item)
 		if ok {
 			t.Message = i18n.T("tip_connectivity_test_pass")
-			t.Status = widgets.StatusOk
+			t.Status = input.StatusOk
 		} else {
 			t.Message = message
-			t.Status = widgets.StatusError
+			t.Status = input.StatusError
 		}
 		if t.Input != nil {
 			t.Input.SetTestBtn(false)
@@ -55,14 +55,14 @@ func (t *ProxyTester) Test() {
 
 func (t *ProxyTester) Save(value string) {
 	t.Value = value
-	t.Status = widgets.StatusUnknown
+	t.Status = input.StatusUnknown
 	config.Proxy.Update(t.Item, value)
 	if t.Input != nil {
 		t.Input.SetTestBtn(false)
 	}
 }
 
-func (t *ProxyTester) GetStatus() widgets.Status {
+func (t *ProxyTester) GetStatus() input.Status {
 	return t.Status
 }
 
@@ -74,15 +74,15 @@ func (t *ProxyTester) GetMessage() string {
 	return t.Message
 }
 
-func (t *ProxyTester) GetInput(label string) *widgets.InputWithTester {
+func (t *ProxyTester) GetInput(label string) *input.InputWithTester {
 	if t.Input == nil {
-		t.Input = widgets.NewInputWithTester(t, label)
+		t.Input = input.NewInputWithTester(t, label)
 	}
 	return t.Input
 }
 
 func (t *ProxyTester) TestIfNotOk() {
-	if t.Status == widgets.StatusOk {
+	if t.Status == input.StatusOk {
 		return
 	}
 	t.Test()

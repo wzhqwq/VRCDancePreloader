@@ -12,7 +12,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/cache_window"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 )
 
@@ -68,7 +68,7 @@ func createKeySettingsContent() fyne.CanvasObject {
 		container.NewCenter(button.NewTipButton("tip_on_keys")),
 	))
 
-	youtubeKeyInput := widgets.NewInputWithSave(keyConfig.Youtube, i18n.T("label_yt_api_key"))
+	youtubeKeyInput := input.NewInputWithSave(keyConfig.Youtube, i18n.T("label_yt_api_key"))
 	youtubeKeyInput.OnSave = func() {
 		keyConfig.Youtube = youtubeKeyInput.Value
 		config.SaveConfig()
@@ -132,7 +132,7 @@ func createPreloadSettingsContent() fyne.CanvasObject {
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_preload")))
 
-	maxPreloadInput := widgets.NewInputWithSave(strconv.Itoa(preloadConfig.MaxPreload), i18n.T("label_max_preload_count"))
+	maxPreloadInput := input.NewInputWithSave(strconv.Itoa(preloadConfig.MaxPreload), i18n.T("label_max_preload_count"))
 	maxPreloadInput.ForceDigits = true
 	maxPreloadInput.OnSave = func() {
 		count, err := strconv.Atoi(maxPreloadInput.Value)
@@ -152,7 +152,7 @@ func createDownloadSettingsContent() fyne.CanvasObject {
 	wholeContent := container.NewVBox()
 	wholeContent.Add(widget.NewLabel(i18n.T("label_download")))
 
-	maxDownloadInput := widgets.NewInputWithSave(strconv.Itoa(downloadConfig.MaxDownload), i18n.T("label_max_parallel_download_count"))
+	maxDownloadInput := input.NewInputWithSave(strconv.Itoa(downloadConfig.MaxDownload), i18n.T("label_max_parallel_download_count"))
 	maxDownloadInput.ForceDigits = true
 	maxDownloadInput.OnSave = func() {
 		count, err := strconv.Atoi(maxDownloadInput.Value)
@@ -175,7 +175,7 @@ func createCacheSettingsContent() fyne.CanvasObject {
 		container.NewCenter(button.NewTipButton("tip_on_cache")),
 	))
 
-	pathInput := widgets.NewInputWithSave(cacheConfig.Path, i18n.T("label_cache_path"))
+	pathInput := input.NewInputWithSave(cacheConfig.Path, i18n.T("label_cache_path"))
 	pathInput.OnSave = func() {
 		cacheConfig.Path = pathInput.Value
 		config.SaveConfig()
@@ -201,7 +201,7 @@ func createCacheSettingsContent() fyne.CanvasObject {
 	formatSelect.Horizontal = true
 	wholeContent.Add(container.NewVBox(formatLabel, formatSelect))
 
-	maxCacheInput := widgets.NewInputWithSave(strconv.Itoa(cacheConfig.MaxCacheSize), i18n.T("label_max_cache_size"))
+	maxCacheInput := input.NewInputWithSave(strconv.Itoa(cacheConfig.MaxCacheSize), i18n.T("label_max_cache_size"))
 	maxCacheInput.ForceDigits = true
 	maxCacheInput.OnSave = func() {
 		size, err := strconv.Atoi(maxCacheInput.Value)

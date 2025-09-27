@@ -6,7 +6,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
 	"github.com/wzhqwq/VRCDancePreloader/internal/hijack"
 	"github.com/wzhqwq/VRCDancePreloader/internal/live"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
@@ -17,7 +17,7 @@ import (
 )
 
 func (hc *HijackConfig) Init() {
-	runner := widgets.NewServerRunner(hc.ProxyPort)
+	runner := input.NewServerRunner(hc.ProxyPort)
 	runner.OnSave = hc.UpdatePort
 	runner.StartServer = func() error {
 		if err := hijack.Start(hc.InterceptedSites, hc.EnableHttps, hc.ProxyPort); err != nil {
@@ -242,7 +242,7 @@ func (lc *LiveConfig) Init() {
 		return lc.Settings
 	}
 
-	runner := widgets.NewServerRunner(lc.Port)
+	runner := input.NewServerRunner(lc.Port)
 	runner.OnSave = lc.UpdatePort
 	runner.StartServer = func() error {
 		if err := live.StartLiveServer(lc.Port); err != nil {

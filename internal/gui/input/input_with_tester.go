@@ -1,10 +1,11 @@
-package widgets
+package input
 
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 )
 
@@ -23,7 +24,7 @@ type InputWithTester struct {
 	tester Tester
 
 	TestBtn    *widget.Button
-	StatusIcon *IconWithMessage
+	StatusIcon *icons.IconWithMessage
 }
 
 func NewInputWithTester(tester Tester, label string) *InputWithTester {
@@ -31,7 +32,7 @@ func NewInputWithTester(tester Tester, label string) *InputWithTester {
 		InputWithSave: InputWithSave{},
 		tester:        tester,
 
-		StatusIcon: NewIconWithMessage(nil),
+		StatusIcon: icons.NewIconWithMessage(nil),
 	}
 
 	t.InputAppendItems = []fyne.CanvasObject{container.NewPadded(t.StatusIcon)}
