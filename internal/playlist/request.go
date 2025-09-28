@@ -46,14 +46,6 @@ func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
 	return nil
 }
 
-func request(item *song.PreloadedSong, ctx context.Context) (cache.Entry, error) {
-	entry, err := item.DownloadInstantly(!asyncDownload, ctx)
-	if err != nil {
-		return nil, err
-	}
-	return entry, nil
-}
-
 func Request(platform, id string, ctx context.Context) (cache.Entry, error) {
 	var url string
 
@@ -68,7 +60,7 @@ func Request(platform, id string, ctx context.Context) (cache.Entry, error) {
 		if item == nil {
 			item = song.GetTemporaryPyPySong(numId, ctx)
 		}
-		return request(item, ctx)
+		return item.DownloadInstantly(!asyncDownload, ctx)
 
 	case "WannaDance":
 		numId, err := strconv.Atoi(id)
@@ -80,7 +72,7 @@ func Request(platform, id string, ctx context.Context) (cache.Entry, error) {
 		if item == nil {
 			item = song.GetTemporaryWannaSong(numId, ctx)
 		}
-		return request(item, ctx)
+		return item.DownloadInstantly(!asyncDownload, ctx)
 
 	case "BiliBili":
 		url = utils.GetStandardBiliURL(id)
@@ -93,5 +85,5 @@ func Request(platform, id string, ctx context.Context) (cache.Entry, error) {
 	if item == nil {
 		item = song.GetTemporaryCustomSong(url, ctx)
 	}
-	return request(item, ctx)
+	return item.DownloadInstantly(!asyncDownload, ctx)
 }

@@ -120,7 +120,10 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 				return
 			}
 			if ds.Error != nil {
-				if !errors.Is(ds.Error, download.ErrCanceled) {
+				if errors.Is(ds.Error, cache.ErrNotSupported) {
+					sm.DownloadStatus = NotAvailable
+					sm.ps.notifyStatusChange()
+				} else if !errors.Is(ds.Error, download.ErrCanceled) {
 					sm.DownloadStatus = Failed
 					sm.ps.PreloadError = ds.Error
 					sm.ps.notifyStatusChange()

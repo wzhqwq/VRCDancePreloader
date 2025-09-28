@@ -2,7 +2,6 @@ package download
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"sync"
@@ -136,7 +135,7 @@ func (ds *State) Download() {
 
 	cacheEntry, err := cache.OpenCacheEntry(ds.ID, "[Downloader]")
 	if err != nil {
-		log.Println("Skipped: ", err)
+		log.Println("Skipped", ds.ID, "due to", err)
 	}
 	defer cache.ReleaseCacheEntry(ds.ID, "[Downloader]")
 
@@ -152,8 +151,8 @@ func (ds *State) Download() {
 
 	ds.TotalSize, err = cacheEntry.TotalLen()
 	if err != nil {
-		ds.Error = fmt.Errorf("failed to get total size, reason: %v", err)
-		logger.ErrorLn("Failed to get total size")
+		ds.Error = err
+		logger.ErrorLn("Failed to get total size of", ds.ID, ":", err)
 		return
 	}
 	ds.notify()
@@ -174,7 +173,7 @@ func (ds *State) Download() {
 
 		err = ds.singleDownload(cacheEntry)
 		if err == nil || cacheEntry.IsComplete() {
-			logger.InfoLn("Downloading complete", ds.ID)
+			logger.InfoLn("Downloading", ds.ID, "complete")
 			ds.markAsDone()
 			return
 		}
