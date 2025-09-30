@@ -35,8 +35,6 @@ func (dm *downloadManager) CreateOrGetState(id string) *State {
 			StateCh:    make(chan *State, 10),
 			CancelCh:   make(chan bool),
 			PriorityCh: make(chan int, 1),
-
-			Pending: false,
 		}
 		dm.stateMap[id] = ds
 		dm.queue = append(dm.queue, id)

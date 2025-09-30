@@ -5,11 +5,15 @@ import (
 	"io"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var ErrCanceled = errors.New("task canceled")
+
+var downloadScheduler = utils.NewScheduler(time.Second*3, time.Second)
 
 type State struct {
 	sync.Mutex
@@ -22,6 +26,7 @@ type State struct {
 	Requesting bool
 	Done       bool
 	Pending    bool
+	Cooling    bool
 	Error      error
 
 	StateCh    chan *State
@@ -126,24 +131,58 @@ func (ds *State) singleDownload(entry cache.Entry) error {
 func (ds *State) markAsDone() {
 	ds.DownloadedSize = ds.TotalSize
 	ds.Done = true
+	ds.Error = nil
 }
 
-func (ds *State) Download() {
+func (ds *State) Download(retryDelay bool) {
 	// Lock the state so that there is always only one download happening
 	ds.Lock()
 	defer ds.unlockAndNotify()
 
 	cacheEntry, err := cache.OpenCacheEntry(ds.ID, "[Downloader]")
 	if err != nil {
+		ds.Error = err
 		log.Println("Skipped", ds.ID, "due to", err)
+		return
 	}
 	defer cache.ReleaseCacheEntry(ds.ID, "[Downloader]")
 
+	// Check if file is already downloaded
+	if cacheEntry.IsComplete() {
+		logger.InfoLn("Already downloaded", ds.ID)
+		ds.TotalSize, _ = cacheEntry.TotalLen()
+		ds.markAsDone()
+		return
+	}
+
+	// check if the task is canceled or paused
+	ds.Pending = false
 	if !ds.BlockIfPending() {
 		ds.Error = ErrCanceled
 		logger.InfoLn("Canceled download task", ds.ID)
 		return
 	}
+
+	// delay or cool down before we start downloading
+	delay := time.Duration(0)
+	if retryDelay {
+		delay = downloadScheduler.ReserveWithDelay()
+	} else {
+		delay = downloadScheduler.Reserve()
+	}
+	if delay > 0 {
+		ds.Cooling = true
+		ds.notify()
+
+		select {
+		case <-ds.CancelCh:
+			ds.Error = ErrCanceled
+			logger.InfoLn("Canceled download task", ds.ID)
+			return
+		case <-time.After(delay):
+		}
+	}
+	ds.Cooling = false
 
 	ds.Error = nil
 	ds.Requesting = true
@@ -153,14 +192,9 @@ func (ds *State) Download() {
 	if err != nil {
 		ds.Error = err
 		logger.ErrorLn("Failed to get total size of", ds.ID, ":", err)
-		return
-	}
-	ds.notify()
-
-	// Check if file is already downloaded
-	if cacheEntry.IsComplete() {
-		logger.InfoLn("Already downloaded", ds.ID)
-		ds.markAsDone()
+		if errors.Is(err, cache.ErrThrottle) {
+			slowDown()
+		}
 		return
 	}
 
@@ -173,7 +207,7 @@ func (ds *State) Download() {
 
 		err = ds.singleDownload(cacheEntry)
 		if err == nil || cacheEntry.IsComplete() {
-			logger.InfoLn("Downloading", ds.ID, "complete")
+			logger.InfoLn("Downloaded", ds.ID)
 			ds.markAsDone()
 			return
 		}
@@ -186,6 +220,9 @@ func (ds *State) Download() {
 				logger.InfoLn("Canceled download task", ds.ID)
 			} else {
 				logger.ErrorLn("Downloading error:", err.Error(), ds.ID)
+				if errors.Is(err, cache.ErrThrottle) {
+					slowDown()
+				}
 			}
 			return
 		}
@@ -200,9 +237,24 @@ func Download(id string) *State {
 		return nil
 	}
 	go func() {
-		ds.Download()
+		ds.Download(false)
 		dm.UpdatePriorities()
 	}()
 
 	return ds
+}
+
+func Retry(ds *State) {
+	go func() {
+		ds.Download(true)
+		dm.UpdatePriorities()
+	}()
+}
+
+func slowDown() {
+	downloadScheduler.SlowDown()
+	go func() {
+		<-time.After(time.Minute)
+		downloadScheduler.Resume()
+	}()
 }

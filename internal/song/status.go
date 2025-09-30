@@ -9,8 +9,10 @@ const (
 	// either because previous songs are still downloading
 	// or it's queue-jumped by a higher priority song
 	Pending DownloadStatus = "pending"
-	// Requesting is when the song is requesting the download
+	// CoolingDown is when the song is waiting for the scheduler but not the retry delay
+	CoolingDown DownloadStatus = "cooling_down"
 
+	// Requesting is when the song is requesting the download
 	Requesting DownloadStatus = "requesting"
 	// Downloading is when the song is downloading
 	Downloading DownloadStatus = "downloading"
@@ -24,6 +26,8 @@ const (
 
 	// NotAvailable means the song cannot be cached by now
 	NotAvailable DownloadStatus = "na"
+	// Disabled means the song is disabled by the user
+	Disabled DownloadStatus = "disabled"
 )
 
 type PlayStatus string

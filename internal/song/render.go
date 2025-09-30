@@ -132,8 +132,10 @@ type PreloadedSongStatusInfo struct {
 func (ps *PreloadedSong) GetStatusInfo() PreloadedSongStatusInfo {
 	var color fyne.ThemeColorName
 	switch ps.sm.DownloadStatus {
-	case Initial, Pending, Removed, NotAvailable:
+	case Initial, Removed, NotAvailable, Disabled:
 		color = theme.ColorNamePlaceHolder
+	case Pending, CoolingDown:
+		color = theme.ColorNameWarning
 	case Requesting, Downloading:
 		color = theme.ColorNamePrimary
 	case Downloaded:

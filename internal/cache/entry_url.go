@@ -100,7 +100,7 @@ func (e *UrlBasedEntry) GetReadSeeker(ctx context.Context) (io.ReadSeeker, error
 		return nil, io.ErrClosedPipe
 	}
 
-	if e.resolvedUrl == "" {
+	if e.workingFile.TotalLen() == 0 {
 		err := e.resolveUrl(ctx)
 		if err != nil {
 			return nil, err

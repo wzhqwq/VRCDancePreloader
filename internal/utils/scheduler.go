@@ -66,12 +66,12 @@ func (s *Scheduler) Reserve() time.Duration {
 
 func (s *Scheduler) SlowDown() {
 	s.mu.Lock()
-	s.interval += time.Second
+	s.interval += time.Second * 2
 	s.mu.Unlock()
 }
 
 func (s *Scheduler) Resume() {
 	s.mu.Lock()
-	s.interval = max(s.minInterval, s.interval-time.Second)
+	s.interval = max(s.minInterval, s.interval-time.Second*2)
 	s.mu.Unlock()
 }

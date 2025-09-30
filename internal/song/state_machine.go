@@ -98,6 +98,14 @@ func (sm *StateMachine) Prioritize() {
 	}
 }
 
+func (sm *StateMachine) SwitchDownloadStatus(s DownloadStatus) {
+	if sm.DownloadStatus == s {
+		return
+	}
+	sm.DownloadStatus = s
+	sm.ps.notifyStatusChange()
+}
+
 func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 	sm.completeSongWg.Add(1)
 	defer sm.completeSongWg.Done()
@@ -123,35 +131,40 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 				if errors.Is(ds.Error, cache.ErrNotSupported) {
 					sm.DownloadStatus = NotAvailable
 					sm.ps.notifyStatusChange()
-				} else if !errors.Is(ds.Error, download.ErrCanceled) {
-					sm.DownloadStatus = Failed
-					sm.ps.PreloadError = ds.Error
-					sm.ps.notifyStatusChange()
-					sm.planNextRetry(errors.Is(ds.Error, cache.ErrThrottle))
+					return
 				}
-				return
-			}
-			if ds.Pending && sm.DownloadStatus != Pending {
-				sm.DownloadStatus = Pending
+				if errors.Is(ds.Error, download.ErrCanceled) {
+					return
+				}
+				sm.DownloadStatus = Failed
+				sm.ps.PreloadError = ds.Error
 				sm.ps.notifyStatusChange()
+				download.Retry(ds)
+				continue
+			} else {
+				sm.ps.PreloadError = nil
+			}
+			if ds.Pending {
+				sm.SwitchDownloadStatus(Pending)
 				continue
 			}
-			if ds.Requesting && sm.DownloadStatus != Requesting {
-				sm.DownloadStatus = Requesting
-				sm.ps.notifyStatusChange()
+			if ds.Cooling {
+				sm.SwitchDownloadStatus(CoolingDown)
+				continue
+			}
+			if ds.Requesting {
+				sm.SwitchDownloadStatus(Requesting)
 				continue
 			}
 			// Otherwise, it's downloading
 			if sm.DownloadStatus == Removed {
 				return
 			}
-			if sm.DownloadStatus != Downloading {
-				sm.DownloadStatus = Downloading
-				sm.ps.notifyStatusChange()
-			}
+
+			sm.SwitchDownloadStatus(Downloading)
+
 			sm.ps.TotalSize = ds.TotalSize
 			sm.ps.DownloadedSize = ds.DownloadedSize
-
 			sm.ps.notifySubscribers(ProgressChange)
 			lazy.Change()
 		case <-lazy.WaitUpdate():
