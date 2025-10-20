@@ -131,6 +131,7 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 				if errors.Is(ds.Error, cache.ErrNotSupported) {
 					sm.DownloadStatus = NotAvailable
 					sm.ps.notifyStatusChange()
+					download.CancelDownload(sm.ps.GetSongId())
 					return
 				}
 				if errors.Is(ds.Error, download.ErrCanceled) {
