@@ -3,9 +3,9 @@ package third_party_api
 import (
 	"log"
 	"strings"
+	"time"
 
 	"github.com/stephennancekivell/go-future/future"
-	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -28,7 +28,7 @@ func GetThumbnailByInternalID(id string) future.Future[string] {
 	}
 	if bvId, isBiliBili := utils.CheckIdIsBili(id); isBiliBili {
 		return future.New(func() string {
-			url, err := GetBiliVideoThumbnail(requesting.GetBiliClient(), bvId)
+			url, err := GetBiliVideoThumbnail(bvId)
 			if err != nil {
 				log.Println("error while getting bilibili video thumbnail:", err)
 				return ""
@@ -57,7 +57,7 @@ func CompleteTitleByInternalID(id, title string) future.Future[string] {
 	if bvId, isBiliBili := utils.CheckIdIsBili(id); isBiliBili {
 		if strings.Contains(title, bvId) {
 			return future.New(func() string {
-				return GetBiliVideoTitle(requesting.GetBiliClient(), bvId)
+				return GetBiliVideoTitle(bvId)
 			})
 		}
 		return future.Pure(title)
@@ -65,24 +65,29 @@ func CompleteTitleByInternalID(id, title string) future.Future[string] {
 	return future.Pure(title)
 }
 
-func GetDurationByInternalID(id string) future.Future[int] {
-	// if ytId, isYoutube := utils.CheckIdIsYoutube(id); isYoutube {
-	// 	if EnableYoutubeApi {
-	// 		return future.New(func() int {
-	// 			return GetYoutubeDuration(ytId)
-	// 		})
-	// 	}
-	// 	return future.Pure(0)
-	// }
+func GetDurationByInternalID(id string) future.Future[time.Duration] {
+	if ytId, isYoutube := utils.CheckIdIsYoutube(id); isYoutube {
+		if EnableYoutubeApi {
+			return future.New(func() time.Duration {
+				d, err := GetYoutubeDuration(ytId)
+				if err != nil {
+					log.Println("error while getting youtube video duration:", err)
+					return 0
+				}
+				return d
+			})
+		}
+		return future.Pure(time.Duration(0))
+	}
 	if bvId, isBiliBili := utils.CheckIdIsBili(id); isBiliBili {
-		return future.New(func() int {
-			d, err := GetBiliVideoDuration(requesting.GetBiliClient(), bvId)
+		return future.New(func() time.Duration {
+			d, err := GetBiliVideoDuration(bvId)
 			if err != nil {
 				log.Println("error while getting bilibili video duration:", err)
 				return 0
 			}
-			return d
+			return time.Duration(d) * time.Second
 		})
 	}
-	return future.Pure(0)
+	return future.Pure(time.Duration(0))
 }

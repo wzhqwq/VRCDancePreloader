@@ -24,7 +24,7 @@ func NewEntry(id string) Entry {
 	}
 	if bvID, ok := utils.CheckIdIsBili(id); ok {
 		return newUrlBasedEntry(id, requesting.GetBiliClient(), func(ctx context.Context) (string, error) {
-			return third_party_api.GetBiliVideoUrl(requesting.GetBiliClient(), bvID, ctx)
+			return third_party_api.GetBiliVideoUrl(bvID, ctx)
 		})
 	}
 	if ytID, ok := utils.CheckIdIsYoutube(id); ok {

@@ -22,7 +22,7 @@ func (ps *PreloadedSong) completeDuration() {
 	}
 	if ps.CustomSong != nil {
 		go func() {
-			ps.Duration = time.Duration(third_party_api.GetDurationByInternalID(ps.CustomSong.UniqueId).Get()) * time.Second
+			ps.Duration = third_party_api.GetDurationByInternalID(ps.CustomSong.UniqueId).Get()
 		}()
 	}
 }
