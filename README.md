@@ -43,7 +43,9 @@ Rev或者Proxifier管理流量。详见“设置代理规则”。
 ```yaml
 hijack:
   # 将软件设置为系统代理或者正确配置在其他代理工具中之后，本工具会拦截特定站点的视频请求
+  # 作为代理服务器时使用的端口
   proxy-port: 7653
+  # 本软件的拦截规则，设定哪些网站会被拦截
   intercepted-sites:
     - jd.pypy.moe
     - api.udon.dance
@@ -94,6 +96,13 @@ cache:
 db:
   # 本地数据库（用于存储播放历史和乐曲偏好）的路径，启动时会自动创建
   path: ./data.db
+live:
+  # 是否启用H5网页渲染的直播套件
+  enabled: false
+  # 网页渲染的直播套件的地址，默认为127.0.0.1:7652
+  port: 7652
+  # 网页渲染的直播套件的设置，JSON格式，请在浏览器中打开直播套件来设置
+  settings: '{}'
 ```
 
 ### 程序参数
@@ -136,7 +145,7 @@ append: [ ]
 delete: [ ]
 ```
 
-这样你就添加了拦截VRChat和yt-dlp对api.pypy.dance域名的所有请求的规则，并交给`vrcDancePreload`节点处理。
+这样你就添加了拦截VRChat和yt-dlp对api.pypy.dance(PyPyDance)和api.udon.dance(WannaDance)域名的所有请求的规则，并交给`vrcDancePreload`节点处理。
 
 记得开Clash Verge的系统代理！
 
@@ -160,10 +169,10 @@ delete: [ ]
 - [x] 支持WannaDance
 - [ ] YouTube视频预加载（需要和yt-dlp完美配合，还没想好怎么做）
 - [x] b站视频预加载（准备走[bilibili-real-url](https://github.com/gizmo-ds/bilibili-real-url)）
-- [ ] 整合一下VRCX的API，实现PyPyDance的收藏同步
+- [ ] <del>整合一下VRCX的API，实现PyPyDance的收藏同步</del>
 - [ ] 通过[OpenVROverlayPipe](https://github.com/BOLL7708/OpenVROverlayPipe)实现SteamVR内通知
 - [ ] 自由控制各类来源歌曲是否预加载
 - [ ] 欢迎屏幕
-- [ ] 展示更多的内部状态
+- [ ] 展示更多的内部状态（下载队列、冷却时间）
 - [ ] 完善H5直播功能
 - [ ] 添加心率传感器
