@@ -15,7 +15,7 @@ func NewCacheMap() *CacheMap {
 	}
 }
 
-func (cm *CacheMap) Open(id string) (Entry, error) {
+func (cm *CacheMap) findOrCreate(id string) (Entry, error) {
 	cm.Lock()
 	defer cm.Unlock()
 
@@ -27,8 +27,29 @@ func (cm *CacheMap) Open(id string) (Entry, error) {
 		}
 		cm.cache[id] = e
 	}
-	e.Open()
 
+	return e, nil
+}
+
+func (cm *CacheMap) removeIfInactive(id string) (Entry, bool) {
+	cm.Lock()
+	defer cm.Unlock()
+
+	e, ok := cm.cache[id]
+	if !ok || e.Active() {
+		return nil, false
+	}
+	delete(cm.cache, id)
+
+	return e, true
+}
+
+func (cm *CacheMap) Open(id string) (Entry, error) {
+	e, err := cm.findOrCreate(id)
+	if err != nil {
+		return nil, err
+	}
+	e.Open()
 	return e, nil
 }
 func (cm *CacheMap) Release(id string) {
@@ -42,16 +63,12 @@ func (cm *CacheMap) Release(id string) {
 	e.Release()
 }
 func (cm *CacheMap) CloseIfInactive(id string) bool {
-	cm.Lock()
-	defer cm.Unlock()
-
-	e, ok := cm.cache[id]
-	if !ok || e.Active() {
+	e, ok := cm.removeIfInactive(id)
+	if !ok {
 		return false
 	}
 
 	e.Close()
-	delete(cm.cache, id)
 	CleanUpCache()
 
 	return true

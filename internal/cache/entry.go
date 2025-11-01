@@ -24,14 +24,21 @@ var ErrThrottle = errors.New("too many requests, slow down")
 
 type Entry interface {
 	io.Writer
+
+	// Open this entry. It's a heavy method with locks
 	Open()
+
+	// Release this entry. It's a lightweight method with no locks
 	Release()
+
+	// Close this entry. It's a heavy method with locks
+	Close() error
+
 	Active() bool
 	TotalLen() (int64, error)
 	DownloadedSize() int64
 	GetReadSeeker(ctx context.Context) (io.ReadSeeker, error)
 	GetDownloadStream() (io.ReadCloser, error)
-	Close() error
 	IsComplete() bool
 	ModTime() time.Time
 	UpdateReqRangeStart(start int64)
