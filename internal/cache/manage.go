@@ -1,27 +1,31 @@
 package cache
 
 import (
-	"github.com/fsnotify/fsnotify"
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"github.com/wzhqwq/VRCDancePreloader/internal/types"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/types"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 const (
-	AllCacheFileRegex      = `^((?:pypy_|yt_).+)(?:\.mp4|\.mp4\.dl)$`
-	CompleteCacheFileRegex = `^((?:pypy_|yt_).+)\.mp4$`
-	PartialCacheFileRegex  = `^((?:pypy_|yt_).+)\.mp4\.dl$`
+	AllCacheFileRegex      = `^((?:pypy|yt|wanna|bili)_.+)\.(?:mp4|mp4\.(?:dl|vrcdp))$`
+	CompleteCacheFileRegex = `^((?:pypy|yt|wanna|bili)_.+)\.mp4$`
+	PartialCacheFileRegex  = `^((?:pypy|yt|wanna|bili)_.+)\.mp4\.(?:dl|vrcdp)$`
 )
 
 var cachePath string
 var maxSize int64
 var keepFavorites bool
+var fileFormat int
+
 var cacheMap = NewCacheMap()
 var cleanUpChan = make(chan struct{}, 1)
 
@@ -60,13 +64,8 @@ func GetMaxSize() int64 {
 func SetKeepFavorites(b bool) {
 	keepFavorites = b
 }
-
-func InitSongList() error {
-	err := loadSongs()
-	if err != nil {
-		return err
-	}
-	return nil
+func SetFileFormat(format int) {
+	fileFormat = format
 }
 
 func CleanUpCache() {
@@ -195,8 +194,17 @@ func RemoveLocalCacheById(id string) error {
 	if cacheMap.IsActive(id) {
 		return nil
 	}
+
+	videoTrunkPath := filepath.Join(cachePath, id+".mp4.vrcdp")
 	videoPath := filepath.Join(cachePath, id+".mp4")
 	videoDlPath := filepath.Join(cachePath, id+".mp4.dl")
+
+	if _, err := os.Stat(videoTrunkPath); err == nil {
+		err := os.Remove(videoTrunkPath)
+		if err != nil {
+			return err
+		}
+	}
 	if _, err := os.Stat(videoPath); err == nil {
 		err := os.Remove(videoPath)
 		if err != nil {
@@ -212,13 +220,21 @@ func RemoveLocalCacheById(id string) error {
 	return nil
 }
 
-func OpenCacheEntry(id string) (Entry, error) {
+func OpenCacheEntry(id, prefix string) (Entry, error) {
+	log.Println(prefix, "Open cache entry:", id)
 	return cacheMap.Open(id)
 }
 
-func CloseCacheEntry(id string) {
-	cacheMap.Close(id)
-	localFileEm.NotifySubscribers("*" + id)
+func ReleaseCacheEntry(id, prefix string) {
+	log.Println(prefix, "Release cache entry:", id)
+	cacheMap.Release(id)
+	go func() {
+		<-time.After(time.Second)
+		if cacheMap.CloseIfInactive(id) {
+			log.Println("Closed cache entry:", id)
+			localFileEm.NotifySubscribers("*" + id)
+		}
+	}()
 }
 
 func SubscribeLocalFileEvent() *utils.EventSubscriber[string] {

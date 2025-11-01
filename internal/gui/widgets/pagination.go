@@ -20,7 +20,10 @@ type Pagination struct {
 }
 
 func NewPagination() *Pagination {
-	p := &Pagination{}
+	p := &Pagination{
+		CurrentPage: 1,
+		TotalPage:   1,
+	}
 
 	p.ExtendBaseWidget(p)
 
@@ -32,61 +35,55 @@ func (p *Pagination) SetCurrentPage(currentPage int) {
 		return
 	}
 	p.CurrentPage = currentPage
-	fyne.Do(func() {
-		p.Refresh()
-	})
+	p.Refresh()
 }
 
 func (p *Pagination) SetTotalPage(totalPage int) {
 	if p.TotalPage == totalPage {
 		return
 	}
-	p.TotalPage = totalPage
-	fyne.Do(func() {
-		p.Refresh()
-	})
+	p.TotalPage = max(1, totalPage)
+	p.Refresh()
 }
 
 func (p *Pagination) handlePageChange() {
 	if p.OnPageChange != nil {
 		p.OnPageChange(p.CurrentPage)
 	}
+	p.Refresh()
+}
 
-	fyne.Do(func() {
-		p.Refresh()
-	})
+func (p *Pagination) setPage(page int) {
+	p.CurrentPage = page
+	p.handlePageChange()
 }
 
 func (p *Pagination) CreateRenderer() fyne.WidgetRenderer {
-	prevBtn := button.NewPaddedIconBtn(icons.GetIcon("angle-left"))
+	prevBtn := button.NewPaddedIconBtn(icons.GetColoredIcon("angle-left", theme.ColorNameForeground))
 	prevBtn.OnClick = func() {
 		if p.CurrentPage > 1 {
-			p.CurrentPage--
-			p.handlePageChange()
+			p.setPage(p.CurrentPage - 1)
 		}
 	}
 	prevBtn.SetPadding(theme.Padding() * 2)
-	nextBtn := button.NewPaddedIconBtn(icons.GetIcon("angle-right"))
+	nextBtn := button.NewPaddedIconBtn(icons.GetColoredIcon("angle-right", theme.ColorNameForeground))
 	nextBtn.OnClick = func() {
 		if p.CurrentPage < p.TotalPage {
-			p.CurrentPage++
-			p.handlePageChange()
+			p.setPage(p.CurrentPage + 1)
 		}
 	}
 	nextBtn.SetPadding(theme.Padding() * 2)
-	firstBtn := button.NewPaddedIconBtn(icons.GetIcon("angles-left"))
+	firstBtn := button.NewPaddedIconBtn(icons.GetColoredIcon("angles-left", theme.ColorNameForeground))
 	firstBtn.OnClick = func() {
 		if p.CurrentPage > 1 {
-			p.CurrentPage = 1
-			p.handlePageChange()
+			p.setPage(1)
 		}
 	}
 	firstBtn.SetPadding(theme.Padding() * 2)
-	lastBtn := button.NewPaddedIconBtn(icons.GetIcon("angles-right"))
+	lastBtn := button.NewPaddedIconBtn(icons.GetColoredIcon("angles-right", theme.ColorNameForeground))
 	lastBtn.OnClick = func() {
 		if p.CurrentPage < p.TotalPage {
-			p.CurrentPage = p.TotalPage
-			p.handlePageChange()
+			p.setPage(p.TotalPage)
 		}
 	}
 	lastBtn.SetPadding(theme.Padding() * 2)
@@ -153,6 +150,13 @@ func (r *paginationRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *paginationRenderer) Refresh() {
+	if r.pagination.CurrentPage < 1 {
+		r.pagination.setPage(1)
+	}
+	if r.pagination.CurrentPage > r.pagination.TotalPage {
+		r.pagination.setPage(r.pagination.CurrentPage)
+	}
+
 	r.CurrentPageLabel.SetText(fmt.Sprintf("%d/%d", r.pagination.CurrentPage, r.pagination.TotalPage))
 
 	canvas.Refresh(r.pagination)

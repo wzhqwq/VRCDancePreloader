@@ -1,19 +1,21 @@
 package main
 
 import (
+	"context"
+	"log"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"log"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tui"
 
 	"github.com/alexflint/go-arg"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/window_app"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
-	"github.com/wzhqwq/VRCDancePreloader/internal/proxy"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song_ui/gui"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song_ui/tui"
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher"
 
 	"os"
@@ -25,8 +27,6 @@ import (
 var build_gui_on = false
 
 var args struct {
-	Port string `arg:"-p,--port" default:"7653" help:"port to listen on"`
-
 	VrChatDir string `arg:"-d,--vrchat-dir" default:"" help:"VRChat directory"`
 
 	GuiEnabled bool `arg:"-g,--gui" default:"false" help:"enable GUI"`
@@ -47,6 +47,11 @@ func main() {
 		args.GuiEnabled = true
 	}
 
+	// gui state
+	if args.GuiEnabled {
+		global_state.RunInGui()
+	}
+
 	// Apply argument config
 	config.SetSkipTest(args.SkipClientTest)
 	if args.DisableAsyncDownload {
@@ -57,6 +62,7 @@ func main() {
 
 	// Apply config.yaml
 	config.LoadConfig()
+	config.GetYoutubeConfig().Init()
 	config.GetKeyConfig().Init()
 	config.GetProxyConfig().Init()
 
@@ -67,13 +73,11 @@ func main() {
 	// The ending note
 	defer log.Println("Gracefully stopped")
 
-	err := cache.InitSongList()
-	if err != nil {
-		log.Println("Failed to fetch pypy song list:", err)
-		return
-	}
+	songListCtx, cancel := context.WithCancel(context.Background())
+	cache.InitSongList(songListCtx)
+	defer cancel()
 
-	err = config.GetDbConfig().Init()
+	err := config.GetDbConfig().Init()
 	if err != nil {
 		log.Println("Failed to init database:", err)
 		return
@@ -135,10 +139,16 @@ func main() {
 		return
 	default:
 	}
-	proxy.Start(args.Port)
+	config.GetHijackConfig().Init()
 	defer func() {
 		log.Println("Stopping proxy")
-		proxy.Stop()
+		config.GetHijackConfig().Stop()
+	}()
+
+	config.GetLiveConfig().Init()
+	defer func() {
+		log.Println("Stopping live")
+		config.GetLiveConfig().Stop()
 	}()
 
 	if args.TuiEnabled {
@@ -152,26 +162,24 @@ func main() {
 			log.Println("Stopping TUI")
 			tui.Stop()
 		}()
-	}
-
-	if args.GuiEnabled {
+	} else if args.GuiEnabled {
 		select {
 		case <-osSignalCh:
 			return
 		default:
 		}
-		gui.Start()
+		main_window.Start()
 		defer func() {
 			log.Println("Stopping GUI")
-			gui.Stop()
+			main_window.Stop()
 		}()
 
 		go func() {
 			<-osSignalCh
 			log.Println("Quitting...")
-			window_app.Quit()
+			custom_fyne.Quit()
 		}()
-		window_app.MainLoop()
+		custom_fyne.MainLoop()
 	} else {
 		<-osSignalCh
 	}

@@ -2,7 +2,7 @@
 * [VRCDancePreloader](#vrcdancepreloader)
   * [原理](#原理)
   * [使用方法](#使用方法)
-    * [安装证书](#安装证书)
+    * [安装证书（可选）](#安装证书可选)
     * [设置代理](#设置代理)
   * [个性化](#个性化)
     * [配置文件](#配置文件)
@@ -22,9 +22,9 @@
 
 ## 使用方法
 
-### 安装证书
+### 安装证书（可选）
 
-程序使用goproxy代理视频的下载，需要安装根证书以便处理https请求，程序首次运行后，会在自身目录下输出根证书`ca.crt`。
+程序使用goproxy代理视频的下载，如果需要支持处理https请求，需要安装根证书，程序首次运行后，会在自身目录下输出根证书`ca.crt`。
 双击打开证书，点击“安装证书…”-“下一步”-“将所有证书都放入下列存储”-“浏览…”-“受信任的根证书颁发机构”。
 
 ### 设置代理
@@ -41,11 +41,27 @@ Rev或者Proxifier管理流量。详见“设置代理规则”。
 **当程序以GUI模式运行时，可以在设置界面中修改这些配置，修改后会自动保存到配置文件。**
 
 ```yaml
+hijack:
+  # 将软件设置为系统代理或者正确配置在其他代理工具中之后，本工具会拦截特定站点的视频请求
+  # 作为代理服务器时使用的端口
+  proxy-port: 7653
+  # 本软件的拦截规则，设定哪些网站会被拦截
+  intercepted-sites:
+    - jd.pypy.moe
+    - api.udon.dance
+    - api.wannadance.online
+    - www.bilibili.com
+    - b23.tv
+    - api.xin.moe
+  # 是否启用HTTPS劫持，如果启用，需要将软件目录下的证书配置为“受信任的根证书颁发机构”
+  enable-https: true
 # 本程序无视系统代理和环境变量，
 # 需要通过以下配置程序自身下载视频、获取视频信息时使用的http代理，如果留空就不使用代理
 proxy:
   # 访问PyPyDance获取视频和缩略图的代理，考虑到PyPyDance在内地有直连中华电信的线路，所以一般不需要配置代理
   pypydance-api: ""
+  # 访问WannaDance API获取视频和缩略图的代理，一般不需要配置代理
+  wannadance-api: ""
   # 下载YouTube视频使用的代理，目前还没做，不用设置
   youtube-video: ""
   # 请求YouTube API获取YouTube视频信息（如标题）的代理，如果你没有YouTube API key，就不用设置
@@ -75,16 +91,24 @@ cache:
   max-cache-size: 300
   # 清空视频时，是否保留在收藏夹中的视频
   keep-favorites: false
+  # 缓存文件的格式
+  file-format: 1
 db:
   # 本地数据库（用于存储播放历史和乐曲偏好）的路径，启动时会自动创建
   path: ./data.db
+live:
+  # 是否启用H5网页渲染的直播套件
+  enabled: false
+  # 网页渲染的直播套件的地址，默认为127.0.0.1:7652
+  port: 7652
+  # 网页渲染的直播套件的设置，JSON格式，请在浏览器中打开直播套件来设置
+  settings: '{}'
 ```
 
 ### 程序参数
 
 |            参数名称            | 含义                         |
 |:--------------------------:|----------------------------|
-|       `--port`或`-p`        | 代理端口，默认为`7653`             |
 |    `--vrchat-dir`或`-d`     | VRChat程序数据目录，用于搜索日志，一般无需设置 |
 |        `--gui`或`-g`        | 是否显示GUI窗口，可以展示视频预加载状态      |
 |        `--tui`或`-t`        | 是否在控制台显示TUI，以文字方式展示视频预加载状态 |
@@ -113,13 +137,15 @@ delete: [ ]
 
 ```yaml
 prepend:
-  - 'AND,((DOMAIN,jd.pypy.moe),(PROCESS-NAME-REGEX,VRChat)),vrcDancePreload'
-  - 'AND,((DOMAIN,jd.pypy.moe),(PROCESS-NAME-REGEX,yt-dlp)),vrcDancePreload'
+  - 'AND,((DOMAIN,api.pypy.dance),(PROCESS-NAME-REGEX,VRChat)),vrcDancePreload'
+  - 'AND,((DOMAIN,api.pypy.dance),(PROCESS-NAME-REGEX,yt-dlp)),vrcDancePreload'
+  - 'AND,((DOMAIN,api.udon.dance),(PROCESS-NAME-REGEX,VRChat)),vrcDancePreload'
+  - 'AND,((DOMAIN,api.udon.dance),(PROCESS-NAME-REGEX,yt-dlp)),vrcDancePreload'
 append: [ ]
 delete: [ ]
 ```
 
-这样你就添加了拦截VRChat和yt-dlp对jd.pypy.moe域名的所有请求的规则，并交给`vrcDancePreload`节点处理。
+这样你就添加了拦截VRChat和yt-dlp对api.pypy.dance(PyPyDance)和api.udon.dance(WannaDance)域名的所有请求的规则，并交给`vrcDancePreload`节点处理。
 
 记得开Clash Verge的系统代理！
 
@@ -129,7 +155,7 @@ delete: [ ]
 
 使用路由模式的线路，然后在“网络和Internet”-“代理”-“使用代理服务器”中设置代理IP为`127.0.0.1`，端口为`7653`。
 
-此时UU加速器会按自身规则拦截部分VRChat的请求，其余请求会走VRCDancePreloader，加载器只会处理和`jd.pypy.moe`相关的请求
+此时UU加速器会按自身规则拦截部分VRChat的请求，其余请求会走VRCDancePreloader，加载器只会处理和跳舞房相关的请求
 
 ## VRChat ToS
 
@@ -137,14 +163,16 @@ delete: [ ]
 
 ## TODO
 
-- [ ] 断点续传验证
-- [ ] 完成临时加载歌曲的自动转移
+- [x] 断点续传验证
+- [x] 完成临时加载歌曲的自动转移
 - [ ] 稳定性优化，减少死锁
-- [ ] 支持WannaDance
+- [x] 支持WannaDance
 - [ ] YouTube视频预加载（需要和yt-dlp完美配合，还没想好怎么做）
-- [ ] b站视频预加载（准备走[bilibili-real-url](https://github.com/gizmo-ds/bilibili-real-url)）
-- [x] 界面优化
-- [x] 实现播放历史查看、收藏管理
-- [ ] 整合一下VRCX的API，实现PyPyDance的收藏同步
+- [x] b站视频预加载（准备走[bilibili-real-url](https://github.com/gizmo-ds/bilibili-real-url)）
+- [ ] <del>整合一下VRCX的API，实现PyPyDance的收藏同步</del>
 - [ ] 通过[OpenVROverlayPipe](https://github.com/BOLL7708/OpenVROverlayPipe)实现SteamVR内通知
 - [ ] 自由控制各类来源歌曲是否预加载
+- [ ] 欢迎屏幕
+- [ ] 展示更多的内部状态（下载队列、冷却时间）
+- [ ] 完善H5直播功能
+- [ ] 添加心率传感器

@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"time"
 )
 
@@ -41,31 +42,13 @@ func (b *RecordButton) SetActive(active bool) {
 }
 
 func (b *RecordButton) CreateRenderer() fyne.WidgetRenderer {
-	dateText := canvas.NewText(b.date.Format("01/02"), theme.Color(theme.ColorNameForeground))
-	dateText.TextSize = 14
-	dateText.TextStyle = fyne.TextStyle{Bold: true}
-
-	timeText := canvas.NewText(b.date.Format("15:04"), theme.Color(theme.ColorNameForeground))
-	timeText.TextSize = 12
-	timeText.TextStyle = fyne.TextStyle{Italic: true}
-
-	var yearText *canvas.Text
-	if b.date.Year() != time.Now().Year() {
-		yearText = canvas.NewText(b.date.Format("2006"), theme.Color(theme.ColorNameForeground))
-		yearText.TextSize = 12
-	}
-
-	background := canvas.NewRectangle(theme.Color(theme.ColorNameBackground))
+	background := canvas.NewRectangle(theme.Color(custom_fyne.ColorNameOuterBackground))
 	background.CornerRadius = 8
-	background.StrokeWidth = 2
 
 	return &RecordButtonRenderer{
 		b: b,
 
-		DateText: dateText,
-		TimeText: timeText,
-		YearText: yearText,
-
+		DateTime:   newDateTime(b.date),
 		Background: background,
 	}
 }
@@ -90,22 +73,100 @@ func (b *RecordButton) MouseMoved(_ *desktop.MouseEvent) {
 type RecordButtonRenderer struct {
 	b *RecordButton
 
-	YearText *canvas.Text
-	DateText *canvas.Text
-	TimeText *canvas.Text
-
+	DateTime   *dateTime
 	Background *canvas.Rectangle
 }
 
 func (r *RecordButtonRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(50, 50)
+	return fyne.NewSquareSize(50)
 }
 
 func (r *RecordButtonRenderer) Layout(size fyne.Size) {
-	p := float32(2)
-
-	r.Background.Resize(size)
+	if r.b.active {
+		r.Background.Resize(fyne.NewSize(size.Width+30, size.Height))
+		r.DateTime.Move(fyne.NewPos(0, 0))
+	} else {
+		r.Background.Resize(size)
+		r.DateTime.Move(fyne.NewPos(0, 0))
+	}
 	r.Background.Move(fyne.NewPos(0, 0))
+	r.DateTime.Resize(size)
+}
+
+func (r *RecordButtonRenderer) Refresh() {
+	if r.b.active {
+		r.Background.FillColor = theme.Color(theme.ColorNameBackground)
+		r.Background.Resize(fyne.NewSize(80, 50))
+		r.DateTime.Move(fyne.NewPos(2, 0))
+	} else {
+		r.Background.FillColor = theme.Color(custom_fyne.ColorNameOuterBackground)
+		r.Background.Resize(fyne.NewSquareSize(50))
+		r.DateTime.Move(fyne.NewPos(0, 0))
+	}
+	if r.b.hovered {
+		r.Background.FillColor = theme.Color(custom_fyne.ColorNameButtonHover)
+	}
+	canvas.Refresh(r.b)
+}
+
+func (r *RecordButtonRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{
+		r.Background,
+		r.DateTime,
+	}
+}
+
+func (r *RecordButtonRenderer) Destroy() {
+}
+
+type dateTime struct {
+	widget.BaseWidget
+
+	date time.Time
+}
+
+func newDateTime(date time.Time) *dateTime {
+	d := &dateTime{
+		date: date,
+	}
+	d.ExtendBaseWidget(d)
+	return d
+}
+
+func (d *dateTime) CreateRenderer() fyne.WidgetRenderer {
+	dateText := canvas.NewText(d.date.Format("01/02"), theme.Color(theme.ColorNameForeground))
+	dateText.TextSize = 14
+	dateText.TextStyle = fyne.TextStyle{Bold: true}
+
+	timeText := canvas.NewText(d.date.Format("15:04"), theme.Color(theme.ColorNameForeground))
+	timeText.TextSize = 12
+	timeText.TextStyle = fyne.TextStyle{Italic: true}
+
+	var yearText *canvas.Text
+	if d.date.Year() != time.Now().Year() {
+		yearText = canvas.NewText(d.date.Format("2006"), theme.Color(theme.ColorNameForeground))
+		yearText.TextSize = 12
+	}
+
+	return &dateTimeRenderer{
+		DateText: dateText,
+		TimeText: timeText,
+		YearText: yearText,
+	}
+}
+
+type dateTimeRenderer struct {
+	YearText *canvas.Text
+	DateText *canvas.Text
+	TimeText *canvas.Text
+}
+
+func (r *dateTimeRenderer) MinSize() fyne.Size {
+	return r.DateText.MinSize()
+}
+
+func (r *dateTimeRenderer) Layout(size fyne.Size) {
+	p := float32(2)
 
 	dateSize := r.DateText.MinSize()
 	r.DateText.Resize(dateSize)
@@ -122,35 +183,24 @@ func (r *RecordButtonRenderer) Layout(size fyne.Size) {
 	}
 }
 
-func (r *RecordButtonRenderer) Refresh() {
-	if r.b.hovered {
-		r.Background.FillColor = theme.Color(theme.ColorNameHover)
-	} else {
-		r.Background.FillColor = theme.Color(theme.ColorNameButton)
-	}
-	if r.b.active {
-		r.Background.StrokeColor = theme.Color(theme.ColorNamePrimary)
-	} else {
-		r.Background.StrokeColor = theme.Color(theme.ColorNameSeparator)
-	}
-	canvas.Refresh(r.b)
+func (r *dateTimeRenderer) Refresh() {
+	r.YearText.Refresh()
+	r.DateText.Refresh()
+	r.TimeText.Refresh()
 }
 
-func (r *RecordButtonRenderer) Objects() []fyne.CanvasObject {
+func (r *dateTimeRenderer) Objects() []fyne.CanvasObject {
 	if r.YearText != nil {
 		return []fyne.CanvasObject{
-			r.Background,
 			r.DateText,
 			r.TimeText,
 			r.YearText,
 		}
 	}
 	return []fyne.CanvasObject{
-		r.Background,
 		r.DateText,
 		r.TimeText,
 	}
 }
 
-func (r *RecordButtonRenderer) Destroy() {
-}
+func (r *dateTimeRenderer) Destroy() {}

@@ -1,0 +1,62 @@
+- Key: tip_on_hijack
+  Default: >
+    This tool provides an HTTP proxy service. After setting the software as a system proxy or correctly configuring it
+    in another proxy tool, it will intercept video requests from specific sites and return the video content instead of
+    the actual server, enabling video preloading.
+    Therefore, this tool will only work if the proxy settings are configured correctly.
+
+
+    - "Enable HTTPS Hijacking": Custom video URLs entered by players (such as BiliBili videos) are typically under HTTPS.
+    By enabling this switch and configuring the certificate in the software directory as a
+    "Trusted Root Certification Authority", these videos can be intercepted if the tool supports preloading of such videos.
+
+    - "Sites to be intercepted": If you do not want the tool to intercept certain sites (such as BiliBili and WannaDance),
+    you can click the button corresponding to the site to disable it.
+
+- Key: tip_on_proxy
+  Default: >
+    Set the proxy server URL used by this tool when downloading videos, thumbnails, and calling APIs.
+    Leaving the text box blank means direct access without going through the proxy server (and ignoring the system proxy).
+    Click the "Test" button to check whether the service can be accessed under the current settings.
+
+- Key: tip_on_keys
+  Default: >
+    Set the API key that comes with this software when accessing some APIs that require authentication,
+    such as the YouTube API. You can apply for it in the Google Cloud console.
+
+- Key: tip_on_cache
+  Default: >
+    The cache is used to store preloaded videos. Video downloads and responses are performed in the cache directory
+    to reduce memory usage.
+
+
+    - Setting the cache folder on a network device is not recommended, as the tool's frequent file reads and writes and
+    directory traversal may incur significant network overhead, potentially impacting the streaming experience.
+
+    - When the total cache file size exceeds the configured size, the tool will automatically delete the oldest
+    downloaded videos. Setting the cache size too large is not recommended, as this may affect cache traversal efficiency.
+
+
+    About cache file formats:
+
+
+    - Continuous: Saves in the vrcdp format and supports resumable downloads.
+
+    - Fragmented: Saves in the vrcdp format and supports both resumable downloads and fragmented downloads,
+    shortening loading times for videos that are playing mid-stream.
+
+    - Legacy: Saves in the mp4 and dl formats and supports resumable downloads. These formats are now deprecated.
+    If you experience issues with the first two formats, try using the legacy format instead.
+
+- Key: tip_on_live
+  Default: >
+    This software can provide real-time playlist information of the dance room to other services via WebSocket.
+    It also includes a static HTML5 page, providing a ready-to-use live streaming tool.
+    The appearance and behavior of the live streaming tool can be configured in your browser by clicking [here](http://localhost:7652).
+
+
+    - For OBS: Click "Add Source", select "Browser", and enter [http://localhost:7652](http://localhost:7652) in the URL field.
+    You can also set the width and height if needed.
+
+    - For BiliBili Live: Click "+ Source", select "Browser", and enter [http://localhost:7652](http://localhost:7652) in the URL field.
+    You can set the width and height in the advanced settings.

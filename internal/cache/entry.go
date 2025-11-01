@@ -1,95 +1,266 @@
 package cache
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
-	"strings"
+	"os"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file"
+	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/continuous"
+	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/fragmented"
+	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/legacy_file"
 )
+
+var unixEpochTime = time.Unix(0, 0)
+
+var ErrThrottle = errors.New("too many requests, slow down")
 
 type Entry interface {
 	io.Writer
-	Open() error
-	TotalLen() int64
-	GetReadSeekCloser() io.ReadSeekCloser
-	GetDownloadBody() (io.ReadCloser, error)
+
+	// Open this entry. It's a heavy method with locks
+	Open()
+
+	// Release this entry. It's a lightweight method with no locks
+	Release()
+
+	// Close this entry. It's a heavy method with locks
 	Close() error
-	Save() error
+
+	Active() bool
+	TotalLen() (int64, error)
+	DownloadedSize() int64
+	GetReadSeeker(ctx context.Context) (io.ReadSeeker, error)
+	GetDownloadStream() (io.ReadCloser, error)
 	IsComplete() bool
+	ModTime() time.Time
+	UpdateReqRangeStart(start int64)
 }
 
 type BaseEntry struct {
 	id     string
 	client *http.Client
 
-	writingFile *ReadableWritingFile
+	openCount atomic.Int32
+
+	workingFileMutex sync.RWMutex
+
+	workingFile rw_file.DeferredReadableFile
 }
 
-func (e *BaseEntry) getSavedVideoName() string {
+func ConstructBaseEntry(id string, client *http.Client) BaseEntry {
+	return BaseEntry{
+		id:     id,
+		client: client,
+	}
+}
+
+func (e *BaseEntry) getVideoName() string {
 	return fmt.Sprintf("%s/%s.mp4", cachePath, e.id)
 }
-func (e *BaseEntry) getIncompleteVideoName() string {
-	return fmt.Sprintf("%s/%s.mp4.dl", cachePath, e.id)
-}
-func (e *BaseEntry) getSavedSize() int64 {
-	return getFileSize(e.getSavedVideoName())
-}
-func (e *BaseEntry) getIncompleteSize() int64 {
-	return getFileSize(e.getIncompleteVideoName())
-}
-func (e *BaseEntry) openFile() error {
-	if e.writingFile == nil {
-		if e.getSavedSize() > 0 {
-			e.writingFile = newReadableWritingFile(e.getSavedVideoName())
-		} else {
-			e.writingFile = newReadableWritingFile(e.getIncompleteVideoName())
-		}
-		if e.writingFile == nil {
-			return fmt.Errorf("cannot open or create video file")
-		}
+
+func (e *BaseEntry) checkLegacy() bool {
+	if _, err := os.Stat(e.getVideoName()); err == nil {
+		return true
 	}
-	return nil
-}
-func (e *BaseEntry) saveFile() error {
-	if e.writingFile != nil && strings.Contains(e.writingFile.file.Name(), ".dl") {
-		return e.writingFile.Rename(e.getSavedVideoName())
+	if _, err := os.Stat(e.getVideoName() + ".dl"); err == nil {
+		return true
 	}
-	return nil
-}
-func (e *BaseEntry) closeFile() error {
-	if e.writingFile != nil {
-		return e.writingFile.Close()
-	}
-	return nil
+	return false
 }
 
-func (e *BaseEntry) requestInfo(url string) (int64, string) {
-	res, err := e.client.Head(url)
-	if err != nil {
-		return 0, url
+// extendable operations (please wrap with mutex by yourself and check workingFile first!!)
+
+func (e *BaseEntry) openFile() {
+	if e.checkLegacy() {
+		e.workingFile = legacy_file.NewFile(e.getVideoName())
 	}
-	location := res.Header.Get("Location")
-	if location == "" {
-		return res.ContentLength, url
+
+	if e.workingFile == nil {
+		switch fileFormat {
+		case 1:
+			e.workingFile = continuous.NewFile(e.getVideoName())
+		case 2:
+			e.workingFile = fragmented.NewFile(e.getVideoName())
+		default:
+			e.workingFile = legacy_file.NewFile(e.getVideoName())
+		}
 	}
-	return res.ContentLength, location
 }
-func (e *BaseEntry) requestBody(url string, offset int64) (io.ReadCloser, error) {
-	req, err := http.NewRequest("GET", url, nil)
+
+func (e *BaseEntry) closeFile() error {
+	err := e.workingFile.Close()
+	if err == nil || errors.Is(err, os.ErrClosed) {
+		e.workingFile = nil
+	}
+
+	return err
+}
+
+func (e *BaseEntry) getReadSeeker(ctx context.Context) (io.ReadSeeker, error) {
+	r := e.workingFile.RequestRs(ctx)
+	if r == nil {
+		return nil, errors.New("failed to download this video")
+	}
+
+	return r, nil
+}
+
+// http utils
+
+type RemoteVideoInfo struct {
+	FinalUrl     string
+	TotalSize    int64
+	LastModified time.Time
+}
+
+func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*RemoteVideoInfo, error) {
+	log.Println("request info", url)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if offset > 0 {
-		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
+	res, err := e.client.Do(req)
+	if err != nil {
+		log.Println("Failed to get ", url, "reason:", err)
+		return nil, err
 	}
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrThrottle
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+	}
+
+	lastModified := time.Unix(0, 0)
+	if lastModifiedText := res.Header.Get("Last-Modified"); lastModifiedText != "" {
+		lastModified, _ = http.ParseTime(lastModifiedText)
+	}
+
+	return &RemoteVideoInfo{
+		FinalUrl:     res.Request.URL.String(),
+		TotalSize:    res.ContentLength,
+		LastModified: lastModified,
+	}, nil
+}
+func (e *BaseEntry) requestHttpResBody(url string, offset int64, ctx context.Context) (io.ReadCloser, error) {
+	log.Println("request body", url, offset)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
 	res, err := e.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if offset == 0 || res.StatusCode == http.StatusPartialContent {
-		return res.Body, nil
+	if res.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrThrottle
 	}
-	return nil, fmt.Errorf(res.Status)
+	if res.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+		return nil, nil
+	}
+	if res.StatusCode != http.StatusPartialContent {
+		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+	}
+	return res.Body, nil
+}
+
+// adapters
+
+func (e *BaseEntry) Open() {
+	e.openCount.Add(1)
+
+	e.workingFileMutex.Lock()
+	defer e.workingFileMutex.Unlock()
+
+	if e.workingFile == nil {
+		e.openFile()
+	}
+}
+
+func (e *BaseEntry) Release() {
+	e.openCount.Add(-1)
+	if e.openCount.Load() <= 0 {
+		go func() {
+			<-time.After(time.Second)
+			if e.openCount.Load() <= 0 {
+				err := e.Close()
+				if err != nil {
+					log.Println("failed to close file", e.id, err)
+				}
+			}
+		}()
+	}
+}
+
+func (e *BaseEntry) Active() bool {
+	return e.openCount.Load() > 0
+}
+
+func (e *BaseEntry) Close() error {
+	e.workingFileMutex.Lock()
+	defer e.workingFileMutex.Unlock()
+
+	if e.workingFile == nil {
+		return nil
+	}
+	return e.closeFile()
+}
+
+func (e *BaseEntry) IsComplete() bool {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil {
+		return false
+	}
+	return e.workingFile.IsComplete()
+}
+
+func (e *BaseEntry) DownloadedSize() int64 {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil {
+		return 0
+	}
+	return e.workingFile.GetDownloadedBytes()
+}
+
+func (e *BaseEntry) ModTime() time.Time {
+	// TODO
+	return unixEpochTime
+}
+
+func (e *BaseEntry) Write(bytes []byte) (int, error) {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile == nil {
+		return 0, io.ErrClosedPipe
+	}
+	return e.workingFile.Append(bytes)
+}
+
+func (e *BaseEntry) UpdateReqRangeStart(start int64) {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if e.workingFile != nil {
+		e.workingFile.NotifyRequestStart(start)
+	}
 }

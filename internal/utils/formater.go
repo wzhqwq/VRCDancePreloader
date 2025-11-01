@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 )
 
 func PrettyByteSize(b int64) string {
@@ -17,8 +18,10 @@ func PrettyByteSize(b int64) string {
 	return fmt.Sprintf("%.1fYiB", bf)
 }
 
-func PrettyTime(s float64) string {
-	return fmt.Sprintf("%02d:%02d", int(s)/60, int(s)%60)
+func PrettyTime(s time.Duration) string {
+	minutes := s / time.Minute
+	seconds := (s - minutes*time.Minute) / time.Second
+	return fmt.Sprintf("%02d:%02d", minutes, seconds)
 }
 
 func FirstLine(s string) string {

@@ -1,17 +1,28 @@
 package raw_song
 
 type PyPyDanceSong struct {
-	ID          int      `json:"id"`
-	Group       int      `json:"group"`
-	Volume      float64  `json:"volume"`
-	Name        string   `json:"name"`
-	Flip        bool     `json:"flip"`
-	Start       int      `json:"start"`
-	End         int      `json:"end"`
-	SkipRandom  bool     `json:"skipRandom"`
-	OriginalURL []string `json:"originalUrl"`
+	ID          int      `json:"i"`
+	Group       int      `json:"g"`
+	Name        string   `json:"n"`
+	End         int      `json:"e"`
+	OriginalURL []string `json:"o"`
+	// Tags        []string `json:"t"`
+
+	GroupName string
 }
 
 func (song *PyPyDanceSong) GetGroupName() string {
-	return songGroups[song.Group]
+	if song.GroupName != "" {
+		return song.GroupName
+	}
+	if song.Group >= len(pypyGroups) {
+		return "Unknown"
+	}
+	return pypyGroups[song.Group]
+}
+
+func (song *PyPyDanceSong) Complete(name, groupName string, end int) {
+	song.Name = name
+	song.GroupName = groupName
+	song.End = end
 }

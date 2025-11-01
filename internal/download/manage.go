@@ -1,20 +1,34 @@
 package download
 
+import (
+	"github.com/wzhqwq/VRCDancePreloader/internal/stability"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+)
+
 var dm *downloadManager = nil
+var logger = utils.NewUniqueLogger()
 
 func InitDownloadManager(maxParallel int) {
 	dm = newDownloadManager(maxParallel)
 }
 
-func CancelDownload(id string) {
-	dm.CancelDownload(id)
+func CancelDownload(ids ...string) {
+	if len(ids) == 0 {
+		return
+	}
+	dm.CancelDownload(ids...)
 }
 
-func Prioritize(id string) {
-	dm.Prioritize(id)
+func Prioritize(ids ...string) {
+	if len(ids) == 0 {
+		return
+	}
+	dm.Prioritize(ids...)
 }
 
 func StopAllAndWait() {
+	cancel := stability.PanicIfTimeout("download_StopAllAndWait")
+	defer cancel()
 	dm.CancelAllAndWait()
 }
 

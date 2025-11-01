@@ -1,32 +1,97 @@
 package config
 
 import (
+	"log"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
+	"github.com/wzhqwq/VRCDancePreloader/internal/hijack"
+	"github.com/wzhqwq/VRCDancePreloader/internal/live"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/service"
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
-	"log"
 )
+
+func (hc *HijackConfig) Init() {
+	runner := input.NewServerRunner(hc.ProxyPort)
+	runner.OnSave = hc.UpdatePort
+	runner.StartServer = func() error {
+		if err := hijack.Start(hc.InterceptedSites, hc.EnableHttps, hc.ProxyPort); err != nil {
+			if global_state.IsInGui() {
+				return err
+			} else {
+				log.Fatalf("Failed to start hijack server: %v", err)
+			}
+		}
+		return nil
+	}
+	runner.StopServer = config.Hijack.Stop
+	runner.Run()
+
+	hc.HijackRunner = runner
+	if hc.EnablePWI {
+		service.StartPWIServer()
+	}
+}
+
+func (hc *HijackConfig) Stop() {
+	hijack.Stop()
+	if hc.EnablePWI {
+		service.StopPWIServer()
+	}
+}
+
+func (hc *HijackConfig) UpdatePort(port int) {
+	hc.ProxyPort = port
+	SaveConfig()
+}
+
+func (hc *HijackConfig) UpdateEnableHttps(b bool) {
+	hc.EnableHttps = b
+	hc.HijackRunner.Run()
+	SaveConfig()
+}
+
+func (hc *HijackConfig) UpdateSites(sites []string) {
+	hc.InterceptedSites = sites
+	hc.HijackRunner.Run()
+	SaveConfig()
+}
+
+func (hc *HijackConfig) UpdateEnablePWI(b bool) {
+	hc.EnablePWI = b
+	if hc.EnablePWI {
+		service.StartPWIServer()
+	} else {
+		service.StopPWIServer()
+	}
+	SaveConfig()
+}
 
 func (pc *ProxyConfig) Init() {
 	//TODO cancel comment after implemented youtube preloading
-	pc.ProxyControllers = map[string]*ProxyController{
-		"pypydance-api": NewProxyController("pypydance-api", pc.Pypy),
-		"youtube-video": NewProxyController("youtube-video", pc.YoutubeVideo),
-		"youtube-api":   NewProxyController("youtube-api", pc.YoutubeApi),
-		"youtube-image": NewProxyController("youtube-image", pc.YoutubeImage),
+	pc.ProxyControllers = map[string]*ProxyTester{
+		"pypydance-api":  NewProxyTester("pypydance-api", pc.Pypy),
+		"wannadance-api": NewProxyTester("wannadance-api", pc.Wanna),
+		"youtube-video":  NewProxyTester("youtube-video", pc.YoutubeVideo),
+		"youtube-api":    NewProxyTester("youtube-api", pc.YoutubeApi),
+		"youtube-image":  NewProxyTester("youtube-image", pc.YoutubeImage),
 	}
 
 	requesting.InitPypyClient(pc.Pypy)
+	requesting.InitWannaClient(pc.Wanna)
+	requesting.InitBiliClient("")
 	//requesting.InitYoutubeVideoClient(pc.YoutubeVideo)
 	requesting.InitYoutubeImageClient(pc.YoutubeImage)
 	requesting.InitYoutubeApiClient(pc.YoutubeApi)
 
 	if !skipTest {
 		pc.ProxyControllers["pypydance-api"].Test()
+		pc.ProxyControllers["wannadance-api"].Test()
 	}
 	//if config.Youtube.EnableVideo {
 	//	if !skipTest {
@@ -50,6 +115,9 @@ func (pc *ProxyConfig) Update(item, value string) {
 	case "pypydance-api":
 		pc.Pypy = value
 		requesting.InitPypyClient(value)
+	case "wannadance-api":
+		pc.Wanna = value
+		requesting.InitWannaClient(value)
 	case "youtube-video":
 		pc.YoutubeVideo = value
 		requesting.InitYoutubeVideoClient(value)
@@ -69,6 +137,8 @@ func (pc *ProxyConfig) Test(item string) (bool, string) {
 	switch item {
 	case "pypydance-api":
 		return requesting.TestPypyClient()
+	case "wannadance-api":
+		return requesting.TestWannaClient()
 	case "youtube-video":
 		return requesting.TestYoutubeVideoClient()
 	case "youtube-api":
@@ -84,15 +154,35 @@ func (pc *ProxyConfig) Test(item string) (bool, string) {
 func (kc *KeyConfig) Init() {
 	if config.Youtube.EnableApi {
 		if kc.Youtube != "" {
-			third_party_api.SetYoutubeApiKey(kc.Youtube)
+			third_party_api.YoutubeApiKey = kc.Youtube
 		} else {
-			log.Fatalf("Youtube API key must be set when Youtube API feature is enabled")
+			log.Println("Youtube API feature is disabled because Youtube API key is missing")
+			config.Youtube.UpdateEnableApi(false)
 		}
 	}
 }
 
+func (yc *YoutubeConfig) Init() {
+	third_party_api.EnableYoutubeApi = yc.EnableApi
+	third_party_api.EnableYoutubeThumbnail = yc.EnableThumbnail
+}
+
+func (yc *YoutubeConfig) UpdateEnableApi(enabled bool) {
+	yc.EnableApi = enabled
+	third_party_api.EnableYoutubeApi = enabled
+	SaveConfig()
+}
+
+func (yc *YoutubeConfig) UpdateEnableThumbnail(enabled bool) {
+	yc.EnableThumbnail = enabled
+	third_party_api.EnableYoutubeThumbnail = enabled
+	SaveConfig()
+}
+
 func (pc *PreloadConfig) Init() {
 	playlist.Init(pc.MaxPreload)
+	playlist.SetEnabledRooms(pc.EnabledRooms)
+	playlist.SetEnabledPlatforms(pc.EnabledPlatforms)
 }
 
 func (pc *PreloadConfig) UpdateMaxPreload(max int) {
@@ -115,6 +205,7 @@ func (cc *CacheConfig) Init() {
 	cache.SetupCache(cc.Path)
 	cache.SetMaxSize(int64(cc.MaxCacheSize) * 1024 * 1024)
 	cache.SetKeepFavorites(cc.KeepFavorites)
+	cache.SetFileFormat(cc.FileFormat)
 }
 
 func (cc *CacheConfig) UpdateMaxSize(sizeInMb int) {
@@ -129,23 +220,68 @@ func (cc *CacheConfig) UpdateKeepFavorites(b bool) {
 	SaveConfig()
 }
 
+func (cc *CacheConfig) UpdateFileFormat(fileFormat int) {
+	cc.FileFormat = fileFormat
+	cache.SetFileFormat(fileFormat)
+	SaveConfig()
+}
+
 func (dc *DbConfig) Init() error {
 	err := persistence.InitDB(dc.Path)
 	if err != nil {
 		return err
 	}
-
-	if dc.EnablePWI {
-		service.StartPWIServer()
-	}
 	return nil
 }
 
-func (dc *DbConfig) UpdateEnablePWI(b bool) {
-	dc.EnablePWI = b
-	if dc.EnablePWI {
-		service.StartPWIServer()
-	} else {
-		service.StopPWIServer()
+func (lc *LiveConfig) Init() {
+	live.OnSettingsChanged = func(settings string) {
+		lc.UpdateSettings(settings)
 	}
+	live.GetSettings = func() string {
+		return lc.Settings
+	}
+
+	runner := input.NewServerRunner(lc.Port)
+	runner.OnSave = lc.UpdatePort
+	runner.StartServer = func() error {
+		if err := live.StartLiveServer(lc.Port); err != nil {
+			if global_state.IsInGui() {
+				return err
+			} else {
+				log.Fatalf("Failed to start live server: %s", err)
+			}
+		}
+		return nil
+	}
+	runner.StopServer = config.Hijack.Stop
+	lc.LiveRunner = runner
+
+	if lc.Enabled {
+		runner.Run()
+	}
+}
+
+func (lc *LiveConfig) UpdateEnable(b bool) {
+	lc.Enabled = b
+	if lc.Enabled {
+		lc.LiveRunner.Run()
+	} else {
+		live.StopLiveServer()
+	}
+	SaveConfig()
+}
+
+func (lc *LiveConfig) UpdatePort(port int) {
+	lc.Port = port
+	SaveConfig()
+}
+
+func (lc *LiveConfig) UpdateSettings(settings string) {
+	lc.Settings = settings
+	SaveConfig()
+}
+
+func (lc *LiveConfig) Stop() {
+	live.StopLiveServer()
 }

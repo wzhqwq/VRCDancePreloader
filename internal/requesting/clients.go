@@ -1,13 +1,17 @@
 package requesting
 
 import (
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"log"
 	"net/http"
 	"net/url"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var pypyClient *http.Client
+var wannaClient *http.Client
+var biliClient *http.Client
+
 var youtubeVideoClient *http.Client
 var youtubeApiClient *http.Client
 var youtubeImageClient *http.Client
@@ -24,20 +28,6 @@ func createProxyClient(proxyURL string) *http.Client {
 	}
 }
 
-func testClient(client *http.Client, testUrl, serviceName string) (bool, string) {
-	log.Printf("Testing %s client", serviceName)
-	_, err := client.Head(testUrl)
-	if err != nil {
-		if client.Transport == nil {
-			log.Printf("[Warning] Cannot connect to %s service, maybe you should configure proxy: %v", serviceName, err)
-		} else {
-			log.Printf("[Warning] Cannot connect to %s service through provided proxy: %v", serviceName, err)
-		}
-		return false, err.Error()
-	}
-	return true, ""
-}
-
 func InitPypyClient(proxyUrl string) {
 	if proxyUrl != "" {
 		pypyClient = createProxyClient(proxyUrl)
@@ -46,7 +36,29 @@ func InitPypyClient(proxyUrl string) {
 	}
 }
 func TestPypyClient() (bool, string) {
-	return testClient(pypyClient, utils.GetPyPyVideoUrl(1), "PyPyDance")
+	return testClient(pypyClient, "PyPyDance", videoTestCase(utils.GetPyPyVideoUrl(1)))
+}
+
+func InitWannaClient(proxyUrl string) {
+	if proxyUrl != "" {
+		wannaClient = createProxyClient(proxyUrl)
+	} else {
+		wannaClient = &http.Client{}
+	}
+}
+func TestWannaClient() (bool, string) {
+	return testClient(wannaClient, "WannaDance", videoTestCase(utils.GetWannaVideoUrl(1)))
+}
+
+func InitBiliClient(proxyUrl string) {
+	if proxyUrl != "" {
+		biliClient = createProxyClient(proxyUrl)
+	} else {
+		biliClient = &http.Client{}
+	}
+}
+func TestBiliClient() (bool, string) {
+	return testClient(biliClient, "BiliBili api", anonymousTestCase(utils.GetBiliVideoInfoURL("BV17g7XzME13")))
 }
 
 func InitYoutubeVideoClient(proxyUrl string) {
@@ -57,7 +69,7 @@ func InitYoutubeVideoClient(proxyUrl string) {
 	}
 }
 func TestYoutubeVideoClient() (bool, string) {
-	return testClient(youtubeVideoClient, utils.GetStandardYoutubeURL("qylu4Ajh6k8"), "Youtube video")
+	return testClient(youtubeVideoClient, "Youtube video", anonymousTestCase(utils.GetStandardYoutubeURL("qylu4Ajh6k8")))
 }
 
 func InitYoutubeApiClient(proxyUrl string) {
@@ -68,7 +80,7 @@ func InitYoutubeApiClient(proxyUrl string) {
 	}
 }
 func TestYoutubeApiClient() (bool, string) {
-	return testClient(youtubeApiClient, "https://youtube.googleapis.com/", "Youtube API")
+	return testClient(youtubeApiClient, "Youtube API", authenticatedTestCase("https://www.googleapis.com/youtube/v3/videos"))
 }
 
 func InitYoutubeImageClient(proxyUrl string) {
@@ -79,11 +91,17 @@ func InitYoutubeImageClient(proxyUrl string) {
 	}
 }
 func TestYoutubeImageClient() (bool, string) {
-	return testClient(youtubeImageClient, utils.GetYoutubeMQThumbnailURL("qylu4Ajh6k8"), "Youtube thumbnail")
+	return testClient(youtubeImageClient, "Youtube thumbnail", anonymousTestCase(utils.GetYoutubeMQThumbnailURL("qylu4Ajh6k8")))
 }
 
 func GetPyPyClient() *http.Client {
 	return pypyClient
+}
+func GetWannaClient() *http.Client {
+	return wannaClient
+}
+func GetBiliClient() *http.Client {
+	return biliClient
 }
 func GetYoutubeVideoClient() *http.Client {
 	return youtubeVideoClient

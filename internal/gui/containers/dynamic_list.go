@@ -3,84 +3,148 @@ package containers
 import (
 	"fyne.io/fyne/v2/widget"
 	"math"
+	"sync/atomic"
 	"time"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 )
 
 type DynamicList struct {
 	widget.BaseWidget
 
-	minWidth float32
-	order    []string
-	itemMap  map[string]*DynamicListItem
+	Gap      float32
+	Padding  float32
+	MinWidth float32
+
+	order   []int64
+	itemMap map[int64]*DynamicListItem
+
+	renderedItemsChanged bool
+
+	runningAnimation *fyne.Animation
 }
 
-func (dl *DynamicList) AddItem(item *DynamicListItem) {
+func (dl *DynamicList) AddItem(item *DynamicListItem, transition bool) {
+	if i, ok := dl.itemMap[item.ID]; ok {
+		item.copyStateFrom(i)
+	}
 	dl.itemMap[item.ID] = item
+	if transition && dl.Size().Width > 0 {
+		item.enableEnteringTransition = true
+	}
 }
-func (dl *DynamicList) RemoveItem(id string) {
+func (dl *DynamicList) RemoveItem(id int64, transition bool) {
 	item := dl.itemMap[id]
 	if item == nil {
 		return
 	}
-	delete(dl.itemMap, id)
-}
-func (dl *DynamicList) SetOrder(order []string) {
-	dl.order = order
+	item.enableExitingTransition = transition
+	item.exit()
+	dl.renderedItemsChanged = true
 	fyne.Do(func() {
 		dl.Refresh()
 	})
+}
+func (dl *DynamicList) SetOrder(order []int64) {
+	dl.order = order
+	dl.renderedItemsChanged = true
+	dl.Refresh()
 }
 func (dl *DynamicList) CreateRenderer() fyne.WidgetRenderer {
 	return &DynamicListRenderer{
 		dl: dl,
 	}
 }
+func (dl *DynamicList) removeFromMap(id int64) {
+	delete(dl.itemMap, id)
+}
 
 type DynamicListRenderer struct {
-	dl *DynamicList
+	dl      *DynamicList
+	objects []fyne.CanvasObject
+
+	minHeight float32
 }
 
 func (r *DynamicListRenderer) MinSize() fyne.Size {
-	totalHeight := float32(0)
-	for _, item := range r.dl.itemMap {
-		totalHeight += item.MinSize().Height + theme.Padding()
-	}
-	return fyne.NewSize(r.dl.minWidth+theme.Padding()*2, totalHeight+theme.Padding())
+	return fyne.NewSize(r.dl.MinWidth+r.dl.Padding*2, r.minHeight)
 }
 func (r *DynamicListRenderer) Layout(size fyne.Size) {
-	accY := theme.Padding()
+	for _, o := range r.objects {
+		if item, ok := o.(*DynamicListItem); ok {
+			item.Resize(fyne.NewSize(size.Width-r.dl.Padding*2, o.MinSize().Height))
+		}
+	}
+}
+func (r *DynamicListRenderer) layoutPosition() {
+	accY := r.dl.Padding
 	for _, id := range r.dl.order {
-		if o, ok := r.dl.itemMap[id]; ok {
-			o.Resize(fyne.NewSize(size.Width-theme.Padding()*2, o.MinSize().Height))
-			if o.isRemoving {
-				continue
+		if item, ok := r.dl.itemMap[id]; ok {
+			if !item.IsExiting() {
+				//fmt.Printf("%s %f\n", item.ID, accY)
+				item.setY(accY)
+				accY += item.MinSize().Height + r.dl.Gap
 			}
-			if o.isNew {
-				o.isNew = false
-				o.goalY = accY
-				o.Move(fyne.NewPos(theme.Padding(), accY))
-			} else {
-				o.SlideY(accY)
+		}
+	}
+
+	animationNeeded := false
+	for _, o := range r.objects {
+		if item, ok := o.(*DynamicListItem); ok {
+			if item.state.Load() != int32(Placed) {
+				animationNeeded = true
 			}
-			accY += o.MinSize().Height + theme.Padding()
+		}
+	}
+	if animationNeeded {
+		if r.dl.runningAnimation != nil {
+			r.dl.runningAnimation.Stop()
+		}
+		r.dl.runningAnimation = &fyne.Animation{
+			Duration: time.Millisecond * 300,
+			Tick: func(d float32) {
+				for _, o := range r.objects {
+					if item, ok := o.(*DynamicListItem); ok {
+						item.tick(d)
+					}
+				}
+			},
+		}
+		r.dl.runningAnimation.Start()
+	}
+}
+func (r *DynamicListRenderer) updateObjects() {
+	r.objects = make([]fyne.CanvasObject, 0, len(r.dl.itemMap))
+	r.minHeight = r.dl.Padding*2 - r.dl.Gap
+	for _, item := range r.dl.itemMap {
+		if item.IsExiting() {
+			r.objects = append(r.objects, item)
+		}
+	}
+	for _, item := range r.dl.itemMap {
+		if item.IsInactive() {
+			r.dl.removeFromMap(item.ID)
+		} else {
+			if !item.IsExiting() {
+				r.objects = append(r.objects, item)
+			}
+			r.minHeight += item.MinSize().Height + r.dl.Gap
 		}
 	}
 }
 func (r *DynamicListRenderer) Refresh() {
+	if r.dl.renderedItemsChanged {
+		r.dl.renderedItemsChanged = false
+		r.updateObjects()
+		r.layoutPosition()
+	}
 	for _, item := range r.dl.itemMap {
 		item.Refresh()
 	}
 }
 func (r *DynamicListRenderer) Objects() []fyne.CanvasObject {
-	var objs []fyne.CanvasObject
-	for _, item := range r.dl.itemMap {
-		objs = append(objs, item)
-	}
-	return objs
+	return r.objects
 }
 func (r *DynamicListRenderer) Destroy() {
 	// TODO
@@ -88,93 +152,164 @@ func (r *DynamicListRenderer) Destroy() {
 
 func NewDynamicList(minWidth float32) *DynamicList {
 	dl := &DynamicList{
-		minWidth: minWidth,
-		order:    []string{},
-		itemMap:  map[string]*DynamicListItem{},
+		Gap:     theme.Padding(),
+		Padding: theme.Padding(),
+
+		MinWidth: minWidth,
+		order:    make([]int64, 0),
+		itemMap:  map[int64]*DynamicListItem{},
 	}
 	dl.ExtendBaseWidget(dl)
 	return dl
 }
 
+type ListItemType int32
+
+const (
+	// Initial - Just created and not positioned
+	Initial ListItemType = iota
+	// Placed - Have been placed to one exact position and animations can start now
+	Placed
+	// OnEnterTransition - It's running entering animation
+	OnEnterTransition
+	// Sliding - It's running sliding animation due to layout
+	Sliding
+	// OnExitTransition - It's running exiting animation, can be reverted
+	OnExitTransition
+	// Inactive - Do not render it anymore
+	Inactive
+)
+
 type DynamicListItem struct {
 	widget.BaseWidget
-	ID     string
+	ID     int64
 	object fyne.CanvasObject
 	dl     *DynamicList
 
-	isNew      bool
-	isRemoving bool
+	state atomic.Int32
 
-	goalY float32
+	enableEnteringTransition bool
+	enableExitingTransition  bool
 
-	runningAnimation *fyne.Animation
+	startPosition fyne.Position
+	goalPosition  fyne.Position
 }
 
-func (dli *DynamicListItem) CreateRenderer() fyne.WidgetRenderer {
-	return &DynamicListItemRenderer{
-		dli: dli,
+func (i *DynamicListItem) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(i.object)
+}
+
+func (i *DynamicListItem) setY(y float32) {
+	if i.state.CompareAndSwap(int32(Initial), int32(Placed)) {
+		x := i.dl.Padding
+		if i.enableEnteringTransition {
+			x = i.dl.Size().Width + 10
+		}
+		//fmt.Printf("place %f, %f\n", x, y)
+		i.Move(fyne.NewPos(x, y))
+		i.enter()
+	} else if math.Abs(float64(i.Position().Y-y)) > 0.1 {
+		i.startPosition = i.Position()
+		if i.state.CompareAndSwap(int32(Placed), int32(Sliding)) {
+			i.goalPosition = fyne.NewPos(i.startPosition.X, y)
+			//fmt.Printf("slide: %f, %f\n", i.goalPosition.X, i.goalPosition.Y)
+		} else {
+			i.goalPosition = fyne.NewPos(i.goalPosition.X, y)
+			//fmt.Printf("slide (continued): %f, %f\n", i.goalPosition.X, i.goalPosition.Y)
+		}
 	}
 }
 
-func (dli *DynamicListItem) SlideY(y float32) {
-	if dli.Hidden {
-		return
+func (i *DynamicListItem) enter() {
+	if i.enableEnteringTransition && i.state.CompareAndSwap(int32(Placed), int32(OnEnterTransition)) {
+		i.startPosition = i.Position()
+		i.goalPosition = fyne.NewPos(i.dl.Padding, i.startPosition.Y)
+		//fmt.Printf("enter: %f, %f\n", i.goalPosition.X, i.goalPosition.Y)
 	}
-	if math.Abs(float64(dli.goalY-y)) < 1e-3 {
-		return
-	}
-	dli.goalY = y
-	if dli.runningAnimation != nil {
-		dli.runningAnimation.Stop()
-	}
-	dli.runningAnimation = canvas.NewPositionAnimation(
-		dli.Position(),
-		fyne.NewPos(dli.Position().X, y),
-		300*time.Millisecond,
-		dli.Move,
-	)
-	dli.runningAnimation.Start()
 }
 
-func (dli *DynamicListItem) MarkRemoving() {
-	dli.isRemoving = true
+func (i *DynamicListItem) exit() {
+	if i.enableExitingTransition {
+		goalX := -i.dl.Size().Width - 10
+		old := i.state.Swap(int32(OnExitTransition))
+		i.startPosition = i.Position()
+
+		switch ListItemType(old) {
+		case Placed:
+			// start animation, change x only
+			i.goalPosition = fyne.NewPos(goalX, i.startPosition.Y)
+			break
+			//fmt.Printf("exit: %f, %f\n", i.goalPosition.X, i.goalPosition.Y)
+		case OnEnterTransition:
+		case Sliding:
+			// continue animation
+			i.goalPosition = fyne.NewPos(goalX, i.goalPosition.Y)
+			break
+			//fmt.Printf("exit (continued): %f, %f\n", i.goalPosition.X, i.goalPosition.Y)
+		case Initial:
+		case Inactive:
+			// swap back
+			i.state.Swap(int32(Inactive))
+			break
+		default:
+			break
+		}
+	} else {
+		i.state.Swap(int32(Inactive))
+	}
 }
 
-func (dli *DynamicListItem) NotifyUpdateMinSize() {
-	fyne.Do(func() {
-		dli.dl.Refresh()
-	})
+func (i *DynamicListItem) copyStateFrom(another *DynamicListItem) {
+	i.state.Swap(another.state.Load())
+	i.startPosition = another.startPosition
+	i.goalPosition = another.goalPosition
+	i.Move(another.Position())
 }
 
-func NewDynamicListItem(ID string, dl *DynamicList, object fyne.CanvasObject) *DynamicListItem {
+func (i *DynamicListItem) tick(progress float32) {
+	if i.IsAnimating() {
+		i.Move(fyne.NewPos(
+			i.startPosition.X*(1-progress)+i.goalPosition.X*progress,
+			i.startPosition.Y*(1-progress)+i.goalPosition.Y*progress,
+		))
+		if progress+1e-4 > 1.0 {
+			if i.state.CompareAndSwap(int32(OnExitTransition), int32(Inactive)) {
+				i.NotifyUpdateMinSize()
+			} else {
+				i.state.Swap(int32(Placed))
+			}
+		}
+	}
+}
+
+func (i *DynamicListItem) IsInactive() bool {
+	return i.state.Load() == int32(Inactive)
+}
+
+func (i *DynamicListItem) IsExiting() bool {
+	return i.state.Load() == int32(OnExitTransition)
+}
+
+func (i *DynamicListItem) IsAnimating() bool {
+	s := ListItemType(i.state.Load())
+	return s == Sliding || s == OnEnterTransition || s == OnExitTransition
+}
+
+func (i *DynamicListItem) NotifyUpdateMinSize() {
+	go func() {
+		fyne.Do(func() {
+			i.dl.renderedItemsChanged = true
+			i.dl.Refresh()
+		})
+	}()
+}
+
+func NewDynamicListItem(ID int64, dl *DynamicList, object fyne.CanvasObject) *DynamicListItem {
 	dli := &DynamicListItem{
 		ID:     ID,
 		object: object,
 		dl:     dl,
-
-		isNew:      true,
-		isRemoving: false,
 	}
 	dli.ExtendBaseWidget(dli)
 	return dli
-}
-
-type DynamicListItemRenderer struct {
-	dli *DynamicListItem
-}
-
-func (r *DynamicListItemRenderer) MinSize() fyne.Size {
-	return r.dli.object.MinSize()
-}
-func (r *DynamicListItemRenderer) Layout(size fyne.Size) {
-	r.dli.object.Resize(size)
-}
-func (r *DynamicListItemRenderer) Refresh() {
-	r.dli.object.Refresh()
-}
-func (r *DynamicListItemRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.dli.object}
-}
-func (r *DynamicListItemRenderer) Destroy() {
-	// TODO
 }

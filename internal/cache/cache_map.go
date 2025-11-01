@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -16,34 +15,72 @@ func NewCacheMap() *CacheMap {
 	}
 }
 
-func (cm *CacheMap) Open(id string) (Entry, error) {
+func (cm *CacheMap) findOrCreate(id string) (Entry, error) {
 	cm.Lock()
 	defer cm.Unlock()
 
 	e, ok := cm.cache[id]
 	if !ok {
-		e = OpenEntry(id)
+		e = NewEntry(id)
 		if e == nil {
-			return nil, fmt.Errorf("%s not supported", id)
+			return nil, ErrNotSupported
 		}
 		cm.cache[id] = e
 	}
+
 	return e, nil
 }
-func (cm *CacheMap) Close(id string) {
+
+func (cm *CacheMap) removeIfInactive(id string) (Entry, bool) {
 	cm.Lock()
 	defer cm.Unlock()
+
+	e, ok := cm.cache[id]
+	if !ok || e.Active() {
+		return nil, false
+	}
+	delete(cm.cache, id)
+
+	return e, true
+}
+
+func (cm *CacheMap) Open(id string) (Entry, error) {
+	e, err := cm.findOrCreate(id)
+	if err != nil {
+		return nil, err
+	}
+	e.Open()
+	return e, nil
+}
+func (cm *CacheMap) Release(id string) {
+	cm.Lock()
+	defer cm.Unlock()
+
 	e, ok := cm.cache[id]
 	if !ok {
 		return
 	}
+	e.Release()
+}
+func (cm *CacheMap) CloseIfInactive(id string) bool {
+	e, ok := cm.removeIfInactive(id)
+	if !ok {
+		return false
+	}
+
 	e.Close()
-	delete(cm.cache, id)
 	CleanUpCache()
+
+	return true
 }
 func (cm *CacheMap) IsActive(id string) bool {
 	cm.Lock()
 	defer cm.Unlock()
-	_, ok := cm.cache[id]
-	return ok
+
+	e, ok := cm.cache[id]
+	if !ok {
+		return false
+	}
+
+	return e.Active()
 }

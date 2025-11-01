@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"errors"
-	"io"
 	"log"
 	"os"
 	"time"
@@ -54,11 +53,19 @@ func keepTrackUntilClose(path string) error {
 	}
 	watchingFile = file
 
+	log.Println("Watching file:", path)
+
 	go func() {
-		seekStart := int64(0)
+		t := time.Now()
+		seekStart, err := ReadFromEnd(file)
+		log.Println("Read from end takes", time.Since(t).Milliseconds(), "ms")
+		if err != nil {
+			log.Println(err)
+			return
+		}
 		for {
 			seekStart, err = ReadNewLines(file, seekStart)
-			if err != nil && err != io.EOF {
+			if err != nil {
 				return
 			}
 			<-time.After(1 * time.Second)

@@ -2,6 +2,8 @@
   Default: "等待处理"
 - Key: status_pending
   Default: "视频排队中"
+- Key: status_cooling_down
+  Default: "网络请求冷却中"
 - Key: status_requesting
   Default: "请求视频中"
 - Key: status_downloading
@@ -9,7 +11,7 @@
 - Key: status_downloaded
   Default: "视频已下载"
 - Key: status_failed
-  Default: "预加载失败"
+  Default: "预加载失败（3s后重试）"
 - Key: status_removed
   Default: "视频已结束"
 - Key: status_playing
@@ -18,3 +20,5 @@
   Default: "视频已结束"
 - Key: status_na
   Default: "不支持预加载"
+- Key: status_disabled
+  Default: "预加载已禁用"

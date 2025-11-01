@@ -1,82 +1,24 @@
 package widgets
 
 import (
-	"bytes"
+	"image"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/widget"
-	"github.com/nfnt/resize"
-	"github.com/stephennancekivell/go-future/future"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
-	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"image"
-	"image/jpeg"
-	"io"
-	"log"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/images/thumbnails"
+	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 )
-
-type AsyncImage struct {
-	i      future.Future[image.Image]
-	loaded bool
-}
-
-var cache = utils.NewWeakCache[AsyncImage](100)
-
-func GetThumbnailImage(url string) image.Image {
-	if i, ok := cache.Get(url); ok {
-		return i.i.Get()
-	}
-
-	i := future.New(func() image.Image {
-		defer func() {
-			if i, ok := cache.Get(url); ok {
-				i.loaded = true
-			}
-		}()
-
-		log.Println("Get: ", url)
-		resp, err := requesting.RequestThumbnail(url)
-		if err != nil {
-			log.Println("Failed to get thumbnail:", err)
-			return nil
-		}
-		defer resp.Body.Close()
-
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			fyne.LogError("Unable to read image data", err)
-			return nil
-		}
-
-		img, err := jpeg.Decode(bytes.NewReader(data))
-		if err != nil {
-			log.Println("Failed to decode image:", err)
-			return nil
-		}
-
-		return resize.Resize(160, 0, img, resize.Bilinear)
-	})
-
-	cache.Set(url, AsyncImage{i: i, loaded: false})
-
-	return i.Get()
-}
-
-func HasThumbnailCachedAndLoaded(url string) bool {
-	f, ok := cache.Get(url)
-	if ok {
-		return f.loaded
-	}
-	return false
-}
 
 type Thumbnail struct {
 	widget.BaseWidget
 
-	thumbnailURL string
+	url string
+	ID  string
 
 	loading bool
+	invalid bool
 
 	image image.Image
 
@@ -85,7 +27,16 @@ type Thumbnail struct {
 
 func NewThumbnail(thumbnailURL string) *Thumbnail {
 	t := &Thumbnail{
-		thumbnailURL: thumbnailURL,
+		url: thumbnailURL,
+	}
+	t.ExtendBaseWidget(t)
+
+	return t
+}
+
+func NewThumbnailWithID(id string) *Thumbnail {
+	t := &Thumbnail{
+		ID: id,
 	}
 	t.ExtendBaseWidget(t)
 
@@ -93,7 +44,7 @@ func NewThumbnail(thumbnailURL string) *Thumbnail {
 }
 
 func (t *Thumbnail) CreateRenderer() fyne.WidgetRenderer {
-	go t.LoadImage()
+	go t.loadImage()
 
 	return &thumbnailRenderer{
 		t: t,
@@ -112,27 +63,19 @@ func (r *thumbnailRenderer) MinSize() fyne.Size {
 }
 
 func (r *thumbnailRenderer) Layout(size fyne.Size) {
-	if r.t.loading || r.t.image == nil {
-		r.i.Resize(fyne.NewSize(40, 40))
-		r.i.Move(fyne.NewPos(size.Width/2-20, size.Height/2-20))
-	} else {
-		r.i.Resize(size)
-		r.i.Move(fyne.NewPos(0, 0))
-	}
+	r.i.Resize(size)
+	r.i.Move(fyne.NewPos(0, 0))
 }
 
 func (r *thumbnailRenderer) Refresh() {
 	if r.t.imageChanged {
 		r.t.imageChanged = false
-		if r.t.loading {
-			// TODO spinner
-			r.i = canvas.NewImageFromResource(icons.GetIcon("movie"))
-		} else if r.t.image == nil {
-			r.i = canvas.NewImageFromResource(icons.GetIcon("movie"))
+		if r.t.loading || r.t.image == nil {
+			r.i = canvas.NewImageFromImage(thumbnails.GetDefaultThumbnail())
 		} else {
 			r.i = canvas.NewImageFromImage(r.t.image)
-			r.i.FillMode = canvas.ImageFillContain
 		}
+		r.i.FillMode = canvas.ImageFillContain
 		canvas.Refresh(r.t)
 	}
 }
@@ -141,53 +84,67 @@ func (r *thumbnailRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{r.i}
 }
 
-func (t *Thumbnail) LoadImage() {
+func (t *Thumbnail) loadImage() {
 	t.imageChanged = true
 
-	loadImage := false
-
-	if t.thumbnailURL == "" {
-		t.loading = false
-		t.image = nil
-	} else if HasThumbnailCachedAndLoaded(t.thumbnailURL) {
-		t.loading = false
-		t.image = GetThumbnailImage(t.thumbnailURL)
-	} else {
-		t.loading = true
-		t.image = nil
-
-		loadImage = true
-	}
-
-	fyne.Do(func() {
-		t.Refresh()
-
-		if loadImage {
-			go func() {
-				if t.thumbnailURL == "" {
-					return
+	if t.url == "" {
+		if t.ID == "" || t.invalid {
+			t.loading = false
+		} else if thumbnails.HasThumbnailCachedAndLoaded(t.ID) {
+			t.loading = false
+			t.image = thumbnails.GetThumbnailImage(t.ID, "")
+		} else {
+			t.loading = true
+			defer func() {
+				t.url = third_party_api.GetThumbnailByInternalID(t.ID).Get()
+				if t.url == "" {
+					t.invalid = true
 				}
-
-				i := GetThumbnailImage(t.thumbnailURL)
-				if i == nil {
-					return
-				}
-
-				t.image = i
-				t.imageChanged = true
-				t.loading = false
-
-				fyne.Do(func() {
-					t.Refresh()
-				})
+				go t.loadImage()
 			}()
 		}
+		t.image = nil
+	} else if thumbnails.HasThumbnailCachedAndLoaded(t.url) {
+		t.loading = false
+		t.image = thumbnails.GetThumbnailImage(t.ID, t.url)
+	} else {
+		t.loading = true
+
+		defer func() {
+			if t.url == "" {
+				return
+			}
+
+			i := thumbnails.GetThumbnailImage(t.ID, t.url)
+			if i == nil {
+				return
+			}
+
+			t.image = i
+			t.imageChanged = true
+			t.loading = false
+
+			fyne.Do(func() {
+				t.Refresh()
+			})
+		}()
+	}
+
+	fyne.DoAndWait(func() {
+		t.Refresh()
 	})
 }
 
 func (t *Thumbnail) LoadImageFromURL(url string) {
-	t.thumbnailURL = url
-	t.LoadImage()
+	t.url = url
+	t.invalid = false
+	go t.loadImage()
+}
+func (t *Thumbnail) LoadImageFromID(id string) {
+	t.ID = id
+	t.url = ""
+	t.invalid = false
+	go t.loadImage()
 }
 
 func (r *thumbnailRenderer) Destroy() {

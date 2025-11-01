@@ -7,7 +7,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/window_app"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 )
 
 type EllipseText struct {
@@ -45,6 +45,7 @@ func (r *ellipseTextRenderer) Refresh() {
 	r.text.TextSize = r.e.TextSize
 	r.text.TextStyle = r.e.TextStyle
 	r.text.Color = r.e.Color
+	canvas.Refresh(r.text)
 }
 
 func (r *ellipseTextRenderer) Destroy() {
@@ -82,7 +83,7 @@ func (r *ellipseTextRenderer) findProperSlice() string {
 	return string(runes[:low]) + ellipsis
 }
 func (r *ellipseTextRenderer) calculateSize(text string) float32 {
-	size, _ := window_app.Driver().RenderedTextSize(text, r.e.TextSize, r.e.TextStyle, nil)
+	size, _ := custom_fyne.Driver().RenderedTextSize(text, r.e.TextSize, r.e.TextStyle, nil)
 	return size.Width
 }
 

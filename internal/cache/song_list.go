@@ -1,39 +1,38 @@
 package cache
 
 import (
-	"io"
-	"log"
-	"net/http"
+	"context"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var savedResponse []byte
+var pypyListResource *utils.RemoteResource[raw_song.PyPyDanceListResponse]
+var wannaListResource *utils.RemoteResource[raw_song.WannaDanceListResponse]
 
-func loadSongs() error {
-	// load songs from https://jd.pypy.moe/api/v2/songs
-	log.Println("loading songs")
-	resp, err := http.Get("https://jd.pypy.moe/api/v2/songs")
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+var songCtx context.Context
 
-	savedResponse, err = io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	return raw_song.ProcessSongList(savedResponse)
+func InitSongList(ctx context.Context) {
+	pypyListResource = utils.NewJsonRemoteResource[raw_song.PyPyDanceListResponse](utils.GetPyPyListUrl(), requesting.GetPyPyClient())
+	wannaListResource = utils.NewJsonRemoteResource[raw_song.WannaDanceListResponse](utils.GetWannaListUrl(), requesting.GetWannaClient())
+	songCtx = ctx
+	DownloadPyPySongs()
+	DownloadWannaSongs()
 }
 
-func GetSongListBytes() []byte {
-	if savedResponse == nil {
-		err := loadSongs()
-		if err != nil {
-			log.Println("Failed to load songs:", err)
-			return nil
+func DownloadPyPySongs() {
+	go func() {
+		if pypyListResource.StartDownload(songCtx) {
+			raw_song.ProcessPyPyDanceList(pypyListResource.Get())
 		}
-	}
-	return savedResponse
+	}()
+}
+
+func DownloadWannaSongs() {
+	go func() {
+		if wannaListResource.StartDownload(songCtx) {
+			raw_song.ProcessWannaDanceList(wannaListResource.Get())
+		}
+	}()
 }

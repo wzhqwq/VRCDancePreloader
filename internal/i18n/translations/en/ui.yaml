@@ -6,8 +6,10 @@
   Default: "Unknown Size"
 - Key: placeholder_random_play
   Default: "Random Play"
-- Key: placeholder_empty_song
-  Default: "Not Playing"
+- Key: placeholder_unknown_song
+  Default: "Unrecognized Song"
+- Key: placeholder_room_not_supported
+  Default: "Unsupported Room"
 
 - Key: key_id
   Default: "ID"
@@ -39,6 +41,8 @@
 - Key: app_name
   Default: "VRC Dancing Room Preloader"
 
+- Key: label_hijack
+  Default: "Request hijacking settings"
 - Key: label_proxy
   Default: "Proxy server"
 - Key: label_keys
@@ -52,8 +56,22 @@
 - Key: label_cache
   Default: "Cache settings"
 
+- Key: label_hijack_proxy_port
+  Default: "Server port for proxy hijacking"
+- Key: label_hijack_enable_https
+  Default: "Enable HTTPS hijacking"
+- Key: label_hijack_intercepted_sites
+  Default: "Sites to be intercepted"
+
+- Key: tip_port_malformed
+  Default: "Incorrect port format"
+- Key: tip_server_running
+  Default: "I'm running"
+
 - Key: label_pypy_proxy
   Default: "Proxy server for PyPyDance API"
+- Key: label_wanna_proxy
+  Default: "Proxy server for WannaDance API"
 - Key: label_yt_video_proxy
   Default: "Proxy server for YouTube video"
 - Key: label_yt_api_proxy
@@ -73,13 +91,22 @@
 - Key: label_max_parallel_download_count
   Default: "Maximal concurrent download tasks"
 - Key: label_cache_path
-  Default: "Video Cache path (effective after restart)"
+  Default: "Video cache path (effective after restart)"
+- Key: label_cache_format
+  Default: "Cache file format"
 - Key: label_max_cache_size
   Default: "Maximal cache size"
 - Key: label_keep_favorites
   Default: "Keep favorite videos in cache when cleaning"
 - Key: btn_manage_cache
   Default: "Manage Cache..."
+
+- Key: option_continuous
+  Default: "Continuous"
+- Key: option_fragmented
+  Default: "Fragmented"
+- Key: option_legacy
+  Default: "Legacy"
 
 - Key: label_cache_local
   Default: "Local Cache"
@@ -152,3 +179,25 @@
   Default: "Update"
 - Key: discard_edit_comment
   Default: "Discard"
+
+- Key: btn_tip_close
+  Default: "Got it"
+- Key: message_title_tip
+  Default: "Explanation"
+
+- Key: btn_close
+  Default: "Close"
+- Key: message_title_broadcast
+  Default: "Browser-based broadcast"
+
+- Key: label_enable_broadcast
+  Default: "Enable broadcast"
+- Key: label_broadcast_port
+  Default: "Server port for broadcast"
+
+- Key: message_title_song_list
+  Default: "Song Manifest Status"
+- Key: label_song_list_downloading
+  Default: "Downloading song manifest of {{.Name}}"
+- Key: label_song_list_downloaded
+  Default: "Downloaded manifest for {{.Name}}\nVersion{{.Time}}"

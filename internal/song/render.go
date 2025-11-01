@@ -13,13 +13,12 @@ import (
 // Info, immutable
 
 type PreloadedSongInfo struct {
-	ID           string
-	Title        string
-	Group        string
-	Adder        string
-	Size         string
-	OriginalURL  string
-	ThumbnailURL string
+	ID          string
+	Title       string
+	Group       string
+	Adder       string
+	Size        string
+	OriginalURL string
 }
 
 func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
@@ -38,35 +37,43 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 		size = utils.PrettyByteSize(ps.TotalSize)
 	}
 
+	basicInfo := PreloadedSongInfo{
+		ID: ps.GetSongId(),
+
+		Adder:       adder,
+		Size:        size,
+		OriginalURL: ps.GetOriginalUrl(),
+	}
+
 	if ps.PyPySong != nil {
-		return PreloadedSongInfo{
-			ID:           ps.GetId(),
-			Title:        ps.PyPySong.Name,
-			Group:        ps.PyPySong.GetGroupName(),
-			Adder:        adder,
-			Size:         size,
-			OriginalURL:  ps.GetOriginalUrl(),
-			ThumbnailURL: ps.GetThumbnailUrl(),
+		if ps.InfoNa {
+			basicInfo.Title = fmt.Sprintf("PyPyDance %d", ps.PyPySong.ID)
+			basicInfo.Group = ""
+		} else {
+			basicInfo.Title = ps.PyPySong.Name
+			basicInfo.Group = ps.PyPySong.GetGroupName()
 		}
+		return basicInfo
+	}
+	if ps.WannaSong != nil {
+		if ps.InfoNa {
+			basicInfo.Title = fmt.Sprintf("WannaDance %d", ps.WannaSong.DanceId)
+			basicInfo.Group = ""
+		} else {
+			basicInfo.Title = ps.WannaSong.FullTitle()
+			basicInfo.Group = ps.WannaSong.Group
+		}
+		return basicInfo
 	}
 	if ps.CustomSong != nil {
-		return PreloadedSongInfo{
-			ID:           ps.GetId(),
-			Title:        ps.CustomSong.Name,
-			Group:        i18n.T("placeholder_custom_song"),
-			Adder:        adder,
-			Size:         size,
-			OriginalURL:  ps.GetOriginalUrl(),
-			ThumbnailURL: ps.GetThumbnailUrl(),
-		}
+		basicInfo.Title = ps.CustomSong.Name
+		basicInfo.Group = i18n.T("placeholder_custom_song")
+		return basicInfo
 	}
-	title := i18n.T("placeholder_empty_song")
-	if ps.RandomPlay {
-		title = "random_play"
-	}
-	return PreloadedSongInfo{
-		Title: title,
-	}
+
+	basicInfo.Title = i18n.T("placeholder_unknown_song")
+	basicInfo.Group = i18n.T("placeholder_custom_song")
+	return basicInfo
 }
 
 // ProgressInfo, only change during download
@@ -107,7 +114,7 @@ func (ps *PreloadedSong) GetTimeInfo() PreloadedSongTimeInfo {
 		text = fmt.Sprintf("%s / %s", utils.PrettyTime(ps.TimePassed), text)
 	}
 	return PreloadedSongTimeInfo{
-		Progress:  ps.TimePassed / ps.Duration,
+		Progress:  float64(ps.TimePassed.Milliseconds()) / float64(ps.Duration.Milliseconds()),
 		Text:      text,
 		IsPlaying: ps.sm.PlayStatus == Playing,
 	}
@@ -125,8 +132,10 @@ type PreloadedSongStatusInfo struct {
 func (ps *PreloadedSong) GetStatusInfo() PreloadedSongStatusInfo {
 	var color fyne.ThemeColorName
 	switch ps.sm.DownloadStatus {
-	case Initial, Pending, Removed, NotAvailable:
+	case Initial, Removed, NotAvailable, Disabled:
 		color = theme.ColorNamePlaceHolder
+	case Pending, CoolingDown:
+		color = theme.ColorNameWarning
 	case Requesting, Downloading:
 		color = theme.ColorNamePrimary
 	case Downloaded:

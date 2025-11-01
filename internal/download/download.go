@@ -1,159 +1,260 @@
 package download
 
 import (
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"errors"
 	"io"
 	"log"
 	"sync"
+	"time"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-type DownloadState struct {
+var ErrCanceled = errors.New("task canceled")
+
+var downloadScheduler = utils.NewScheduler(time.Second*3, time.Second)
+
+type State struct {
 	sync.Mutex
 
 	ID string
 
-	cacheEntry cache.Entry
-
 	TotalSize      int64
 	DownloadedSize int64
 
-	Done    bool
-	Pending bool
-	Error   error
+	Requesting bool
+	Done       bool
+	Pending    bool
+	Cooling    bool
+	Error      error
 
-	FinalURL string
-
-	StateCh    chan *DownloadState
+	StateCh    chan *State
 	CancelCh   chan bool
 	PriorityCh chan int
 }
 
-func (ds *DownloadState) Write(p []byte) (int, error) {
+func (ds *State) Write(p []byte) (int, error) {
 	select {
 	case <-ds.CancelCh:
-		return 0, io.ErrClosedPipe
+		return 0, ErrCanceled
 	default:
-		ds.BlockIfPending()
-		n := len(p)
-		ds.DownloadedSize += int64(n)
-		ds.StateCh <- ds
-		return n, nil
+		if ds.BlockIfPending() {
+			n := len(p)
+			ds.DownloadedSize += int64(n)
+			ds.notify()
+			return n, nil
+		} else {
+			return 0, ErrCanceled
+		}
 	}
 }
-func (ds *DownloadState) BlockIfPending() bool {
+
+// BlockIfPending keeps blocked until this task is able to continue or is canceled (returning false)
+func (ds *State) BlockIfPending() bool {
+	var priority int
 	select {
-	case p := <-ds.PriorityCh:
-		if dm.CanDownload(p) {
-			if ds.Pending {
-				ds.Pending = false
-				ds.StateCh <- ds
-			}
-			log.Printf("%s now can continue download\n", ds.ID)
-			return true
-		} else {
-			log.Printf("%s is now pending, priority %d\n", ds.ID, p)
-			if !ds.Pending {
-				ds.Pending = true
-				ds.StateCh <- ds
-			}
-		}
+	case priority = <-ds.PriorityCh:
+		// continue checking
 	default:
+		// This means the priority have not been changed since the previous pending check
+		// which approved the downloading task to continue
 		return true
 	}
+
 	for {
+		if dm.CanDownload(priority) {
+			if ds.Pending {
+				ds.Pending = false
+				ds.notify()
+				logger.InfoLn("Continue download task", ds.ID)
+			}
+			return true
+		} else {
+			if !ds.Pending {
+				ds.Pending = true
+				ds.notify()
+				logger.InfoLnf("Paused download task %s, because its priority is %d", ds.ID, priority)
+			}
+		}
 		select {
 		case <-ds.CancelCh:
 			return false
-		case p := <-ds.PriorityCh:
-			if dm.CanDownload(p) {
-				if ds.Pending {
-					ds.Pending = false
-					ds.StateCh <- ds
-				}
-				log.Printf("%s now can continue download\n", ds.ID)
-				return true
-			} else {
-				log.Printf("%s is now pending, priority %d\n", ds.ID, p)
-				if !ds.Pending {
-					ds.Pending = true
-					ds.StateCh <- ds
-				}
-			}
+		case priority = <-ds.PriorityCh:
+			// continue checking
 		}
 	}
 }
-func (ds *DownloadState) unlockAndNotify() {
+func (ds *State) unlockAndNotify() {
 	ds.Unlock()
-	ds.StateCh <- ds
+	ds.notify()
 }
 
-func (ds *DownloadState) progressiveDownload(body io.ReadCloser, writer io.Writer) error {
+func (ds *State) notify() {
+	select {
+	case ds.StateCh <- ds:
+	default:
+	}
+}
+
+func (ds *State) progressiveDownload(body io.ReadCloser, writer io.Writer) error {
 	// Write the body to file, while showing progress of the download
 	_, err := io.Copy(writer, io.TeeReader(body, ds))
 	if err != nil {
-		log.Println(err.Error())
 		return err
 	}
 
 	return nil
 }
 
-func Download(id string) *DownloadState {
+func (ds *State) singleDownload(entry cache.Entry) error {
+	body, err := entry.GetDownloadStream()
+	if err != nil {
+		return err
+	}
+	if body == nil {
+		// already downloaded, save fragments
+		return nil
+	}
+	defer body.Close()
+
+	ds.DownloadedSize = entry.DownloadedSize()
+	ds.Requesting = false
+
+	// Notify about the total size and that the request header is done
+	ds.notify()
+
+	// Copy the body to the file, which will also update the download progress
+	return ds.progressiveDownload(body, entry)
+}
+
+func (ds *State) markAsDone() {
+	ds.DownloadedSize = ds.TotalSize
+	ds.Done = true
+	ds.Error = nil
+}
+
+func (ds *State) Download(retryDelay bool) {
+	// Lock the state so that there is always only one download happening
+	ds.Lock()
+	defer ds.unlockAndNotify()
+
+	cacheEntry, err := cache.OpenCacheEntry(ds.ID, "[Downloader]")
+	if err != nil {
+		ds.Error = err
+		log.Println("Skipped", ds.ID, "due to", err)
+		return
+	}
+	defer cache.ReleaseCacheEntry(ds.ID, "[Downloader]")
+
+	// Check if file is already downloaded
+	if cacheEntry.IsComplete() {
+		logger.InfoLn("Already downloaded", ds.ID)
+		ds.TotalSize, _ = cacheEntry.TotalLen()
+		ds.markAsDone()
+		return
+	}
+
+	// check if the task is canceled or paused
+	ds.Pending = false
+	if !ds.BlockIfPending() {
+		ds.Error = ErrCanceled
+		logger.InfoLn("Canceled download task", ds.ID)
+		return
+	}
+
+	// delay or cool down before we start downloading
+	delay := time.Duration(0)
+	if retryDelay {
+		delay = downloadScheduler.ReserveWithDelay()
+	} else {
+		delay = downloadScheduler.Reserve()
+	}
+	if delay > 0 {
+		ds.Cooling = true
+		ds.notify()
+
+		select {
+		case <-ds.CancelCh:
+			ds.Error = ErrCanceled
+			logger.InfoLn("Canceled download task", ds.ID)
+			return
+		case <-time.After(delay):
+		}
+	}
+	ds.Cooling = false
+
+	ds.Error = nil
+	ds.Requesting = true
+	ds.notify()
+
+	ds.TotalSize, err = cacheEntry.TotalLen()
+	if err != nil {
+		ds.Error = err
+		logger.ErrorLn("Failed to get total size of", ds.ID, ":", err)
+		if errors.Is(err, cache.ErrThrottle) {
+			slowDown()
+		}
+		return
+	}
+
+	for {
+		if !ds.BlockIfPending() {
+			ds.Error = ErrCanceled
+			logger.InfoLn("Canceled download task", ds.ID)
+			return
+		}
+
+		err = ds.singleDownload(cacheEntry)
+		if err == nil || cacheEntry.IsComplete() {
+			logger.InfoLn("Downloaded", ds.ID)
+			ds.markAsDone()
+			return
+		}
+
+		if !errors.Is(err, io.EOF) {
+			ds.Error = err
+
+			if errors.Is(err, ErrCanceled) {
+				// canceled task
+				logger.InfoLn("Canceled download task", ds.ID)
+			} else {
+				logger.ErrorLn("Downloading error:", err.Error(), ds.ID)
+				if errors.Is(err, cache.ErrThrottle) {
+					slowDown()
+				}
+			}
+			return
+		}
+
+		logger.InfoLn("Switch to another offset", ds.ID)
+	}
+}
+
+func Download(id string) *State {
 	ds := dm.CreateOrGetState(id)
 	if ds == nil {
 		return nil
 	}
 	go func() {
-		// Lock the state so that there is always only one download happening
-		ds.Lock()
-		defer ds.unlockAndNotify()
-
-		// Clear error every time we start downloading
-		ds.Error = nil
-
-		if ds.Done {
-			return
-		}
-
-		// Otherwise we start downloading, the total size is unknown
-		ds.TotalSize = 0
-		ds.BlockIfPending()
-
-		entry := ds.cacheEntry
-		ds.TotalSize = entry.TotalLen()
-
-		body, err := entry.GetDownloadBody()
-		if err != nil {
-			ds.Error = err
-			log.Println("Start Downloading error")
-			return
-		}
-		defer body.Close()
-
-		ds.DownloadedSize = 0
-
-		// Notify about the total size and that the request header is done
-		ds.StateCh <- ds
-
-		// Copy the body to the file, which will also update the download progress
-		err = ds.progressiveDownload(body, entry)
-		if err != nil {
-			ds.Error = err
-			log.Println("Downloading error")
-			return
-		}
-
-		err = entry.Save()
-		if err != nil {
-			ds.Error = err
-			log.Println("Saving error")
-			return
-		}
-
-		// Mark the download as done and update the priorities
-		ds.Done = true
+		ds.Download(false)
 		dm.UpdatePriorities()
 	}()
 
 	return ds
+}
+
+func Retry(ds *State) {
+	go func() {
+		ds.Download(true)
+		dm.UpdatePriorities()
+	}()
+}
+
+func slowDown() {
+	downloadScheduler.SlowDown()
+	go func() {
+		<-time.After(time.Minute)
+		downloadScheduler.Resume()
+	}()
 }

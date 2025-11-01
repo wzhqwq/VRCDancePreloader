@@ -6,8 +6,10 @@
   Default: "未知大小"
 - Key: placeholder_random_play
   Default: "随机播放"
-- Key: placeholder_empty_song
-  Default: "没在播放"
+- Key: placeholder_unknown_song
+  Default: "无法识别的歌曲"
+- Key: placeholder_room_not_supported
+  Default: "不支持的房间"
 
 - Key: key_id
   Default: "ID"
@@ -39,6 +41,8 @@
 - Key: app_name
   Default: "VRC跳舞房预加载器"
 
+- Key: label_hijack
+  Default: "请求劫持设置"
 - Key: label_proxy
   Default: "代理服务器"
 - Key: label_keys
@@ -52,8 +56,22 @@
 - Key: label_cache
   Default: "缓存设置"
 
+- Key: label_hijack_proxy_port
+  Default: "提供代理劫持的服务器端口"
+- Key: label_hijack_enable_https
+  Default: "启用HTTPS劫持"
+- Key: label_hijack_intercepted_sites
+  Default: "需要拦截的站点"
+
+- Key: tip_port_malformed
+  Default: "端口格式错误"
+- Key: tip_server_running
+  Default: "运行着呢"
+
 - Key: label_pypy_proxy
-  Default: "PyPyDance API代理服务器"
+  Default: "PyPyDance API代理服务器 (国内一般无需设置)"
+- Key: label_wanna_proxy
+  Default: "WannaDance API代理服务器 (国内一般无需设置)"
 - Key: label_yt_video_proxy
   Default: "YouTube视频代理服务器"
 - Key: label_yt_api_proxy
@@ -74,12 +92,21 @@
   Default: "最大并行下载数量"
 - Key: label_cache_path
   Default: "缓存路径（重启后修改生效）"
+- Key: label_cache_format
+  Default: "缓存文件格式"
 - Key: label_max_cache_size
   Default: "缓存最大大小"
 - Key: label_keep_favorites
   Default: "清理缓存时保留收藏夹视频"
 - Key: btn_manage_cache
   Default: "管理缓存..."
+
+- Key: option_continuous
+  Default: "连续型"
+- Key: option_fragmented
+  Default: "片段型"
+- Key: option_legacy
+  Default: "旧版"
 
 - Key: label_cache_local
   Default: "本地缓存"
@@ -152,3 +179,25 @@
   Default: "更新"
 - Key: discard_edit_comment
   Default: "放弃修改"
+
+- Key: btn_tip_close
+  Default: "善"
+- Key: message_title_tip
+  Default: "解惑"
+
+- Key: btn_close
+  Default: "关闭"
+- Key: message_title_broadcast
+  Default: "H5直播选项"
+
+- Key: label_enable_broadcast
+  Default: "启动列表广播"
+- Key: label_broadcast_port
+  Default: "提供列表广播的服务器端口"
+
+- Key: message_title_song_list
+  Default: "歌曲清单状态"
+- Key: label_song_list_downloading
+  Default: "正在下载 {{.Name}} 歌曲清单"
+- Key: label_song_list_downloaded
+  Default: "{{.Name}} 歌曲清单已下载\n版本{{.Time}}"

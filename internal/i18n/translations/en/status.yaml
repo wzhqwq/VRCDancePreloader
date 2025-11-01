@@ -2,6 +2,8 @@
   Default: "Waiting For Preload"
 - Key: status_pending
   Default: "Request Pending"
+- Key: status_cooling_down
+  Default: "Network Cooling Down"
 - Key: status_requesting
   Default: "Requesting Video"
 - Key: status_downloading
@@ -9,7 +11,7 @@
 - Key: status_downloaded
   Default: "Video Downloaded"
 - Key: status_failed
-  Default: "Preload Failed"
+  Default: "Preload Failed (retry in 3s)"
 - Key: status_removed
   Default: "Video Ended"
 - Key: status_playing
@@ -18,3 +20,5 @@
   Default: "Video Ended"
 - Key: status_na
   Default: "Not Supported"
+- Key: status_disabled
+  Default: "Preload Disabled"

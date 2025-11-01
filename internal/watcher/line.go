@@ -1,157 +1,87 @@
 package watcher
 
 import (
+	"bytes"
 	"log"
-	"os"
 	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
-	"github.com/wzhqwq/VRCDancePreloader/internal/service"
 )
 
-var playTimeMap = make(map[string]float64)
+var timeStampRegex = regexp.MustCompile(`^\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}`)
 
-var lastQueue = ""
-var lastEnteredRoom = ""
+var shortExitRegex = regexp.MustCompile(`^\[(?:VRCXC|Vo|A)`)
 
-func ReadNewLines(file *os.File, seekStart int64) (int64, error) {
-	file.Seek(seekStart, 0)
-
-	buf := make([]byte, 1024)
-	lineBuf := make([]byte, 0)
-
-	for {
-		n, err := file.Read(buf)
-		if err != nil {
-			break
-		}
-
-		for i := 0; i < n; i++ {
-			if buf[i] == '\n' {
-				processLine(lineBuf)
-				lineBuf = make([]byte, 0)
-			} else {
-				lineBuf = append(lineBuf, buf[i])
-			}
-		}
-
-		seekStart += int64(n)
-	}
-
-	if lastQueue != "" {
-		// process the last log
-		log.Println("Processing queue:\n" + lastQueue)
-
-		err := processQueueLog([]byte(lastQueue))
-		if err != nil {
-			log.Println("Error processing queue log:")
-			log.Println(err)
-		}
-
-		// clear the received logs
-		lastQueue = ""
-	}
-
-	// play time map
-	if len(playTimeMap) > 0 {
-		for url, now := range playTimeMap {
-			log.Println("Playing", url, "at", now)
-			playlist.MarkURLPlaying(url, now)
-		}
-		playTimeMap = make(map[string]float64)
-	}
-
-	if lastEnteredRoom != "" {
-		// only consider the last room
-		log.Println("Entering room: " + lastEnteredRoom)
-
-		if lastEnteredRoom[0] == '*' {
-			playlist.UpdateRoomName(lastEnteredRoom[1:])
-		} else {
-			playlist.EnterNewRoom(lastEnteredRoom)
-		}
-
-		lastEnteredRoom = ""
-	}
-
-	return seekStart, nil
+func postProcess() {
+	behaviourPostProcess()
+	pypyPostProcess()
+	wannaPostProcess()
+	pwiPostProcess()
 }
 
-func processLine(line []byte) {
-	// [Behaviour] Entering Room: PyPyDance
-	matches := regexp.MustCompile(`\[Behaviour] Entering Room: (.*)`).FindSubmatch(line)
-	if len(matches) > 1 {
-		lastEnteredRoom = string(matches[1])
+func processLine(version int32, line []byte) {
+	firstMinusIndex := bytes.IndexByte(line, '-')
+	if firstMinusIndex == -1 {
+		return
+	}
+	content := bytes.TrimSpace(line[firstMinusIndex+1:])
+	prefix := line[:firstMinusIndex]
+
+	if shortExitRegex.Match(content) {
 		return
 	}
 
-	// [Behaviour] Joining wrld_f20326da-f1ac-45fc-a062-609723b097b1:29406~region(jp)
-	matches = regexp.MustCompile(`\[Behaviour] Joining (wrld_.*):.*`).FindSubmatch(line)
-	if len(matches) > 1 {
-		service.SetCurrentWorldID(string(matches[1]))
+	if checkBehaviourLine(version, content, false) {
+		return
+	}
+	if checkPyPyLine(version, prefix, content) {
+		return
+	}
+	if checkWannaLine(version, prefix, content) {
 		return
 	}
 
-	// time related
+	checkPWILine(version, content)
+}
 
-	timeStampText := regexp.MustCompile(`\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}`).Find(line)
+func getTimeStamp(prefix []byte) string {
+	timeStampText := timeStampRegex.Find(prefix)
 	if timeStampText == nil {
-		return
+		return ""
 	}
+	return string(timeStampText)
+}
+
+func getTimeStampWithOffset(prefix []byte, offset []byte) string {
+	timeStampText := timeStampRegex.Find(prefix)
+	if timeStampText == nil {
+		return ""
+	}
+	return string(timeStampText) + "-" + string(offset)
+}
+func parseTimeStampWithOffset(pair string) time.Duration {
+	timeStampText := pair[:19]
 	// TODO time zone
-	timeStamp, err := time.Parse("2006.01.02 15:04:05 -0700", string(timeStampText)+" +0800")
+	logTime, err := time.Parse("2006.01.02 15:04:05 -0700", string(timeStampText)+" +0800")
 	if err != nil {
-		return
-	}
-	// only process logs at most 10 minutes ago
-	if time.Since(timeStamp) > 10*time.Minute {
-		return
+		return 0
 	}
 
-	// [PyPyDanceQueue] [{
-	matches = regexp.MustCompile(`\[PyPyDanceQueue] (\[.*])`).FindSubmatch(line)
-	if len(matches) > 1 {
-		lastQueue = string(matches[1])
-		if len(lastEnteredRoom) > 0 && lastEnteredRoom[0] != '*' {
-			lastEnteredRoom = "*" + lastEnteredRoom
-		}
-		return
+	offset := pair[20:]
+	syncSecond, err := strconv.ParseFloat(offset, 64)
+	if err != nil {
+		return 0
 	}
 
-	// [VRCX-World] {
-	if service.IsPWIOn() {
-		matches = regexp.MustCompile(`\[VRCX-World] (\{.*})`).FindSubmatch(line)
-		if len(matches) > 1 {
-			err = processPwiLog([]byte(lastEnteredRoom))
-			if err != nil {
-				log.Println("Error while processing PWI request: " + err.Error())
-			}
-		}
+	return time.Duration(syncSecond*float64(time.Second)) + time.Since(logTime)
+}
+func markURLPlaying(pair string, url string) bool {
+	now := parseTimeStampWithOffset(pair)
+	if playlist.MarkURLPlaying(url, now) {
+		log.Println("Playing", url, "at", now)
+		return true
 	}
-
-	// VideoPlay(PyPyDance) "http://jd.pypy.moe/api/v1/videos/3338.mp4",220,220
-	matches = regexp.MustCompile(`VideoPlay\(PyPyDance\) "(.*)",([.\d]+),([.\d]+)`).FindSubmatch(line)
-	if len(matches) > 1 {
-		url := string(matches[1])
-		now := string(matches[2])
-		dur := string(matches[3])
-
-		nowFloat, err := strconv.ParseFloat(now, 64)
-		if err != nil {
-			return
-		}
-		durFloat, err := strconv.ParseFloat(dur, 64)
-		if err != nil {
-			return
-		}
-
-		nowFloat += time.Since(timeStamp).Seconds()
-		if nowFloat > durFloat {
-			return
-		}
-
-		playTimeMap[url] = nowFloat
-	}
+	return false
 }

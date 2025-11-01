@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 )
 
 type PaddedIconBtn struct {
@@ -111,7 +112,7 @@ func (r *paddedIconBtnRenderer) Refresh() {
 	r.Icon.SetResource(r.btn.icon)
 
 	if r.btn.hovered {
-		r.Background.FillColor = theme.Color(theme.ColorNameHover)
+		r.Background.FillColor = theme.Color(custom_fyne.ColorNameButtonHover)
 	} else {
 		r.Background.FillColor = theme.Color(theme.ColorNameButton)
 	}

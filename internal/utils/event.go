@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"github.com/samber/lo"
 	"sync"
 	"weak"
+
+	"github.com/samber/lo"
 )
 
 type EventManager[T any] struct {
@@ -34,12 +35,7 @@ func (em *EventManager[T]) NotifySubscribers(payload T) {
 	defer em.Unlock()
 	em.weakSubscribers = lo.Filter(em.weakSubscribers, func(p weak.Pointer[EventSubscriber[T]], _ int) bool {
 		if s := p.Value(); s != nil {
-			if s.closed {
-				return false
-			} else {
-				s.Channel <- payload
-				return true
-			}
+			return s.send(payload)
 		} else {
 			return false
 		}
@@ -47,14 +43,29 @@ func (em *EventManager[T]) NotifySubscribers(payload T) {
 }
 
 type EventSubscriber[T any] struct {
-	closed  bool
-	Channel chan T
+	closed      bool
+	closedMutex sync.RWMutex
+	Channel     chan T
 }
 
 func (es *EventSubscriber[T]) Close() {
-	if es.closed {
-		return
+	es.closedMutex.Lock()
+	defer es.closedMutex.Unlock()
+	if !es.closed {
+		close(es.Channel)
+		es.closed = true
 	}
-	es.closed = true
-	close(es.Channel)
+}
+
+func (es *EventSubscriber[T]) send(payload T) bool {
+	es.closedMutex.RLock()
+	defer es.closedMutex.RUnlock()
+	if es.closed {
+		return false
+	}
+	select {
+	case es.Channel <- payload:
+	default:
+	}
+	return true
 }

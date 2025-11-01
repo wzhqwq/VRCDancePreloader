@@ -1,8 +1,11 @@
 package playlist
 
 import (
-	"io"
+	"context"
+	"errors"
+	"strconv"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -20,9 +23,17 @@ func (pl *PlayList) FindPyPySong(id int) *song.PreloadedSong {
 			return item
 		}
 	}
-	item := song.CreatePreloadedPyPySong(id)
-	// TODO: add to temporary list
-	return item
+	return nil
+}
+
+func (pl *PlayList) FindWannaSong(id int) *song.PreloadedSong {
+	items := pl.GetItemsSnapshot()
+	for _, item := range items {
+		if item.MatchWithWannaId(id) {
+			return item
+		}
+	}
+	return nil
 }
 
 func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
@@ -32,23 +43,47 @@ func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
 			return item
 		}
 	}
-	item := song.CreatePreloadedCustomSong("", url)
-	// TODO: add to temporary list
-	return item
+	return nil
 }
 
-func RequestPyPySong(id int) (io.ReadSeekCloser, error) {
-	item := currentPlaylist.FindPyPySong(id)
-	if asyncDownload {
-		return item.GetSongRSAsync()
-	} else {
-		return item.GetSongRSSync()
+func Request(platform, id string, ctx context.Context) (cache.Entry, error) {
+	var url string
+
+	switch platform {
+	case "PyPyDance":
+		numId, err := strconv.Atoi(id)
+		if err != nil {
+			return nil, err
+		}
+
+		item := currentPlaylist.FindPyPySong(numId)
+		if item == nil {
+			item = song.GetTemporaryPyPySong(numId, ctx)
+		}
+		return item.DownloadInstantly(!asyncDownload, ctx)
+
+	case "WannaDance":
+		numId, err := strconv.Atoi(id)
+		if err != nil {
+			return nil, err
+		}
+
+		item := currentPlaylist.FindWannaSong(numId)
+		if item == nil {
+			item = song.GetTemporaryWannaSong(numId, ctx)
+		}
+		return item.DownloadInstantly(!asyncDownload, ctx)
+
+	case "BiliBili":
+		url = utils.GetStandardBiliURL(id)
+		// TODO youtube
+	default:
+		return nil, errors.New("invalid platform")
 	}
-}
 
-// TODO
-
-func RequestYoutubeSong(id string) (io.ReadSeekCloser, error) {
-	item := currentPlaylist.FindCustomSong(utils.GetStandardYoutubeURL(id))
-	return item.GetSongRSSync()
+	item := currentPlaylist.FindCustomSong(url)
+	if item == nil {
+		item = song.GetTemporaryCustomSong(url, ctx)
+	}
+	return item.DownloadInstantly(!asyncDownload, ctx)
 }

@@ -1,39 +1,43 @@
 package raw_song
 
-import (
-	"bytes"
-	"encoding/json"
-	"log"
-)
+import "time"
 
-var pyPySongMap map[int]PyPyDanceSong
-var songGroups []string
+var pypySongMap map[int]PyPyDanceSong
+var pypyGroups []string
+var pypyUpdateTime time.Time
 
 func FindPyPySong(id int) (*PyPyDanceSong, bool) {
-	song, ok := pyPySongMap[id]
+	if pypySongMap == nil {
+		return nil, false
+	}
+	song, ok := pypySongMap[id]
 	return &song, ok
 }
 
-type SongsResponse struct {
-	UpdatedAt int             `json:"updatedAt"`
+func GetPyPyUpdateTime() (time.Time, bool) {
+	if pypySongMap == nil {
+		return time.Time{}, false
+	}
+	return pypyUpdateTime, true
+}
+
+type PyPyDanceListResponse struct {
+	Timestamp int             `json:"timestamp"`
 	Groups    []string        `json:"groups"`
 	Songs     []PyPyDanceSong `json:"songs"`
 }
 
-func ProcessSongList(resp []byte) error {
-	var data SongsResponse
-	err := json.NewDecoder(bytes.NewReader(resp)).Decode(&data)
-	if err != nil {
-		return err
+func ProcessPyPyDanceList(data *PyPyDanceListResponse) {
+	if data == nil {
+		return
 	}
 
-	log.Printf("loaded %d songs\n", len(data.Songs))
-
-	pyPySongMap = make(map[int]PyPyDanceSong)
+	pypySongMap = make(map[int]PyPyDanceSong)
 	for _, song := range data.Songs {
-		pyPySongMap[song.ID] = song
+		pypySongMap[song.ID] = song
 	}
-	songGroups = data.Groups
+	pypyGroups = data.Groups
+	pypyUpdateTime = time.Unix(int64(data.Timestamp/1000), 0)
 
-	return nil
+	em.NotifySubscribers("PyPyDance")
 }
