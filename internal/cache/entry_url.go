@@ -55,6 +55,18 @@ func (e *UrlBasedEntry) resolveUrl(ctx context.Context) error {
 	e.workingFile.Init(info.TotalSize, info.LastModified)
 
 	e.resolvedUrl = url
+	log.Println(e.id, "resolved to", url)
+	return nil
+}
+
+func (e *UrlBasedEntry) checkWorkingFile(ctx context.Context) error {
+	if e.workingFile == nil {
+		return io.ErrClosedPipe
+	}
+	if e.workingFile.TotalLen() == 0 {
+		err := e.resolveUrl(ctx)
+		return err
+	}
 	return nil
 }
 
@@ -62,11 +74,8 @@ func (e *UrlBasedEntry) TotalLen() (int64, error) {
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()
 
-	if e.workingFile.TotalLen() == 0 {
-		err := e.resolveUrl(context.Background())
-		if err != nil {
-			return 0, err
-		}
+	if err := e.checkWorkingFile(context.Background()); err != nil {
+		return 0, err
 	}
 
 	return e.workingFile.TotalLen(), nil
@@ -75,11 +84,8 @@ func (e *UrlBasedEntry) GetDownloadStream() (io.ReadCloser, error) {
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()
 
-	if e.resolvedUrl == "" {
-		err := e.resolveUrl(context.Background())
-		if err != nil {
-			return nil, err
-		}
+	if err := e.checkWorkingFile(context.Background()); err != nil {
+		return nil, err
 	}
 
 	e.workingFile.MarkDownloading()
@@ -96,15 +102,8 @@ func (e *UrlBasedEntry) GetReadSeeker(ctx context.Context) (io.ReadSeeker, error
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()
 
-	if e.workingFile == nil {
-		return nil, io.ErrClosedPipe
-	}
-
-	if e.workingFile.TotalLen() == 0 {
-		err := e.resolveUrl(ctx)
-		if err != nil {
-			return nil, err
-		}
+	if err := e.checkWorkingFile(ctx); err != nil {
+		return nil, err
 	}
 
 	return e.getReadSeeker(ctx)

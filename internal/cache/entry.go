@@ -76,16 +76,9 @@ func (e *BaseEntry) checkLegacy() bool {
 	return false
 }
 
-// extendable operations
+// extendable operations (please wrap with mutex by yourself and check workingFile first!!)
 
 func (e *BaseEntry) openFile() {
-	e.workingFileMutex.Lock()
-	defer e.workingFileMutex.Unlock()
-
-	if e.workingFile != nil {
-		return
-	}
-
 	if e.checkLegacy() {
 		e.workingFile = legacy_file.NewFile(e.getVideoName())
 	}
@@ -103,13 +96,6 @@ func (e *BaseEntry) openFile() {
 }
 
 func (e *BaseEntry) closeFile() error {
-	e.workingFileMutex.Lock()
-	defer e.workingFileMutex.Unlock()
-
-	if e.workingFile == nil {
-		return nil
-	}
-
 	err := e.workingFile.Close()
 	if err == nil || errors.Is(err, os.ErrClosed) {
 		e.workingFile = nil
@@ -119,13 +105,6 @@ func (e *BaseEntry) closeFile() error {
 }
 
 func (e *BaseEntry) getReadSeeker(ctx context.Context) (io.ReadSeeker, error) {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
-
-	if e.workingFile == nil {
-		return nil, io.ErrClosedPipe
-	}
-
 	r := e.workingFile.RequestRs(ctx)
 	if r == nil {
 		return nil, errors.New("failed to download this video")
@@ -204,7 +183,13 @@ func (e *BaseEntry) requestHttpResBody(url string, offset int64, ctx context.Con
 
 func (e *BaseEntry) Open() {
 	e.openCount.Add(1)
-	e.openFile()
+
+	e.workingFileMutex.Lock()
+	defer e.workingFileMutex.Unlock()
+
+	if e.workingFile == nil {
+		e.openFile()
+	}
 }
 
 func (e *BaseEntry) Release() {
@@ -213,7 +198,10 @@ func (e *BaseEntry) Release() {
 		go func() {
 			<-time.After(time.Second)
 			if e.openCount.Load() <= 0 {
-				e.closeFile()
+				err := e.Close()
+				if err != nil {
+					log.Println("failed to close file", e.id, err)
+				}
 			}
 		}()
 	}
@@ -224,6 +212,12 @@ func (e *BaseEntry) Active() bool {
 }
 
 func (e *BaseEntry) Close() error {
+	e.workingFileMutex.Lock()
+	defer e.workingFileMutex.Unlock()
+
+	if e.workingFile == nil {
+		return nil
+	}
 	return e.closeFile()
 }
 
