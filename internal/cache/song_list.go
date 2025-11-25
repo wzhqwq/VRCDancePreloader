@@ -14,8 +14,8 @@ var wannaListResource *utils.RemoteResource[raw_song.WannaDanceListResponse]
 var songCtx context.Context
 
 func InitSongList(ctx context.Context) {
-	pypyListResource = utils.NewJsonRemoteResource[raw_song.PyPyDanceListResponse](utils.GetPyPyListUrl(), requesting.GetPyPyClient())
-	wannaListResource = utils.NewJsonRemoteResource[raw_song.WannaDanceListResponse](utils.GetWannaListUrl(), requesting.GetWannaClient())
+	pypyListResource = utils.NewJsonRemoteResource[raw_song.PyPyDanceListResponse](utils.GetPyPyListUrl(), requesting.GetPyPyClient)
+	wannaListResource = utils.NewJsonRemoteResource[raw_song.WannaDanceListResponse](utils.GetWannaListUrl(), requesting.GetWannaClient)
 	songCtx = ctx
 	DownloadPyPySongs()
 	DownloadWannaSongs()

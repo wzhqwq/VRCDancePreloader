@@ -48,7 +48,7 @@ func NewRemoteResource[T any](name string) *RemoteResource[T] {
 	return r
 }
 
-func NewJsonRemoteResource[T any](url string, client *http.Client) *RemoteResource[T] {
+func NewJsonRemoteResource[T any](url string, clientFn func() *http.Client) *RemoteResource[T] {
 	r := NewRemoteResource[T](url)
 	r.DoDownload = func(ctx context.Context) (*T, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -58,7 +58,7 @@ func NewJsonRemoteResource[T any](url string, client *http.Client) *RemoteResour
 
 		r.logger.InfoLn("Downloading", url)
 
-		resp, err := client.Do(req)
+		resp, err := clientFn().Do(req)
 		if err != nil {
 			return nil, err
 		}
