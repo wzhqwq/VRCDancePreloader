@@ -13,7 +13,7 @@ import (
 
 var ErrCanceled = errors.New("task canceled")
 
-var downloadScheduler = utils.NewScheduler(time.Second*3, time.Second)
+var downloadScheduler = utils.NewScheduler(time.Second*3, time.Second*2)
 
 type State struct {
 	sync.Mutex
@@ -155,36 +155,42 @@ func (ds *State) Download(retryDelay bool) {
 		return
 	}
 
-	// check if the task is canceled or paused
+	ds.Error = nil
 	ds.Pending = false
+	delay := time.Duration(0)
+
+	// check if the task is canceled or paused
 	if !ds.BlockIfPending() {
-		ds.Error = ErrCanceled
-		logger.InfoLn("Canceled download task", ds.ID)
-		return
+		goto canceled
 	}
 
 	// delay or cool down before we start downloading
-	delay := time.Duration(0)
 	if retryDelay {
 		delay = downloadScheduler.ReserveWithDelay()
 	} else {
 		delay = downloadScheduler.Reserve()
 	}
 	if delay > 0 {
-		ds.Cooling = true
-		ds.notify()
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			if retryDelay {
+				<-time.After(time.Second * 3)
+			}
+			ds.Cooling = true
+			ds.notify()
+			wg.Done()
+		}()
 
 		select {
 		case <-ds.CancelCh:
-			ds.Error = ErrCanceled
-			logger.InfoLn("Canceled download task", ds.ID)
-			return
+			goto canceled
 		case <-time.After(delay):
 		}
+		wg.Wait()
 	}
 	ds.Cooling = false
 
-	ds.Error = nil
 	ds.Requesting = true
 	ds.notify()
 
@@ -200,9 +206,7 @@ func (ds *State) Download(retryDelay bool) {
 
 	for {
 		if !ds.BlockIfPending() {
-			ds.Error = ErrCanceled
-			logger.InfoLn("Canceled download task", ds.ID)
-			return
+			goto canceled
 		}
 
 		err = ds.singleDownload(cacheEntry)
@@ -212,23 +216,24 @@ func (ds *State) Download(retryDelay bool) {
 			return
 		}
 
+		if errors.Is(err, ErrCanceled) {
+			goto canceled
+		}
 		if !errors.Is(err, io.EOF) {
 			ds.Error = err
-
-			if errors.Is(err, ErrCanceled) {
-				// canceled task
-				logger.InfoLn("Canceled download task", ds.ID)
-			} else {
-				logger.ErrorLn("Downloading error:", err.Error(), ds.ID)
-				if errors.Is(err, cache.ErrThrottle) {
-					slowDown()
-				}
+			logger.ErrorLn("Downloading error:", err.Error(), ds.ID)
+			if errors.Is(err, cache.ErrThrottle) {
+				slowDown()
 			}
 			return
 		}
 
 		logger.InfoLn("Switch to another offset", ds.ID)
 	}
+canceled:
+	ds.Error = ErrCanceled
+	logger.InfoLn("Canceled download task", ds.ID)
+	return
 }
 
 func Download(id string) *State {
