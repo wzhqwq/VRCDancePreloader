@@ -201,3 +201,6 @@
   Default: "Downloading song manifest of {{.Name}}"
 - Key: label_song_list_downloaded
   Default: "Downloaded manifest for {{.Name}}\nVersion{{.Time}}"
+
+- Key: message_download_throttled
+  Default: "Throttled ({{.Time}}s)"

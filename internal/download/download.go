@@ -252,9 +252,14 @@ func Retry(ds *State) {
 }
 
 func slowDown() {
-	downloadScheduler.SlowDown()
+	downloadScheduler.Throttle()
 	go func() {
-		<-time.After(time.Minute)
-		downloadScheduler.Resume()
+		// PyPyDance seems to ban you for 3 minute if you have been requesting so fast
+		<-time.After(time.Minute * 3)
+		downloadScheduler.ReleaseOneThrottle()
 	}()
+}
+
+func SubscribeCoolDownInterval() *utils.EventSubscriber[time.Duration] {
+	return downloadScheduler.SubscribeIntervalEvent()
 }
