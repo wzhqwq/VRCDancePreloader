@@ -32,6 +32,9 @@ func (pl *PlayList) loop() {
 }
 
 func (pl *PlayList) preload() {
+	done := download.QueueTransaction()
+	defer done()
+
 	items := lo.Slice(pl.GetItemsSnapshot(), 0, pl.maxPreload+1)
 	for _, item := range items {
 		item.PreloadSong()
