@@ -82,6 +82,18 @@ func (s *Scheduler) ReleaseOneThrottle() {
 	s.intervalEm.NotifySubscribers(s.interval)
 }
 
+func (s *Scheduler) AddDelay(maxDelay time.Duration) {
+	s.mu.Lock()
+	s.delay = min(maxDelay, s.delay+time.Millisecond*500)
+	s.mu.Unlock()
+}
+
+func (s *Scheduler) ResetDelay() {
+	s.mu.Lock()
+	s.delay = s.minDelay
+	s.mu.Unlock()
+}
+
 func (s *Scheduler) SubscribeIntervalEvent() *EventSubscriber[time.Duration] {
 	return s.intervalEm.SubscribeEvent()
 }
