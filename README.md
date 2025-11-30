@@ -145,6 +145,19 @@ append: [ ]
 delete: [ ]
 ```
 
+**如果你同时使用加速器和Clash，可能需要增加放行VRChat流量的规则：**
+```yaml
+prepend:
+  - 'DOMAIN-SUFFIX,vrchat.com,DIRECT'
+  - 'DOMAIN-SUFFIX,vrchat.cloud,DIRECT'
+  - 'AND,((DOMAIN,api.pypy.dance),(PROCESS-NAME-REGEX,VRChat)),vrcDancePreload'
+  - 'AND,((DOMAIN,api.pypy.dance),(PROCESS-NAME-REGEX,yt-dlp)),vrcDancePreload'
+  - 'AND,((DOMAIN,api.udon.dance),(PROCESS-NAME-REGEX,VRChat)),vrcDancePreload'
+  - 'AND,((DOMAIN,api.udon.dance),(PROCESS-NAME-REGEX,yt-dlp)),vrcDancePreload'
+append: [ ]
+delete: [ ]
+```
+
 这样你就添加了拦截VRChat和yt-dlp对api.pypy.dance(PyPyDance)和api.udon.dance(WannaDance)域名的所有请求的规则，并交给`vrcDancePreload`节点处理。
 
 记得开Clash Verge的系统代理！
@@ -159,7 +172,7 @@ delete: [ ]
 
 ## VRChat ToS
 
-本项目仅对VRChat的日志进行监听，并利用代理对PyPyDance域名提供视频缓存，不会对PyPyDance房间数据进行修改，不以任何方式对游戏进行修改。本项目不是模组或者修改器，不违反VRChat的服务条款。
+本项目仅对VRChat的日志进行监听，并利用代理对跳舞房的视频域名提供本地缓存，不会对房间数据进行修改，不以任何方式对游戏进行修改。本项目不是模组或者修改器，不违反VRChat的服务条款。
 
 ## TODO
 
