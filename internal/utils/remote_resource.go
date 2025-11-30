@@ -10,6 +10,7 @@ import (
 )
 
 var ErrCanceled = errors.New("download task canceled")
+var ErrResourceUnavailable = errors.New("resource unavailable")
 
 type RemoteResource[T any] struct {
 	mu sync.Mutex
@@ -17,7 +18,7 @@ type RemoteResource[T any] struct {
 
 	Name string
 
-	logger    *UniqueLogger
+	logger    *CustomLogger
 	scheduler *Scheduler
 
 	Result *T
@@ -31,7 +32,7 @@ type RemoteResource[T any] struct {
 
 func NewRemoteResource[T any](name string) *RemoteResource[T] {
 	r := &RemoteResource[T]{
-		logger:    NewUniqueLogger(),
+		logger:    NewLogger(),
 		scheduler: NewScheduler(time.Second*3, time.Second),
 
 		Name: name,
@@ -48,7 +49,7 @@ func NewRemoteResource[T any](name string) *RemoteResource[T] {
 	return r
 }
 
-func NewJsonRemoteResource[T any](url string, client *http.Client) *RemoteResource[T] {
+func NewJsonRemoteResource[T any](url string, clientFn func() *http.Client) *RemoteResource[T] {
 	r := NewRemoteResource[T](url)
 	r.DoDownload = func(ctx context.Context) (*T, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -58,13 +59,27 @@ func NewJsonRemoteResource[T any](url string, client *http.Client) *RemoteResour
 
 		r.logger.InfoLn("Downloading", url)
 
-		resp, err := client.Do(req)
+		resp, err := clientFn().Do(req)
 		if err != nil {
 			return nil, err
+		}
+		if resp.StatusCode >= 500 {
+			r.scheduler.AddDelay(time.Second * 10)
+			return nil, ErrResourceUnavailable
+		}
+		if resp.StatusCode == http.StatusTooManyRequests {
+			r.scheduler.Throttle()
+			go func() {
+				<-time.After(time.Minute)
+				r.scheduler.ReleaseOneThrottle()
+			}()
+			return nil, errors.New("too many requests")
 		}
 		if resp.StatusCode != http.StatusOK {
 			return nil, errors.New("failed to download, status: " + resp.Status)
 		}
+
+		r.scheduler.ResetDelay()
 
 		var data T
 		dec := json.NewDecoder(resp.Body)
@@ -99,7 +114,11 @@ func (r *RemoteResource[T]) StartDownload(ctx context.Context) bool {
 			if errors.Is(err, ErrCanceled) {
 				r.wg.Done()
 			} else {
-				r.logger.Errorf("Failed to download %s: %v", r.Name, err)
+				if errors.Is(err, ErrResourceUnavailable) {
+					r.logger.Errorf("Resource %s unavailable", r.Name)
+				} else {
+					r.logger.Errorf("Failed to download %s: %v", r.Name, err)
+				}
 				r.planNextRetry(ctx)
 			}
 		} else {

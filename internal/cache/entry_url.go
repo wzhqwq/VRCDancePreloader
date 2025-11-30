@@ -87,6 +87,11 @@ func (e *UrlBasedEntry) GetDownloadStream() (io.ReadCloser, error) {
 	if err := e.checkWorkingFile(context.Background()); err != nil {
 		return nil, err
 	}
+	if e.resolvedUrl == "" {
+		if err := e.resolveUrl(context.Background()); err != nil {
+			return nil, err
+		}
+	}
 
 	e.workingFile.MarkDownloading()
 	offset := e.workingFile.GetDownloadOffset()

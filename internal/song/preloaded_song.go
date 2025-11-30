@@ -160,7 +160,7 @@ func (ps *PreloadedSong) CancelPlaying() {
 
 func (ps *PreloadedSong) PreloadSong() {
 	if ps.sm.CanPreload() {
-		go ps.sm.StartDownload()
+		ps.sm.StartDownload()
 	}
 }
 func (ps *PreloadedSong) PrioritizeSong() {

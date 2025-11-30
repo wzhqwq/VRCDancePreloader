@@ -14,6 +14,8 @@ type downloadManager struct {
 	stateMap    map[string]*State
 	queue       []string
 	maxParallel int
+
+	inTransaction bool
 }
 
 func newDownloadManager(maxParallel int) *downloadManager {
@@ -56,7 +58,7 @@ func (dm *downloadManager) CancelDownload(ids ...string) {
 func (dm *downloadManager) UpdatePriorities() {
 	dm.Lock()
 	defer dm.Unlock()
-	if len(dm.queue) == 0 {
+	if len(dm.queue) == 0 || dm.inTransaction {
 		return
 	}
 
@@ -102,6 +104,14 @@ func (dm *downloadManager) Prioritize(ids ...string) {
 			return lo.Contains(ids, id)
 		})...,
 	)
+}
+
+func (dm *downloadManager) QueueTransaction() func() {
+	dm.inTransaction = true
+	return func() {
+		dm.inTransaction = false
+		dm.UpdatePriorities()
+	}
 }
 
 func (dm *downloadManager) CancelAllAndWait() {

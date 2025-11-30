@@ -16,9 +16,6 @@ type StateMachine struct {
 	DownloadStatus DownloadStatus
 	PlayStatus     PlayStatus
 
-	SuffixMode  bool
-	CoolingDown bool
-
 	ps *PreloadedSong
 	ce cache.Entry
 

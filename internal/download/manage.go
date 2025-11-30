@@ -26,6 +26,10 @@ func Prioritize(ids ...string) {
 	dm.Prioritize(ids...)
 }
 
+func QueueTransaction() func() {
+	return dm.QueueTransaction()
+}
+
 func StopAllAndWait() {
 	cancel := stability.PanicIfTimeout("download_StopAllAndWait")
 	defer cancel()

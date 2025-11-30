@@ -13,6 +13,8 @@ type Scheduler struct {
 
 	delay    time.Duration
 	interval time.Duration
+
+	intervalEm *EventManager[time.Duration]
 }
 
 func NewScheduler(minDelay, minInterval time.Duration) *Scheduler {
@@ -21,6 +23,8 @@ func NewScheduler(minDelay, minInterval time.Duration) *Scheduler {
 		minInterval: minInterval,
 		delay:       minDelay,
 		interval:    minInterval,
+
+		intervalEm: NewEventManager[time.Duration](),
 	}
 }
 
@@ -64,14 +68,32 @@ func (s *Scheduler) Reserve() time.Duration {
 	return wait
 }
 
-func (s *Scheduler) SlowDown() {
+func (s *Scheduler) Throttle() {
 	s.mu.Lock()
 	s.interval += time.Second * 2
 	s.mu.Unlock()
+	s.intervalEm.NotifySubscribers(s.interval)
 }
 
-func (s *Scheduler) Resume() {
+func (s *Scheduler) ReleaseOneThrottle() {
 	s.mu.Lock()
 	s.interval = max(s.minInterval, s.interval-time.Second*2)
 	s.mu.Unlock()
+	s.intervalEm.NotifySubscribers(s.interval)
+}
+
+func (s *Scheduler) AddDelay(maxDelay time.Duration) {
+	s.mu.Lock()
+	s.delay = min(maxDelay, s.delay+time.Millisecond*500)
+	s.mu.Unlock()
+}
+
+func (s *Scheduler) ResetDelay() {
+	s.mu.Lock()
+	s.delay = s.minDelay
+	s.mu.Unlock()
+}
+
+func (s *Scheduler) SubscribeIntervalEvent() *EventSubscriber[time.Duration] {
+	return s.intervalEm.SubscribeEvent()
 }
