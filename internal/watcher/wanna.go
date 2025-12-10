@@ -14,7 +14,7 @@ var wannaQueueInfoRegex = regexp.MustCompile(`(?:syncedQueuedInfoJson =|queue in
 var wannaUserDataRegex = regexp.MustCompile(`userData = (\{.*}|Wanna Dance)`)
 
 var wannaVideoStartRegex = regexp.MustCompile(`OnVideoStart: (Started|Paused) video: ([^,]+), since (.+)`)
-var wannaVideoEndRegex = regexp.MustCompile(`OnVideoEnd: Video \S+ ended`)
+var wannaVideoEndRegex = regexp.MustCompile(`OnVideoEnd: Video|Started video load for URL`)
 
 var wannaVideoSyncRegex = regexp.MustCompile(`Syncing video to ([.\d]+)`)
 
@@ -93,6 +93,7 @@ func checkWannaLine(version int32, prefix []byte, content []byte) bool {
 	}
 
 	// OnVideoEnd: Video http://api.udon.dance/Api/Songs/play?id=4604 ended
+	// Started video load for URL: http://api.udon.dance/Api/Songs/play?id=6456
 	// Clear lastPlayedURL to prevent video syncing before the next video which is not started yet
 	if wannaVideoEndRegex.Match(content) {
 		wannaLastPlayedURL.Set(version, "")
