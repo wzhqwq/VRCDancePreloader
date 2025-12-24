@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type Server struct {
@@ -19,8 +18,6 @@ type Server struct {
 	sessions []*WsSession
 
 	watcher *PlaylistWatcher
-
-	listUpdate *utils.EventSubscriber[*playlist.PlayList]
 
 	newSession    chan *WsSession
 	closedSession chan *WsSession
@@ -41,8 +38,6 @@ func NewLiveServer(port int) *Server {
 			Addr:    fmt.Sprintf(":%d", port),
 			Handler: mux,
 		},
-
-		listUpdate: playlist.SubscribeNewListEvent(),
 
 		newSession:    make(chan *WsSession, 10),
 		closedSession: make(chan *WsSession, 10),
@@ -70,11 +65,14 @@ func (s *Server) RegisterHandlers(mux *http.ServeMux) {
 }
 
 func (s *Server) Loop() {
+	listCh := playlist.SubscribeNewListEvent()
+	defer listCh.Close()
+
 	for {
 		select {
 		case <-s.stopCh:
 			return
-		case pl := <-s.listUpdate.Channel:
+		case pl := <-listCh.Channel:
 			if s.watcher != nil {
 				s.watcher.Stop()
 			}

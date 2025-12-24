@@ -7,7 +7,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 func (s *Server) handlePlaylist(w http.ResponseWriter, r *http.Request) {
@@ -21,8 +20,7 @@ type PlaylistWatcher struct {
 
 	songMap map[int64]weak.Pointer[SongWatcher]
 
-	stopCh     chan struct{}
-	listUpdate *utils.EventSubscriber[playlist.ChangeType]
+	stopCh chan struct{}
 }
 
 func NewPlaylistWatcher(s *Server, pl *playlist.PlayList) *PlaylistWatcher {
@@ -32,8 +30,7 @@ func NewPlaylistWatcher(s *Server, pl *playlist.PlayList) *PlaylistWatcher {
 
 		songMap: make(map[int64]weak.Pointer[SongWatcher]),
 
-		stopCh:     make(chan struct{}),
-		listUpdate: pl.SubscribeChangeEvent(),
+		stopCh: make(chan struct{}),
 	}
 	go w.Loop()
 
@@ -51,12 +48,15 @@ type PlaylistUpdateMessage struct {
 }
 
 func (w *PlaylistWatcher) Loop() {
+	ch := w.pl.SubscribeChangeEvent()
+	defer ch.Close()
+
 	w.UpdateItems()
 	for {
 		select {
 		case <-w.stopCh:
 			return
-		case change := <-w.listUpdate.Channel:
+		case change := <-ch.Channel:
 			switch change {
 			case playlist.ItemsChange:
 				w.UpdateItems()
@@ -113,5 +113,4 @@ func (w *PlaylistWatcher) FullInfo() []song.LiveFullInfo {
 
 func (w *PlaylistWatcher) Stop() {
 	close(w.stopCh)
-	w.listUpdate.Close()
 }

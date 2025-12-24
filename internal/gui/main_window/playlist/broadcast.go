@@ -16,6 +16,10 @@ import (
 
 type BroadcastButton struct {
 	button.PaddedIconBtn
+
+	rich *widget.RichText
+
+	stopCh chan struct{}
 }
 
 func NewBroadcastButton() *BroadcastButton {
@@ -26,13 +30,6 @@ func NewBroadcastButton() *BroadcastButton {
 	scroll := container.NewVScroll(container.NewPadded(wholeContent))
 	scroll.SetMinSize(fyne.NewSize(250, 300))
 
-	btn := &BroadcastButton{}
-	btn.Extend(nil)
-
-	btn.OnClick = func() {
-		openBroadcastModal(scroll)
-	}
-
 	input := liveConfig.LiveRunner.GetInput(i18n.T("label_broadcast_port"))
 
 	rich := widget.NewRichTextFromMarkdown(i18n.T("tip_on_live", goeasyi18n.Options{
@@ -41,6 +38,21 @@ func NewBroadcastButton() *BroadcastButton {
 		},
 	}))
 	rich.Wrapping = i18n.GetLangWrapping()
+
+	btn := &BroadcastButton{
+		rich: rich,
+
+		stopCh: make(chan struct{}),
+	}
+	btn.Extend(nil)
+
+	btn.OnClick = func() {
+		openBroadcastModal(scroll)
+	}
+
+	btn.OnDestroy = func() {
+		close(btn.stopCh)
+	}
 
 	enableCb := widget.NewCheck(i18n.T("label_enable_broadcast"), func(b bool) {
 		if liveConfig.Enabled == b {
@@ -62,26 +74,31 @@ func NewBroadcastButton() *BroadcastButton {
 	wholeContent.Add(input)
 	wholeContent.Add(rich)
 
-	portChanged := liveConfig.LiveRunner.SubscribePort()
-	go func() {
-		ch := portChanged.Channel
-		for port := range ch {
-			rich.ParseMarkdown(i18n.T("tip_on_live", goeasyi18n.Options{
-				Data: map[string]interface{}{
-					"Port": port,
-				},
-			}))
-		}
-	}()
-	btn.OnDestroy = func() {
-		portChanged.Close()
-	}
+	go btn.renderLoop()
 
 	btn.ExtendBaseWidget(btn)
 
 	btn.SetLive(liveConfig.Enabled)
 
 	return btn
+}
+
+func (b *BroadcastButton) renderLoop() {
+	ch := config.GetLiveConfig().LiveRunner.SubscribePort()
+	defer ch.Close()
+
+	for {
+		select {
+		case <-b.stopCh:
+			return
+		case port := <-ch.Channel:
+			b.rich.ParseMarkdown(i18n.T("tip_on_live", goeasyi18n.Options{
+				Data: map[string]interface{}{
+					"Port": port,
+				},
+			}))
+		}
+	}
 }
 
 func (b *BroadcastButton) SetLive(live bool) {

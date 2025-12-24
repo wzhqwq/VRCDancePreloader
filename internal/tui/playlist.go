@@ -40,6 +40,7 @@ func NewPlayListTui(pl *playlist.PlayList) *PlayListTui {
 func (plt *PlayListTui) RenderLoop() {
 	plt.refreshItems()
 	changeCh := plt.pl.SubscribeChangeEvent()
+	defer changeCh.Close()
 
 	go plt.pw.Render()
 	defer plt.pw.Stop()
@@ -50,7 +51,6 @@ func (plt *PlayListTui) RenderLoop() {
 			for _, item := range plt.items {
 				close(item.StopCh)
 			}
-			changeCh.Close()
 			return
 		case change := <-changeCh.Channel:
 			switch change {

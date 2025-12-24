@@ -3,7 +3,6 @@ package button
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type FavoriteBtn struct {
@@ -14,8 +13,7 @@ type FavoriteBtn struct {
 
 	isFavorite bool
 
-	favoriteChange *utils.EventSubscriber[string]
-	closeCh        chan struct{}
+	closeCh chan struct{}
 
 	destroyed bool
 }
@@ -25,8 +23,7 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 		ID:    id,
 		Title: title,
 
-		favoriteChange: persistence.GetLocalSongs().SubscribeEvent(),
-		closeCh:        make(chan struct{}),
+		closeCh: make(chan struct{}),
 	}
 	b.Extend(nil)
 
@@ -44,24 +41,28 @@ func NewFavoriteBtn(id, title string) *FavoriteBtn {
 		}
 		b.destroyed = true
 		close(b.closeCh)
-		b.favoriteChange.Close()
 	}
 
 	b.ExtendBaseWidget(b)
 
 	b.SetFavorite(persistence.IsFavorite(id))
-	go func() {
-		for {
-			select {
-			case <-b.favoriteChange.Channel:
-				b.SetFavorite(persistence.IsFavorite(b.ID))
-			case <-b.closeCh:
-				return
-			}
-		}
-	}()
+	go b.eventLoop()
 
 	return b
+}
+
+func (b *FavoriteBtn) eventLoop() {
+	ch := persistence.GetLocalSongs().SubscribeEvent()
+	defer ch.Close()
+
+	for {
+		select {
+		case <-ch.Channel:
+			b.SetFavorite(persistence.IsFavorite(b.ID))
+		case <-b.closeCh:
+			return
+		}
+	}
 }
 
 func (b *FavoriteBtn) SetFavorite(f bool) {

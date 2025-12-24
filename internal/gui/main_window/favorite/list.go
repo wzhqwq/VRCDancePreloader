@@ -8,7 +8,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type FavoritesGui struct {
@@ -26,8 +25,7 @@ type FavoritesGui struct {
 
 	entries []*persistence.LocalSongEntry
 
-	stopCh         chan struct{}
-	favoriteChange *utils.EventSubscriber[string]
+	stopCh chan struct{}
 
 	active bool
 }
@@ -71,11 +69,14 @@ func (fg *FavoritesGui) refreshItems() {
 }
 
 func (fg *FavoritesGui) RenderLoop() {
+	ch := fg.Favorites.SubscribeEvent()
+	defer ch.Close()
+
 	for {
 		select {
 		case <-fg.stopCh:
 			return
-		case <-fg.favoriteChange.Channel:
+		case <-ch.Channel:
 			fyne.Do(func() {
 				fg.refreshItems()
 			})
@@ -146,7 +147,6 @@ func (fg *FavoritesGui) Activate() {
 	}
 	fg.active = true
 	fg.refreshItems()
-	fg.favoriteChange = fg.Favorites.SubscribeEvent()
 	go fg.RenderLoop()
 }
 
@@ -215,7 +215,4 @@ func (r *favoritesGuiRenderer) Refresh() {
 
 func (r *favoritesGuiRenderer) Destroy() {
 	close(r.g.stopCh)
-	if r.g.favoriteChange != nil {
-		r.g.favoriteChange.Close()
-	}
 }

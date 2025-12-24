@@ -16,6 +16,10 @@ import (
 
 type SongListButton struct {
 	button.PaddedIconBtn
+
+	labelMap map[string]*widget.Label
+
+	closeCh chan struct{}
 }
 
 func getLabelText(room string) string {
@@ -62,38 +66,51 @@ func NewSongListButton() *SongListButton {
 	scroll := container.NewVScroll(container.NewPadded(wholeContent))
 	scroll.SetMinSize(fyne.NewSize(250, 300))
 
-	btn := &SongListButton{}
+	labelMap := map[string]*widget.Label{
+		"PyPyDance":  widget.NewLabel(getLabelText("PyPyDance")),
+		"WannaDance": widget.NewLabel(getLabelText("WannaDance")),
+	}
+
+	btn := &SongListButton{
+		labelMap: labelMap,
+
+		closeCh: make(chan struct{}),
+	}
 	btn.Extend(nil)
 
 	btn.OnClick = func() {
 		openSongListModal(scroll)
 	}
 
-	labelMap := map[string]*widget.Label{
-		"PyPyDance":  widget.NewLabel(getLabelText("PyPyDance")),
-		"WannaDance": widget.NewLabel(getLabelText("WannaDance")),
-	}
-
 	wholeContent.Add(labelMap["PyPyDance"])
 	wholeContent.Add(labelMap["WannaDance"])
 
-	songListChanged := raw_song.SubscribeSongListChange()
-	go func() {
-		ch := songListChanged.Channel
-		for name := range ch {
-			labelMap[name].SetText(getLabelText(name))
-			btn.SetComplete(isAllSongListComplete())
-		}
-	}()
 	btn.OnDestroy = func() {
-		songListChanged.Close()
+		close(btn.closeCh)
 	}
+
+	go btn.eventLoop()
 
 	btn.ExtendBaseWidget(btn)
 
 	btn.SetComplete(isAllSongListComplete())
 
 	return btn
+}
+
+func (b *SongListButton) eventLoop() {
+	ch := raw_song.SubscribeSongListChange()
+	defer ch.Close()
+
+	for {
+		select {
+		case <-b.closeCh:
+			return
+		case name := <-ch.Channel:
+			b.labelMap[name].SetText(getLabelText(name))
+			b.SetComplete(isAllSongListComplete())
+		}
+	}
 }
 
 func (b *SongListButton) SetComplete(complete bool) {

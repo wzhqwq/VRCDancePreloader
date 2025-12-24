@@ -1,6 +1,9 @@
 package history
 
 import (
+	"log"
+	"weak"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -11,9 +14,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"log"
-	"weak"
 )
 
 type Gui struct {
@@ -23,8 +23,7 @@ type Gui struct {
 
 	Records []*persistence.DanceRecord
 
-	stopCh        chan struct{}
-	recordsChange *utils.EventSubscriber[string]
+	stopCh chan struct{}
 
 	recordsChanged bool
 	activeChanged  bool
@@ -41,8 +40,7 @@ func NewGui() *Gui {
 
 		Records: records,
 
-		stopCh:        make(chan struct{}),
-		recordsChange: persistence.GetLocalRecords().SubscribeEvent(),
+		stopCh: make(chan struct{}),
 	}
 
 	g.ExtendBaseWidget(g)
@@ -78,11 +76,14 @@ func (g *Gui) SetActive(id int) {
 }
 
 func (g *Gui) RenderLoop() {
+	ch := persistence.GetLocalRecords().SubscribeEvent()
+	defer ch.Close()
+
 	for {
 		select {
 		case <-g.stopCh:
 			return
-		case <-g.recordsChange.Channel:
+		case <-ch.Channel:
 			g.UpdateRecords()
 		}
 	}
@@ -227,5 +228,4 @@ func (r *GuiRenderer) Objects() []fyne.CanvasObject {
 
 func (r *GuiRenderer) Destroy() {
 	close(r.g.stopCh)
-	r.g.recordsChange.Close()
 }

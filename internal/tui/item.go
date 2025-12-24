@@ -26,10 +26,11 @@ func NewSongTui(ps *song.PreloadedSong, plt *PlayListTui) *ItemTui {
 
 func (it *ItemTui) RenderLoop() {
 	ch := it.ps.SubscribeEvent(true)
+	defer ch.Close()
+
 	for {
 		select {
 		case <-it.StopCh:
-			ch.Close()
 			return
 		case event := <-ch.Channel:
 			switch event {

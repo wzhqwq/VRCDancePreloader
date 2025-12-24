@@ -1,6 +1,8 @@
 package history
 
 import (
+	"weak"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -12,7 +14,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"weak"
 )
 
 type RecordGui struct {
@@ -20,8 +21,7 @@ type RecordGui struct {
 
 	Record *persistence.DanceRecord
 
-	stopCh       chan struct{}
-	ordersChange *utils.EventSubscriber[string]
+	stopCh chan struct{}
 
 	orderChanged   bool
 	commentChanged bool
@@ -32,8 +32,6 @@ func NewRecordGui(record *persistence.DanceRecord) *RecordGui {
 		stopCh: make(chan struct{}),
 
 		Record: record,
-
-		ordersChange: record.SubscribeEvent(),
 	}
 
 	g.ExtendBaseWidget(g)
@@ -50,11 +48,14 @@ func (g *RecordGui) UpdateOrders() {
 }
 
 func (g *RecordGui) RenderLoop() {
+	ch := g.Record.SubscribeEvent()
+	defer ch.Close()
+
 	for {
 		select {
 		case <-g.stopCh:
 			return
-		case <-g.ordersChange.Channel:
+		case <-ch.Channel:
 			g.UpdateOrders()
 		}
 	}
@@ -218,5 +219,4 @@ func (r *RecordGuiRenderer) Objects() []fyne.CanvasObject {
 
 func (r *RecordGuiRenderer) Destroy() {
 	close(r.g.stopCh)
-	r.g.ordersChange.Close()
 }

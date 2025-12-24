@@ -8,7 +8,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -19,7 +18,7 @@ type PlayList struct {
 	RoomBrand string
 
 	criticalUpdateCh chan struct{}
-	songListUpdate   *utils.EventSubscriber[string]
+	stopCh           chan struct{}
 
 	maxPreload int
 
@@ -44,7 +43,7 @@ func newPlayList(maxPreload int) *PlayList {
 		Items: make([]*song.PreloadedSong, 0),
 
 		criticalUpdateCh: make(chan struct{}, 1),
-		songListUpdate:   raw_song.SubscribeSongListChange(),
+		stopCh:           make(chan struct{}),
 
 		maxPreload: maxPreload,
 
@@ -67,6 +66,8 @@ func (pl *PlayList) StopAll() {
 	}
 	pl.stopped = true
 
+	close(pl.stopCh)
+
 	items := pl.GetItemsSnapshot()
 	download.CancelDownload(
 		lo.Map(items, func(item *song.PreloadedSong, _ int) string {
@@ -78,7 +79,6 @@ func (pl *PlayList) StopAll() {
 	}
 
 	pl.notifyChange(Stopped)
-	pl.CriticalUpdate()
 }
 
 func (pl *PlayList) SyncWithTime(url string, now time.Duration) bool {

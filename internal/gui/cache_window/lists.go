@@ -1,6 +1,8 @@
 package cache_window
 
 import (
+	"weak"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -13,24 +15,20 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"weak"
 )
 
 type LocalFilesGui struct {
 	widget.BaseWidget
 
-	localFileUpdate *utils.EventSubscriber[string]
-	allowListUpdate *utils.EventSubscriber[string]
-
 	infos     []types.CacheFileInfo
 	changedId string
+
+	stopCh chan struct{}
 }
 
 func NewLocalFilesGui() *LocalFilesGui {
 	g := &LocalFilesGui{
-		localFileUpdate: cache.SubscribeLocalFileEvent(),
-		allowListUpdate: persistence.GetAllowList().SubscribeEvent(),
+		stopCh: make(chan struct{}),
 	}
 
 	g.ExtendBaseWidget(g)
@@ -39,12 +37,16 @@ func NewLocalFilesGui() *LocalFilesGui {
 }
 
 func (g *LocalFilesGui) RenderLoop() {
+	localCh := cache.SubscribeLocalFileEvent()
+	defer localCh.Close()
+	allowCh := persistence.GetAllowList().SubscribeEvent()
+	defer allowCh.Close()
+
 	for {
 		select {
-		case message, ok := <-g.localFileUpdate.Channel:
-			if !ok {
-				return
-			}
+		case <-g.stopCh:
+			return
+		case message := <-localCh.Channel:
 			if message[0] == '*' {
 				g.changedId = message[1:]
 				fyne.Do(func() {
@@ -53,10 +55,7 @@ func (g *LocalFilesGui) RenderLoop() {
 			} else {
 				g.RefreshFiles()
 			}
-		case message, ok := <-g.allowListUpdate.Channel:
-			if !ok {
-				return
-			}
+		case message := <-allowCh.Channel:
 			if message[0] == '*' {
 				g.changedId = message[1:]
 				fyne.Do(func() {
@@ -202,26 +201,21 @@ func (r *LocalFilesGuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *LocalFilesGuiRenderer) Destroy() {
-	if r.g.localFileUpdate != nil {
-		r.g.localFileUpdate.Close()
-	}
-	if r.g.allowListUpdate != nil {
-		r.g.allowListUpdate.Close()
-	}
+	close(r.g.stopCh)
 }
 
 type AllowListGui struct {
 	widget.BaseWidget
 
-	listUpdate *utils.EventSubscriber[string]
-
 	infos     []types.CacheFileInfo
 	changedId string
+
+	stopCh chan struct{}
 }
 
 func NewAllowListGui() *AllowListGui {
 	g := &AllowListGui{
-		listUpdate: persistence.GetAllowList().SubscribeEvent(),
+		stopCh: make(chan struct{}),
 	}
 
 	g.ExtendBaseWidget(g)
@@ -230,12 +224,14 @@ func NewAllowListGui() *AllowListGui {
 }
 
 func (g *AllowListGui) RenderLoop() {
+	ch := persistence.GetAllowList().SubscribeEvent()
+	defer ch.Close()
+
 	for {
 		select {
-		case message, ok := <-g.listUpdate.Channel:
-			if !ok {
-				return
-			}
+		case <-g.stopCh:
+			return
+		case message := <-ch.Channel:
 			if message[0] == '*' {
 				g.changedId = message[1:]
 				fyne.Do(func() {
@@ -365,7 +361,5 @@ func (r *AllowListGuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *AllowListGuiRenderer) Destroy() {
-	if r.g.listUpdate != nil {
-		r.g.listUpdate.Close()
-	}
+	close(r.g.stopCh)
 }

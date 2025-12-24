@@ -7,7 +7,6 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type Manager struct {
@@ -15,15 +14,13 @@ type Manager struct {
 
 	currentList *playlist.PlayList
 
-	listUpdate *utils.EventSubscriber[*playlist.PlayList]
-	stopCh     chan struct{}
+	stopCh chan struct{}
 
 	listChanged bool
 }
 
 func NewPlaylistManager() *Manager {
 	m := &Manager{
-		listUpdate:  playlist.SubscribeNewListEvent(),
 		stopCh:      make(chan struct{}),
 		currentList: playlist.GetCurrentPlaylist(),
 	}
@@ -34,11 +31,14 @@ func NewPlaylistManager() *Manager {
 }
 
 func (m *Manager) RenderLoop() {
+	ch := playlist.SubscribeNewListEvent()
+	defer ch.Close()
+
 	for {
 		select {
 		case <-m.stopCh:
 			return
-		case pl := <-m.listUpdate.Channel:
+		case pl := <-ch.Channel:
 			m.currentList = pl
 			m.listChanged = true
 			fyne.Do(func() {
@@ -123,5 +123,4 @@ func (r *managerRender) Objects() []fyne.CanvasObject {
 
 func (r *managerRender) Destroy() {
 	close(r.manager.stopCh)
-	r.manager.listUpdate.Close()
 }

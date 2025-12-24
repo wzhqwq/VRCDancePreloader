@@ -2,7 +2,6 @@ package live
 
 import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type SongWatcher struct {
@@ -10,8 +9,7 @@ type SongWatcher struct {
 
 	song *song.PreloadedSong
 
-	stopCh     chan struct{}
-	songUpdate *utils.EventSubscriber[song.ChangeType]
+	stopCh chan struct{}
 }
 
 func NewSongWatcher(s *Server, song *song.PreloadedSong) *SongWatcher {
@@ -19,8 +17,7 @@ func NewSongWatcher(s *Server, song *song.PreloadedSong) *SongWatcher {
 		s:    s,
 		song: song,
 
-		stopCh:     make(chan struct{}),
-		songUpdate: song.SubscribeEvent(true),
+		stopCh: make(chan struct{}),
 	}
 	go w.Loop()
 
@@ -28,11 +25,14 @@ func NewSongWatcher(s *Server, song *song.PreloadedSong) *SongWatcher {
 }
 
 func (w *SongWatcher) Loop() {
+	ch := w.song.SubscribeEvent(true)
+	defer ch.Close()
+
 	for {
 		select {
 		case <-w.stopCh:
 			return
-		case event := <-w.songUpdate.Channel:
+		case event := <-ch.Channel:
 			switch event {
 			case song.StatusChange:
 				status := w.song.GetPreloadStatus()
@@ -54,5 +54,4 @@ func (w *SongWatcher) Loop() {
 
 func (w *SongWatcher) Stop() {
 	close(w.stopCh)
-	w.songUpdate.Close()
 }

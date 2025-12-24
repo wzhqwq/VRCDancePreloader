@@ -4,6 +4,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 )
 
 func (pl *PlayList) CriticalUpdate() {
@@ -14,18 +15,17 @@ func (pl *PlayList) CriticalUpdate() {
 }
 
 func (pl *PlayList) loop() {
+	listCh := raw_song.SubscribeSongListChange()
+	defer listCh.Close()
+
 	pl.preload()
 	for {
 		select {
+		case <-pl.stopCh:
+			return
 		case <-pl.criticalUpdateCh:
-			if pl.stopped {
-				return
-			}
 			pl.preload()
-		case <-pl.songListUpdate.Channel:
-			if pl.stopped {
-				return
-			}
+		case <-listCh.Channel:
 			pl.refresh()
 		}
 	}

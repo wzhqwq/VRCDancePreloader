@@ -28,8 +28,7 @@ type ItemGui struct {
 
 	// static UI
 
-	stopCh     chan struct{}
-	songUpdate *utils.EventSubscriber[song.ChangeType]
+	stopCh chan struct{}
 
 	statusChanged   bool
 	timeChanged     bool
@@ -42,8 +41,7 @@ func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
 		ps: ps,
 		dl: dl,
 
-		stopCh:     make(chan struct{}, 10),
-		songUpdate: ps.SubscribeEvent(false),
+		stopCh: make(chan struct{}, 10),
 
 		statusChanged:   true,
 		timeChanged:     true,
@@ -57,11 +55,14 @@ func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
 }
 
 func (ig *ItemGui) RenderLoop() {
+	ch := ig.ps.SubscribeEvent(false)
+	defer ch.Close()
+
 	for {
 		select {
 		case <-ig.stopCh:
 			return
-		case event := <-ig.songUpdate.Channel:
+		case event := <-ch.Channel:
 			switch event {
 			case song.StatusChange:
 				ig.statusChanged = true
@@ -409,5 +410,4 @@ func (r *ItemRenderer) Objects() []fyne.CanvasObject {
 
 func (r *ItemRenderer) Destroy() {
 	close(r.ig.stopCh)
-	r.ig.songUpdate.Close()
 }
