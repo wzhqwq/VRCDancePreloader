@@ -19,51 +19,55 @@ func (l *CustomLogger) Printf(format string, a ...any) {
 }
 
 func (l *CustomLogger) InfoLn(a ...any) {
-	l.print("[Info] " + fmt.Sprintln(a...))
+	l.print("INFO - " + l.prefix + fmt.Sprintln(a...))
 }
 func (l *CustomLogger) InfoLnf(format string, a ...any) {
-	l.Println("[Info]", fmt.Sprintf(format, a...))
+	l.Println("INFO - " + l.prefix + fmt.Sprintf(format, a...))
 }
 func (l *CustomLogger) Infof(format string, a ...any) {
-	l.Printf("[Info] "+format, a...)
+	l.Printf("INFO - "+l.prefix+format, a...)
 }
 
 func (l *CustomLogger) WarnLn(a ...any) {
-	l.print("[Warning] " + fmt.Sprintln(a...))
+	l.print("WARN - " + l.prefix + fmt.Sprintln(a...))
 }
 func (l *CustomLogger) WarnLnf(format string, a ...any) {
-	l.Println("[Warning]", fmt.Sprintf(format, a...))
+	l.Println("WARN - " + l.prefix + fmt.Sprintf(format, a...))
 }
 func (l *CustomLogger) Warnf(format string, a ...any) {
-	l.Printf("[Warning] "+format, a...)
+	l.Printf("WARN - "+l.prefix+format, a...)
 }
 
 func (l *CustomLogger) DebugLn(a ...any) {
-	l.print("[Debug] " + fmt.Sprintln(a...))
+	l.print("DEBUG - " + l.prefix + fmt.Sprintln(a...))
 }
 func (l *CustomLogger) DebugLnf(format string, a ...any) {
-	l.Println("[Debug]", fmt.Sprintf(format, a...))
+	l.Println("DEBUG - " + l.prefix + fmt.Sprintf(format, a...))
 }
 func (l *CustomLogger) Debugf(format string, a ...any) {
-	l.Printf("[Debug] "+format, a...)
+	l.Printf("DEBUG - "+l.prefix+format, a...)
 }
 
 func (l *CustomLogger) ErrorLn(a ...any) {
-	l.print("[Error] " + fmt.Sprintln(a...))
+	l.print("ERROR - " + l.prefix + fmt.Sprintln(a...))
 }
 func (l *CustomLogger) ErrorLnf(format string, a ...any) {
-	l.Println("[Error]", fmt.Sprintf(format, a...))
+	l.Println("ERROR - " + l.prefix + fmt.Sprintf(format, a...))
 }
 func (l *CustomLogger) Errorf(format string, a ...any) {
-	l.Printf("[Error] "+format, a...)
+	l.Printf("ERROR - "+l.prefix+format, a...)
 }
 
 func (l *CustomLogger) print(s string) {
-	l.printFn(l.prefix + s)
+	l.printFn(s)
 }
 
 func (l *CustomLogger) SetPrefix(prefix string) {
-	l.prefix = prefix
+	if prefix != "" {
+		l.prefix = "[" + prefix + "] "
+	} else {
+		l.prefix = ""
+	}
 }
 
 type Printable interface {
@@ -80,7 +84,7 @@ func NewLogger(prefix string) *CustomLogger {
 			log.Print(s)
 		},
 	}
-	logger.prefix = prefix
+	logger.SetPrefix(prefix)
 	return logger
 }
 
