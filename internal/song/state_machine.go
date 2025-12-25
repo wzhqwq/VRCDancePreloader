@@ -80,13 +80,13 @@ func (sm *StateMachine) StartDownload() {
 		sm.DownloadStatus = Pending
 		sm.ps.notifyStatusChange()
 
-		ds := download.Download(sm.ps.GetSongId())
-		if ds == nil {
+		task := download.Download(sm.ps.GetSongId())
+		if task == nil {
 			sm.DownloadStatus = NotAvailable
 			sm.ps.notifyStatusChange()
 			return
 		}
-		go sm.StartDownloadLoop(ds)
+		go sm.StartDownloadLoop(task)
 	}
 }
 func (sm *StateMachine) Prioritize() {
@@ -103,7 +103,7 @@ func (sm *StateMachine) SwitchDownloadStatus(s DownloadStatus) {
 	sm.ps.notifyStatusChange()
 }
 
-func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
+func (sm *StateMachine) StartDownloadLoop(task *download.Task) {
 	sm.completeSongWg.Add(1)
 	defer sm.completeSongWg.Done()
 
@@ -113,58 +113,56 @@ func (sm *StateMachine) StartDownloadLoop(ds *download.State) {
 		sm.ps.notifyLazySubscribers(ProgressChange)
 	})
 
+	ch := task.SubscribeChanges()
+	defer ch.Close()
+
 	for {
 		select {
-		case <-ds.StateCh:
-			if ds.Done {
-				sm.DownloadStatus = Downloaded
-				sm.ps.TotalSize = ds.TotalSize
-				sm.ps.DownloadedSize = ds.DownloadedSize
-				sm.ps.notifySubscribers(ProgressChange)
-				sm.ps.notifyStatusChange()
-				return
-			}
-			if ds.Error != nil {
-				if errors.Is(ds.Error, cache.ErrNotSupported) {
-					sm.DownloadStatus = NotAvailable
+		case change := <-ch.Channel:
+			switch change {
+			case download.State:
+				if task.Done {
+					sm.DownloadStatus = Downloaded
+					sm.ps.TotalSize = task.TotalSize
+					sm.ps.DownloadedSize = task.DownloadedSize
+					sm.ps.notifySubscribers(ProgressChange)
 					sm.ps.notifyStatusChange()
-					download.CancelDownload(sm.ps.GetSongId())
 					return
 				}
-				if errors.Is(ds.Error, download.ErrCanceled) {
-					return
+				if task.Error != nil {
+					if errors.Is(task.Error, cache.ErrNotSupported) {
+						sm.SwitchDownloadStatus(NotAvailable)
+						download.CancelDownload(sm.ps.GetSongId())
+						return
+					}
+					if errors.Is(task.Error, download.ErrCanceled) {
+						return
+					}
+
+					sm.DownloadStatus = Failed
+					sm.ps.PreloadError = task.Error
+					sm.ps.notifyStatusChange()
+					download.Retry(task)
+				} else {
+					sm.ps.PreloadError = nil
+
+					if task.Pending {
+						sm.SwitchDownloadStatus(Pending)
+					} else if task.Cooling {
+						sm.SwitchDownloadStatus(CoolingDown)
+					} else if task.Requesting {
+						sm.SwitchDownloadStatus(Requesting)
+					} else {
+						// Otherwise, it's downloading
+						sm.ps.TotalSize = task.TotalSize
+						sm.SwitchDownloadStatus(Downloading)
+					}
 				}
-				sm.DownloadStatus = Failed
-				sm.ps.PreloadError = ds.Error
-				sm.ps.notifyStatusChange()
-				download.Retry(ds)
-				continue
-			} else {
-				sm.ps.PreloadError = nil
+			case download.Progress:
+				sm.ps.DownloadedSize = task.DownloadedSize
+				sm.ps.notifySubscribers(ProgressChange)
+				lazy.Change()
 			}
-			if ds.Pending {
-				sm.SwitchDownloadStatus(Pending)
-				continue
-			}
-			if ds.Cooling {
-				sm.SwitchDownloadStatus(CoolingDown)
-				continue
-			}
-			if ds.Requesting {
-				sm.SwitchDownloadStatus(Requesting)
-				continue
-			}
-			// Otherwise, it's downloading
-			if sm.DownloadStatus == Removed {
-				return
-			}
-
-			sm.SwitchDownloadStatus(Downloading)
-
-			sm.ps.TotalSize = ds.TotalSize
-			sm.ps.DownloadedSize = ds.DownloadedSize
-			sm.ps.notifySubscribers(ProgressChange)
-			lazy.Change()
 		case <-lazy.WaitUpdate():
 			lazy.Update()
 		}

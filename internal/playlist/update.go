@@ -1,6 +1,8 @@
 package playlist
 
 import (
+	"time"
+
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
@@ -25,8 +27,11 @@ func (pl *PlayList) loop() {
 			return
 		case <-pl.criticalUpdateCh:
 			pl.preload()
+			pl.healthCheck()
 		case <-listCh.Channel:
 			pl.refresh()
+		case <-time.After(time.Minute):
+			pl.healthCheck()
 		}
 	}
 }
@@ -51,6 +56,18 @@ func (pl *PlayList) preload() {
 			},
 		)...,
 	)
+}
+
+func (pl *PlayList) healthCheck() {
+	items := lo.Slice(pl.GetItemsSnapshot(), 0, pl.maxPreload+1)
+	if len(items) < 2 {
+		return
+	}
+	eta := items[0].Duration - items[0].TimePassed
+	for _, item := range items[1:] {
+		item.RestartTaskIfTooSlow(eta)
+		eta += item.Duration
+	}
 }
 
 func (pl *PlayList) refresh() {

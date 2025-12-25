@@ -2,85 +2,66 @@ package download
 
 import (
 	"sync"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+)
+
+type ManagerChangeType string
+
+const (
+	QueueChange ManagerChangeType = "queue"
+	Stopped     ManagerChangeType = "stopped"
 )
 
 type downloadManager struct {
 	sync.Mutex
 	//utils.LoggingMutex
 
-	stateMap    map[string]*State
-	queue       []string
+	tasks     map[string]*Task
+	queue     []string
+	scheduler *utils.Scheduler
+	em        *utils.EventManager[ManagerChangeType]
+
 	maxParallel int
 
 	inTransaction bool
 }
 
-func newDownloadManager(maxParallel int) *downloadManager {
+func newDownloadManager(maxParallel int, minInterval time.Duration) *downloadManager {
 	return &downloadManager{
-		stateMap:    make(map[string]*State),
-		queue:       make([]string, 0),
+		tasks:     make(map[string]*Task),
+		queue:     make([]string, 0),
+		scheduler: utils.NewScheduler(time.Second*3, minInterval),
+		em:        utils.NewEventManager[ManagerChangeType](),
+
 		maxParallel: maxParallel,
 	}
 }
-func (dm *downloadManager) CreateOrGetState(id string) *State {
+func (dm *downloadManager) CreateOrGetState(id string) *Task {
 	dm.Lock()
 	defer dm.unlockAndUpdate()
 
-	ds, exists := dm.stateMap[id]
+	task, exists := dm.tasks[id]
 	if !exists {
-		ds = &State{
-			ID: id,
-
-			StateCh:    make(chan *State, 10),
-			CancelCh:   make(chan bool),
-			PriorityCh: make(chan int, 1),
-		}
-		dm.stateMap[id] = ds
+		task = newTask(dm, id)
+		dm.tasks[id] = task
 		dm.queue = append(dm.queue, id)
 	}
 
-	return ds
+	return task
 }
 func (dm *downloadManager) CancelDownload(ids ...string) {
 	dm.Lock()
 	defer dm.unlockAndUpdate()
 
 	for _, id := range ids {
-		if ds, ok := dm.stateMap[id]; ok {
-			close(ds.CancelCh)
-			delete(dm.stateMap, id)
+		if task, ok := dm.tasks[id]; ok {
+			task.Cancel()
+			delete(dm.tasks, id)
 		}
 	}
-}
-func (dm *downloadManager) UpdatePriorities() {
-	dm.Lock()
-	defer dm.Unlock()
-	if len(dm.queue) == 0 || dm.inTransaction {
-		return
-	}
-
-	dm.queue = lo.Filter(dm.queue, func(id string, _ int) bool {
-		ds, ok := dm.stateMap[id]
-		return ok && !ds.Done
-	})
-	logger.InfoLn("Download queue:", dm.queue)
-	for i, id := range dm.queue {
-		ds := dm.stateMap[id]
-		if ds != nil {
-			// flush first
-			select {
-			case <-ds.PriorityCh:
-			default:
-			}
-			ds.PriorityCh <- i
-		}
-	}
-}
-func (dm *downloadManager) CanDownload(priority int) bool {
-	return priority < dm.maxParallel
 }
 func (dm *downloadManager) unlockAndUpdate() {
 	dm.Unlock()
@@ -90,36 +71,22 @@ func (dm *downloadManager) SetMaxParallel(max int) {
 	dm.maxParallel = max
 	dm.UpdatePriorities()
 }
-func (dm *downloadManager) Prioritize(ids ...string) {
-	dm.Lock()
-	defer dm.unlockAndUpdate()
-
-	if utils.IsPrefixOf(dm.queue, ids) {
-		return
-	}
-
-	dm.queue = append(
-		ids,
-		lo.Reject(dm.queue, func(id string, _ int) bool {
-			return lo.Contains(ids, id)
-		})...,
-	)
-}
-
-func (dm *downloadManager) QueueTransaction() func() {
-	dm.inTransaction = true
-	return func() {
-		dm.inTransaction = false
-		dm.UpdatePriorities()
-	}
-}
-
-func (dm *downloadManager) CancelAllAndWait() {
+func (dm *downloadManager) Destroy() {
 	dm.Lock()
 	defer dm.Unlock()
-	for _, ds := range dm.stateMap {
-		close(ds.CancelCh)
-		ds.Lock()
-		ds.Unlock()
+	for _, task := range dm.tasks {
+		task.Cancel()
+		task.Lock()
+		task.Unlock()
 	}
+	dm.em.NotifySubscribers(Stopped)
+}
+
+func (dm *downloadManager) GetQueueSnapshot() []*Task {
+	dm.Lock()
+	defer dm.Unlock()
+
+	return lo.Map(dm.queue, func(id string, _ int) *Task {
+		return dm.tasks[id]
+	})
 }

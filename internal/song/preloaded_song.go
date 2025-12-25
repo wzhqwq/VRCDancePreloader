@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -171,6 +172,11 @@ func (ps *PreloadedSong) InDownloadQueue() bool {
 }
 func (ps *PreloadedSong) RemoveFromList() {
 	ps.sm.RemoveFromList()
+}
+func (ps *PreloadedSong) RestartTaskIfTooSlow(eta time.Duration) {
+	if ps.sm.DownloadStatus == Downloading {
+		download.RestartTaskIfTooSlow(ps.GetSongId(), eta)
+	}
 }
 func (ps *PreloadedSong) AddToHistory() {
 	info := ps.GetInfo()

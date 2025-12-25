@@ -94,6 +94,10 @@ func (s *Scheduler) ResetDelay() {
 	s.mu.Unlock()
 }
 
+func (s *Scheduler) Delay() time.Duration {
+	return s.delay
+}
+
 func (s *Scheduler) SubscribeIntervalEvent() *EventSubscriber[time.Duration] {
 	return s.intervalEm.SubscribeEvent()
 }

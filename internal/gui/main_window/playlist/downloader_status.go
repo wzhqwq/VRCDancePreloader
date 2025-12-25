@@ -38,21 +38,30 @@ type DownloaderStatusRenderer struct {
 }
 
 func (r *DownloaderStatusRenderer) RenderLoop() {
-	ch := download.SubscribeCoolDownInterval()
+	defaultCh := download.SubscribeCoolDownInterval("default")
+	defer defaultCh.Close()
+	pypyCh := download.SubscribeCoolDownInterval("pypy")
+	defer pypyCh.Close()
+
 	for {
 		select {
-		case interval := <-ch.Channel:
-			seconds := interval.Seconds()
-			if seconds <= 3 {
-				r.text.Text = ""
-			} else {
-				r.text.Text = i18n.T("message_download_throttled", goeasyi18n.Options{
-					Data: map[string]interface{}{
-						"Time": strconv.Itoa(int(seconds)),
-					},
-				})
-			}
+		case interval := <-defaultCh.Channel:
+			r.renderThrottleMessage(interval.Seconds())
+		case interval := <-pypyCh.Channel:
+			r.renderThrottleMessage(interval.Seconds())
 		}
+	}
+}
+
+func (r *DownloaderStatusRenderer) renderThrottleMessage(seconds float64) {
+	if seconds <= 3 {
+		r.text.Text = ""
+	} else {
+		r.text.Text = i18n.T("message_download_throttled", goeasyi18n.Options{
+			Data: map[string]interface{}{
+				"Time": strconv.Itoa(int(seconds)),
+			},
+		})
 	}
 }
 
