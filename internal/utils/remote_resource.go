@@ -16,8 +16,6 @@ type RemoteResource[T any] struct {
 	mu sync.Mutex
 	wg sync.WaitGroup
 
-	Name string
-
 	logger    *CustomLogger
 	scheduler *Scheduler
 
@@ -32,10 +30,8 @@ type RemoteResource[T any] struct {
 
 func NewRemoteResource[T any](name string) *RemoteResource[T] {
 	r := &RemoteResource[T]{
-		logger:    NewLogger(),
+		logger:    NewLogger("Remote " + name),
 		scheduler: NewScheduler(time.Second*3, time.Second),
-
-		Name: name,
 
 		DoDownload: func(ctx context.Context) (*T, error) {
 			panic("Implementation required")
@@ -115,9 +111,9 @@ func (r *RemoteResource[T]) StartDownload(ctx context.Context) bool {
 				r.wg.Done()
 			} else {
 				if errors.Is(err, ErrResourceUnavailable) {
-					r.logger.Errorf("Resource %s unavailable", r.Name)
+					r.logger.ErrorLn("Resource unavailable")
 				} else {
-					r.logger.Errorf("Failed to download %s: %v", r.Name, err)
+					r.logger.ErrorLnf("Failed to download resource: %v", err)
 				}
 				r.planNextRetry(ctx)
 			}

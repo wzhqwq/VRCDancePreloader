@@ -13,7 +13,7 @@ import (
 
 var idIncrement int64 = 0
 
-var logger = utils.NewUniqueLogger()
+var logger = utils.NewLogger("Song")
 
 type PreloadedSong struct {
 	sm         *StateMachine
