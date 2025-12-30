@@ -39,7 +39,7 @@ func newDownloadManager(maxParallel int, minInterval time.Duration) *downloadMan
 		maxParallel: maxParallel,
 	}
 }
-func (dm *downloadManager) CreateOrGetState(id string) *Task {
+func (dm *downloadManager) CreateOrGetPausedTask(id string) *Task {
 	dm.Lock()
 	defer dm.unlockAndUpdate()
 
@@ -49,6 +49,8 @@ func (dm *downloadManager) CreateOrGetState(id string) *Task {
 		dm.tasks[id] = task
 		dm.queue = append(dm.queue, id)
 	}
+
+	task.sendPriority(-1)
 
 	return task
 }

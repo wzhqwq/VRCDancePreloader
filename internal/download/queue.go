@@ -52,7 +52,7 @@ func (dm *downloadManager) UpdatePriorities() {
 }
 
 func (dm *downloadManager) CanDownload(priority int) bool {
-	return priority < dm.maxParallel
+	return priority >= 0 && priority < dm.maxParallel
 }
 
 // BlockIfPending keeps blocked until this task is able to continue or is canceled (returning false)

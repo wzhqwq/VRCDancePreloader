@@ -48,16 +48,16 @@ func SetMaxParallel(n int) {
 
 func Download(id string) *Task {
 	dm := findManager(id)
-	ds := dm.CreateOrGetState(id)
-	if ds == nil {
+	task := dm.CreateOrGetPausedTask(id)
+	if task == nil {
 		return nil
 	}
 	go func() {
-		ds.Download(false)
 		dm.UpdatePriorities()
+		task.Download(false)
 	}()
 
-	return ds
+	return task
 }
 
 func RestartTaskIfTooSlow(id string, timeRemaining time.Duration) {
