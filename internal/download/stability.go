@@ -38,7 +38,13 @@ func (dm *downloadManager) RestartTaskIfTooSlow(id string, timeRemaining time.Du
 		return
 	}
 
+	// The task must be downloading
 	if task.Done || task.Cooling || task.Pending || task.eta == nil {
+		return
+	}
+
+	// Do not try restart if throttle is applied, otherwise we will be blocked again
+	if dm.scheduler.ThrottleApplied() {
 		return
 	}
 

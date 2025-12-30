@@ -94,6 +94,12 @@ func (s *Scheduler) ResetDelay() {
 	s.mu.Unlock()
 }
 
+func (s *Scheduler) ThrottleApplied() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.interval != s.minInterval
+}
+
 func (s *Scheduler) Delay() time.Duration {
 	return s.delay
 }
