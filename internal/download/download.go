@@ -11,6 +11,7 @@ import (
 )
 
 var ErrCanceled = errors.New("task canceled")
+var ErrRestarted = errors.New("task restarted")
 
 func (t *Task) Write(p []byte) (int, error) {
 	select {
@@ -18,7 +19,7 @@ func (t *Task) Write(p []byte) (int, error) {
 		return 0, ErrCanceled
 	case <-t.RestartCh:
 		// force close current network connection and then continue downloading
-		return 0, io.EOF
+		return 0, ErrRestarted
 	default:
 		if t.BlockIfPending() {
 			n := len(p)
@@ -138,33 +139,34 @@ func (t *Task) Download(retryDelay bool) {
 		return
 	}
 
-	for {
-		if !t.BlockIfPending() {
-			goto canceled
-		}
+	if !t.BlockIfPending() {
+		goto canceled
+	}
 
-		err = t.singleDownload(cacheEntry)
-		if err == nil || cacheEntry.IsComplete() {
-			logger.InfoLn("Downloaded", t.ID)
-			t.markAsDone()
-			return
-		}
+startTask:
+	err = t.singleDownload(cacheEntry)
+	if err == nil || cacheEntry.IsComplete() {
+		logger.InfoLn("Downloaded", t.ID)
+		t.markAsDone()
+		return
+	}
 
-		if errors.Is(err, ErrCanceled) {
-			goto canceled
-		}
-		if !errors.Is(err, io.EOF) {
-			t.Error = err
-			logger.ErrorLn("Downloading error:", err.Error(), t.ID)
-			if errors.Is(err, cache.ErrThrottle) {
-				t.manager.slowDown()
-			}
-			return
-		}
-
+	if errors.Is(err, ErrCanceled) {
+		goto canceled
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, ErrRestarted) {
 		logger.InfoLn("Switch to another offset", t.ID)
 		t.Requesting = true
+		goto startTask
 	}
+
+	t.Error = err
+	logger.ErrorLn("Downloading error:", err.Error(), t.ID)
+	if errors.Is(err, cache.ErrThrottle) {
+		t.manager.slowDown()
+	}
+	return
+
 canceled:
 	t.Error = ErrCanceled
 	logger.InfoLn("Canceled download task", t.ID)
