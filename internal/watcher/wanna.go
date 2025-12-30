@@ -82,13 +82,14 @@ func checkWannaLine(version int32, prefix []byte, content []byte) bool {
 		if operation == "Started" {
 			wannaLastPlayedURL.Set(version, url)
 			if strings.HasPrefix(reason, "I'm") {
-				// I'm the owner, so there's no offset
-				wannaLastSyncTime.Set(version, getTimeStampWithOffset(prefix, []byte("0.00")))
+				// The sync time is always before this line when I'm the owner, so don't clear
+				//wannaLastSyncTime.Set(version, getTimeStampWithOffset(prefix, []byte("0.00")))
 			} else {
 				// clear old sync time
 				wannaLastSyncTime.Set(version, "")
 			}
 		}
+		// TODO: pause time
 		return true
 	}
 
