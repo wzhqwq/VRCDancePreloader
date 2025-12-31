@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/fragmented"
 )
 
 var ErrCanceled = errors.New("task canceled")
@@ -154,8 +155,8 @@ startTask:
 	if errors.Is(err, ErrCanceled) {
 		goto canceled
 	}
-	if errors.Is(err, io.EOF) || errors.Is(err, ErrRestarted) {
-		logger.InfoLn("Switch to another offset", t.ID)
+	if errors.Is(err, io.EOF) || errors.Is(err, fragmented.ErrEndOfFragment) || errors.Is(err, ErrRestarted) {
+		logger.InfoLn("Restarted", t.ID)
 		t.Requesting = true
 		goto startTask
 	}

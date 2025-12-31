@@ -14,6 +14,8 @@ import (
 // continue the current fragment if the starting point is not more than 100KB beyond the fragment
 const continueThreshold = int64(1024 * 100)
 
+var logger = utils.NewLogger("Fragmented File")
+
 type File struct {
 	rw_file.BaseFile
 

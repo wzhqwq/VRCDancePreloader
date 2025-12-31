@@ -1,7 +1,6 @@
 package fragmented
 
 import (
-	"log"
 	"slices"
 
 	"github.com/samber/lo"
@@ -37,12 +36,13 @@ func (f *File) backToFirst() {
 }
 
 func (f *File) printFragments() {
+	logger.DebugLnf("Fragments of %s (total %d):", f.File.Name(), f.TotalLen())
 	for _, frag := range f.fragments {
 		notation := ""
 		if frag == f.activeFragment {
-			notation = " <-"
+			notation = " *"
 		}
-		log.Printf("%d - %d %s", frag.Start, frag.End(), notation)
+		logger.DebugLnf("%d - %d%s", frag.Start, frag.End(), notation)
 	}
 }
 

@@ -3,7 +3,6 @@ package fragmented
 import (
 	"context"
 	"io"
-	"log"
 	"time"
 )
 
@@ -40,8 +39,8 @@ func (f *File) RequestRange(offset, length int64, ctx context.Context) error {
 		case <-ctx.Done():
 			return io.ErrClosedPipe
 		case <-time.After(time.Second * 10):
-			log.Println("Timeout warning: requested file", f.File.Name(), "offset", offset, "length", length)
-			log.Println("It takes 10 seconds and still not available, we should close this request to prevent memory leak")
+			logger.WarnLn("Timeout warning: requested file", f.File.Name(), "range offset", offset, "length", length)
+			logger.InfoLn("It takes 10 seconds and still not available, so this request is forced to close")
 			f.printFragments()
 			return io.ErrNoProgress
 		}
