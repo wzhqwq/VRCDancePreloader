@@ -107,7 +107,9 @@ func (b *SongListButton) eventLoop() {
 		case <-b.closeCh:
 			return
 		case name := <-ch.Channel:
-			b.labelMap[name].SetText(getLabelText(name))
+			fyne.Do(func() {
+				b.labelMap[name].SetText(getLabelText(name))
+			})
 			b.SetComplete(isAllSongListComplete())
 		}
 	}
