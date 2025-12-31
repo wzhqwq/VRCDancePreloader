@@ -53,8 +53,9 @@ func Download(id string) *Task {
 		return nil
 	}
 	go func() {
-		dm.UpdatePriorities()
 		task.Download(false)
+		// re-calculate priorities after download
+		dm.UpdatePriorities()
 	}()
 
 	return task
