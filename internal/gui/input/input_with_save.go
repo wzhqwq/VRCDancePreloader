@@ -6,8 +6,10 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 )
 
 type InputWithSave struct {
@@ -21,7 +23,7 @@ type InputWithSave struct {
 	ForceDigits bool
 	Dirty       bool
 
-	OnSave func()
+	OnSave func() error
 }
 
 func NewInputWithSave(value, label string) *InputWithSave {
@@ -57,7 +59,12 @@ func (i *InputWithSave) SetValue(value string) {
 
 	i.Value = value
 	if i.OnSave != nil {
-		i.OnSave()
+		err := i.OnSave()
+		if err != nil {
+			// pop up
+			dialog.NewError(err, custom_fyne.GetParent()).Show()
+			return
+		}
 	}
 	i.Dirty = false
 

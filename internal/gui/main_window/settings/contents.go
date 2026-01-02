@@ -69,9 +69,10 @@ func createKeySettingsContent() fyne.CanvasObject {
 	))
 
 	youtubeKeyInput := input.NewInputWithSave(keyConfig.Youtube, i18n.T("label_yt_api_key"))
-	youtubeKeyInput.OnSave = func() {
+	youtubeKeyInput.OnSave = func() error {
 		keyConfig.Youtube = youtubeKeyInput.Value
 		config.SaveConfig()
+		return nil
 	}
 
 	wholeContent.Add(youtubeKeyInput)
@@ -134,12 +135,13 @@ func createPreloadSettingsContent() fyne.CanvasObject {
 
 	maxPreloadInput := input.NewInputWithSave(strconv.Itoa(preloadConfig.MaxPreload), i18n.T("label_max_preload_count"))
 	maxPreloadInput.ForceDigits = true
-	maxPreloadInput.OnSave = func() {
+	maxPreloadInput.OnSave = func() error {
 		count, err := strconv.Atoi(maxPreloadInput.Value)
 		if err != nil {
-			return
+			return err
 		}
 		preloadConfig.UpdateMaxPreload(count)
+		return nil
 	}
 	wholeContent.Add(maxPreloadInput)
 
@@ -154,12 +156,13 @@ func createDownloadSettingsContent() fyne.CanvasObject {
 
 	maxDownloadInput := input.NewInputWithSave(strconv.Itoa(downloadConfig.MaxDownload), i18n.T("label_max_parallel_download_count"))
 	maxDownloadInput.ForceDigits = true
-	maxDownloadInput.OnSave = func() {
+	maxDownloadInput.OnSave = func() error {
 		count, err := strconv.Atoi(maxDownloadInput.Value)
 		if err != nil {
-			return
+			return err
 		}
 		downloadConfig.UpdateMaxDownload(count)
+		return nil
 	}
 	wholeContent.Add(maxDownloadInput)
 
@@ -176,9 +179,10 @@ func createCacheSettingsContent() fyne.CanvasObject {
 	))
 
 	pathInput := input.NewInputWithSave(cacheConfig.Path, i18n.T("label_cache_path"))
-	pathInput.OnSave = func() {
+	pathInput.OnSave = func() error {
 		cacheConfig.Path = pathInput.Value
 		config.SaveConfig()
+		return nil
 	}
 	wholeContent.Add(pathInput)
 
@@ -203,12 +207,13 @@ func createCacheSettingsContent() fyne.CanvasObject {
 
 	maxCacheInput := input.NewInputWithSave(strconv.Itoa(cacheConfig.MaxCacheSize), i18n.T("label_max_cache_size"))
 	maxCacheInput.ForceDigits = true
-	maxCacheInput.OnSave = func() {
+	maxCacheInput.OnSave = func() error {
 		size, err := strconv.Atoi(maxCacheInput.Value)
 		if err != nil {
-			return
+			return err
 		}
 		cacheConfig.UpdateMaxSize(size)
+		return nil
 	}
 	maxCacheInput.InputAppendItems = []fyne.CanvasObject{widget.NewLabel("MB")}
 	wholeContent.Add(maxCacheInput)

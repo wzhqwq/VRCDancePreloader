@@ -8,7 +8,7 @@ import (
 )
 
 type Runner interface {
-	Save(value string)
+	Save(value string) error
 	Run()
 
 	GetStatus() Status
@@ -36,9 +36,14 @@ func NewInputWithRunner(runner Runner, label string) *InputWithRunner {
 
 	t.UpdateStatus()
 
-	t.OnSave = func() {
-		runner.Save(t.Value)
+	t.OnSave = func() error {
+		err := runner.Save(t.Value)
+		if err != nil {
+			return err
+		}
+
 		runner.Run()
+		return nil
 	}
 
 	t.Extend(runner.GetValue(), label)

@@ -10,7 +10,7 @@ import (
 )
 
 type Tester interface {
-	Save(value string)
+	Save(value string) error
 	Test()
 
 	GetStatus() Status
@@ -44,8 +44,8 @@ func NewInputWithTester(tester Tester, label string) *InputWithTester {
 
 	t.updateStatus()
 
-	t.OnSave = func() {
-		tester.Save(t.Value)
+	t.OnSave = func() error {
+		return tester.Save(t.Value)
 	}
 
 	t.Extend(tester.GetValue(), label)

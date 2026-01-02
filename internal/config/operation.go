@@ -1,6 +1,8 @@
 package config
 
 import (
+	"net/url"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
@@ -108,7 +110,12 @@ func (pc *ProxyConfig) Init() {
 	}
 }
 
-func (pc *ProxyConfig) Update(item, value string) {
+func (pc *ProxyConfig) Update(item, value string) error {
+	_, err := url.Parse(value)
+	if err != nil {
+		return err
+	}
+
 	switch item {
 	case "pypydance-api":
 		pc.Pypy = value
@@ -129,6 +136,7 @@ func (pc *ProxyConfig) Update(item, value string) {
 		logger.FatalLnf("Unknown proxy item: %s", item)
 	}
 	SaveConfig()
+	return nil
 }
 
 func (pc *ProxyConfig) Test(item string) (bool, string) {

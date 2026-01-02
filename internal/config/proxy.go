@@ -53,13 +53,19 @@ func (t *ProxyTester) Test() {
 	}()
 }
 
-func (t *ProxyTester) Save(value string) {
+func (t *ProxyTester) Save(value string) error {
+	err := config.Proxy.Update(t.Item, value)
+	if err != nil {
+		return err
+	}
+
 	t.Value = value
 	t.Status = input.StatusUnknown
-	config.Proxy.Update(t.Item, value)
+
 	if t.Input != nil {
 		t.Input.SetTestBtn(false)
 	}
+	return nil
 }
 
 func (t *ProxyTester) GetStatus() input.Status {

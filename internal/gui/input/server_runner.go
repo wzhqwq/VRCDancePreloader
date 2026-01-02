@@ -22,15 +22,16 @@ type ServerRunner struct {
 	em *utils.EventManager[int]
 }
 
-func (h *ServerRunner) Save(value string) {
+func (h *ServerRunner) Save(value string) error {
 	port, err := strconv.Atoi(value)
 	if err != nil {
-		h.serverError = errors.New(i18n.T("tip_port_malformed"))
+		return errors.New(i18n.T("tip_port_malformed"))
 	}
 	if h.OnSave != nil {
 		h.OnSave(port)
 	}
 	h.em.NotifySubscribers(port)
+	return nil
 }
 
 func (h *ServerRunner) Run() {
