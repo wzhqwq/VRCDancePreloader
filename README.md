@@ -174,18 +174,21 @@ delete: [ ]
 
 本项目仅对VRChat的日志进行监听，并利用代理对跳舞房的视频域名提供本地缓存，不会对房间数据进行修改，不以任何方式对游戏进行修改。本项目不是模组或者修改器，不违反VRChat的服务条款。
 
-## TODO
+## TODO (近期)
 
-- [x] 断点续传验证
-- [x] 完成临时加载歌曲的自动转移
 - [ ] 稳定性优化，减少死锁
-- [x] 支持WannaDance
+- [ ] 支持更多舞蹈房
 - [ ] YouTube视频预加载（需要和yt-dlp完美配合，还没想好怎么做）
 - [x] b站视频预加载（准备走[bilibili-real-url](https://github.com/gizmo-ds/bilibili-real-url)）
 - [ ] <del>整合一下VRCX的API，实现PyPyDance的收藏同步</del>
-- [ ] 通过[OpenVROverlayPipe](https://github.com/BOLL7708/OpenVROverlayPipe)实现SteamVR内通知
-- [ ] 自由控制各类来源歌曲是否预加载
-- [ ] 欢迎屏幕
-- [ ] 展示更多的内部状态（下载队列、冷却时间）
 - [ ] 完善H5直播功能
+- [ ] 完善针对服务器限流和慢速下载时的降级策略
+
+## TODO (计划加入v3)
+
+- [ ] 自由控制各类来源歌曲是否预加载
+- [ ] 新手指引/特性变更提示
+- [ ] 展示更多的内部状态（下载队列、冷却时间）
 - [ ] 添加心率传感器
+- [ ] 重新设计软件界面，以更大的窗口同时展示更多信息，同时支持缩小为简略视图以便在Overlay插件上观看
+- [ ] 通过[OpenVROverlayPipe](https://github.com/BOLL7708/OpenVROverlayPipe)实现SteamVR内通知
