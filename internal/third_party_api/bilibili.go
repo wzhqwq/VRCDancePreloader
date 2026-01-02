@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
@@ -34,11 +35,14 @@ type BvInfo struct {
 	} `json:"pages"`
 }
 
-func requestBiliApi[T any](url string, ctx context.Context) (*T, error) {
+func requestBiliApi[T any](url, bvId string, ctx context.Context) (*T, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Set("Referer", fmt.Sprintf("https://www.bilibili.com/video/%s/", bvId))
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
 
 	res, err := requesting.GetBiliClient().Do(req)
 	if err != nil {
@@ -68,7 +72,7 @@ func GetBvInfo(bvID string, ctx context.Context) (*BvInfo, error) {
 		return info, nil
 	}
 
-	info, err := requestBiliApi[BvInfo](utils.GetBiliVideoInfoURL(bvID), ctx)
+	info, err := requestBiliApi[BvInfo](utils.GetBiliVideoInfoURL(bvID), bvID, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +102,7 @@ func GetBiliVideoUrl(bvID string, ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	playerInfo, err := requestBiliApi[BiliPlayerInfo](utils.GetBiliVideoPlayerURL(bvID, info.Cid), ctx)
+	playerInfo, err := requestBiliApi[BiliPlayerInfo](utils.GetBiliVideoPlayerURL(bvID, info.Cid), bvID, ctx)
 	if err != nil {
 		return "", err
 	}
