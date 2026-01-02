@@ -57,7 +57,7 @@ func InitBiliClient(proxyUrl string) {
 	}
 }
 func TestBiliClient() (bool, string) {
-	return testClient(biliClient, "BiliBili api", anonymousTestCase(utils.GetBiliVideoInfoURL("BV17g7XzME13")))
+	return testClient(biliClient, "BiliBili api", anonymousTestCaseGet(utils.GetBiliVideoInfoURL("BV17g7XzME13")))
 }
 
 func InitYoutubeVideoClient(proxyUrl string) {

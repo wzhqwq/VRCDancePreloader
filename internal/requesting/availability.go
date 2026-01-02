@@ -71,6 +71,15 @@ func anonymousTestCase(url string) testCase {
 	}
 }
 
+func anonymousTestCaseGet(url string) testCase {
+	return testCase{
+		url:    url,
+		useGet: true,
+
+		expectedStatus: http.StatusOK,
+	}
+}
+
 func authenticatedTestCase(url string) testCase {
 	return testCase{
 		url:    url,
