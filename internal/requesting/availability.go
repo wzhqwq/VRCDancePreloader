@@ -2,11 +2,12 @@ package requesting
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
+
+var logger = utils.NewLogger("Network")
 
 type testCase struct {
 	url    string
@@ -38,14 +39,14 @@ func accessClient(client *http.Client, tc testCase) error {
 }
 
 func testClient(client *http.Client, serviceName string, tc testCase) (bool, string) {
-	log.Printf("Testing %s client", serviceName)
+	logger.InfoLnf("Testing %s client", serviceName)
 
 	err := accessClient(client, tc)
 	if err != nil {
 		if client.Transport == nil {
-			log.Printf("[Warning] Cannot connect to %s service, maybe you should configure proxy: %v", serviceName, err)
+			logger.WarnLnf("Cannot connect to %s service, maybe you should configure proxy: %v", serviceName, err)
 		} else {
-			log.Printf("[Warning] Cannot connect to %s service through provided proxy: %v", serviceName, err)
+			logger.WarnLnf("Cannot connect to %s service through provided proxy: %v", serviceName, err)
 		}
 		return false, err.Error()
 	}

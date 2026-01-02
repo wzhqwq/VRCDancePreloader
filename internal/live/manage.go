@@ -1,9 +1,5 @@
 package live
 
-import (
-	"log"
-)
-
 var currentLiveServer *Server
 
 var OnSettingsChanged func(settings string)
@@ -13,7 +9,6 @@ func StartLiveServer(port int) error {
 	if currentLiveServer != nil {
 		currentLiveServer.Stop()
 	}
-	log.Println("Starting Live Server")
 	currentLiveServer = NewLiveServer(port)
 	return currentLiveServer.Start()
 }

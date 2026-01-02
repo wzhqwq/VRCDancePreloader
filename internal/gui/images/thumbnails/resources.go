@@ -6,7 +6,6 @@ import (
 	"image"
 	"image/jpeg"
 	"io"
-	"log"
 	"strings"
 	"sync"
 
@@ -50,6 +49,8 @@ var defaultThumbnail = "thumbnail-default.jpg"
 
 var thumbnails = map[string]image.Image{}
 var thumbnailsMutex sync.RWMutex
+
+var logger = utils.NewLogger("Thumbnails")
 
 func getThumbnail(name string) image.Image {
 	thumbnailsMutex.RLock()
@@ -124,23 +125,23 @@ func GetThumbnailImage(id, url string) image.Image {
 			}
 		}()
 
-		log.Println("Downloading thumbnail from ", url)
+		logger.InfoLn("Downloading thumbnail from ", url)
 		resp, err := requesting.RequestThumbnail(url)
 		if err != nil {
-			log.Println("Failed to get thumbnail:", err)
+			logger.ErrorLn("Failed to get thumbnail:", err)
 			return getThumbnail(defaultThumbnail)
 		}
 		defer resp.Body.Close()
 
 		data, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Println("Unable to read image data", err)
+			logger.ErrorLn("Unable to read image data", err)
 			return getThumbnail(defaultThumbnail)
 		}
 
 		img, err := jpeg.Decode(bytes.NewReader(data))
 		if err != nil {
-			log.Println("Failed to decode image:", err)
+			logger.ErrorLn("Failed to decode image:", err)
 			return getThumbnail(defaultThumbnail)
 		}
 

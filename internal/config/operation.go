@@ -1,8 +1,6 @@
 package config
 
 import (
-	"log"
-
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
@@ -23,9 +21,9 @@ func (hc *HijackConfig) Init() {
 		if err := hijack.Start(hc.InterceptedSites, hc.EnableHttps, hc.ProxyPort); err != nil {
 			if global_state.IsInGui() {
 				return err
-			} else {
-				log.Fatalf("Failed to start hijack server: %v", err)
 			}
+
+			logger.FatalLn("Failed to start hijack server:", err)
 		}
 		return nil
 	}
@@ -128,7 +126,7 @@ func (pc *ProxyConfig) Update(item, value string) {
 		pc.YoutubeImage = value
 		requesting.InitYoutubeImageClient(value)
 	default:
-		log.Fatalf("Unknown proxy item: %s", item)
+		logger.FatalLnf("Unknown proxy item: %s", item)
 	}
 	SaveConfig()
 }
@@ -146,7 +144,7 @@ func (pc *ProxyConfig) Test(item string) (bool, string) {
 	case "youtube-image":
 		return requesting.TestYoutubeImageClient()
 	default:
-		log.Fatalf("Unknown proxy item: %s", item)
+		logger.FatalLnf("Unknown proxy item: %s", item)
 		return false, ""
 	}
 }
@@ -156,7 +154,7 @@ func (kc *KeyConfig) Init() {
 		if kc.Youtube != "" {
 			third_party_api.YoutubeApiKey = kc.Youtube
 		} else {
-			log.Println("Youtube API feature is disabled because Youtube API key is missing")
+			logger.WarnLn("YouTube API feature is disabled because YouTube API key is missing")
 			config.Youtube.UpdateEnableApi(false)
 		}
 	}
@@ -248,9 +246,9 @@ func (lc *LiveConfig) Init() {
 		if err := live.StartLiveServer(lc.Port); err != nil {
 			if global_state.IsInGui() {
 				return err
-			} else {
-				log.Fatalf("Failed to start live server: %s", err)
 			}
+
+			logger.FatalLn("Failed to start live server:", err)
 		}
 		return nil
 	}

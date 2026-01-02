@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -21,7 +20,7 @@ func CheckWannaUrl(url string) (int, bool) {
 		id := matches[1]
 		num, err := strconv.Atoi(id)
 		if err != nil {
-			log.Println("Invalid wanna video id:", id)
+			parsingLogger.ErrorLn("Invalid WannaDance video id:", id)
 			return 0, false
 		}
 		return num, true

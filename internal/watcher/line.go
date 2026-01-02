@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"bytes"
-	"log"
 	"regexp"
 	"strconv"
 	"time"
@@ -80,7 +79,7 @@ func parseTimeStampWithOffset(pair string) time.Duration {
 func markURLPlaying(pair string, url string) bool {
 	now := parseTimeStampWithOffset(pair)
 	if playlist.MarkURLPlaying(url, now) {
-		log.Println("Playing", url, "at", now)
+		logger.InfoLn("Confirmed", url, "is playing from", now)
 		return true
 	}
 	return false

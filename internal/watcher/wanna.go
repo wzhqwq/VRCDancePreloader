@@ -2,11 +2,11 @@ package watcher
 
 import (
 	"encoding/json"
-	"log"
 	"regexp"
 	"strings"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 )
 
@@ -23,6 +23,8 @@ var wannaLastUserData = NewLastValue("")
 var wannaQueueChanged = NewLastValue(false)
 var wannaLastPlayedURL = NewLastValue("")
 var wannaLastSyncTime = NewLastValue("")
+
+var wannaLogger = utils.NewLogger("WannaDance Log Watcher")
 
 type wannaUserData struct {
 	//Version     string        `json:"version"`
@@ -142,28 +144,26 @@ func wannaPostProcess() {
 
 	if lastQueue != "" && lastUserData != "" {
 		if queueChanged {
-			log.Println("Unstable queue log, wait for one second.")
+			wannaLogger.InfoLn("Unstable queue log, wait for one second.")
 		} else {
 			wannaLastQueue.Reset("")
 			wannaLastUserData.Reset("")
 			// process the last log
-			log.Println("Processing queue:\n" + lastQueue)
+			wannaLogger.DebugLn("Processing queue:\n" + lastQueue)
 
 			var newQueue []queue.QueueItem
 
 			q, err := parseWannaQueue([]byte(lastQueue))
 			if err != nil {
-				log.Println("Error processing queue log:")
-				log.Println(err)
+				wannaLogger.ErrorLn("Error processing queue log:", err)
 				return
 			}
 			if lastUserData != "Wanna Dance" {
-				log.Println("And user data:\n" + lastUserData)
+				wannaLogger.DebugLn("And user data:\n" + lastUserData)
 				var userData wannaUserData
 				err = json.Unmarshal([]byte(lastUserData), &userData)
 				if err != nil {
-					log.Println("Error processing WannaDance user data log:")
-					log.Println(err)
+					wannaLogger.ErrorLn("Error processing WannaDance user data log:", err)
 				}
 
 				newQueue = append(newQueue, &queue.WannaQueueItem{

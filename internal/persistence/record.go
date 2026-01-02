@@ -4,12 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"log"
 	"math"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var localRecords *LocalRecords
@@ -64,7 +64,7 @@ func NewDanceRecordFromScan(rows *sql.Rows) (*DanceRecord, error) {
 	record.StartTime = time.Unix(startTimeInt, 0)
 	err := json.Unmarshal([]byte(orders), &record.Orders)
 	if err != nil {
-		log.Println("Error unmarshalling dance record: ", err)
+		logger.ErrorLn("Error unmarshalling dance record: ", err)
 	}
 	return record, nil
 }
@@ -77,7 +77,7 @@ func (r *DanceRecord) AddOrder(order Order) {
 	} else {
 		err := localRecords.addRecord(r)
 		if err != nil {
-			log.Println("error adding record:", err)
+			logger.ErrorLn("error adding record:", err)
 		}
 	}
 }

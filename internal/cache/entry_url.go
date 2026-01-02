@@ -3,7 +3,6 @@ package cache
 import (
 	"context"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -55,7 +54,7 @@ func (e *UrlBasedEntry) resolveUrl(ctx context.Context) error {
 	e.workingFile.Init(info.TotalSize, info.LastModified)
 
 	e.resolvedUrl = url
-	log.Println(e.id, "resolved to", url)
+	e.logger.InfoLn(e.id, "resolved to", url)
 	return nil
 }
 
@@ -96,7 +95,7 @@ func (e *UrlBasedEntry) GetDownloadStream() (io.ReadCloser, error) {
 	e.workingFile.MarkDownloading()
 	offset := e.workingFile.GetDownloadOffset()
 
-	log.Printf("Download %s start from %d, (total %d)", e.id, offset, e.workingFile.TotalLen())
+	e.logger.InfoLnf("Download %s start from %d, (total %d)", e.id, offset, e.workingFile.TotalLen())
 
 	return e.requestHttpResBody(e.resolvedUrl, offset, context.Background())
 }

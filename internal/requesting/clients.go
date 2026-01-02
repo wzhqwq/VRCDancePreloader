@@ -1,7 +1,6 @@
 package requesting
 
 import (
-	"log"
 	"net/http"
 	"net/url"
 
@@ -19,7 +18,7 @@ var youtubeImageClient *http.Client
 func createProxyClient(proxyURL string) *http.Client {
 	proxy, err := url.Parse(proxyURL)
 	if err != nil {
-		log.Fatalf("Error parsing proxy URL: %v", err)
+		logger.FatalLn("Error parsing proxy URL:", err)
 	}
 	return &http.Client{
 		Transport: &http.Transport{

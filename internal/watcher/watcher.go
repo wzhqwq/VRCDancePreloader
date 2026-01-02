@@ -2,16 +2,18 @@ package watcher
 
 import (
 	"errors"
-	"log"
 	"os"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var dirWatcher *fsnotify.Watcher
 var watchingFile *os.File
 var logBase string
+
+var logger = utils.NewLogger("Log Watcher")
 
 func sniffActiveLog() (string, error) {
 	// vrchat entry format: output_log_2024-08-15_21-22-15.txt
@@ -38,10 +40,10 @@ func sniffActiveLog() (string, error) {
 	}
 
 	if latestFile == nil {
-		return "", errors.New("no active entry found")
+		return "", errors.New("no active log file found")
 	}
 
-	log.Println("Found active entry:", latestFile.Name())
+	logger.InfoLn("Found latest active log file:", latestFile.Name())
 
 	return logBase + "/" + latestFile.Name(), nil
 }
@@ -53,14 +55,14 @@ func keepTrackUntilClose(path string) error {
 	}
 	watchingFile = file
 
-	log.Println("Watching file:", path)
+	logger.InfoLn("Watching file:", path)
 
 	go func() {
 		t := time.Now()
 		seekStart, err := ReadFromEnd(file)
-		log.Println("Read from end takes", time.Since(t).Milliseconds(), "ms")
+		logger.InfoLn("Reading from end takes", time.Since(t).Milliseconds(), "ms")
 		if err != nil {
-			log.Println(err)
+			logger.ErrorLn("Error reading from end:", err)
 			return
 		}
 		for {
@@ -93,7 +95,7 @@ func watch() error {
 		dirWatcher = nil
 	}()
 
-	log.Println("Watching directory:", logBase)
+	logger.InfoLn("Watching directory:", logBase)
 
 	for {
 		select {
@@ -145,7 +147,8 @@ func Start(base string) error {
 	go func() {
 		err = watch()
 		if err != nil {
-			log.Panic(err)
+			logger.ErrorLn("Error watching directory:", err)
+			panic(err)
 		}
 	}()
 

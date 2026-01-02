@@ -3,7 +3,6 @@ package third_party_api
 import (
 	"context"
 	"errors"
-	"log"
 	"strings"
 	"time"
 
@@ -16,12 +15,12 @@ var youtubeVideoInfoCache = utils.NewWeakCache[*youtube.Video](10)
 
 func GetYoutubeInfoFromApi(videoID string) (*youtube.Video, error) {
 	if info, ok := youtubeVideoInfoCache.Get(videoID); ok {
-		log.Println("cache hit", videoID)
+		logger.DebugLn("cache hit", videoID)
 		return info, nil
 	}
 
 	if YoutubeApiKey == "" {
-		return nil, errors.New("empty Youtube API key")
+		return nil, errors.New("empty YouTube API key")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -75,7 +74,7 @@ func GetYoutubeDurationFromApi(videoID string) (time.Duration, error) {
 func GetYoutubeTitle(videoID string) string {
 	title, err := GetYoutubeTitleFromApi(videoID)
 	if err != nil {
-		log.Println("Failed to get youtube title by api: " + videoID)
+		logger.ErrorLn("Failed to get YouTube title by api:", videoID)
 		return "YouTube " + videoID
 	}
 	return title

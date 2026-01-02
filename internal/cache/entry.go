@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -16,6 +15,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/continuous"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/fragmented"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/legacy_file"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var unixEpochTime = time.Unix(0, 0)
@@ -53,12 +53,15 @@ type BaseEntry struct {
 	workingFileMutex sync.RWMutex
 
 	workingFile rw_file.DeferredReadableFile
+
+	logger *utils.CustomLogger
 }
 
 func ConstructBaseEntry(id string, client *http.Client) BaseEntry {
 	return BaseEntry{
 		id:     id,
 		client: client,
+		logger: utils.NewLogger("Cached " + id),
 	}
 }
 
@@ -122,7 +125,7 @@ type RemoteVideoInfo struct {
 }
 
 func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*RemoteVideoInfo, error) {
-	log.Println("request info", url)
+	e.logger.InfoLn("Request info", url)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -130,7 +133,7 @@ func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*Remote
 
 	res, err := e.client.Do(req)
 	if err != nil {
-		log.Println("Failed to get ", url, "reason:", err)
+		e.logger.ErrorLn("Failed to get ", url, "reason:", err)
 		return nil, err
 	}
 	defer res.Body.Close()
@@ -155,7 +158,7 @@ func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*Remote
 	}, nil
 }
 func (e *BaseEntry) requestHttpResBody(url string, offset int64, ctx context.Context) (io.ReadCloser, error) {
-	log.Println("request body", url, offset)
+	e.logger.InfoLn("Request body", url, offset)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -200,7 +203,7 @@ func (e *BaseEntry) Release() {
 			if e.openCount.Load() <= 0 {
 				err := e.Close()
 				if err != nil {
-					log.Println("failed to close file", e.id, err)
+					e.logger.ErrorLn("failed to close file", e.id, err)
 				}
 			}
 		}()

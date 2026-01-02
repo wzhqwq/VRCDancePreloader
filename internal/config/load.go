@@ -2,14 +2,16 @@ package config
 
 import (
 	"errors"
-	"log"
 	"os"
 	"sync"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"gopkg.in/yaml.v3"
 )
+
+var logger = utils.NewLogger("Config File")
 
 type KeyConfig struct {
 	Youtube string `yaml:"youtube-api"`
@@ -140,20 +142,20 @@ func LoadConfig() {
 
 	_, err := os.Stat("config.yaml")
 	if errors.Is(err, os.ErrPermission) {
-		log.Fatalln("config.yaml permission denied")
+		logger.FatalLn("config.yaml permission denied")
 	}
 
 	if err == nil {
 		configFile, err := os.Open("config.yaml")
 		if err != nil {
-			log.Fatalf("open config.yaml error: %s", err)
+			logger.FatalLnf("Open config.yaml error: %s", err)
 		}
 		defer configFile.Close()
 
 		decoder := yaml.NewDecoder(configFile)
 		err = decoder.Decode(&config)
 		if err != nil {
-			log.Fatalf("Failed to parse config.yaml: %s", err)
+			logger.FatalLnf("Failed to parse config.yaml: %s", err)
 		}
 	}
 
@@ -173,14 +175,14 @@ func SaveConfig() {
 
 	configFile, err := os.Create("config.yaml")
 	if err != nil {
-		log.Fatalf("Open or create config.yaml error: %s", err)
+		logger.FatalLnf("Open or create config.yaml error: %s", err)
 	}
 	defer configFile.Close()
 
 	encoder := yaml.NewEncoder(configFile)
 	err = encoder.Encode(&config)
 	if err != nil {
-		log.Fatalf("Failed to save config.yaml: %s", err)
+		logger.FatalLnf("Failed to save config.yaml: %s", err)
 	}
 }
 

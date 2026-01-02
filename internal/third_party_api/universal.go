@@ -1,7 +1,6 @@
 package third_party_api
 
 import (
-	"log"
 	"strings"
 	"time"
 
@@ -9,6 +8,8 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
+
+var logger = utils.NewLogger("Third Party API")
 
 func GetThumbnailByInternalID(id string) future.Future[string] {
 	if pypyId, isPypy := utils.CheckIdIsPyPy(id); isPypy {
@@ -30,7 +31,7 @@ func GetThumbnailByInternalID(id string) future.Future[string] {
 		return future.New(func() string {
 			url, err := GetBiliVideoThumbnail(bvId)
 			if err != nil {
-				log.Println("error while getting bilibili video thumbnail:", err)
+				logger.ErrorLn("Error while getting BiliBili video thumbnail:", err)
 				return ""
 			}
 			return url
@@ -71,7 +72,7 @@ func GetDurationByInternalID(id string) future.Future[time.Duration] {
 			return future.New(func() time.Duration {
 				d, err := GetYoutubeDuration(ytId)
 				if err != nil {
-					log.Println("error while getting youtube video duration:", err)
+					logger.ErrorLn("Error while getting YouTube video duration:", err)
 					return 0
 				}
 				return d
@@ -83,7 +84,7 @@ func GetDurationByInternalID(id string) future.Future[time.Duration] {
 		return future.New(func() time.Duration {
 			d, err := GetBiliVideoDuration(bvId)
 			if err != nil {
-				log.Println("error while getting bilibili video duration:", err)
+				logger.ErrorLn("Error while getting BiliBili video duration:", err)
 				return 0
 			}
 			return time.Duration(d) * time.Second

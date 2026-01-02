@@ -1,7 +1,6 @@
 package watcher
 
 import (
-	"log"
 	"slices"
 
 	"github.com/samber/lo"
@@ -40,7 +39,8 @@ func diffQueues(old []*song.PreloadedSong, new []queue.QueueItem) {
 		}
 	}
 
-	log.Println(
+	logger.InfoLn(
+		"playlist changed:",
 		lo.Map(old, func(item *song.PreloadedSong, _ int) string {
 			return item.GetSongId()
 		}),

@@ -1,6 +1,11 @@
 package playlist
 
-import "github.com/wzhqwq/VRCDancePreloader/internal/stability"
+import (
+	"github.com/wzhqwq/VRCDancePreloader/internal/stability"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+)
+
+var logger = utils.NewLogger("Playlist")
 
 func Init(maxPreload int) {
 	currentPlaylist = newPlayList(maxPreload)

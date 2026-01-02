@@ -2,10 +2,11 @@ package watcher
 
 import (
 	"encoding/json"
-	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
-	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
-	"log"
 	"regexp"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/watcher/queue"
 )
 
 var pypyDanceQueueRegex = regexp.MustCompile(`^\[PyPyDanceQueue] (\[.*])`)
@@ -14,6 +15,8 @@ var pypyVideoPlayRegex = regexp.MustCompile(`^\[VRCX] VideoPlay\(PyPyDance\) "(.
 var pypyLastQueue = NewLastValue("")
 var pypyLastPlayedTime = NewLastValue("")
 var pypyLastPlayedURL = NewLastValue("")
+
+var pypyLogger = utils.NewLogger("PyPyDance Log Watcher")
 
 func parsePyPyQueue(data []byte) ([]queue.PyPyQueueItem, error) {
 	var items []queue.PyPyQueueItem
@@ -66,14 +69,13 @@ func pypyPostProcess() {
 		// clear the received logs
 
 		// process the last log
-		log.Println("Processing queue:\n" + lastQueue)
+		pypyLogger.DebugLn("Processing queue:\n" + lastQueue)
 
 		var newQueue []queue.QueueItem
 
 		q, err := parsePyPyQueue([]byte(lastQueue))
 		if err != nil {
-			log.Println("Error processing queue log:")
-			log.Println(err)
+			pypyLogger.ErrorLn("Error processing queue log:", err)
 			return
 		}
 		for _, i := range q {

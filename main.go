@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
@@ -10,6 +9,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tui"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 
 	"github.com/alexflint/go-arg"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
@@ -24,7 +24,9 @@ import (
 	"syscall"
 )
 
-var build_gui_on = false
+var buildGuiOn = false
+
+var logger = utils.NewLogger("VRCDP")
 
 var args struct {
 	VrChatDir string `arg:"-d,--vrchat-dir" default:"" help:"VRChat directory"`
@@ -43,7 +45,7 @@ func main() {
 	arg.MustParse(&args)
 
 	// Apply build tag
-	if build_gui_on {
+	if buildGuiOn {
 		args.GuiEnabled = true
 	}
 
@@ -71,7 +73,7 @@ func main() {
 	signal.Notify(osSignalCh, syscall.SIGINT, syscall.SIGTERM)
 
 	// The ending note
-	defer log.Println("Gracefully stopped")
+	defer logger.InfoLn("Gracefully stopped")
 
 	songListCtx, cancel := context.WithCancel(context.Background())
 	cache.InitSongList(songListCtx)
@@ -79,23 +81,23 @@ func main() {
 
 	err := config.GetDbConfig().Init()
 	if err != nil {
-		log.Println("Failed to init database:", err)
+		logger.InfoLn("Failed to init database:", err)
 		return
 	}
 	defer func() {
-		log.Println("Closing database")
+		logger.InfoLn("Closing database")
 		persistence.CloseDB()
 	}()
 
 	config.GetCacheConfig().Init()
 	defer func() {
-		log.Println("Stopping cache")
+		logger.InfoLn("Stopping cache")
 		cache.StopCache()
 	}()
 
 	config.GetDownloadConfig().Init()
 	defer func() {
-		log.Println("Stopping all downloading tasks")
+		logger.InfoLn("Stopping all downloading tasks")
 		download.StopAllAndWait()
 	}()
 
@@ -106,7 +108,7 @@ func main() {
 	}
 	config.GetPreloadConfig().Init()
 	defer func() {
-		log.Println("Stopping playlist")
+		logger.InfoLn("Stopping playlist")
 		playlist.StopPlayList()
 	}()
 
@@ -119,18 +121,18 @@ func main() {
 	if logDir == "" {
 		roaming, err := os.UserConfigDir()
 		if err != nil {
-			log.Println("Failed to get user config directory:", err)
+			logger.ErrorLn("Failed to get user config directory:", err)
 			return
 		}
 		logDir = filepath.Join(roaming, "..", "LocalLow", "VRChat", "VRChat")
 	}
 	err = watcher.Start(logDir)
 	if err != nil {
-		log.Println("Failed to start watcher:", err)
+		logger.ErrorLn("Failed to start watcher:", err)
 		return
 	}
 	defer func() {
-		log.Println("Stopping log watcher")
+		logger.InfoLn("Stopping log watcher")
 		watcher.Stop()
 	}()
 
@@ -141,13 +143,13 @@ func main() {
 	}
 	config.GetHijackConfig().Init()
 	defer func() {
-		log.Println("Stopping proxy")
+		logger.InfoLn("Stopping proxy")
 		config.GetHijackConfig().Stop()
 	}()
 
 	config.GetLiveConfig().Init()
 	defer func() {
-		log.Println("Stopping live")
+		logger.InfoLn("Stopping live")
 		config.GetLiveConfig().Stop()
 	}()
 
@@ -159,7 +161,7 @@ func main() {
 		}
 		tui.Start()
 		defer func() {
-			log.Println("Stopping TUI")
+			logger.InfoLn("Stopping TUI")
 			tui.Stop()
 		}()
 	} else if args.GuiEnabled {
@@ -170,13 +172,13 @@ func main() {
 		}
 		main_window.Start()
 		defer func() {
-			log.Println("Stopping GUI")
+			logger.InfoLn("Stopping GUI")
 			main_window.Stop()
 		}()
 
 		go func() {
 			<-osSignalCh
-			log.Println("Quitting...")
+			logger.InfoLn("Quitting...")
 			custom_fyne.Quit()
 		}()
 		custom_fyne.MainLoop()

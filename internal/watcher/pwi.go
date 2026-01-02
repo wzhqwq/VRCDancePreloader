@@ -3,14 +3,18 @@ package watcher
 import (
 	"encoding/json"
 	"errors"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/service"
-	"log"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+
 	"regexp"
 )
 
 var pwiRequestRegex = regexp.MustCompile(`^\[VRCX-World] (\{.*})`)
 
 var lastRequests = NewOrderedValues[string]()
+
+var pwiLogger = utils.NewLogger("PWI")
 
 type pwiRequest struct {
 	RequestType   string `json:"requestType"`
@@ -41,7 +45,7 @@ func processPwiLog(data []byte) error {
 			return err
 		}
 
-		log.Printf("Set %s to %s in %s\n", req.Key, req.Value, world.World)
+		pwiLogger.DebugLnf("Set %s to %s in %s", req.Key, req.Value, world.World)
 		break
 	case "delete":
 		if req.Key == "" {
@@ -53,7 +57,7 @@ func processPwiLog(data []byte) error {
 			return err
 		}
 
-		log.Printf("Delete %s in %s\n", req.Key, world.World)
+		pwiLogger.DebugLnf("Delete %s in %s", req.Key, world.World)
 		break
 	case "delete-all":
 		err = world.Clear()
@@ -61,7 +65,7 @@ func processPwiLog(data []byte) error {
 			return err
 		}
 
-		log.Printf("Clear data in %s\n", world.World)
+		pwiLogger.DebugLnf("Clear data in %s", world.World)
 		break
 	case "set-setting":
 		if req.Key == "" || req.Value == "" {
@@ -73,7 +77,7 @@ func processPwiLog(data []byte) error {
 			return err
 		}
 
-		log.Printf("Set %s to %s in the settings of %s\n", req.Key, req.Value, world.World)
+		pwiLogger.DebugLnf("Set %s to %s in the settings of %s", req.Key, req.Value, world.World)
 		break
 	default:
 		return errors.New("invalid request type")
@@ -99,7 +103,7 @@ func pwiPostProcess() {
 		for _, request := range requests {
 			err := processPwiLog([]byte(request.value))
 			if err != nil {
-				log.Println("Error while processing PWI request: " + err.Error())
+				logger.ErrorLn("Error while processing PWI request:", err)
 			}
 		}
 	}

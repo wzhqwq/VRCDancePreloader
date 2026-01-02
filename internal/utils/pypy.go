@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -35,7 +34,7 @@ func CheckPyPyUrl(url string) (int, bool) {
 		}
 		num, err := strconv.Atoi(id)
 		if err != nil {
-			log.Println("Invalid pypy video id:", id)
+			parsingLogger.ErrorLn("Invalid PyPyDance video id:", id)
 			return 0, false
 		}
 		return num, true

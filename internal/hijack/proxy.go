@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"log"
 	"net"
 	"net/http"
 	"runtime/debug"
@@ -13,12 +12,15 @@ import (
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 
 	"github.com/elazarl/goproxy"
 )
 
 var runningServer *http.Server
 var proxy *goproxy.ProxyHttpServer
+
+var logger = utils.NewLogger("Hijacking")
 
 func orPanic(err error) {
 	if err != nil {
@@ -46,9 +48,9 @@ func connectDial(ctx context.Context, network, addr string) (c net.Conn, err err
 func handleVideoRequest(w http.ResponseWriter, req *http.Request) (ok bool, wg *sync.WaitGroup) {
 	defer func() {
 		if e := recover(); e != nil {
-			log.Printf("Error when processing request: %v", e)
-			log.Println(string(debug.Stack()))
-			log.Println("Fallback to direct access")
+			logger.ErrorLn("Error when processing request:", e)
+			logger.DebugLn(string(debug.Stack()))
+			logger.WarnLn("Fallback to direct access")
 		}
 	}()
 	ok, wg = handlePypyRequest(w, req)
@@ -69,7 +71,7 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) (ok bool, wg *
 func handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
 	defer func() {
 		if e := recover(); e != nil {
-			log.Printf("error connecting to remote: %v", e)
+			logger.ErrorLn("error connecting to remote:", e)
 			client.Write([]byte("HTTP/1.1 500 Cannot reach destination\r\n\r\n"))
 		}
 		client.Close()
@@ -107,9 +109,9 @@ func handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
 func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	defer func() {
 		if e := recover(); e != nil {
-			log.Printf("Error when processing request: %v", e)
-			log.Println(string(debug.Stack()))
-			log.Println("Fallback to direct access")
+			logger.ErrorLn("Error when processing request:", e)
+			logger.DebugLn(string(debug.Stack()))
+			logger.WarnLn("Fallback to direct access")
 		}
 	}()
 
@@ -150,7 +152,7 @@ func Start(sites []string, enableHttps bool, port int) error {
 	}
 
 	runningServer = &http.Server{Addr: "127.0.0.1:" + strconv.Itoa(port), Handler: proxy}
-	log.Println("Starting proxy server on port", port)
+	logger.InfoLn("Starting server on port", port)
 
 	if err := runningServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err
@@ -168,7 +170,7 @@ func Stop() {
 		defer shutdownRelease()
 
 		if err := runningServer.Shutdown(shutdownCtx); err != nil {
-			log.Fatalf("HTTP shutdown error: %v", err)
+			logger.FatalLn("HTTP shutdown error:", err)
 		}
 		runningServer = nil
 	}

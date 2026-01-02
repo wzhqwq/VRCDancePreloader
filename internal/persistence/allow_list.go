@@ -1,10 +1,10 @@
 package persistence
 
 import (
+	"sync"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"log"
-	"sync"
 )
 
 const allowListTableSQL = `
@@ -27,7 +27,7 @@ func (a *AllowList) addEntry(id string, size int64) {
 	query := "INSERT INTO allow_list (id, size) VALUES (?, ?)"
 	_, err := DB.Exec(query, id, size)
 	if err != nil {
-		log.Println("failed to save allow list entry:", err)
+		logger.ErrorLn("Failed to save allow list entry:", err)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (a *AllowList) removeEntry(id string) {
 	query := "DELETE FROM allow_list WHERE id = ?"
 	_, err := DB.Exec(query, id)
 	if err != nil {
-		log.Println("failed to remove allow list entry:", err)
+		logger.ErrorLn("Failed to remove allow list entry:", err)
 		return
 	}
 
@@ -84,7 +84,7 @@ func (a *AllowList) RemoveFromAllowList(id string) {
 func (a *AllowList) GetAllowList() []types.CacheFileInfo {
 	rows, err := DB.Query("SELECT id, size FROM allow_list")
 	if err != nil {
-		log.Println("failed to load allow list:", err)
+		logger.ErrorLn("Failed to load allow list:", err)
 		return nil
 	}
 	defer rows.Close()
@@ -94,7 +94,7 @@ func (a *AllowList) GetAllowList() []types.CacheFileInfo {
 		var entry types.CacheFileInfo
 		err := rows.Scan(&entry.ID, &entry.Size)
 		if err != nil {
-			log.Println("failed to load allow list entry:", err)
+			logger.ErrorLn("Failed to load allow list entry:", err)
 			continue
 		}
 
@@ -118,7 +118,7 @@ func (a *AllowList) LoadEntries() error {
 
 	rows, err := DB.Query("SELECT id, size FROM allow_list")
 	if err != nil {
-		log.Println("failed to load allow list:", err)
+		logger.ErrorLn("Failed to load allow list:", err)
 		return err
 	}
 
@@ -127,7 +127,7 @@ func (a *AllowList) LoadEntries() error {
 		var size int64
 		err = rows.Scan(&id, &size)
 		if err != nil {
-			log.Println("failed to load allow list entry:", err)
+			logger.ErrorLn("Failed to load allow list entry:", err)
 			continue
 		}
 
@@ -147,7 +147,7 @@ func InitAllowList() {
 
 	err := currentAllowList.LoadEntries()
 	if err != nil {
-		log.Println("failed to load allow list:", err)
+		logger.ErrorLn("Failed to load allow list:", err)
 	}
 }
 

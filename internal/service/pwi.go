@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"errors"
+
 	"github.com/google/uuid"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"log"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+
 	"net/http"
 	"strings"
 	"time"
@@ -13,6 +15,8 @@ import (
 
 var currentPWIServer *PWIServer
 var currentWorldID = ""
+
+var pwiLogger = utils.NewLogger("PWI")
 
 type PWIConnection struct {
 	worldData     *persistence.WorldData
@@ -225,12 +229,12 @@ func StartPWIServer() {
 	if currentPWIServer != nil {
 		return
 	}
-	log.Println("Starting PWI Server")
+	pwiLogger.InfoLn("Starting PWI Server")
 	currentPWIServer = NewPWIServer()
 
 	go func() {
 		if err := currentPWIServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			log.Println("Error starting PWI Server:", err)
+			pwiLogger.ErrorLn("Error starting PWI Server:", err)
 			currentPWIServer = nil
 		}
 	}()
@@ -242,7 +246,7 @@ func StopPWIServer() {
 		defer shutdownRelease()
 
 		if err := currentPWIServer.Shutdown(shutdownCtx); err != nil {
-			log.Fatalf("HTTP shutdown error: %v", err)
+			pwiLogger.FatalLn("HTTP shutdown error:", err)
 		}
 		currentPWIServer = nil
 	}

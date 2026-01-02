@@ -3,7 +3,6 @@ package hijack
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"net/http"
 	"sync"
@@ -14,6 +13,8 @@ import (
 )
 
 var reqIncrement = 0
+
+var requestLogger = utils.NewLogger("")
 
 const reqIdMax = math.MaxInt32
 
@@ -28,11 +29,11 @@ func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req 
 
 		rangeHeader := req.Header.Get("Range")
 		if rangeHeader == "" {
-			log.Printf("[Request %d] Intercepted %s video %s full request", reqId, platform, id)
+			requestLogger.InfoLnf("[Request %d] Intercepted %s video %s full request", reqId, platform, id)
 		} else {
-			log.Printf("[Request %d] Intercepted %s video %s range: %s", reqId, platform, id, rangeHeader)
+			requestLogger.InfoLnf("[Request %d] Intercepted %s video %s range: %s", reqId, platform, id, rangeHeader)
 		}
-		defer log.Printf("[Request %d] Finished", reqId)
+		defer requestLogger.InfoLnf("[Request %d] Finished", reqId)
 
 		defer wg.Done()
 		ctx, cancel := context.WithCancel(
@@ -43,26 +44,26 @@ func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req 
 
 		entry, err := playlist.Request(platform, id, ctx)
 		if err != nil {
-			log.Printf("[Request %d] Failed to load %s video, reason: %v", reqId, platform, err)
+			requestLogger.ErrorLnf("[Request %d] Failed to load %s video, reason: %v", reqId, platform, err)
 			handledCh <- false
 			return
 		}
 
 		rs, err := entry.GetReadSeeker(ctx)
 		if err != nil {
-			log.Printf("[Request %d] Failed to load %s video, reason: %v", reqId, platform, err)
+			requestLogger.ErrorLnf("[Request %d] Failed to load %s video, reason: %v", reqId, platform, err)
 			handledCh <- false
 			return
 		}
 
 		contentLength, err := entry.TotalLen()
 		if err != nil {
-			log.Printf("[Request %d] Failed to load %s video, reason: %v", reqId, platform, err)
+			requestLogger.ErrorLnf("[Request %d] Failed to load %s video, reason: %v", reqId, platform, err)
 			handledCh <- false
 			return
 		}
 
-		log.Printf("[Request %d] Requested %s video %s is available", reqId, platform, id)
+		requestLogger.InfoLnf("[Request %d] Requested %s video %s is available", reqId, platform, id)
 		handledCh <- true
 
 		if rangeHeader != "" {

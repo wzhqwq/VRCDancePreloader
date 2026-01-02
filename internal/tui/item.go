@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/jedib0t/go-pretty/v6/progress"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
@@ -59,7 +58,7 @@ func (it *ItemTui) RenderLoop() {
 				case song.Failed:
 					if it.pt != nil {
 						it.pt.MarkAsErrored()
-						log.Printf("Preload %s error: %s\n", it.ps.GetSongId(), it.ps.PreloadError.Error())
+						fmt.Printf("Preload %s error: %s\n", it.ps.GetSongId(), it.ps.PreloadError.Error())
 						it.pt = nil
 					}
 				case song.Removed:

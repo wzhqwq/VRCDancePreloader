@@ -1,9 +1,5 @@
 package legacy_file
 
-import (
-	"log"
-)
-
 func (f *File) Append(bytes []byte) (int, error) {
 	f.fileMutex.RLock()
 	defer func() {
@@ -13,7 +9,7 @@ func (f *File) Append(bytes []byte) (int, error) {
 			go func() {
 				err := f.Save()
 				if err != nil {
-					log.Printf("Failed to rename file: %s, err: %s", f.baseName, err)
+					logger.ErrorLnf("Failed to rename file: %s, err: %v", f.baseName, err)
 				}
 			}()
 		}

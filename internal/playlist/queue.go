@@ -1,8 +1,6 @@
 package playlist
 
 import (
-	"log"
-
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
@@ -77,7 +75,7 @@ func ClearAndSetQueue(items []queue.QueueItem) {
 
 	if len(currentPlaylist.Items) > 0 {
 		resetPlaylist(currentPlaylist.RoomName)
-		log.Println("New playlist")
+		logger.InfoLn("New playlist")
 	}
 
 	if len(items) > 0 {
@@ -86,7 +84,7 @@ func ClearAndSetQueue(items []queue.QueueItem) {
 		})
 		currentPlaylist.Update(list)
 		currentPlaylist.Start()
-		log.Println("Started playlist")
+		logger.InfoLn("Started playlist")
 	}
 }
 
@@ -95,6 +93,8 @@ func EnterNewRoom(roomName string) {
 	if currentPlaylist == nil {
 		return
 	}
+
+	logger.InfoLn("Entering new room", roomName)
 
 	if len(currentPlaylist.Items) > 0 {
 		resetPlaylist(roomName)

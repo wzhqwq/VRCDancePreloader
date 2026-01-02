@@ -3,7 +3,6 @@ package persistence
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"sync"
 )
 
@@ -61,7 +60,7 @@ func NewWorldData(world string) *WorldData {
 	q := "INSERT INTO world_data (world, data, settings) VALUES (?, ?, ?)"
 	_, err = DB.Exec(q, world, "{}", initialSettingsJson)
 	if err != nil {
-		log.Printf("failed to add world data: %v", err)
+		logger.ErrorLn("Failed to add world data:", err)
 	}
 
 	return &WorldData{
@@ -119,17 +118,17 @@ func (w *WorldData) GetAll() map[string]string {
 func (w *WorldData) save() error {
 	dataJson, err := json.Marshal(w.Data)
 	if err != nil {
-		log.Printf("failed to save world data: %v", err)
+		logger.ErrorLn("Failed to save world data:", err)
 		return err
 	}
 	settingsJson, err := json.Marshal(w.Settings)
 	if err != nil {
-		log.Printf("failed to save world data: %v", err)
+		logger.ErrorLn("Failed to save world data:", err)
 		return err
 	}
 	_, err = DB.Exec("UPDATE world_data SET data=?, settings=? WHERE world=?", dataJson, settingsJson, w.World)
 	if err != nil {
-		log.Printf("failed to save world data: %v", err)
+		logger.ErrorLn("Failed to save world data:", err)
 		return err
 	}
 	return nil

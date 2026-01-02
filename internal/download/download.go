@@ -3,7 +3,6 @@ package download
 import (
 	"errors"
 	"io"
-	"log"
 	"sync"
 	"time"
 
@@ -78,7 +77,7 @@ func (t *Task) Download(retryDelay bool) {
 	cacheEntry, err := cache.OpenCacheEntry(t.ID, "[Downloader]")
 	if err != nil {
 		t.Error = err
-		log.Println("Skipped", t.ID, "due to", err)
+		logger.WarnLn("Skipped", t.ID, "due to", err)
 		return
 	}
 	defer cache.ReleaseCacheEntry(t.ID, "[Downloader]")

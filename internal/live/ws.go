@@ -2,7 +2,6 @@ package live
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -39,14 +38,14 @@ func (ws *WsSession) Close() {
 func (ws *WsSession) SendText(text []byte) {
 	err := ws.conn.WriteMessage(websocket.TextMessage, text)
 	if err != nil {
-		log.Println("Error sending message to session:", err)
+		logger.ErrorLn("Error sending message to session:", err)
 	}
 }
 
 func (s *Server) handleWs(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("Error upgrading to websocket:", err)
+		logger.ErrorLn("Error upgrading to websocket:", err)
 		return
 	}
 
@@ -54,7 +53,7 @@ func (s *Server) handleWs(w http.ResponseWriter, r *http.Request) {
 		conn: conn,
 	}
 	conn.SetCloseHandler(func(code int, text string) error {
-		log.Println("WebSocket closed:", code, text)
+		logger.ErrorLn("WebSocket closed:", code, text)
 		if s.running {
 			s.closedSession <- session
 		}
@@ -65,11 +64,11 @@ func (s *Server) handleWs(w http.ResponseWriter, r *http.Request) {
 		for {
 			mType, data, err := conn.ReadMessage()
 			if err != nil {
-				log.Println("Error reading message from session:", err)
+				logger.ErrorLn("Error reading message from session:", err)
 				break
 			}
 			if mType == websocket.TextMessage {
-				log.Println("Received message:", string(data))
+				logger.DebugLn("Received message:", string(data))
 				s.HandleClientMessage(session, data)
 			}
 		}
@@ -86,7 +85,7 @@ func (s *Server) HandleClientMessage(session *WsSession, data []byte) {
 	msg := Message{}
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		log.Println("Error unmarshalling message:", err)
+		logger.ErrorLn("Error unmarshalling message:", err)
 	}
 
 	switch msg.Type {
@@ -104,7 +103,7 @@ func toJsonMessage(t string, payload interface{}) ([]byte, bool) {
 	}
 	j, err := json.Marshal(m)
 	if err != nil {
-		log.Println("Error sending", t, ":", err)
+		logger.ErrorLn("Error sending", t, ":", err)
 		return nil, false
 	}
 	return j, true

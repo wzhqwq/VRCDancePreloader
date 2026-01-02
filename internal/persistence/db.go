@@ -4,9 +4,12 @@ import (
 	"database/sql"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var DB *sql.DB
+
+var logger = utils.NewLogger("DB")
 
 func InitDB(dbFilePath string) error {
 	var err error

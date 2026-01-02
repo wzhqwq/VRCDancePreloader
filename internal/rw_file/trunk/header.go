@@ -2,7 +2,6 @@ package trunk
 
 import (
 	"encoding/binary"
-	"log"
 	"time"
 )
 
@@ -40,14 +39,14 @@ const bodyOffset = trunksOffset + numTrunks
 func (f *File) tryCreate() bool {
 	err := f.file.Truncate(bodyOffset)
 	if err != nil {
-		log.Printf("Failed to truncate cache file: %v", err)
+		logger.ErrorLn("Failed to truncate cache file:", err)
 		return false
 	}
 
 	// write magic
 	_, err = f.file.WriteAt([]byte(magic), magicOffset)
 	if err != nil {
-		log.Printf("Failed to write magic: %v", err)
+		logger.ErrorLn("Failed to write magic:", err)
 		return false
 	}
 
@@ -79,7 +78,7 @@ func (f *File) writeFullSize() bool {
 	binary.LittleEndian.PutUint64(int64Buf, uint64(f.FullSize))
 	_, err := f.file.WriteAt(int64Buf, fullSizeOffset)
 	if err != nil {
-		log.Printf("Failed to write full size: %v", err)
+		logger.ErrorLn("Failed to write full size:", err)
 		return false
 	}
 	return true
@@ -91,7 +90,7 @@ func (f *File) writeLastModifiedTime() bool {
 	binary.LittleEndian.PutUint64(int64Buf, uint64(unix))
 	_, err := f.file.WriteAt(int64Buf, lastModifiedOffset)
 	if err != nil {
-		log.Printf("Failed to write last modified time: %v", err)
+		logger.ErrorLn("Failed to write last modified time:", err)
 		return false
 	}
 	return true
@@ -105,7 +104,7 @@ func (f *File) writeStates() bool {
 
 	_, err := f.file.WriteAt([]byte{stateByte}, statesOffset)
 	if err != nil {
-		log.Printf("Failed to write states: %v", err)
+		logger.ErrorLn("Failed to write states:", err)
 		return false
 	}
 	return true
@@ -114,7 +113,7 @@ func (f *File) writeStates() bool {
 func (f *File) writeTrunks() bool {
 	_, err := f.file.WriteAt(f.trunks, trunksOffset)
 	if err != nil {
-		log.Printf("Failed to write trunks: %v", err)
+		logger.ErrorLn("Failed to write trunks:", err)
 		return false
 	}
 	return true
@@ -123,14 +122,14 @@ func (f *File) writeTrunks() bool {
 func (f *File) tryRead() bool {
 	stat, err := f.file.Stat()
 	if err != nil {
-		log.Printf("Failed to stat file: %v", err)
+		logger.ErrorLn("Failed to stat file:", err)
 		return false
 	}
 
 	size := stat.Size()
 	if size <= bodyOffset {
 		if size > 0 {
-			log.Printf("Corrupted file: %s, re-initialize it", f.file.Name())
+			logger.ErrorLnf("Corrupted file: %s, re-initialize it", f.file.Name())
 		}
 		return false
 	}
@@ -139,11 +138,11 @@ func (f *File) tryRead() bool {
 	magicTest := make([]byte, magicLen)
 	_, err = f.file.ReadAt(magicTest, 0)
 	if err != nil {
-		log.Printf("Failed to read magic: %v", err)
+		logger.ErrorLn("Failed to read magic:", err)
 		return false
 	}
 	if string(magicTest) != magic {
-		log.Printf("Corrupted file: %s, re-initialize it", f.file.Name())
+		logger.ErrorLnf("Corrupted file: %s, re-initialize it", f.file.Name())
 		return false
 	}
 
@@ -152,7 +151,7 @@ func (f *File) tryRead() bool {
 	// read full size
 	_, err = f.file.ReadAt(int64Buf, fullSizeOffset)
 	if err != nil {
-		log.Printf("Failed to read full size: %v", err)
+		logger.ErrorLn("Failed to read full size:", err)
 		return false
 	}
 	f.FullSize = int64(binary.LittleEndian.Uint64(int64Buf))
@@ -160,7 +159,7 @@ func (f *File) tryRead() bool {
 	// read last modified time
 	_, err = f.file.ReadAt(int64Buf, lastModifiedOffset)
 	if err != nil {
-		log.Printf("Failed to read last modified time: %v", err)
+		logger.ErrorLn("Failed to read last modified time:", err)
 		return false
 	}
 	f.LastModified = time.Unix(int64(binary.LittleEndian.Uint64(int64Buf)), 0)
@@ -169,14 +168,14 @@ func (f *File) tryRead() bool {
 	stateBuf := make([]byte, statesLen)
 	_, err = f.file.ReadAt(stateBuf, statesOffset)
 	if err != nil {
-		log.Printf("Failed to read states: %v", err)
+		logger.ErrorLn("Failed to read states:", err)
 	}
 	f.Completed = stateBuf[0]&stateCompletedFlag == stateCompletedFlag
 
 	// read trunks
 	_, err = f.file.ReadAt(f.trunks, trunksOffset)
 	if err != nil {
-		log.Printf("Failed to read trunks: %v", err)
+		logger.ErrorLn("Failed to read trunks:", err)
 		return false
 	}
 

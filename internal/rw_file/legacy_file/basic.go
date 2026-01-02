@@ -11,6 +11,8 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
+var logger = utils.NewLogger("Cache File (Legacy)")
+
 type File struct {
 	baseName string
 	totalLen int64

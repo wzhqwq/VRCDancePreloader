@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -32,6 +31,9 @@ var cleanUpChan = make(chan struct{}, 1)
 var localFileEm = utils.NewEventManager[string]()
 var dirWatcher *fsnotify.Watcher
 
+var managerLogger = utils.NewLogger("Cache Manager")
+var entryLogger = utils.NewLogger("")
+
 func SetupCache(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		os.Mkdir(path, 0777)
@@ -42,7 +44,7 @@ func SetupCache(path string) {
 	go func() {
 		err := watchCacheDir()
 		if err != nil {
-			log.Println("[Error] Failed to watch cache directory:", err)
+			managerLogger.ErrorLn("Failed to watch cache directory:", err)
 		}
 	}()
 }
@@ -73,9 +75,9 @@ func CleanUpCache() {
 	select {
 	case cleanUpChan <- struct{}{}:
 		go func() {
-			log.Println("Cleaning up cache ...")
+			managerLogger.InfoLn("Cleaning up cache ...")
 			defer func() {
-				log.Println("Cleaned up cache")
+				managerLogger.InfoLn("Cleaned up cache")
 				<-cleanUpChan
 			}()
 
@@ -119,7 +121,7 @@ func CleanUpCache() {
 
 				err := os.Remove(filepath.Join(cachePath, file.Name()))
 				if err != nil {
-					log.Println("[Warning] Failed to remove ", file.Name(), ":", err)
+					managerLogger.WarnLn("Failed to remove ", file.Name(), ":", err)
 				}
 				totalSize -= file.Size()
 			}
@@ -221,17 +223,17 @@ func RemoveLocalCacheById(id string) error {
 }
 
 func OpenCacheEntry(id, prefix string) (Entry, error) {
-	log.Println(prefix, "Open cache entry:", id)
+	entryLogger.InfoLn(prefix, "Open cache entry:", id)
 	return cacheMap.Open(id)
 }
 
 func ReleaseCacheEntry(id, prefix string) {
-	log.Println(prefix, "Release cache entry:", id)
+	entryLogger.InfoLn(prefix, "Release cache entry:", id)
 	cacheMap.Release(id)
 	go func() {
 		<-time.After(time.Second)
 		if cacheMap.CloseIfInactive(id) {
-			log.Println("Closed cache entry:", id)
+			managerLogger.InfoLn("Closed cache entry:", id)
 			localFileEm.NotifySubscribers("*" + id)
 		}
 	}()
@@ -258,7 +260,7 @@ func watchCacheDir() error {
 		dirWatcher = nil
 	}()
 
-	log.Println("Watching directory:", cachePath)
+	managerLogger.InfoLn("Watching directory:", cachePath)
 
 	for {
 		select {

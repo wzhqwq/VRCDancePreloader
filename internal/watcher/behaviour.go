@@ -2,12 +2,12 @@ package watcher
 
 import (
 	"bytes"
+	"regexp"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/service"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"log"
-	"regexp"
 )
 
 var enterRoomRegex = regexp.MustCompile(`^Entering Room: (.*)`)
@@ -58,8 +58,6 @@ func behaviourPostProcess() {
 	lastEnteredRoom.Reset("")
 
 	if enteredRoom != "" {
-		log.Println("Entering room: " + enteredRoom)
-
 		playlist.EnterNewRoom(enteredRoom)
 		persistence.SetCurrentRoomName(enteredRoom)
 	}

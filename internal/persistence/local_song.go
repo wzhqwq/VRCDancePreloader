@@ -3,7 +3,6 @@ package persistence
 import (
 	"database/sql"
 	"errors"
-	"log"
 	"strings"
 	"sync"
 
@@ -44,7 +43,7 @@ func (f *LocalSongs) addEntry(entry *LocalSongEntry) {
 	query := "INSERT INTO local_song (id, title, like, skill, is_favorite, sync_in_game) VALUES (?, ?, ?, ?, ?, ?)"
 	_, err := DB.Exec(query, entry.ID, entry.Title, entry.Like, entry.Skill, entry.IsFavorite, entry.IsSyncInGame)
 	if err != nil {
-		log.Printf("failed to save favorite entry: %v", err)
+		logger.ErrorLn("Failed to save favorite entry:", err)
 	}
 }
 
@@ -58,7 +57,7 @@ func (f *LocalSongs) getEntry(id string) *LocalSongEntry {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
 		}
-		log.Printf("failed to load favorite entry: %v", err)
+		logger.ErrorLn("Failed to load favorite entry:", err)
 		return nil
 	}
 
@@ -82,7 +81,7 @@ func (f *LocalSongs) SetFavorite(id, title string) {
 			// update is_favorite
 			_, err := DB.Exec("UPDATE local_song SET is_favorite = ? WHERE id = ?", true, id)
 			if err != nil {
-				log.Printf("failed to update favorite entry: %v", err)
+				logger.ErrorLn("Failed to update favorite entry:", err)
 				return
 			}
 		}
@@ -118,7 +117,7 @@ func (f *LocalSongs) UnsetFavorite(id string) {
 	// update is_favorite
 	_, err := DB.Exec("UPDATE local_song SET is_favorite = ? WHERE id = ?", false, id)
 	if err != nil {
-		log.Printf("failed to update favorite entry: %v", err)
+		logger.ErrorLn("Failed to update favorite entry:", err)
 		return
 	}
 
@@ -194,7 +193,7 @@ func (f *LocalSongs) ListFavorites(page, pageSize int, sortBy string, ascending 
 	query = "SELECT id, title, like, skill, is_favorite, sync_in_game FROM local_song WHERE is_favorite=true " + orderBy + " LIMIT ? OFFSET ?"
 	rows, err := DB.Query(query, pageSize, page*pageSize)
 	if err != nil {
-		log.Printf("failed to load favorite entries: %v", err)
+		logger.ErrorLn("Failed to load favorite entries:", err)
 		return nil
 	}
 	defer rows.Close()
@@ -204,7 +203,7 @@ func (f *LocalSongs) ListFavorites(page, pageSize int, sortBy string, ascending 
 		var entry LocalSongEntry
 		err = rows.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite, &entry.IsSyncInGame)
 		if err != nil {
-			log.Printf("failed to scan favorite entry: %v", err)
+			logger.ErrorLn("Failed to scan favorite entry:", err)
 			return nil
 		}
 
@@ -222,7 +221,7 @@ func (f *LocalSongs) CalculateTotalPages(pageSize int) int {
 	var total int
 	err := DB.QueryRow("SELECT COUNT(*) FROM local_song WHERE is_favorite=true").Scan(&total)
 	if err != nil {
-		log.Printf("failed to load favorite entries: %v", err)
+		logger.ErrorLn("Failed to load favorite entries:", err)
 		return 0
 	}
 
@@ -237,7 +236,7 @@ func (f *LocalSongs) UpdateEntry(entry *LocalSongEntry) {
 	q := "UPDATE local_song SET title = ?, like = ?, skill = ? WHERE id = ?"
 	_, err := DB.Exec(q, entry.Title, entry.Like, entry.Skill, entry.ID)
 	if err != nil {
-		log.Printf("failed to update entry: %v", err)
+		logger.ErrorLn("Failed to update entry:", err)
 		return
 	}
 }
@@ -250,7 +249,7 @@ func (f *LocalSongs) ToPyPyFavorites() string {
 	query := "SELECT id FROM local_song WHERE is_favorite = ? AND sync_in_game = ? AND id LIKE ?"
 	rows, err := DB.Query(query, true, true, "pypy_%")
 	if err != nil {
-		log.Printf("failed to load favorite entries: %v", err)
+		logger.ErrorLn("Failed to load favorite entries:", err)
 		return ""
 	}
 	defer rows.Close()
@@ -260,7 +259,7 @@ func (f *LocalSongs) ToPyPyFavorites() string {
 		var id string
 		err = rows.Scan(&id)
 		if err != nil {
-			log.Printf("failed to scan favorite entry: %v", err)
+			logger.ErrorLn("Failed to scan favorite entry:", err)
 			return ""
 		}
 

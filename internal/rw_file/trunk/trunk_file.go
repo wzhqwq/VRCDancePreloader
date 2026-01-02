@@ -1,10 +1,11 @@
 package trunk
 
 import (
-	"log"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 // 16KB per trunk
@@ -13,6 +14,8 @@ const bytesPerTrunk = 1024 * 16
 // 256MB capacity
 // It's enough for a dance video. If a file exceed this size, we will fall back to legacy cache
 const capacity = 1024 * 1024 * 256
+
+var logger = utils.NewLogger("Cache File")
 
 type File struct {
 	file         *os.File
@@ -30,7 +33,7 @@ type File struct {
 func NewTrunkFile(baseName string) *File {
 	dlf, err := os.OpenFile(baseName+".vrcdp", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		log.Printf("Failed to open cache file: %v", err)
+		logger.ErrorLn("Failed to open cache file:", err)
 		return nil
 	}
 
@@ -85,7 +88,7 @@ func (f *File) Init(contentLength int64, lastModified time.Time) {
 
 	err := f.file.Truncate(bodyOffset + contentLength)
 	if err != nil {
-		log.Printf("Failed to truncate trunk file: %v", err)
+		logger.ErrorLn("Failed to truncate trunk file:", err)
 	}
 
 	f.writeFullSize()

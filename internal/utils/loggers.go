@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"log"
+	"os"
 )
 
 type CustomLogger struct {
@@ -19,23 +20,23 @@ func (l *CustomLogger) Printf(format string, a ...any) {
 }
 
 func (l *CustomLogger) InfoLn(a ...any) {
-	l.print("INFO - " + l.prefix + fmt.Sprintln(a...))
+	l.print("INFO  - " + l.prefix + fmt.Sprintln(a...))
 }
 func (l *CustomLogger) InfoLnf(format string, a ...any) {
-	l.Println("INFO - " + l.prefix + fmt.Sprintf(format, a...))
+	l.Println("INFO  - " + l.prefix + fmt.Sprintf(format, a...))
 }
 func (l *CustomLogger) Infof(format string, a ...any) {
-	l.Printf("INFO - "+l.prefix+format, a...)
+	l.Printf("INFO  - "+l.prefix+format, a...)
 }
 
 func (l *CustomLogger) WarnLn(a ...any) {
-	l.print("WARN - " + l.prefix + fmt.Sprintln(a...))
+	l.print("WARN  - " + l.prefix + fmt.Sprintln(a...))
 }
 func (l *CustomLogger) WarnLnf(format string, a ...any) {
-	l.Println("WARN - " + l.prefix + fmt.Sprintf(format, a...))
+	l.Println("WARN  - " + l.prefix + fmt.Sprintf(format, a...))
 }
 func (l *CustomLogger) Warnf(format string, a ...any) {
-	l.Printf("WARN - "+l.prefix+format, a...)
+	l.Printf("WARN  - "+l.prefix+format, a...)
 }
 
 func (l *CustomLogger) DebugLn(a ...any) {
@@ -58,13 +59,28 @@ func (l *CustomLogger) Errorf(format string, a ...any) {
 	l.Printf("ERROR - "+l.prefix+format, a...)
 }
 
+func (l *CustomLogger) FatalLn(a ...any) {
+	l.print("FATAL - " + l.prefix + fmt.Sprintln(a...))
+	// TODO close log writer
+	os.Exit(1)
+}
+func (l *CustomLogger) FatalLnf(format string, a ...any) {
+	l.Println("FATAL - " + l.prefix + fmt.Sprintf(format, a...))
+	os.Exit(1)
+}
+func (l *CustomLogger) Fatalf(format string, a ...any) {
+	l.Printf("FATAL - "+l.prefix+format, a...)
+	os.Exit(1)
+}
+
 func (l *CustomLogger) print(s string) {
 	l.printFn(s)
 }
 
 func (l *CustomLogger) SetPrefix(prefix string) {
 	if prefix != "" {
-		l.prefix = "[" + prefix + "] "
+		prefix = "[" + prefix + "]"
+		l.prefix = fmt.Sprintf("%-16s ", prefix)
 	} else {
 		l.prefix = ""
 	}
@@ -107,3 +123,5 @@ func (l *UniqueLogger) Print(str string) {
 	l.lastLog = str
 	log.Print(str)
 }
+
+var parsingLogger = NewLogger("Parsing")

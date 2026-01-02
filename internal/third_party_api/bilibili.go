@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
@@ -110,7 +109,7 @@ func GetBiliVideoUrl(bvID string, ctx context.Context) (string, error) {
 func GetBiliVideoTitle(bvID string) string {
 	info, err := GetBvInfo(bvID, context.Background())
 	if err != nil {
-		log.Println("error while getting bilibili video title:", err)
+		logger.ErrorLn("Error while getting BiliBili video title:", err)
 		return "BiliBili " + bvID
 	}
 

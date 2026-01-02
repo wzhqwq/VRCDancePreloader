@@ -2,11 +2,11 @@ package i18n
 
 import (
 	"embed"
-	"log"
 	"strconv"
 	"time"
 
 	"fyne.io/fyne/v2"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"gopkg.in/yaml.v3"
 
 	"github.com/cloudfoundry/jibber_jabber"
@@ -25,6 +25,8 @@ var dateTranslationsFS embed.FS
 var i18n *goeasyi18n.I18n
 var lang string
 
+var logger = utils.NewLogger("I18n")
+
 type DateTranslations struct {
 	MonthsFull []string `yaml:"months_full"`
 	MonthsAbbr []string `yaml:"months_abbr"`
@@ -39,7 +41,7 @@ func Init() {
 	} else {
 		lang = localLang
 	}
-	log.Println("Detected language:", lang)
+	logger.InfoLn("Detected language:", lang)
 
 	i18n = goeasyi18n.NewI18n()
 	// Load the translations

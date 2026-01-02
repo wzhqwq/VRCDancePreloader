@@ -1,11 +1,11 @@
 package config
 
 import (
-	"github.com/samber/lo"
-	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
-	"log"
 	"slices"
 	"strings"
+
+	"github.com/samber/lo"
+	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 )
 
 func checkInterceptionConflict() {
@@ -26,22 +26,22 @@ func checkInterceptionConflict() {
 	if !pypyIntercepted {
 		if index := lo.IndexOf(config.Preload.EnabledPlatforms, "PyPyDance"); index != -1 {
 			config.Preload.EnabledPlatforms = slices.Delete(config.Preload.EnabledPlatforms, index, index+1)
-			log.Println("[Config Changed] According to the hijack config, none of the video sources providing PyPyDance videos are intercepted, so the PyPyDance video will not be preloaded.")
-			log.Println("Valid sources for PyPyDance: " + strings.Join(constants.AllPyPySites(), ", "))
+			logger.WarnLn("[Config Changed] According to the hijack config, none of the video sources providing PyPyDance videos are intercepted, so the PyPyDance video will not be preloaded.")
+			logger.InfoLn("Valid sources for PyPyDance:", strings.Join(constants.AllPyPySites(), ", "))
 		}
 	}
 	if !wannaIntercepted {
 		if index := lo.IndexOf(config.Preload.EnabledRooms, "WannaDance"); index != -1 {
 			config.Preload.EnabledPlatforms = slices.Delete(config.Preload.EnabledPlatforms, index, index+1)
-			log.Println("[Config Changed] According to the hijack config, none of the video sources providing WannaDance videos are intercepted, so the WannaDance video will not be preloaded.")
-			log.Println("Valid sources for WannaDance: " + strings.Join(constants.AllWannaSites(), ", "))
+			logger.WarnLn("[Config Changed] According to the hijack config, none of the video sources providing WannaDance videos are intercepted, so the WannaDance video will not be preloaded.")
+			logger.InfoLn("Valid sources for WannaDance:", strings.Join(constants.AllWannaSites(), ", "))
 		}
 	}
 	if !biliIntercepted {
 		if index := lo.IndexOf(config.Preload.EnabledRooms, "BiliBili"); index != -1 {
 			config.Preload.EnabledPlatforms = slices.Delete(config.Preload.EnabledPlatforms, index, index+1)
-			log.Println("[Config Changed] According to the hijack config, none of the video sources providing BiliBili videos are intercepted, so the BiliBili video will not be preloaded.")
-			log.Println("Valid sources for BiliBili: " + strings.Join(constants.AllBiliSites(), ", "))
+			logger.WarnLn("[Config Changed] According to the hijack config, none of the video sources providing BiliBili videos are intercepted, so the BiliBili video will not be preloaded.")
+			logger.InfoLn("Valid sources for BiliBili:", strings.Join(constants.AllBiliSites(), ", "))
 		}
 	}
 }

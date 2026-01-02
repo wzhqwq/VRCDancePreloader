@@ -4,13 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"slices"
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
+
+var logger = utils.NewLogger("Live")
 
 type Server struct {
 	http.Server
@@ -105,8 +107,9 @@ func (s *Server) Loop() {
 func (s *Server) Start() error {
 	s.running = true
 	go s.Loop()
+	logger.InfoLn("Starting server on port", s.Server.Addr[1:])
 	if err := s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		log.Println("Error starting Live Server:", err)
+		logger.ErrorLn("Error starting Live Server:", err)
 		s.running = false
 		return err
 	}
@@ -132,6 +135,6 @@ func (s *Server) Stop() {
 	defer shutdownRelease()
 
 	if err := s.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("HTTP shutdown error: %v", err)
+		logger.FatalLn("HTTP shutdown error:", err)
 	}
 }
