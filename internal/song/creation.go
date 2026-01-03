@@ -11,7 +11,7 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 	if !ok {
 		// maybe caused by corrupted song list
 		cache.DownloadPyPySongs()
-		logger.WarnLn("Cannot find PyPyDance song", id, "in the manifest")
+		songLogger.WarnLn("Cannot find PyPyDance song", id, "in the manifest")
 		song = &raw_song.PyPyDanceSong{
 			ID: id,
 		}
@@ -38,7 +38,7 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 	if !ok {
 		// maybe caused by corrupted song list
 		cache.DownloadWannaSongs()
-		logger.WarnLn("Cannot find WannaDance song", id, "in the manifest")
+		songLogger.WarnLn("Cannot find WannaDance song", id, "in the manifest")
 		song = &raw_song.WannaDanceSong{
 			DanceId: id,
 		}

@@ -6,6 +6,31 @@ import (
 	"os"
 )
 
+type LoggerImpl interface {
+	Println(a ...any)
+	Printf(format string, a ...any)
+
+	InfoLn(a ...any)
+	InfoLnf(format string, a ...any)
+	Infof(format string, a ...any)
+
+	WarnLn(a ...any)
+	WarnLnf(format string, a ...any)
+	Warnf(format string, a ...any)
+
+	DebugLn(a ...any)
+	DebugLnf(format string, a ...any)
+	Debugf(format string, a ...any)
+
+	ErrorLn(a ...any)
+	ErrorLnf(format string, a ...any)
+	Errorf(format string, a ...any)
+
+	FatalLn(a ...any)
+	FatalLnf(format string, a ...any)
+	Fatalf(format string, a ...any)
+}
+
 type CustomLogger struct {
 	printFn func(string)
 	prefix  string

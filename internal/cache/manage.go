@@ -32,7 +32,6 @@ var localFileEm = utils.NewEventManager[string]()
 var dirWatcher *fsnotify.Watcher
 
 var managerLogger = utils.NewLogger("Cache Manager")
-var entryLogger = utils.NewLogger("")
 
 func SetupCache(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -222,13 +221,13 @@ func RemoveLocalCacheById(id string) error {
 	return nil
 }
 
-func OpenCacheEntry(id, prefix string) (Entry, error) {
-	entryLogger.InfoLn(prefix, "Open cache entry:", id)
+func OpenCacheEntry(id string, logger utils.LoggerImpl) (Entry, error) {
+	logger.InfoLn("Open cache entry:", id)
 	return cacheMap.Open(id)
 }
 
-func ReleaseCacheEntry(id, prefix string) {
-	entryLogger.InfoLn(prefix, "Release cache entry:", id)
+func ReleaseCacheEntry(id string, logger utils.LoggerImpl) {
+	logger.InfoLn("Release cache entry:", id)
 	cacheMap.Release(id)
 	go func() {
 		<-time.After(time.Second)

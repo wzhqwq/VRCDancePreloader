@@ -14,7 +14,9 @@ import (
 
 var idIncrement int64 = 0
 
-var logger = utils.NewLogger("Song")
+var songLogger = utils.NewLogger("Song")
+var activeSongLogger = utils.NewLogger("Song (Active)")
+var removedSongLogger = utils.NewLogger("Song (Removed)")
 
 type PreloadedSong struct {
 	sm         *StateMachine
@@ -93,20 +95,20 @@ func (ps *PreloadedSong) DownloadInstantly(complete bool, ctx context.Context) (
 		return nil, err
 	}
 
-	logPrefix := ""
-	if traceID, ok := ctx.Value("trace_id").(string); ok {
-		logPrefix = "[" + traceID + "]"
+	var logger = songLogger
+	if reqLogger, ok := ctx.Value("logger").(*utils.CustomLogger); ok {
+		logger = reqLogger
 	}
 
 	// reference the cache entry until request closed
-	entry, err := cache.OpenCacheEntry(ps.GetSongId(), logPrefix)
+	entry, err := cache.OpenCacheEntry(ps.GetSongId(), logger)
 	if err != nil {
 		return nil, err
 	}
 
 	go func() {
 		<-ctx.Done()
-		cache.ReleaseCacheEntry(ps.GetSongId(), logPrefix)
+		cache.ReleaseCacheEntry(ps.GetSongId(), logger)
 	}()
 
 	return entry, nil

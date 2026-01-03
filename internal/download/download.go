@@ -74,13 +74,13 @@ func (t *Task) Download(retryDelay bool) {
 	t.Lock()
 	defer t.unlockAndNotifyStateChange()
 
-	cacheEntry, err := cache.OpenCacheEntry(t.ID, "[Downloader]")
+	cacheEntry, err := cache.OpenCacheEntry(t.ID, logger)
 	if err != nil {
 		t.Error = err
 		logger.WarnLn("Skipped", t.ID, "due to", err)
 		return
 	}
-	defer cache.ReleaseCacheEntry(t.ID, "[Downloader]")
+	defer cache.ReleaseCacheEntry(t.ID, logger)
 
 	// Check if file is already downloaded
 	if cacheEntry.IsComplete() {
