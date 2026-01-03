@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/continuous"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/fragmented"
@@ -47,6 +48,8 @@ type Entry interface {
 type BaseEntry struct {
 	id     string
 	client *http.Client
+
+	referer string
 
 	openCount atomic.Int32
 
@@ -131,6 +134,10 @@ func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*Remote
 		return nil, err
 	}
 
+	if e.referer == "" {
+		e.referer = url
+	}
+	requesting.SetupHeader(req, e.referer)
 	res, err := e.client.Do(req)
 	if err != nil {
 		e.logger.ErrorLn("Failed to get ", url, "reason:", err)
@@ -146,10 +153,12 @@ func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*Remote
 		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
 	}
 
-	lastModified := time.Unix(0, 0)
+	lastModified := unixEpochTime
 	if lastModifiedText := res.Header.Get("Last-Modified"); lastModifiedText != "" {
 		lastModified, _ = http.ParseTime(lastModifiedText)
 	}
+
+	e.referer = res.Request.Header.Get("Referer")
 
 	return &RemoteVideoInfo{
 		FinalUrl:     res.Request.URL.String(),
@@ -165,6 +174,7 @@ func (e *BaseEntry) requestHttpResBody(url string, offset int64, ctx context.Con
 	}
 
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
+	requesting.SetupHeader(req, e.referer)
 	res, err := e.client.Do(req)
 	if err != nil {
 		return nil, err

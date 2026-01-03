@@ -7,6 +7,8 @@ import (
 	"google.golang.org/api/option"
 )
 
+const defaultUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+
 type mixedTransport struct {
 	clientWithProxy *http.Client
 	Key             string
@@ -37,4 +39,9 @@ func RequestThumbnail(url string) (resp *http.Response, err error) {
 		return youtubeImageClient.Get(url)
 	}
 	return http.Get(url)
+}
+
+func SetupHeader(req *http.Request, referer string) {
+	req.Header.Set("Referer", referer)
+	req.Header.Set("User-Agent", defaultUA)
 }

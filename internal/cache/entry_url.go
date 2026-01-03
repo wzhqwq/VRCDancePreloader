@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -11,24 +12,30 @@ import (
 type UrlBasedEntry struct {
 	BaseEntry
 
-	resolvedUrl      string
-	initialUrlGetter func(ctx context.Context) (string, error)
+	resolvedUrl       string
+	initialInfoGetter func(ctx context.Context) (*RemoteVideoInfo, error)
+
+	remoteModTime time.Time
 }
 
-func newUrlBasedEntry(id string, client *http.Client, initialUrlGetter func(ctx context.Context) (string, error)) *UrlBasedEntry {
+func newUrlBasedEntry(id string, client *http.Client, initialInfoGetter func(ctx context.Context) (*RemoteVideoInfo, error)) *UrlBasedEntry {
 	return &UrlBasedEntry{
-		BaseEntry:        ConstructBaseEntry(id, client),
-		initialUrlGetter: initialUrlGetter,
+		BaseEntry:         ConstructBaseEntry(id, client),
+		initialInfoGetter: initialInfoGetter,
 	}
 }
 
 func (e *UrlBasedEntry) resolveUrl(ctx context.Context) error {
-	url, err := e.initialUrlGetter(ctx)
+	info, err := e.initialInfoGetter(ctx)
 	if err != nil {
 		return err
 	}
 
-	var info *RemoteVideoInfo
+	url := info.FinalUrl
+	if !info.LastModified.IsZero() {
+		// BiliBili provide creation time through API
+		e.remoteModTime = info.LastModified
+	}
 
 	for {
 		if _, ok := utils.CheckYoutubeURL(url); ok {
@@ -51,7 +58,11 @@ func (e *UrlBasedEntry) resolveUrl(ctx context.Context) error {
 		}
 	}
 
-	e.workingFile.Init(info.TotalSize, info.LastModified)
+	if e.remoteModTime.IsZero() {
+		e.remoteModTime = info.LastModified
+	}
+
+	e.workingFile.Init(info.TotalSize, e.remoteModTime)
 
 	e.resolvedUrl = url
 	e.logger.InfoLn(e.id, "resolved to", url)
@@ -67,6 +78,17 @@ func (e *UrlBasedEntry) checkWorkingFile(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (e *UrlBasedEntry) ModTime() time.Time {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if err := e.checkWorkingFile(context.Background()); err != nil {
+		return unixEpochTime
+	}
+
+	return e.workingFile.ModTime()
 }
 
 func (e *UrlBasedEntry) TotalLen() (int64, error) {

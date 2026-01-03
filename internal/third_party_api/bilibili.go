@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -19,19 +19,21 @@ type BiliApiResponse[T any] struct {
 }
 
 type BvInfo struct {
-	Bvid     string `json:"bvid"`
-	Videos   int    `json:"videos"`
-	Pic      string `json:"pic"`
-	Title    string `json:"title"`
-	State    int    `json:"state"`
-	Duration int    `json:"duration"`
-	Cid      int64  `json:"cid"`
-	Pages    []struct {
-		Cid        int64  `json:"cid"`
-		Page       int    `json:"page"`
-		Part       string `json:"part"`
-		Duration   int    `json:"duration"`
-		FirstFrame string `json:"first_frame"`
+	Bvid   string `json:"bvid"`
+	Videos int    `json:"videos"`
+	Pic    string `json:"pic"`
+	Title  string `json:"title"`
+	//State    int    `json:"state"`
+	//Duration int    `json:"duration"`
+	Cid   int64 `json:"cid"`
+	Pages []struct {
+		Cid int64 `json:"cid"`
+		//Page int    `json:"page"`
+		//Part string `json:"part"`
+
+		Duration int `json:"duration"`
+		//FirstFrame  string `json:"first_frame"`
+		CreatedTime int `json:"ctime"`
 	} `json:"pages"`
 }
 
@@ -41,8 +43,7 @@ func requestBiliApi[T any](url, bvId string, ctx context.Context) (*T, error) {
 		return nil, err
 	}
 
-	req.Header.Set("Referer", fmt.Sprintf("https://www.bilibili.com/video/%s/", bvId))
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+	requesting.SetupHeader(req, utils.GetStandardBiliURL(bvId))
 
 	res, err := requesting.GetBiliClient().Do(req)
 	if err != nil {
@@ -82,17 +83,17 @@ func GetBvInfo(bvID string, ctx context.Context) (*BvInfo, error) {
 }
 
 type BiliPlayerInfo struct {
-	Message       string `json:"message"`
-	TimeLength    int    `json:"timelength"`
-	AcceptFormat  string `json:"accept_format"`
-	AcceptQuality []int  `json:"accept_quality"`
-	SeekParam     string `json:"seek_param"`
-	SeekType      string `json:"seek_type"`
-	Segments      []struct {
-		Order  int    `json:"order"`
-		Length int    `json:"length"`
-		Size   int    `json:"size"`
-		URL    string `json:"url"`
+	//Message       string `json:"message"`
+	//TimeLength    int    `json:"timelength"`
+	//AcceptFormat  string `json:"accept_format"`
+	//AcceptQuality []int  `json:"accept_quality"`
+	//SeekParam     string `json:"seek_param"`
+	//SeekType      string `json:"seek_type"`
+	Segments []struct {
+		//Order  int    `json:"order"`
+		//Length int    `json:"length"`
+		//Size   int    `json:"size"`
+		URL string `json:"url"`
 	} `json:"durl"`
 }
 
@@ -108,6 +109,15 @@ func GetBiliVideoUrl(bvID string, ctx context.Context) (string, error) {
 	}
 
 	return playerInfo.Segments[0].URL, nil
+}
+
+func GetBiliVideoModTime(bvID string, ctx context.Context) (time.Time, error) {
+	info, err := GetBvInfo(bvID, ctx)
+	if err != nil {
+		return time.Unix(0, 0), err
+	}
+
+	return time.Unix(int64(info.Pages[0].CreatedTime), 0), nil
 }
 
 func GetBiliVideoTitle(bvID string) string {
@@ -135,5 +145,5 @@ func GetBiliVideoDuration(bvID string) (int, error) {
 		return 0, err
 	}
 
-	return info.Duration, nil
+	return info.Pages[0].Duration, nil
 }
