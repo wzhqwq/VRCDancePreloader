@@ -97,9 +97,7 @@ func (item *WannaQueueItem) ToPreloaded() *song.PreloadedSong {
 		// Try to complete the info with the queue item
 		if s.InfoNa && item.Title != "" && item.Group != "" && item.Duration > 0 {
 			prefix := fmt.Sprintf("%d. ", item.SongID)
-			if strings.HasPrefix(item.Title, prefix) {
-				item.Title = strings.TrimPrefix(item.Title, prefix)
-			}
+			item.Title = strings.TrimPrefix(item.Title, prefix)
 			s.WannaSong.Complete(item.Title, item.Group, item.Duration)
 			s.InfoNa = false
 		}
@@ -136,4 +134,60 @@ func (item *WannaQueueItem) GetAdder() string {
 
 func (item *WannaQueueItem) ToString() string {
 	return fmt.Sprintf("wanna_%d", item.SongID)
+}
+
+type DuDuQueueItem struct {
+	Title      string `json:"title"`
+	PlayerName string `json:"playerName"`
+	Group      string `json:"group"`
+	GroupName  string `json:"groupName"`
+	Duration   int    `json:"duration"`
+	// SongVolume int    `json:"songVolume"`
+	SongID int `json:"songId"`
+
+	Random bool
+}
+
+func (item *DuDuQueueItem) ToPreloaded() *song.PreloadedSong {
+	// if item.SongID > 0 {
+	// 	s := song.GetDuDuSongForList(item.SongID)
+	// 	// Try to complete the info with the queue item
+	// 	if s.InfoNa && item.Title != "" && item.Group != "" && item.Duration > 0 {
+	// 		prefix := fmt.Sprintf("%d. ", item.SongID)
+	// 		if strings.HasPrefix(item.Title, prefix) {
+	// 			item.Title = strings.TrimPrefix(item.Title, prefix)
+	// 		}
+	// 		s.DuDuSong.Complete(item.Title, item.Group, item.Duration)
+	// 		s.InfoNa = false
+	// 	}
+	// 	return s
+	// }
+	if item.SongID < 0 {
+		url := extractUrlFromTitle(item.Title)
+		if url != "" {
+			return song.GetCustomSongForList(url)
+		}
+	}
+	return song.CreateUnknownSong()
+}
+
+func (item *DuDuQueueItem) MatchWithPreloaded(song *song.PreloadedSong) bool {
+	// if item.SongID > 0 {
+	// 	return song.MatchWithDuDuId(item.SongID)
+	// }
+	if item.SongID < 0 {
+		url := extractUrlFromTitle(item.Title)
+		if url != "" {
+			return song.MatchWithCustomUrl(url)
+		}
+	}
+	return song.Unknown
+}
+
+func (item *DuDuQueueItem) GetAdder() string {
+	return item.PlayerName
+}
+
+func (item *DuDuQueueItem) ToString() string {
+	return fmt.Sprintf("dudu_%d", item.SongID)
 }

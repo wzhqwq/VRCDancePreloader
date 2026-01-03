@@ -18,6 +18,7 @@ func postProcess() {
 	pypyPostProcess()
 	wannaPostProcess()
 	pwiPostProcess()
+	duDuPostProcess()
 }
 
 func processLine(version int32, line []byte) {
@@ -39,6 +40,9 @@ func processLine(version int32, line []byte) {
 		return
 	}
 	if checkWannaLine(version, prefix, content) {
+		return
+	}
+	if checkDuDuLine(version, prefix, content) {
 		return
 	}
 
