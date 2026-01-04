@@ -1,6 +1,7 @@
 package download
 
 import (
+	"context"
 	"errors"
 	"io"
 	"sync"
@@ -14,35 +15,44 @@ var ErrCanceled = errors.New("task canceled")
 var ErrRestarted = errors.New("task restarted")
 
 func (t *Task) Write(p []byte) (int, error) {
-	select {
-	case <-t.CancelCh:
-		return 0, ErrCanceled
-	case <-t.RestartCh:
-		// force close current network connection and then continue downloading
-		return 0, ErrRestarted
-	default:
-		if t.BlockIfPending() {
-			n := len(p)
-			t.addBytes(int64(n))
-			return n, nil
-		}
-
-		return 0, ErrCanceled
+	err := t.BlockIfPending()
+	if err != nil {
+		return 0, err
 	}
+
+	n := len(p)
+	t.addBytes(int64(n))
+
+	return n, nil
 }
 
 func (t *Task) progressiveDownload(body io.ReadCloser, writer io.Writer) error {
 	// Write the body to file, while showing progress of the download
 	_, err := io.Copy(writer, io.TeeReader(body, t))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (t *Task) singleDownload(entry cache.Entry) error {
-	body, err := entry.GetDownloadStream()
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer cancel(nil)
+
+	go func() {
+		// error route for requesting
+		select {
+		case <-t.CancelCh:
+			cancel(ErrCanceled)
+		case <-t.RestartCh:
+			cancel(ErrRestarted)
+		case <-ctx.Done():
+		}
+	}()
+
+	t.connected = true
+	defer func() {
+		t.connected = false
+	}()
+
+	body, err := entry.GetDownloadStream(ctx)
 	if err != nil {
 		return err
 	}
@@ -95,7 +105,7 @@ func (t *Task) Download(retryDelay bool) {
 	var delay time.Duration
 
 	// check if the task is canceled or paused
-	if !t.BlockIfPending() {
+	if errors.Is(t.BlockIfPending(), ErrCanceled) {
 		goto canceled
 	}
 
@@ -139,16 +149,16 @@ func (t *Task) Download(retryDelay bool) {
 		return
 	}
 
-	if !t.BlockIfPending() {
-		goto canceled
-	}
-
 startTask:
-	err = t.singleDownload(cacheEntry)
-	if err == nil || cacheEntry.IsComplete() {
-		logger.InfoLn("Downloaded", t.ID)
-		t.markAsDone()
-		return
+	err = t.BlockIfPending()
+
+	if err == nil {
+		err = t.singleDownload(cacheEntry)
+		if err == nil || cacheEntry.IsComplete() {
+			logger.InfoLn("Downloaded", t.ID)
+			t.markAsDone()
+			return
+		}
 	}
 
 	if errors.Is(err, ErrCanceled) {

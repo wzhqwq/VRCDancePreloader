@@ -39,7 +39,7 @@ type Entry interface {
 	TotalLen() (int64, error)
 	DownloadedSize() int64
 	GetReadSeeker(ctx context.Context) (io.ReadSeeker, error)
-	GetDownloadStream() (io.ReadCloser, error)
+	GetDownloadStream(ctx context.Context) (io.ReadCloser, error)
 	IsComplete() bool
 	ModTime() time.Time
 	UpdateReqRangeStart(start int64)

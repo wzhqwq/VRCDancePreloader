@@ -101,15 +101,15 @@ func (e *UrlBasedEntry) TotalLen() (int64, error) {
 
 	return e.workingFile.TotalLen(), nil
 }
-func (e *UrlBasedEntry) GetDownloadStream() (io.ReadCloser, error) {
+func (e *UrlBasedEntry) GetDownloadStream(ctx context.Context) (io.ReadCloser, error) {
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()
 
-	if err := e.checkWorkingFile(context.Background()); err != nil {
+	if err := e.checkWorkingFile(ctx); err != nil {
 		return nil, err
 	}
 	if e.resolvedUrl == "" {
-		if err := e.resolveUrl(context.Background()); err != nil {
+		if err := e.resolveUrl(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -119,7 +119,7 @@ func (e *UrlBasedEntry) GetDownloadStream() (io.ReadCloser, error) {
 
 	e.logger.InfoLnf("Download %s start from %d, (total %d)", e.id, offset, e.workingFile.TotalLen())
 
-	return e.requestHttpResBody(e.resolvedUrl, offset, context.Background())
+	return e.requestHttpResBody(e.resolvedUrl, offset, ctx)
 }
 func (e *UrlBasedEntry) Reset() {
 	e.resolvedUrl = ""

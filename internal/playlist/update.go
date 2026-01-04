@@ -63,10 +63,15 @@ func (pl *PlayList) healthCheck() {
 	if len(items) < 2 {
 		return
 	}
-	eta := items[0].Duration - items[0].TimePassed
+
+	eta := time.Second
+	if items[0].TimePassed != 0 && items[0].Duration != 0 {
+		eta += items[0].Duration - items[0].TimePassed
+	}
+
 	for _, item := range items[1:] {
-		item.RestartTaskIfTooSlow(eta)
-		eta += item.Duration
+		item.UpdateStartPlayingEta(eta)
+		eta += item.Duration + time.Second
 	}
 }
 

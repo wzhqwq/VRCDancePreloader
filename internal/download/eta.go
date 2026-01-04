@@ -55,20 +55,20 @@ func (c *etaCalculator) QuerySpeed() float64 {
 	return float64(sizeSum) / timeSum.Seconds()
 }
 
-func (c *etaCalculator) QueryEta() (time.Duration, bool) {
+func (c *etaCalculator) QueryEta() (time.Time, bool) {
 	speed := c.QuerySpeed()
 	if c.goal == 0 || speed == 0 {
-		return 0, false
+		return time.Unix(0, 0), false
 	}
 
 	remaining := c.goal - c.achieved
 	if remaining <= 0 {
-		return 0, true
+		return time.Now(), true
 	}
 
 	eta := float64(remaining) / speed
 
-	return time.Duration(eta * float64(time.Second)), true
+	return time.Now().Add(time.Duration(eta * float64(time.Second))), true
 }
 
 func (c *etaCalculator) Passed() time.Duration {

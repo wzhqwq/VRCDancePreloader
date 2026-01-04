@@ -23,26 +23,12 @@ func (dm *downloadManager) getDelay(retryDelay bool) (delay time.Duration) {
 	return
 }
 
-const forceRestartThreshold = time.Minute
 const tooSlowThreshold = time.Minute * 3
-const restartMinInterval = time.Second * 10
+const restartMinInterval = time.Second * 30
 const acceptableEta = time.Second * 10
 const estimationBias = time.Second * 30
 
-func (dm *downloadManager) RestartTaskIfTooSlow(id string, timeRemaining time.Duration) {
-	dm.Lock()
-	defer dm.Unlock()
-
-	task, exists := dm.tasks[id]
-	if !exists {
-		return
-	}
-
-	// The task must be downloading
-	if task.Done || task.Cooling || task.Pending || task.eta == nil {
-		return
-	}
-
+func (dm *downloadManager) restartIfNeeded(task *Task, endMoment time.Time) {
 	// Do not try restart if throttle is applied, otherwise we will be blocked again
 	if dm.scheduler.ThrottleApplied() {
 		return
@@ -53,23 +39,37 @@ func (dm *downloadManager) RestartTaskIfTooSlow(id string, timeRemaining time.Du
 		return
 	}
 	if passed > tooSlowThreshold {
-		logger.InfoLn("Restart task", id, "because it already spent too much time")
+		logger.InfoLn("Restart task", task.ID, "because it already spent too much time")
 		task.restart()
 		return
 	}
 
 	eta, valid := task.eta.QueryEta()
 	if valid {
-		if eta > acceptableEta && eta+estimationBias > timeRemaining {
-			logger.InfoLn("Restart task", id, "because it cannot be done before the song plays")
+		// will be done in 10 seconds
+		if eta.Sub(time.Now()) < acceptableEta {
+			return
+		}
+		if endMoment.Sub(eta) < estimationBias {
+			logger.InfoLn("Restart task", task.ID, "because it cannot be done before the song ends")
 			task.restart()
 		}
+	}
+}
+
+func (dm *downloadManager) UpdateRequestEta(id string, eta time.Time, duration time.Duration) {
+	dm.Lock()
+	defer dm.Unlock()
+
+	task, exists := dm.tasks[id]
+	if !exists {
 		return
 	}
 
-	// invalid eta
-	if timeRemaining < forceRestartThreshold {
-		logger.InfoLn("Restart task", id, "because we cannot guess when it will be done")
-		task.restart()
+	// The task must be downloading
+	if task.Done || task.Cooling || task.Pending {
+		return
 	}
+
+	dm.restartIfNeeded(task, eta.Add(duration))
 }

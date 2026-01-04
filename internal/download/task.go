@@ -20,6 +20,8 @@ type Task struct {
 
 	manager *downloadManager
 
+	connected bool
+
 	ID string
 
 	TotalSize      int64

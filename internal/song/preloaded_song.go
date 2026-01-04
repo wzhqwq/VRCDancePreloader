@@ -175,9 +175,9 @@ func (ps *PreloadedSong) InDownloadQueue() bool {
 func (ps *PreloadedSong) RemoveFromList() {
 	ps.sm.RemoveFromList()
 }
-func (ps *PreloadedSong) RestartTaskIfTooSlow(eta time.Duration) {
+func (ps *PreloadedSong) UpdateStartPlayingEta(eta time.Duration) {
 	if ps.sm.DownloadStatus == Downloading {
-		download.RestartTaskIfTooSlow(ps.GetSongId(), eta)
+		download.UpdateRequestEta(ps.GetSongId(), time.Now().Add(eta), ps.Duration)
 	}
 }
 func (ps *PreloadedSong) AddToHistory() {

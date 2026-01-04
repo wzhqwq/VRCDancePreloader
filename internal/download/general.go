@@ -61,8 +61,8 @@ func Download(id string) *Task {
 	return task
 }
 
-func RestartTaskIfTooSlow(id string, timeRemaining time.Duration) {
-	findManager(id).RestartTaskIfTooSlow(id, timeRemaining)
+func UpdateRequestEta(id string, eta time.Time, duration time.Duration) {
+	findManager(id).UpdateRequestEta(id, eta, duration)
 }
 
 func Retry(task *Task) {
