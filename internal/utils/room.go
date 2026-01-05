@@ -9,8 +9,8 @@ func IdentifyRoomBrand(roomName string) string {
 	if strings.Contains(roomName, "WannaDance") {
 		return "WannaDance"
 	}
-	if strings.Contains(roomName, "DuDu") && strings.Contains(roomName, "Fit") {
-		return "WannaDance"
+	if strings.Contains(roomName, "DuDu") && strings.Contains(roomName, "FitDance") {
+		return "DuDuFitDance"
 	}
 	return ""
 }

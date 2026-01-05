@@ -149,19 +149,19 @@ type DuDuQueueItem struct {
 }
 
 func (item *DuDuQueueItem) ToPreloaded() *song.PreloadedSong {
-	// if item.SongID > 0 {
-	// 	s := song.GetDuDuSongForList(item.SongID)
-	// 	// Try to complete the info with the queue item
-	// 	if s.InfoNa && item.Title != "" && item.Group != "" && item.Duration > 0 {
-	// 		prefix := fmt.Sprintf("%d. ", item.SongID)
-	// 		if strings.HasPrefix(item.Title, prefix) {
-	// 			item.Title = strings.TrimPrefix(item.Title, prefix)
-	// 		}
-	// 		s.DuDuSong.Complete(item.Title, item.Group, item.Duration)
-	// 		s.InfoNa = false
-	// 	}
-	// 	return s
-	// }
+	if item.SongID > 0 {
+		s := song.GetDuDuSongForList(item.SongID)
+		// Try to complete the info with the queue item
+		if s.InfoNa && item.Title != "" && item.Group != "" && item.Duration > 0 {
+			prefix := fmt.Sprintf("%d. ", item.SongID)
+			if strings.HasPrefix(item.Title, prefix) {
+				item.Title = strings.TrimPrefix(item.Title, prefix)
+			}
+			s.DuDuSong.Complete(item.Title, item.Group, item.Duration)
+			s.InfoNa = false
+		}
+		return s
+	}
 	if item.SongID < 0 {
 		url := extractUrlFromTitle(item.Title)
 		if url != "" {
@@ -172,9 +172,9 @@ func (item *DuDuQueueItem) ToPreloaded() *song.PreloadedSong {
 }
 
 func (item *DuDuQueueItem) MatchWithPreloaded(song *song.PreloadedSong) bool {
-	// if item.SongID > 0 {
-	// 	return song.MatchWithDuDuId(item.SongID)
-	// }
+	if item.SongID > 0 {
+		return song.MatchWithDuDuId(item.SongID)
+	}
 	if item.SongID < 0 {
 		url := extractUrlFromTitle(item.Title)
 		if url != "" {

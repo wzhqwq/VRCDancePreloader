@@ -1,6 +1,8 @@
 package playlist
 
 import (
+	"time"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
@@ -23,25 +25,25 @@ type SongListButton struct {
 }
 
 func getLabelText(room string) string {
+	var t time.Time
+	var ok bool
+
 	switch room {
 	case "PyPyDance":
-		if t, ok := raw_song.GetPyPyUpdateTime(); ok {
-			return i18n.T("label_song_list_downloaded", goeasyi18n.Options{
-				Data: map[string]any{
-					"Name": room,
-					"Time": t.Format("2006-01-02 15:04:05"),
-				}},
-			)
-		}
+		t, ok = raw_song.GetPyPyUpdateTime()
 	case "WannaDance":
-		if t, ok := raw_song.GetWannaUpdateTime(); ok {
-			return i18n.T("label_song_list_downloaded", goeasyi18n.Options{
-				Data: map[string]any{
-					"Name": room,
-					"Time": t.Format("2006-01-02 15:04:05"),
-				}},
-			)
-		}
+		t, ok = raw_song.GetWannaUpdateTime()
+	case "DuDuFitDance":
+		t, ok = raw_song.GetDuDuUpdateTime()
+	}
+
+	if ok {
+		return i18n.T("label_song_list_downloaded", goeasyi18n.Options{
+			Data: map[string]any{
+				"Name": room,
+				"Time": t.Format("2006-01-02 15:04:05"),
+			}},
+		)
 	}
 	return i18n.T("label_song_list_downloading", goeasyi18n.Options{
 		Data: map[string]any{
@@ -57,6 +59,9 @@ func isAllSongListComplete() bool {
 	if _, ok := raw_song.GetWannaUpdateTime(); !ok {
 		return false
 	}
+	if _, ok := raw_song.GetDuDuUpdateTime(); !ok {
+		return false
+	}
 	return true
 }
 
@@ -67,8 +72,9 @@ func NewSongListButton() *SongListButton {
 	scroll.SetMinSize(fyne.NewSize(250, 300))
 
 	labelMap := map[string]*widget.Label{
-		"PyPyDance":  widget.NewLabel(getLabelText("PyPyDance")),
-		"WannaDance": widget.NewLabel(getLabelText("WannaDance")),
+		"PyPyDance":    widget.NewLabel(getLabelText("PyPyDance")),
+		"WannaDance":   widget.NewLabel(getLabelText("WannaDance")),
+		"DuDuFitDance": widget.NewLabel(getLabelText("DuDuFitDance")),
 	}
 
 	btn := &SongListButton{
@@ -84,6 +90,7 @@ func NewSongListButton() *SongListButton {
 
 	wholeContent.Add(labelMap["PyPyDance"])
 	wholeContent.Add(labelMap["WannaDance"])
+	wholeContent.Add(labelMap["DuDuFitDance"])
 
 	btn.OnDestroy = func() {
 		close(btn.closeCh)

@@ -1,12 +1,19 @@
 package raw_song
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 var pypySongMap map[int]PyPyDanceSong
+var pypyListMu sync.RWMutex
 var pypyGroups []string
 var pypyUpdateTime time.Time
 
 func FindPyPySong(id int) (*PyPyDanceSong, bool) {
+	pypyListMu.RLock()
+	defer pypyListMu.RUnlock()
+
 	if pypySongMap == nil {
 		return nil, false
 	}
@@ -28,6 +35,9 @@ type PyPyDanceListResponse struct {
 }
 
 func ProcessPyPyDanceList(data *PyPyDanceListResponse) {
+	pypyListMu.Lock()
+	defer pypyListMu.Unlock()
+
 	if data == nil {
 		return
 	}

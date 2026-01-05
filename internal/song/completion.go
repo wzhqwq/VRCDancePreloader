@@ -52,31 +52,44 @@ func (ps *PreloadedSong) completeTitle() {
 }
 
 func (ps *PreloadedSong) UpdateSong() bool {
+	var completedTitle string
+
 	if ps.PyPySong != nil {
 		song, ok := raw_song.FindPyPySong(ps.PyPySong.ID)
 		if ok {
 			ps.PyPySong = song
-			ps.InfoNa = false
-			persistence.UpdateSavedTitle(ps.GetSongId(), song.Name)
-			ps.completeDuration()
-			ps.notifyInfoChange()
-			return true
+			completedTitle = song.Name
+			goto completeAll
 		}
 	}
 	if ps.WannaSong != nil {
 		song, ok := raw_song.FindWannaSong(ps.WannaSong.DanceId)
 		if ok {
 			ps.WannaSong = song
-			ps.InfoNa = false
-			persistence.UpdateSavedTitle(ps.GetSongId(), song.Name)
-			ps.completeDuration()
-			ps.notifyInfoChange()
-			return true
+			completedTitle = song.Name
+			goto completeAll
+		}
+	}
+	if ps.DuDuSong != nil {
+		song, ok := raw_song.FindDuDuSong(ps.DuDuSong.ID)
+		if ok {
+			ps.DuDuSong = song
+			completedTitle = song.Name
+			goto completeAll
 		}
 	}
 	if ps.CustomSong != nil {
-		ps.completeDuration()
-		ps.completeTitle()
+		goto completeOther
 	}
 	return false
+
+completeAll:
+	ps.InfoNa = false
+	persistence.UpdateSavedTitle(ps.GetSongId(), completedTitle)
+
+completeOther:
+	ps.completeDuration()
+	ps.completeTitle()
+
+	return true
 }

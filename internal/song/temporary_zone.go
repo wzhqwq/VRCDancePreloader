@@ -117,6 +117,13 @@ func GetWannaSongForList(id int) *PreloadedSong {
 	}
 	return song
 }
+func GetDuDuSongForList(id int) *PreloadedSong {
+	song := drawFromTemporary(fmt.Sprintf("dudu_%d", id))
+	if song == nil {
+		song = CreatePreloadedDuDuSong(id)
+	}
+	return song
+}
 func GetCustomSongForList(url string) *PreloadedSong {
 	song := drawFromTemporary(url)
 	if song == nil {

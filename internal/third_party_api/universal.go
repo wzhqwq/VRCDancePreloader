@@ -22,6 +22,13 @@ func GetThumbnailByInternalID(id string) future.Future[string] {
 		}
 		return future.Pure("")
 	}
+	if duduId, isDuDu := utils.CheckIdIsDuDu(id); isDuDu {
+		song, ok := raw_song.FindDuDuSong(duduId)
+		if ok {
+			return future.Pure("group:" + song.Group)
+		}
+		return future.Pure("")
+	}
 	if ytId, isYoutube := utils.CheckIdIsYoutube(id); isYoutube {
 		if EnableYoutubeThumbnail {
 			return future.Pure(utils.GetYoutubeMQThumbnailURL(ytId))

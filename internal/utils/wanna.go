@@ -30,7 +30,7 @@ func CheckWannaUrl(url string) (int, bool) {
 }
 
 func GetWannaListUrl() string {
-	return "http://api.udon.dance/Api/Songs/list"
+	return "https://api.udon.dance/Api/Songs/list"
 }
 
 func CheckWannaRequest(req *http.Request) (string, bool) {

@@ -12,8 +12,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var idIncrement int64 = 0
-
 var songLogger = utils.NewLogger("Song")
 var activeSongLogger = utils.NewLogger("Song (Active)")
 var removedSongLogger = utils.NewLogger("Song (Removed)")
@@ -23,6 +21,7 @@ type PreloadedSong struct {
 	PyPySong   *raw_song.PyPyDanceSong
 	CustomSong *raw_song.CustomSong
 	WannaSong  *raw_song.WannaDanceSong
+	DuDuSong   *raw_song.DuDuFitDanceSong
 
 	InfoNa bool
 
@@ -133,6 +132,12 @@ func (ps *PreloadedSong) MatchWithWannaId(id int) bool {
 		return false
 	}
 	return ps.WannaSong.DanceId == id
+}
+func (ps *PreloadedSong) MatchWithDuDuId(id int) bool {
+	if ps.DuDuSong == nil {
+		return false
+	}
+	return ps.DuDuSong.ID == id
 }
 func (ps *PreloadedSong) Match(another *PreloadedSong) bool {
 	if ps.PyPySong != nil && another.PyPySong != nil {

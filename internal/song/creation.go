@@ -6,7 +6,26 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
+var idIncrement int64 = 0
+
+func constructBasicPreloadedSong() *PreloadedSong {
+	idIncrement++
+	ret := &PreloadedSong{
+		sm: NewSongStateMachine(),
+
+		ID: idIncrement,
+
+		em:     utils.NewEventManager[ChangeType](),
+		lazyEm: utils.NewEventManager[ChangeType](),
+	}
+	ret.sm.ps = ret
+
+	return ret
+}
+
 func CreatePreloadedPyPySong(id int) *PreloadedSong {
+	ret := constructBasicPreloadedSong()
+
 	song, ok := raw_song.FindPyPySong(id)
 	if !ok {
 		// maybe caused by corrupted song list
@@ -15,25 +34,18 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 		song = &raw_song.PyPyDanceSong{
 			ID: id,
 		}
+		ret.InfoNa = true
 	}
-	idIncrement++
-	ret := &PreloadedSong{
-		sm:       NewSongStateMachine(),
-		PyPySong: song,
 
-		InfoNa: !ok,
-
-		ID: idIncrement,
-
-		em:     utils.NewEventManager[ChangeType](),
-		lazyEm: utils.NewEventManager[ChangeType](),
-	}
+	ret.PyPySong = song
 	ret.completeDuration()
-	ret.sm.ps = ret
+
 	return ret
 }
 
 func CreatePreloadedWannaSong(id int) *PreloadedSong {
+	ret := constructBasicPreloadedSong()
+
 	song, ok := raw_song.FindWannaSong(id)
 	if !ok {
 		// maybe caused by corrupted song list
@@ -42,53 +54,51 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 		song = &raw_song.WannaDanceSong{
 			DanceId: id,
 		}
+		ret.InfoNa = true
 	}
-	idIncrement++
-	ret := &PreloadedSong{
-		sm:        NewSongStateMachine(),
-		WannaSong: song,
 
-		InfoNa: !ok,
-
-		ID: idIncrement,
-
-		em:     utils.NewEventManager[ChangeType](),
-		lazyEm: utils.NewEventManager[ChangeType](),
-	}
+	ret.WannaSong = song
 	ret.completeDuration()
-	ret.sm.ps = ret
+
+	return ret
+}
+
+func CreatePreloadedDuDuSong(id int) *PreloadedSong {
+	ret := constructBasicPreloadedSong()
+
+	song, ok := raw_song.FindDuDuSong(id)
+	if !ok {
+		// maybe caused by corrupted song list
+		cache.DownloadDuDuSongs()
+		songLogger.WarnLn("Cannot find DuDuFitDance song", id, "in the manifest")
+		song = &raw_song.DuDuFitDanceSong{
+			ID: id,
+		}
+		ret.InfoNa = true
+	}
+
+	ret.DuDuSong = song
+	ret.completeDuration()
+
 	return ret
 }
 
 func CreatePreloadedCustomSong(url string) *PreloadedSong {
-	idIncrement++
-	ret := &PreloadedSong{
-		sm:         NewSongStateMachine(),
-		CustomSong: raw_song.FindOrCreateCustomSong(url),
+	ret := constructBasicPreloadedSong()
 
-		ID: idIncrement,
-
-		em:     utils.NewEventManager[ChangeType](),
-		lazyEm: utils.NewEventManager[ChangeType](),
-	}
+	ret.CustomSong = raw_song.FindOrCreateCustomSong(url)
 	ret.completeDuration()
 	ret.completeTitle()
-	ret.sm.ps = ret
+
 	return ret
 }
 
 func CreateUnknownSong() *PreloadedSong {
-	idIncrement++
-	ret := &PreloadedSong{
-		Unknown: true,
-		ID:      idIncrement,
+	ret := constructBasicPreloadedSong()
 
-		sm: NewSongStateMachine(),
-
-		em:     utils.NewEventManager[ChangeType](),
-		lazyEm: utils.NewEventManager[ChangeType](),
-	}
-	ret.sm.ps = ret
+	ret.InfoNa = true
+	ret.Unknown = true
 	ret.sm.DownloadStatus = NotAvailable
+
 	return ret
 }

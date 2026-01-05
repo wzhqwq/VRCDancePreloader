@@ -6,12 +6,12 @@ import (
 )
 
 var wannaSongMap map[int]WannaDanceSong
-var mu sync.RWMutex
+var wannaListMu sync.RWMutex
 var wannaUpdateTime time.Time
 
 func FindWannaSong(id int) (*WannaDanceSong, bool) {
-	mu.RLock()
-	defer mu.RUnlock()
+	wannaListMu.RLock()
+	defer wannaListMu.RUnlock()
 
 	if wannaSongMap == nil {
 		return nil, false
@@ -41,8 +41,8 @@ type WannaDanceGroupContent struct {
 }
 
 func ProcessWannaDanceList(data *WannaDanceListResponse) {
-	mu.Lock()
-	defer mu.Unlock()
+	wannaListMu.Lock()
+	defer wannaListMu.Unlock()
 
 	if data == nil {
 		return

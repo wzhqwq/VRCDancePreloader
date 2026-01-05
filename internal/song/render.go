@@ -65,6 +65,16 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 		}
 		return basicInfo
 	}
+	if ps.DuDuSong != nil {
+		if ps.InfoNa {
+			basicInfo.Title = fmt.Sprintf("DuDuFitDance %d", ps.DuDuSong.ID)
+			basicInfo.Group = ""
+		} else {
+			basicInfo.Title = ps.DuDuSong.FullTitle()
+			basicInfo.Group = ps.DuDuSong.Group
+		}
+		return basicInfo
+	}
 	if ps.CustomSong != nil {
 		basicInfo.Title = ps.CustomSong.Name
 		basicInfo.Group = i18n.T("placeholder_custom_song")

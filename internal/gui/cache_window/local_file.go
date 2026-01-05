@@ -1,6 +1,8 @@
 package cache_window
 
 import (
+	"log"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -14,7 +16,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"log"
 )
 
 type LocalFileGui struct {
@@ -55,6 +56,11 @@ func (g *LocalFileGui) getTitle() string {
 	}
 	if wannaId, ok := utils.CheckIdIsWanna(g.Info.ID); ok {
 		if song, ok := raw_song.FindWannaSong(wannaId); ok {
+			return song.FullTitle()
+		}
+	}
+	if duduId, ok := utils.CheckIdIsDuDu(g.Info.ID); ok {
+		if song, ok := raw_song.FindDuDuSong(duduId); ok {
 			return song.FullTitle()
 		}
 	}
