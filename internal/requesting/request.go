@@ -1,9 +1,11 @@
 package requesting
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/api/option"
 )
 
@@ -31,7 +33,15 @@ func WithYoutubeApiClient(key string) option.ClientOption {
 	})
 }
 
-func RequestThumbnail(url string) (resp *http.Response, err error) {
+var thumbnailRequestSem = semaphore.NewWeighted(6)
+
+func RequestThumbnail(url string) (*http.Response, error) {
+	err := thumbnailRequestSem.Acquire(context.Background(), 1)
+	if err != nil {
+		return nil, err
+	}
+	defer thumbnailRequestSem.Release(1)
+
 	if utils.CheckPyPyResource(url) {
 		return pypyClient.Get(url)
 	}

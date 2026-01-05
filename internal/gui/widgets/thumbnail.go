@@ -71,7 +71,8 @@ func (r *thumbnailRenderer) Refresh() {
 	if r.t.imageChanged {
 		r.t.imageChanged = false
 		if r.t.loading || r.t.image == nil {
-			r.i = canvas.NewImageFromImage(thumbnails.GetDefaultThumbnail())
+			local := thumbnails.GetThumbnailImage("", third_party_api.GetLocalThumbnailByInternalID(r.t.ID))
+			r.i = canvas.NewImageFromImage(local)
 		} else {
 			r.i = canvas.NewImageFromImage(r.t.image)
 		}

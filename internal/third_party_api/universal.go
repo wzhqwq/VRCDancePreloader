@@ -11,6 +11,31 @@ import (
 
 var logger = utils.NewLogger("Third Party API")
 
+func GetLocalThumbnailByInternalID(id string) string {
+	if pypyId, isPypy := utils.CheckIdIsPyPy(id); isPypy {
+		song, ok := raw_song.FindPyPySong(pypyId)
+		if ok {
+			return "group:" + song.GetGroupName()
+		}
+		return ""
+	}
+	if wannaId, isWanna := utils.CheckIdIsWanna(id); isWanna {
+		song, ok := raw_song.FindWannaSong(wannaId)
+		if ok {
+			return "group:" + song.Group
+		}
+		return ""
+	}
+	if duduId, isDuDu := utils.CheckIdIsDuDu(id); isDuDu {
+		song, ok := raw_song.FindDuDuSong(duduId)
+		if ok {
+			return "group:" + song.Group
+		}
+		return ""
+	}
+	return ""
+}
+
 func GetThumbnailByInternalID(id string) future.Future[string] {
 	if pypyId, isPypy := utils.CheckIdIsPyPy(id); isPypy {
 		return future.Pure(utils.GetPyPyThumbnailUrl(pypyId))

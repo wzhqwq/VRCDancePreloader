@@ -16,6 +16,7 @@ require (
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/samber/lo v1.51.0
 	github.com/stephennancekivell/go-future v0.0.0-20220519100038-8611b539078e
+	golang.org/x/sync v0.15.0
 	google.golang.org/api v0.238.0
 	gopkg.in/yaml.v3 v3.0.1
 )

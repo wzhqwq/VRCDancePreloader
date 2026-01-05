@@ -37,12 +37,21 @@ var groupNameToThumbnail = map[string]string{
 	"Others (J-POP)": "thumbnail-jpop.jpg",
 
 	// WannaDance only
-	"Song^_^":       "thumbnail-song.jpg",
-	"Fol2esTz":      "thumbnail-fol2estz.jpg",
-	"Lisa Rhee":     "thumbnail-lisa.jpg",
-	"足太ぺんた":         "thumbnail-penta.jpg",
-	"Other Fitness": "thumbnail-fitness.jpg",
-	"Other K-POP":   "thumbnail-kpop.jpg",
+	"Just Dance Fan Made": "thumbnail-justdance-fan.jpg",
+	"Song^_^":             "thumbnail-song.jpg",
+	"Fol2esTz":            "thumbnail-fol2estz.jpg",
+	"Lisa Rhee":           "thumbnail-lisa.jpg",
+	"足太ぺんた":               "thumbnail-penta.jpg",
+	"Other Fitness":       "thumbnail-fitness.jpg",
+	"Other K-POP":         "thumbnail-kpop.jpg",
+	//"Michael Jackson": "thumbnail-michael.jpg",
+
+	// DuDuFitDance only
+	//"DuDu FitDance":                   "thumbnail-ddfd.jpg",
+	"Just Dance Series": "thumbnail-justdance-solo.jpg",
+	"Other FitDance":    "thumbnail-fitness.jpg",
+	//"Michael Jackson: The Experience": "thumbnail-michael.jpg",
+	"Just Dance Fanmade": "thumbnail-justdance-fan.jpg",
 }
 
 var defaultThumbnail = "thumbnail-default.jpg"
@@ -86,10 +95,6 @@ func GetGroupThumbnail(groupName string) image.Image {
 	if thumbnail, ok := groupNameToThumbnail[groupName]; ok {
 		return getThumbnail(thumbnail)
 	}
-	return getThumbnail(defaultThumbnail)
-}
-
-func GetDefaultThumbnail() image.Image {
 	return getThumbnail(defaultThumbnail)
 }
 
