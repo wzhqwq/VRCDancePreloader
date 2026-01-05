@@ -16,6 +16,10 @@ func GetDuDuVideoUrl(id int) string {
 	return fmt.Sprintf("https://api.dudufit.dance/api/v1/videos/%d?cdn=jpn", id)
 }
 
+func GetDuDuThumbnailUrl(id int) string {
+	return fmt.Sprintf("https://api.dudufit.dance/thumbnails/%d.jpg", id)
+}
+
 func CheckDuDuUrl(url string) (int, bool) {
 	if matches := duDuVideoURLRegex.FindStringSubmatch(url); len(matches) > 1 {
 		id := matches[1]

@@ -15,6 +15,10 @@ func GetWannaVideoUrl(id int) string {
 	return fmt.Sprintf("http://api.udon.dance/Api/Songs/play?id=%d", id)
 }
 
+func GetWannaThumbnailUrl(id int) string {
+	return fmt.Sprintf("https://aya.kiva.moe/images/%d.jpg", id)
+}
+
 func CheckWannaUrl(url string) (int, bool) {
 	if matches := wannaVideoURLRegex.FindStringSubmatch(url); len(matches) > 1 {
 		id := matches[1]

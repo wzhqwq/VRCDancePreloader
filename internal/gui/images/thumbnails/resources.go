@@ -32,7 +32,7 @@ var groupNameToThumbnail = map[string]string{
 	"SouthVibes":          "thumbnail-southvibes.jpg",
 
 	// PyPyDance only
-	"Just Dance":     "thumbnail-justdance-solo.jpg",
+	"Just Dance":     "thumbnail-justdance.jpg",
 	"Others (K-POP)": "thumbnail-kpop.jpg",
 	"Others (J-POP)": "thumbnail-jpop.jpg",
 
@@ -44,14 +44,15 @@ var groupNameToThumbnail = map[string]string{
 	"足太ぺんた":               "thumbnail-penta.jpg",
 	"Other Fitness":       "thumbnail-fitness.jpg",
 	"Other K-POP":         "thumbnail-kpop.jpg",
-	//"Michael Jackson": "thumbnail-michael.jpg",
+	"Michael Jackson":     "thumbnail-michael.jpg",
 
 	// DuDuFitDance only
 	//"DuDu FitDance":                   "thumbnail-ddfd.jpg",
-	"Just Dance Series": "thumbnail-justdance-solo.jpg",
-	"Other FitDance":    "thumbnail-fitness.jpg",
-	//"Michael Jackson: The Experience": "thumbnail-michael.jpg",
+	"Just Dance Series":  "thumbnail-justdance.jpg",
+	"Other FitDance":     "thumbnail-fitness.jpg",
 	"Just Dance Fanmade": "thumbnail-justdance-fan.jpg",
+
+	"Michael Jackson: The Experience": "thumbnail-michael.jpg",
 }
 
 var defaultThumbnail = "thumbnail-default.jpg"
