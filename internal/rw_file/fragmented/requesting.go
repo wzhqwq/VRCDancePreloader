@@ -43,6 +43,15 @@ func (f *File) NotifyRequestStart(start int64) {
 		return
 	}
 	f.activeOrCreateFragment(start)
+	f.lastestRequestStart = start
+}
+
+func (f *File) IsRequestFulfilled() bool {
+	requestedFrag := f.findAvailableFragment(f.lastestRequestStart)
+	if requestedFrag == nil {
+		return false
+	}
+	return f.File.IsSuffix(requestedFrag)
 }
 
 func (f *File) GetDownloadOffset() int64 {

@@ -24,6 +24,7 @@ var cachePath string
 var maxSize int64
 var keepFavorites bool
 var fileFormat int
+var forceExpirationCheck bool
 
 var cacheMap = NewCacheMap()
 var cleanUpChan = make(chan struct{}, 1)
@@ -67,6 +68,9 @@ func SetKeepFavorites(b bool) {
 }
 func SetFileFormat(format int) {
 	fileFormat = format
+}
+func SetForceExpirationCheck(b bool) {
+	forceExpirationCheck = b
 }
 
 func CleanUpCache() {

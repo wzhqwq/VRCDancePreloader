@@ -28,6 +28,16 @@ type File struct {
 
 	fragmentsMutex  sync.RWMutex
 	activeFragMutex sync.RWMutex
+
+	lastestRequestStart int64
+}
+
+func (f *File) Clear() error {
+	// file won't be cleared if the file is active
+	// so we can safely reset fragments
+	f.File.ClearTrunks()
+	f.activeFragment = f.fragments[0]
+	return nil
 }
 
 func NewFile(baseName string) *File {

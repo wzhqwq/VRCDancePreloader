@@ -122,6 +122,8 @@
   Default: "Favorite"
 - Key: label_cache_is_preserved
   Default: "Kept in cache"
+- Key: label_force_exp_check
+  Default: "Check expiration even if the cache is complete"
 - Key: label_cache_is_partial
   Default: "Partially downloaded"
 

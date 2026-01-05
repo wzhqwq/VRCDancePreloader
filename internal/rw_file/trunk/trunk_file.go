@@ -82,6 +82,17 @@ func (f *File) Close() error {
 	return f.file.Close()
 }
 
+func (f *File) ClearTrunks() {
+	// remove complete flag
+	f.Completed = false
+	f.writeStates()
+	// fill zeros
+	for i := 0; i < numTrunks; i++ {
+		f.trunks[i] = 0
+	}
+	f.writeTrunks()
+}
+
 func (f *File) Init(contentLength int64, lastModified time.Time) {
 	f.FullSize = contentLength
 	f.LastModified = lastModified

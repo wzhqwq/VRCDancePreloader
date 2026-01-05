@@ -25,6 +25,24 @@ type File struct {
 	file      *os.File
 }
 
+func (f *File) Clear() error {
+	f.fileMutex.RLock()
+	defer f.fileMutex.RUnlock()
+
+	err := f.file.Truncate(0)
+	if err != nil {
+		return err
+	}
+
+	f.downloaded = 0
+
+	return nil
+}
+
+func (f *File) IsRequestFulfilled() bool {
+	return f.IsComplete()
+}
+
 func (f *File) NotifyRequestStart(start int64) {
 	// Do nothing
 }
@@ -95,7 +113,7 @@ func (f *File) IsComplete() bool {
 func (f *File) TotalLen() int64 {
 	return f.totalLen
 }
-func (f *File) Init(contentLength int64, _ time.Time) {
+func (f *File) UpdateRemoteInfo(contentLength int64, _ time.Time) {
 	f.totalLen = contentLength
 }
 

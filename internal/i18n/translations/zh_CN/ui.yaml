@@ -102,6 +102,8 @@
   Default: "缓存最大大小"
 - Key: label_keep_favorites
   Default: "清理缓存时保留收藏夹视频"
+- Key: label_force_exp_check
+  Default: "强制检查完整缓存是否过期"
 - Key: btn_manage_cache
   Default: "管理缓存..."
 

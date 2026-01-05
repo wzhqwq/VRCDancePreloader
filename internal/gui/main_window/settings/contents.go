@@ -226,6 +226,12 @@ func createCacheSettingsContent() fyne.CanvasObject {
 	keepFavoriteCheck.Checked = cacheConfig.KeepFavorites
 	wholeContent.Add(keepFavoriteCheck)
 
+	forceExpirationCheckCb := widget.NewCheck(i18n.T("label_force_exp_check"), func(b bool) {
+		cacheConfig.UpdateForceExpirationCheck(b)
+	})
+	forceExpirationCheckCb.Checked = cacheConfig.ForceExpirationCheck
+	wholeContent.Add(forceExpirationCheckCb)
+
 	manageBtn := widget.NewButton(i18n.T("btn_manage_cache"), func() {
 		cache_window.OpenCacheWindow()
 	})

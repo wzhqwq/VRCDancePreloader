@@ -17,6 +17,16 @@ type File struct {
 	em *utils.EventManager[int64]
 }
 
+func (f *File) Clear() error {
+	f.fragment.Length = 0
+	f.File.ClearTrunks()
+	return nil
+}
+
+func (f *File) IsRequestFulfilled() bool {
+	return f.IsComplete()
+}
+
 func (f *File) NotifyRequestStart(start int64) {
 	// Do nothing
 }

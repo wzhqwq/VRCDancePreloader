@@ -7,13 +7,14 @@ import (
 )
 
 type DeferredReadableFile interface {
-	Init(contentLength int64, lastModified time.Time)
+	UpdateRemoteInfo(contentLength int64, lastModified time.Time)
 	TotalLen() int64
 	ModTime() time.Time
 
 	Append(bytes []byte) (int, error)
 	ReadAt(p []byte, off int64) (int, error)
 	Close() error
+	Clear() error
 
 	RequestRs(ctx context.Context) io.ReadSeeker
 
@@ -23,6 +24,8 @@ type DeferredReadableFile interface {
 	GetDownloadOffset() int64
 	GetDownloadedBytes() int64
 	IsComplete() bool
+
+	IsRequestFulfilled() bool
 }
 
 type DeferredReader interface {

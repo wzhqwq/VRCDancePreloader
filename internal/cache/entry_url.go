@@ -25,7 +25,7 @@ func newUrlBasedEntry(id string, client *http.Client, initialInfoGetter func(ctx
 	}
 }
 
-func (e *UrlBasedEntry) resolveUrl(ctx context.Context) error {
+func (e *UrlBasedEntry) resolveRemoteMedia(ctx context.Context) error {
 	info, err := e.initialInfoGetter(ctx)
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func (e *UrlBasedEntry) resolveUrl(ctx context.Context) error {
 		e.remoteModTime = info.LastModified
 	}
 
-	e.workingFile.Init(info.TotalSize, e.remoteModTime)
+	e.workingFile.UpdateRemoteInfo(info.TotalSize, e.remoteModTime)
 
 	e.resolvedUrl = url
 	e.logger.InfoLn(e.id, "resolved to", url)
@@ -73,10 +73,31 @@ func (e *UrlBasedEntry) checkWorkingFile(ctx context.Context) error {
 	if e.workingFile == nil {
 		return io.ErrClosedPipe
 	}
-	if e.workingFile.TotalLen() == 0 {
-		err := e.resolveUrl(ctx)
-		return err
+
+	if e.workingFile.IsComplete() && !forceExpirationCheck {
+		// skip check unless we need to check Last-Modified
+		return nil
 	}
+
+	localModTime := e.workingFile.ModTime()
+
+	if e.remoteModTime.IsZero() || e.resolvedUrl == "" {
+		// make sure that we have recorded Last-Modified and url
+		err := e.resolveRemoteMedia(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !localModTime.IsZero() && !e.remoteModTime.IsZero() && e.remoteModTime.After(localModTime) {
+		// local cache is expired
+		e.logger.WarnLn("Local cache expired so we will re-download it completely")
+		err := e.workingFile.Clear()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -107,11 +128,6 @@ func (e *UrlBasedEntry) GetDownloadStream(ctx context.Context) (io.ReadCloser, e
 
 	if err := e.checkWorkingFile(ctx); err != nil {
 		return nil, err
-	}
-	if e.resolvedUrl == "" {
-		if err := e.resolveUrl(ctx); err != nil {
-			return nil, err
-		}
 	}
 
 	e.workingFile.MarkDownloading()

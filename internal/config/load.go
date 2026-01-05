@@ -56,6 +56,8 @@ type CacheConfig struct {
 	//RWBufferSize  int    `yaml:"rw-buffer-size"`
 	// 0: legacy, 1: continuous, 2: fragmented
 	FileFormat int `yaml:"file-format"`
+
+	ForceExpirationCheck bool `yaml:"force-expiration-check"`
 }
 type DbConfig struct {
 	Path string `yaml:"path"`
