@@ -5,12 +5,15 @@ import (
 )
 
 var pypySites = []string{
-	"jd.pypy.moe",
+	//"jd.pypy.moe",
 	"api.pypy.dance",
 }
 var wannaSites = []string{
 	"api.udon.dance",
 	"api.wannadance.online",
+}
+var duduSites = []string{
+	"api.dudufit.dance",
 }
 var biliSites = []string{
 	"www.bilibili.com",
@@ -24,6 +27,8 @@ var allSites = []string{
 	// WannaDance
 	"api.udon.dance",
 	"api.wannadance.online",
+	// DuDuFitDance
+	"api.dudufit.dance",
 	// BiliBili
 	"www.bilibili.com",
 	"b23.tv",
@@ -34,6 +39,9 @@ var httpsSites = []string{
 	// PyPyDance
 
 	// WannaDance
+
+	// DuDuFitDance
+	"api.dudufit.dance",
 
 	// BiliBili
 	"www.bilibili.com",
@@ -47,6 +55,9 @@ func IsPyPySite(host string) bool {
 func IsWannaSite(host string) bool {
 	return lo.IndexOf(wannaSites, host) >= 0
 }
+func IsDuDuSite(host string) bool {
+	return lo.IndexOf(duduSites, host) >= 0
+}
 func IsBiliSite(host string) bool {
 	return lo.IndexOf(biliSites, host) >= 0
 }
@@ -59,6 +70,9 @@ func AllPyPySites() []string {
 }
 func AllWannaSites() []string {
 	return wannaSites
+}
+func AllDuDuSites() []string {
+	return duduSites
 }
 func AllBiliSites() []string {
 	return biliSites

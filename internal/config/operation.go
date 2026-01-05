@@ -75,15 +75,18 @@ func (hc *HijackConfig) UpdateEnablePWI(b bool) {
 func (pc *ProxyConfig) Init() {
 	//TODO cancel comment after implemented youtube preloading
 	pc.ProxyControllers = map[string]*ProxyTester{
-		"pypydance-api":  NewProxyTester("pypydance-api", pc.Pypy),
-		"wannadance-api": NewProxyTester("wannadance-api", pc.Wanna),
-		"youtube-video":  NewProxyTester("youtube-video", pc.YoutubeVideo),
-		"youtube-api":    NewProxyTester("youtube-api", pc.YoutubeApi),
-		"youtube-image":  NewProxyTester("youtube-image", pc.YoutubeImage),
+		"pypydance-api":     NewProxyTester("pypydance-api", pc.Pypy),
+		"wannadance-api":    NewProxyTester("wannadance-api", pc.Wanna),
+		"dudu-fitdance-api": NewProxyTester("dudu-fitdance-api", pc.DuDu),
+		"bilibili-api":      NewProxyTester("bilibili-api", pc.BiliBili),
+		"youtube-video":     NewProxyTester("youtube-video", pc.YoutubeVideo),
+		"youtube-api":       NewProxyTester("youtube-api", pc.YoutubeApi),
+		"youtube-image":     NewProxyTester("youtube-image", pc.YoutubeImage),
 	}
 
 	requesting.InitPypyClient(pc.Pypy)
 	requesting.InitWannaClient(pc.Wanna)
+	requesting.InitDuDuClient("")
 	requesting.InitBiliClient("")
 	//requesting.InitYoutubeVideoClient(pc.YoutubeVideo)
 	requesting.InitYoutubeImageClient(pc.YoutubeImage)
@@ -92,6 +95,8 @@ func (pc *ProxyConfig) Init() {
 	if !skipTest {
 		pc.ProxyControllers["pypydance-api"].Test()
 		pc.ProxyControllers["wannadance-api"].Test()
+		pc.ProxyControllers["dudu-fitdance-api"].Test()
+		pc.ProxyControllers["bilibili-api"].Test()
 	}
 	//if config.Youtube.EnableVideo {
 	//	if !skipTest {
@@ -123,6 +128,12 @@ func (pc *ProxyConfig) Update(item, value string) error {
 	case "wannadance-api":
 		pc.Wanna = value
 		requesting.InitWannaClient(value)
+	case "dudu-fitdance-api":
+		pc.DuDu = value
+		requesting.InitDuDuClient(value)
+	case "bilibili-api":
+		pc.BiliBili = value
+		requesting.InitBiliClient(value)
 	case "youtube-video":
 		pc.YoutubeVideo = value
 		requesting.InitYoutubeVideoClient(value)
@@ -145,6 +156,10 @@ func (pc *ProxyConfig) Test(item string) (bool, string) {
 		return requesting.TestPypyClient()
 	case "wannadance-api":
 		return requesting.TestWannaClient()
+	case "dudu-fitdance-api":
+		return requesting.TestDuDuClient()
+	case "bilibili-api":
+		return requesting.TestBiliClient()
 	case "youtube-video":
 		return requesting.TestYoutubeVideoClient()
 	case "youtube-api":

@@ -80,6 +80,11 @@ func GetTemporaryWannaSong(id int, ctx context.Context) *PreloadedSong {
 		return CreatePreloadedWannaSong(id)
 	})
 }
+func GetTemporaryDuDuSong(id int, ctx context.Context) *PreloadedSong {
+	return findOrCreateTemporarySong(fmt.Sprintf("dudu_%d", id), ctx, func() *PreloadedSong {
+		return CreatePreloadedDuDuSong(id)
+	})
+}
 func GetTemporaryCustomSong(url string, ctx context.Context) *PreloadedSong {
 	return findOrCreateTemporarySong(url, ctx, func() *PreloadedSong {
 		return CreatePreloadedCustomSong(url)

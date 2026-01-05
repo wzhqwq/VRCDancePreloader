@@ -26,6 +26,13 @@ func NewEntry(id string) Entry {
 			}, nil
 		})
 	}
+	if num, ok := utils.CheckIdIsDuDu(id); ok {
+		return newUrlBasedEntry(id, requesting.GetDuDuClient(), func(ctx context.Context) (*RemoteVideoInfo, error) {
+			return &RemoteVideoInfo{
+				FinalUrl: utils.GetDuDuVideoUrl(num),
+			}, nil
+		})
+	}
 	if bvID, ok := utils.CheckIdIsBili(id); ok {
 		return newUrlBasedEntry(id, requesting.GetBiliClient(), func(ctx context.Context) (*RemoteVideoInfo, error) {
 			mTime, err := third_party_api.GetBiliVideoModTime(bvID, ctx)

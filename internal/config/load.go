@@ -19,6 +19,9 @@ type KeyConfig struct {
 type ProxyConfig struct {
 	Pypy  string `yaml:"pypydance-api"`
 	Wanna string `yaml:"wannadance-api"`
+	DuDu  string `yaml:"dudu-fitdance-api"`
+
+	BiliBili string `yaml:"bilibili-api"`
 
 	YoutubeVideo string `yaml:"youtube-video"`
 	YoutubeApi   string `yaml:"youtube-api"`
@@ -89,6 +92,9 @@ func FillDefaultSetting() {
 	config.Proxy = ProxyConfig{
 		Pypy:  "",
 		Wanna: "",
+		DuDu:  "",
+
+		BiliBili: "",
 
 		YoutubeVideo: "",
 		YoutubeApi:   "",
@@ -105,17 +111,19 @@ func FillDefaultSetting() {
 		EnabledRooms: []string{
 			"PyPyDance",
 			"WannaDance",
+			"DuDuFitDance",
 		},
 		EnabledPlatforms: []string{
 			"PyPyDance",
 			"WannaDance",
+			"DuDuFitDance",
 			"BiliBili",
 			//"YouTube",
 		},
-		MaxPreload: 4,
+		MaxPreload: 2,
 	}
 	config.Download = DownloadConfig{
-		MaxDownload: 2,
+		MaxDownload: 1,
 	}
 	config.Cache = CacheConfig{
 		Path:          "./cache",

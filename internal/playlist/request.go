@@ -36,6 +36,16 @@ func (pl *PlayList) FindWannaSong(id int) *song.PreloadedSong {
 	return nil
 }
 
+func (pl *PlayList) FindDuDuSong(id int) *song.PreloadedSong {
+	items := pl.GetItemsSnapshot()
+	for _, item := range items {
+		if item.MatchWithDuDuId(id) {
+			return item
+		}
+	}
+	return nil
+}
+
 func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
 	items := pl.GetItemsSnapshot()
 	for _, item := range items {
@@ -71,6 +81,18 @@ func Request(platform, id string, ctx context.Context) (cache.Entry, error) {
 		item := currentPlaylist.FindWannaSong(numId)
 		if item == nil {
 			item = song.GetTemporaryWannaSong(numId, ctx)
+		}
+		return item.DownloadInstantly(!asyncDownload, ctx)
+
+	case "DuDuFitDance":
+		numId, err := strconv.Atoi(id)
+		if err != nil {
+			return nil, err
+		}
+
+		item := currentPlaylist.FindDuDuSong(numId)
+		if item == nil {
+			item = song.GetTemporaryDuDuSong(numId, ctx)
 		}
 		return item.DownloadInstantly(!asyncDownload, ctx)
 

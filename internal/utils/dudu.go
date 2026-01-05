@@ -46,7 +46,7 @@ func CheckIdIsDuDu(id string) (int, bool) {
 		return 0, false
 	}
 
-	num, err := strconv.Atoi(id[6:])
+	num, err := strconv.Atoi(id[5:])
 	if err != nil {
 		return 0, false
 	}

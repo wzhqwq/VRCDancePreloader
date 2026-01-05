@@ -45,7 +45,7 @@ func connectDial(ctx context.Context, network, addr string) (c net.Conn, err err
 	return proxy.ConnectDial(network, addr)
 }
 
-func handleVideoRequest(w http.ResponseWriter, req *http.Request) (ok bool, wg *sync.WaitGroup) {
+func handleVideoRequest(w http.ResponseWriter, req *http.Request) (bool, *sync.WaitGroup) {
 	defer func() {
 		if e := recover(); e != nil {
 			logger.ErrorLn("Error when processing request:", e)
@@ -53,19 +53,15 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) (ok bool, wg *
 			logger.WarnLn("Fallback to direct access")
 		}
 	}()
-	ok, wg = handlePypyRequest(w, req)
-	if ok {
-		return
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	if handlePypyRequest(w, req, wg) ||
+		handleWannaRequest(w, req, wg) ||
+		handleDuDuRequest(w, req, wg) ||
+		handleBiliRequest(w, req, wg) {
+		return true, wg
 	}
-	ok, wg = handleWannaRequest(w, req)
-	if ok {
-		return
-	}
-	ok, wg = handleBiliRequest(w, req)
-	if ok {
-		return
-	}
-	return
+	return false, nil
 }
 
 func handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {

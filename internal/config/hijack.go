@@ -18,6 +18,7 @@ type MultiSelectSites struct {
 
 	PyPySelected  []string
 	WannaSelected []string
+	DuDuSelected  []string
 	BiliSelected  []string
 }
 
@@ -28,6 +29,9 @@ func NewMultiSelectSites(selected []string) *MultiSelectSites {
 	wannaSelected := lo.Filter(selected, func(site string, _ int) bool {
 		return constants.IsWannaSite(site)
 	})
+	duduSelected := lo.Filter(selected, func(site string, _ int) bool {
+		return constants.IsDuDuSite(site)
+	})
 	biliSelected := lo.Filter(selected, func(site string, _ int) bool {
 		return constants.IsBiliSite(site)
 	})
@@ -35,6 +39,7 @@ func NewMultiSelectSites(selected []string) *MultiSelectSites {
 	m := &MultiSelectSites{
 		PyPySelected:  pypySelected,
 		WannaSelected: wannaSelected,
+		DuDuSelected:  duduSelected,
 		BiliSelected:  biliSelected,
 	}
 	m.ExtendBaseWidget(m)
@@ -55,6 +60,11 @@ func (m *MultiSelectSites) CreateRenderer() fyne.WidgetRenderer {
 		m.WannaSelected = sites
 		m.update()
 	}
+	duduSelect := widgets.NewMultiSelect(constants.AllDuDuSites(), m.DuDuSelected)
+	duduSelect.OnChange = func(sites []string) {
+		m.DuDuSelected = sites
+		m.update()
+	}
 	biliSelect := widgets.NewMultiSelect(constants.AllBiliSites(), m.BiliSelected)
 	biliSelect.OnChange = func(sites []string) {
 		m.BiliSelected = sites
@@ -67,6 +77,8 @@ func (m *MultiSelectSites) CreateRenderer() fyne.WidgetRenderer {
 		pypySelect,
 		container.NewCenter(widget.NewLabel("WannaDance")),
 		wannaSelect,
+		container.NewCenter(widget.NewLabel("DuDuFitDance")),
+		duduSelect,
 		container.NewCenter(widget.NewLabel("BiliBili")),
 		biliSelect,
 	)
@@ -76,6 +88,7 @@ func (m *MultiSelectSites) CreateRenderer() fyne.WidgetRenderer {
 
 func (m *MultiSelectSites) update() {
 	allSites := append(m.PyPySelected, m.WannaSelected...)
+	allSites = append(allSites, m.DuDuSelected...)
 	allSites = append(allSites, m.BiliSelected...)
 
 	config.Hijack.UpdateSites(allSites)

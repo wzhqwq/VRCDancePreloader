@@ -72,6 +72,10 @@
   Default: "Proxy server for PyPyDance API"
 - Key: label_wanna_proxy
   Default: "Proxy server for WannaDance API"
+- Key: label_dudu_proxy
+  Default: "Proxy server for DuDuFitDance API"
+- Key: label_bili_proxy
+  Default: "Proxy server for BiliBili API"
 - Key: label_yt_video_proxy
   Default: "Proxy server for YouTube video"
 - Key: label_yt_api_proxy

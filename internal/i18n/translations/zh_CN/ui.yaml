@@ -72,6 +72,10 @@
   Default: "PyPyDance API代理服务器 (国内一般无需设置)"
 - Key: label_wanna_proxy
   Default: "WannaDance API代理服务器 (国内一般无需设置)"
+- Key: label_dudu_proxy
+  Default: "DuDuFitDance API代理服务器 (建议使用日本代理)"
+- Key: label_bili_proxy
+  Default: "BiliBili API代理服务器 (国内一般无需设置)"
 - Key: label_yt_video_proxy
   Default: "YouTube视频代理服务器"
 - Key: label_yt_api_proxy

@@ -20,6 +20,10 @@ func (ps *PreloadedSong) completeDuration() {
 		ps.Duration = time.Duration(ps.WannaSong.End) * time.Second
 		return
 	}
+	if ps.DuDuSong != nil {
+		ps.Duration = time.Duration(ps.DuDuSong.End) * time.Second
+		return
+	}
 	if ps.CustomSong != nil {
 		go func() {
 			ps.Duration = third_party_api.GetDurationByInternalID(ps.CustomSong.UniqueId).Get()

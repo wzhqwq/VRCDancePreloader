@@ -9,6 +9,7 @@ import (
 
 var pypyClient *http.Client
 var wannaClient *http.Client
+var duduClient *http.Client
 var biliClient *http.Client
 
 var youtubeVideoClient *http.Client
@@ -47,6 +48,17 @@ func InitWannaClient(proxyUrl string) {
 }
 func TestWannaClient() (bool, string) {
 	return testClient(wannaClient, "WannaDance", videoTestCase(utils.GetWannaVideoUrl(1)))
+}
+
+func InitDuDuClient(proxyUrl string) {
+	if proxyUrl != "" {
+		duduClient = createProxyClient(proxyUrl)
+	} else {
+		duduClient = &http.Client{}
+	}
+}
+func TestDuDuClient() (bool, string) {
+	return testClient(duduClient, "DuDuFitDance", videoTestCase(utils.GetDuDuVideoUrl(1)))
 }
 
 func InitBiliClient(proxyUrl string) {
@@ -98,6 +110,9 @@ func GetPyPyClient() *http.Client {
 }
 func GetWannaClient() *http.Client {
 	return wannaClient
+}
+func GetDuDuClient() *http.Client {
+	return duduClient
 }
 func GetBiliClient() *http.Client {
 	return biliClient

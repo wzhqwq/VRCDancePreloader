@@ -22,7 +22,7 @@ func InitSongList(ctx context.Context) {
 		"WannaDance Manifest", utils.GetWannaListUrl(), requesting.GetWannaClient,
 	)
 	duduListResource = utils.NewJsonRemoteResource[raw_song.DuDuFitDanceListResponse](
-		"DuDuFitDance Manifest", utils.GetDuDuListUrl(), requesting.GetWannaClient,
+		"DuDuFitDance Manifest", utils.GetDuDuListUrl(), requesting.GetDuDuClient,
 	)
 	songCtx = ctx
 	DownloadPyPySongs()

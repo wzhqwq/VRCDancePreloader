@@ -16,10 +16,8 @@ var reqIncrement = 0
 
 const reqIdMax = math.MaxInt32
 
-func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req *http.Request) (bool, *sync.WaitGroup) {
+func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req *http.Request, wg *sync.WaitGroup) bool {
 	handledCh := make(chan bool, 1)
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	go func() {
 		reqIncrement = (reqIncrement + 1) % reqIdMax
@@ -78,35 +76,45 @@ func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req 
 		http.ServeContent(w, req, "video.mp4", entry.ModTime(), rs)
 	}()
 
-	return <-handledCh, wg
+	return <-handledCh
 }
 
-func handlePypyRequest(w http.ResponseWriter, req *http.Request) (bool, *sync.WaitGroup) {
+func handlePypyRequest(w http.ResponseWriter, req *http.Request, wg *sync.WaitGroup) bool {
 	if !constants.IsPyPySite(req.Host) {
-		return false, nil
+		return false
 	}
 	if id, ok := utils.CheckPyPyRequest(req); ok {
-		return handlePlatformVideoRequest("PyPyDance", id, w, req)
+		return handlePlatformVideoRequest("PyPyDance", id, w, req, wg)
 	}
-	return false, nil
+	return false
 }
 
-func handleWannaRequest(w http.ResponseWriter, req *http.Request) (bool, *sync.WaitGroup) {
+func handleWannaRequest(w http.ResponseWriter, req *http.Request, wg *sync.WaitGroup) bool {
 	if !constants.IsWannaSite(req.Host) {
-		return false, nil
+		return false
 	}
 	if id, ok := utils.CheckWannaRequest(req); ok {
-		return handlePlatformVideoRequest("WannaDance", id, w, req)
+		return handlePlatformVideoRequest("WannaDance", id, w, req, wg)
 	}
-	return false, nil
+	return false
 }
 
-func handleBiliRequest(w http.ResponseWriter, req *http.Request) (bool, *sync.WaitGroup) {
+func handleDuDuRequest(w http.ResponseWriter, req *http.Request, wg *sync.WaitGroup) bool {
+	if !constants.IsDuDuSite(req.Host) {
+		return false
+	}
+	if id, ok := utils.CheckDuDuRequest(req); ok {
+		return handlePlatformVideoRequest("DuDuFitDance", id, w, req, wg)
+	}
+	return false
+}
+
+func handleBiliRequest(w http.ResponseWriter, req *http.Request, wg *sync.WaitGroup) bool {
 	if !constants.IsBiliSite(req.Host) {
-		return false, nil
+		return false
 	}
 	if id, ok := utils.CheckBiliRequest(req); ok {
-		return handlePlatformVideoRequest("BiliBili", id, w, req)
+		return handlePlatformVideoRequest("BiliBili", id, w, req, wg)
 	}
-	return false, nil
+	return false
 }

@@ -91,6 +91,8 @@ func (pl *PlayList) SyncWithTime(url string, now time.Duration) bool {
 		item = pl.FindPyPySong(id)
 	} else if id, ok = utils.CheckWannaUrl(url); ok {
 		item = pl.FindWannaSong(id)
+	} else if id, ok = utils.CheckDuDuUrl(url); ok {
+		item = pl.FindDuDuSong(id)
 	} else {
 		item = pl.FindCustomSong(url)
 	}

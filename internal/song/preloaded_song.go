@@ -57,18 +57,6 @@ func (ps *PreloadedSong) GetOriginalUrl() string {
 	}
 	return ""
 }
-func (ps *PreloadedSong) GetDownloadUrl() string {
-	if ps.PyPySong != nil {
-		return utils.GetPyPyVideoUrl(ps.PyPySong.ID)
-	}
-	if ps.WannaSong != nil {
-		return utils.GetWannaVideoUrl(ps.WannaSong.DanceId)
-	}
-	if ps.CustomSong != nil {
-		return ps.CustomSong.Url
-	}
-	return ""
-}
 func (ps *PreloadedSong) GetSongId() string {
 	if ps.Unknown {
 		// TODO unique id for unknown song
@@ -79,6 +67,9 @@ func (ps *PreloadedSong) GetSongId() string {
 	}
 	if ps.WannaSong != nil {
 		return fmt.Sprintf("wanna_%d", ps.WannaSong.DanceId)
+	}
+	if ps.DuDuSong != nil {
+		return fmt.Sprintf("dudu_%d", ps.DuDuSong.ID)
 	}
 	if ps.CustomSong != nil {
 		return ps.CustomSong.UniqueId
@@ -145,6 +136,9 @@ func (ps *PreloadedSong) Match(another *PreloadedSong) bool {
 	}
 	if ps.WannaSong != nil && another.WannaSong != nil {
 		return ps.WannaSong.DanceId == another.WannaSong.DanceId
+	}
+	if ps.DuDuSong != nil && another.DuDuSong != nil {
+		return ps.DuDuSong.ID == another.DuDuSong.ID
 	}
 	if ps.CustomSong != nil && another.CustomSong != nil {
 		return ps.CustomSong.UniqueId == another.CustomSong.UniqueId
