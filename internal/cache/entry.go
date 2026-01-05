@@ -19,7 +19,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var unixEpochTime = time.Unix(0, 0)
+var unixEpochTime = time.Time{}
 
 var ErrThrottle = errors.New("too many requests, slow down")
 

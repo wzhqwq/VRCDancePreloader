@@ -58,7 +58,7 @@ func (c *etaCalculator) QuerySpeed() float64 {
 func (c *etaCalculator) QueryEta() (time.Time, bool) {
 	speed := c.QuerySpeed()
 	if c.goal == 0 || speed == 0 {
-		return time.Unix(0, 0), false
+		return time.Time{}, false
 	}
 
 	remaining := c.goal - c.achieved

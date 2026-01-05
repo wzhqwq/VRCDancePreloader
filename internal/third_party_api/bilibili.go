@@ -114,7 +114,7 @@ func GetBiliVideoUrl(bvID string, ctx context.Context) (string, error) {
 func GetBiliVideoModTime(bvID string, ctx context.Context) (time.Time, error) {
 	info, err := GetBvInfo(bvID, ctx)
 	if err != nil {
-		return time.Unix(0, 0), err
+		return time.Time{}, err
 	}
 
 	return time.Unix(int64(info.Pages[0].CreatedTime), 0), nil

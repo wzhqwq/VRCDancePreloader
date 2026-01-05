@@ -40,7 +40,7 @@ func NewTrunkFile(baseName string) *File {
 	f := &File{
 		file:         dlf,
 		trunks:       make([]byte, numTrunks),
-		LastModified: time.Unix(0, 0),
+		LastModified: time.Time{},
 	}
 	if !f.tryRead() {
 		if !f.tryCreate() {
