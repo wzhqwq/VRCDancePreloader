@@ -124,7 +124,7 @@ func (ps *PreloadedSong) GetTimeInfo() PreloadedSongTimeInfo {
 		text = fmt.Sprintf("%s / %s", utils.PrettyTime(ps.TimePassed), text)
 	}
 	return PreloadedSongTimeInfo{
-		Progress:  float64(ps.TimePassed.Milliseconds()) / float64(ps.Duration.Milliseconds()),
+		Progress:  max(0, float64(ps.TimePassed.Milliseconds())) / float64(ps.Duration.Milliseconds()),
 		Text:      text,
 		IsPlaying: ps.sm.PlayStatus == Playing,
 	}

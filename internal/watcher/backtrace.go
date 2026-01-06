@@ -37,6 +37,10 @@ func backtraceLine(version int32, line []byte) {
 			backtraceLastTimeStamp.Set(version, getTimeStamp(prefix))
 			return
 		}
+		if checkDuDuLine(version, prefix, content) {
+			backtraceLastTimeStamp.Set(version, getTimeStamp(prefix))
+			return
+		}
 	}
 }
 
@@ -50,11 +54,13 @@ func postBacktrace() {
 		if err == nil && time.Since(timeStamp) < 10*time.Minute {
 			pypyPostProcess()
 			wannaPostProcess()
+			duDuPostProcess()
 			return
 		}
 	}
 	forceResetPypyState()
 	forceResetWannaState()
+	forceResetDuDuState()
 }
 
 func checkBacktrace() bool {
@@ -67,7 +73,7 @@ func checkBacktrace() bool {
 				backtraceRoomLogNeeded = false
 			}
 		}
-		if pypyBacktraceDone() || wannaBacktraceDone() {
+		if pypyBacktraceDone() || wannaBacktraceDone() || duDuBacktraceDone() {
 			backtraceRoomLogNeeded = false
 		}
 	}

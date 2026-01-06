@@ -28,6 +28,9 @@ func checkBehaviourLine(version int32, content []byte, backtrace bool) bool {
 					case "WannaDance":
 						forceClearWannaState(version)
 						break
+					case "DuDuFitDance":
+						forceClearDuDuState(version)
+						break
 					case "PyPyDance":
 						forceClearPypyState(version)
 						break

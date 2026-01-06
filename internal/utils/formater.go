@@ -19,6 +19,7 @@ func PrettyByteSize(b int64) string {
 }
 
 func PrettyTime(s time.Duration) string {
+	s = max(0, s)
 	minutes := s / time.Minute
 	seconds := (s - minutes*time.Minute) / time.Second
 	return fmt.Sprintf("%02d:%02d", minutes, seconds)

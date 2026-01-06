@@ -41,7 +41,7 @@ func (ps *PreloadedSong) LiveFullInfo() LiveFullInfo {
 		DownloadStatus: string(ps.sm.DownloadStatus),
 
 		Duration:   int(ps.Duration.Milliseconds()),
-		TimePassed: int(ps.TimePassed.Milliseconds()),
+		TimePassed: max(0, int(ps.TimePassed.Milliseconds())),
 
 		DownloadProgress: progress,
 
@@ -103,7 +103,7 @@ func (ps *PreloadedSong) LivePlayStatusChange() LivePlayStatusChange {
 	return LivePlayStatusChange{
 		ID: ps.ID,
 
-		TimePassed: int(ps.TimePassed.Milliseconds()),
+		TimePassed: max(0, int(ps.TimePassed.Milliseconds())),
 		PlayStatus: string(ps.sm.PlayStatus),
 	}
 }

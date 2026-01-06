@@ -64,7 +64,7 @@ func getTimeStampWithOffset(prefix []byte, offset []byte) string {
 	}
 	return string(timeStampText) + "-" + string(offset)
 }
-func parseTimeStampWithOffset(pair string) time.Duration {
+func parseTimeStampWithOffset(pair string, negativeOffset bool) time.Duration {
 	timeStampText := pair[:19]
 	// TODO time zone
 	logTime, err := time.Parse("2006.01.02 15:04:05 -0700", string(timeStampText)+" +0800")
@@ -73,15 +73,19 @@ func parseTimeStampWithOffset(pair string) time.Duration {
 	}
 
 	offset := pair[20:]
-	syncSecond, err := strconv.ParseFloat(offset, 64)
+	offsetSec, err := strconv.ParseFloat(offset, 64)
 	if err != nil {
 		return 0
 	}
 
-	return time.Duration(syncSecond*float64(time.Second)) + time.Since(logTime)
+	if negativeOffset {
+		offsetSec = -offsetSec
+	}
+
+	return time.Duration(offsetSec*float64(time.Second)) + time.Since(logTime)
 }
 func markURLPlaying(pair string, url string) bool {
-	now := parseTimeStampWithOffset(pair)
+	now := parseTimeStampWithOffset(pair, false)
 	if playlist.MarkURLPlaying(url, now) {
 		logger.InfoLn("Confirmed", url, "is playing from", now)
 		return true
