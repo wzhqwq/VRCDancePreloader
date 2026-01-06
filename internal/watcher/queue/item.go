@@ -149,7 +149,7 @@ type DuDuQueueItem struct {
 }
 
 func (item *DuDuQueueItem) ToPreloaded() *song.PreloadedSong {
-	if item.SongID > 0 {
+	if item.SongID >= 0 {
 		s := song.GetDuDuSongForList(item.SongID)
 		// Try to complete the info with the queue item
 		if s.InfoNa && item.Title != "" && item.Group != "" && item.Duration > 0 {
@@ -172,7 +172,7 @@ func (item *DuDuQueueItem) ToPreloaded() *song.PreloadedSong {
 }
 
 func (item *DuDuQueueItem) MatchWithPreloaded(song *song.PreloadedSong) bool {
-	if item.SongID > 0 {
+	if item.SongID >= 0 {
 		return song.MatchWithDuDuId(item.SongID)
 	}
 	if item.SongID < 0 {

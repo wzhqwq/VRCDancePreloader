@@ -63,7 +63,7 @@ func (ps *PreloadedSong) UpdateSong() bool {
 		if ok {
 			ps.PyPySong = song
 			completedTitle = song.Name
-			goto completeAll
+			goto complete
 		}
 	}
 	if ps.WannaSong != nil {
@@ -71,7 +71,7 @@ func (ps *PreloadedSong) UpdateSong() bool {
 		if ok {
 			ps.WannaSong = song
 			completedTitle = song.Name
-			goto completeAll
+			goto complete
 		}
 	}
 	if ps.DuDuSong != nil {
@@ -79,21 +79,22 @@ func (ps *PreloadedSong) UpdateSong() bool {
 		if ok {
 			ps.DuDuSong = song
 			completedTitle = song.Name
-			goto completeAll
+			goto complete
 		}
 	}
 	if ps.CustomSong != nil {
-		goto completeOther
+		ps.completeDuration()
+		ps.completeTitle()
+
+		return true
 	}
 	return false
 
-completeAll:
+complete:
 	ps.InfoNa = false
 	persistence.UpdateSavedTitle(ps.GetSongId(), completedTitle)
-
-completeOther:
 	ps.completeDuration()
-	ps.completeTitle()
+	ps.notifyInfoChange()
 
 	return true
 }

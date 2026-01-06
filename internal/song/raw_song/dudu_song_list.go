@@ -55,6 +55,7 @@ func ProcessDuDuFitDanceList(data *DuDuFitDanceListResponse) {
 			song, ok := duduSongMap[id]
 			if ok {
 				song.Group = name
+				duduSongMap[id] = song
 			}
 		}
 	}

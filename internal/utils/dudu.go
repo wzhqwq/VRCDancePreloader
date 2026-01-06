@@ -12,7 +12,7 @@ var duDuVideoURLRegex = regexp.MustCompile(`videos/(\d+)`)
 var duDuVideoPathRegex = regexp.MustCompile(`videos/(\d+)`)
 
 func GetDuDuVideoUrl(id int) string {
-	return fmt.Sprintf("https://api.dudufit.dance/api/v1/videos/%d?cdn=jpn", id)
+	return fmt.Sprintf("https://api.dudufit.dance/api/v1/videos/%d", id)
 }
 
 func GetDuDuThumbnailUrl(id int) string {
@@ -34,7 +34,7 @@ func CheckDuDuUrl(url string) (int, bool) {
 }
 
 func GetDuDuListUrl() string {
-	return "https://api.dudufit.dance/api/v1/videos?cdn=jpn"
+	return "https://api.dudufit.dance/api/v1/videos"
 }
 
 func CheckDuDuRequest(req *http.Request) (string, bool) {
