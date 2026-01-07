@@ -33,9 +33,10 @@ const (
 type PlayStatus string
 
 const (
-	Queued  PlayStatus = "queued"
-	Playing PlayStatus = "playing"
-	Ended   PlayStatus = "ended"
+	Queued      PlayStatus = "queued"
+	Playing     PlayStatus = "playing"
+	SyncPlaying PlayStatus = "sync_playing"
+	Ended       PlayStatus = "ended"
 )
 
 func (sm *StateMachine) IsDownloadLoopStarted() bool {
@@ -47,6 +48,6 @@ func (sm *StateMachine) IsDownloadNeeded() bool {
 func (sm *StateMachine) CanPreload() bool {
 	return sm.DownloadStatus != NotAvailable && (sm.DownloadStatus == Initial || sm.DownloadStatus == Failed)
 }
-func (sm *StateMachine) IsPlayingLoopStarted() bool {
-	return sm.PlayStatus == Playing
+func (sm *StateMachine) IsPlaying() bool {
+	return sm.PlayStatus == Playing || sm.PlayStatus == SyncPlaying
 }

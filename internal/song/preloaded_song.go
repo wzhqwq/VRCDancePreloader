@@ -150,11 +150,17 @@ func (ps *PreloadedSong) Match(another *PreloadedSong) bool {
 
 func (ps *PreloadedSong) PlaySongStartFrom(offset time.Duration) bool {
 	if ps.Duration > 1 {
-		ps.sm.PlaySongStartFrom(offset)
+		ps.sm.PlaySongAndSync(offset)
 		return true
 	}
 	ps.completeDuration()
 	return false
+}
+func (ps *PreloadedSong) PlaySong() {
+	ps.sm.PlaySong()
+	if ps.Duration == 0 {
+		ps.completeDuration()
+	}
 }
 func (ps *PreloadedSong) CancelPlaying() {
 	ps.sm.CancelPlayingLoop()

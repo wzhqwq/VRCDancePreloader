@@ -119,14 +119,17 @@ type PreloadedSongTimeInfo struct {
 }
 
 func (ps *PreloadedSong) GetTimeInfo() PreloadedSongTimeInfo {
-	text := utils.PrettyTime(ps.Duration)
-	if ps.sm.PlayStatus == Playing {
-		text = fmt.Sprintf("%s / %s", utils.PrettyTime(ps.TimePassed), text)
+	if ps.sm.PlayStatus == SyncPlaying {
+		return PreloadedSongTimeInfo{
+			Progress:  max(0, float64(ps.TimePassed.Milliseconds())) / float64(ps.Duration.Milliseconds()),
+			Text:      fmt.Sprintf("%s / %s", utils.PrettyTime(ps.TimePassed), utils.PrettyTime(ps.Duration)),
+			IsPlaying: true,
+		}
 	}
 	return PreloadedSongTimeInfo{
-		Progress:  max(0, float64(ps.TimePassed.Milliseconds())) / float64(ps.Duration.Milliseconds()),
-		Text:      text,
-		IsPlaying: ps.sm.PlayStatus == Playing,
+		Progress:  -1,
+		Text:      utils.PrettyTime(ps.Duration),
+		IsPlaying: ps.sm.IsPlaying(),
 	}
 }
 

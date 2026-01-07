@@ -11,10 +11,10 @@ import (
 )
 
 var duDuQueueInfoRegex = regexp.MustCompile(`(?:Queue data =|Queue info serialized:)\s*(\[.*])`)
-var duDuUserDataRegex = regexp.MustCompile(`deserialize video data:\s*(\{.*})?`)
+var duDuUserDataRegex = regexp.MustCompile(`deserialize video data:\s*(\{.*})?</color>`)
 
 var duDuVizVidEventRegex = regexp.MustCompile(`VizVid callback: video (loading|playback) started`)
-var duDuVideoCountdownRegex = regexp.MustCompile(`starting countdown display, remaining time = (\d+) seconds`)
+var duDuVideoCountdownRegex = regexp.MustCompile(`starting countdown display, remaining time = ([.\d]+) seconds`)
 
 var duDuLastQueue = NewLastValue("")
 var duDuLastUserData = NewLastValue("")
@@ -22,8 +22,8 @@ var duDuQueueChanged = NewLastValue(false)
 
 var duDuLastCountdownPair = NewLastValue("")
 
-// var duDuVideoStatus = NewLastValue("")
 var duDuVideoChanged = NewLastValue(false)
+var duDuVideoPlaying = NewLastValue(false)
 
 var duduLogger = utils.NewLogger("DuDuFitDance Log Watcher")
 
@@ -70,7 +70,7 @@ func checkDuDuLine(version int32, prefix []byte, content []byte) bool {
 		if len(matches[1]) > 0 {
 			duDuLastUserData.Set(version, string(matches[1]))
 		} else {
-			//duDuLastUserData.Set(version, "empty")
+			duDuLastUserData.Set(version, "empty")
 		}
 		duDuQueueChanged.Set(version, true)
 		return true
@@ -83,9 +83,14 @@ func checkDuDuLine(version int32, prefix []byte, content []byte) bool {
 			// every new count down starts after VizVid starts loading
 			// don't leave old countdown record
 			duDuLastCountdownPair.Set(version, "")
+			// and the previous video must be ended
+			duDuVideoPlaying.Set(version, false)
+			// user data is now stable
 			duDuVideoChanged.Set(version, true)
+		} else {
+			// playback started
+			duDuVideoPlaying.Set(version, true)
 		}
-		//duDuVideoStatus.Set(version, event)
 		return true
 	}
 
@@ -103,6 +108,7 @@ func forceClearDuDuState(version int32) {
 	duDuLastUserData.Set(version, "")
 	duDuLastCountdownPair.Set(version, "")
 	duDuVideoChanged.Set(version, false)
+	duDuVideoPlaying.Set(version, false)
 	duDuQueueChanged.Set(version, false)
 }
 func forceResetDuDuState() {
@@ -110,11 +116,14 @@ func forceResetDuDuState() {
 	duDuLastUserData.Reset("")
 	duDuLastCountdownPair.Reset("")
 	duDuVideoChanged.Reset(false)
+	duDuVideoPlaying.Reset(false)
 	duDuQueueChanged.Reset(false)
 }
 func duDuBacktraceDone() bool {
 	return duDuLastQueue.Get() != "" && duDuLastUserData.Get() != "" && duDuVideoChanged.Get()
 }
+
+var userDataDuDu duDuUserData
 
 func duDuPostProcess() {
 	queueChanged := duDuQueueChanged.Get()
@@ -122,13 +131,11 @@ func duDuPostProcess() {
 
 	lastQueue := duDuLastQueue.Get()
 	lastUserData := duDuLastUserData.Get()
-	lastCountdownPair := duDuLastCountdownPair.Get()
-	videoChanged := duDuVideoChanged.Get()
 	duDuLastQueue.ResetVersion()
 	duDuLastUserData.ResetVersion()
 	duDuLastCountdownPair.ResetVersion()
 	duDuVideoChanged.ResetVersion()
-	//duDuVideoStatus.ResetVersion()
+	duDuVideoPlaying.ResetVersion()
 
 	if lastQueue != "" && lastUserData != "" {
 		if queueChanged {
@@ -148,29 +155,17 @@ func duDuPostProcess() {
 			}
 			if lastUserData != "empty" {
 				duduLogger.DebugLn("And user data:\n" + lastUserData)
-				var userData duDuUserData
-				err = json.Unmarshal([]byte(lastUserData), &userData)
+				err = json.Unmarshal([]byte(lastUserData), &userDataDuDu)
 				if err != nil {
 					duduLogger.ErrorLn("Error processing DuDuFitDance user data log:", err)
 				}
 
-				if videoChanged {
-					if syncDuDuVideoUsingStartTime(userData) {
-						duDuVideoChanged.Reset(false)
-					} else {
-						if lastCountdownPair != "" && syncDuDuVideoUsingCountdown(userData, lastCountdownPair) {
-							duDuLastCountdownPair.Reset("")
-							duDuVideoChanged.Reset(false)
-						}
-					}
-				}
-
 				newQueue = append(newQueue, &queue.DuDuQueueItem{
-					SongID:     userData.ID,
-					Title:      userData.Title,
-					Group:      userData.Group,
-					PlayerName: userData.User,
-					Random:     userData.Shuffle,
+					SongID:     userDataDuDu.ID,
+					Title:      userDataDuDu.Title,
+					Group:      userDataDuDu.Group,
+					PlayerName: userDataDuDu.User,
+					Random:     userDataDuDu.Shuffle,
 					// The only thing we can't get is the duration
 					//Duration:    0,
 				})
@@ -183,10 +178,33 @@ func duDuPostProcess() {
 			diffQueues(playlist.GetQueue(), newQueue)
 		}
 	}
+
+	if !queueChanged && duDuVideoChanged.Get() {
+		// user data is now stable
+		trySyncDuDuVideo()
+	}
 }
 
-func syncDuDuVideoUsingStartTime(userData duDuUserData) bool {
-	var relativeStart = time.Duration(userData.StartTime*1000) * time.Millisecond
+func trySyncDuDuVideo() {
+	// try sync using start time
+	if syncDuDuVideoUsingStartTime() {
+		return
+	}
+
+	// try sync using count down
+	if lastCountdownPair := duDuLastCountdownPair.Get(); lastCountdownPair != "" {
+		syncDuDuVideoUsingCountdown(lastCountdownPair)
+		return
+	}
+
+	if duDuVideoPlaying.Get() {
+		// well, it's already playing and we cannot sync with it anymore
+		justPlayDuDuVideo()
+	}
+}
+
+func syncDuDuVideoUsingStartTime() bool {
+	var relativeStart = time.Duration(userDataDuDu.StartTime*1000) * time.Millisecond
 	// video waits a countdown (often 10s) to end before playing
 	var estimatedStart = serverStartTimeFallback.Add(relativeStart + time.Second*10)
 	var offset = time.Now().Sub(estimatedStart)
@@ -195,27 +213,35 @@ func syncDuDuVideoUsingStartTime(userData duDuUserData) bool {
 		// so it's not a fallback
 		// we cannot call GetServerTimeInSeconds (which is inside Udon) to calculate when server starts
 		// so unfortunately we cannot sync with the playing video unless the room is using fallback clock
-		duDuVideoChanged.Reset(false)
 		return false
 	}
 
-	if playlist.MarkURLPlaying(userData.URL, offset) {
-		duduLogger.InfoLn("Confirmed", userData.URL, "is playing from", offset, "using 'starttime'")
-		return true
+	if playlist.MarkURLPlaying(userDataDuDu.URL, offset) {
+		duduLogger.InfoLn("Confirmed", userDataDuDu.URL, "is playing from", offset, "using 'starttime'")
+		duDuVideoChanged.Reset(false)
 	}
 
-	return false
+	return true
 }
 
-func syncDuDuVideoUsingCountdown(userData duDuUserData, pair string) bool {
+func syncDuDuVideoUsingCountdown(pair string) {
 	countDown := parseTimeStampWithOffset(pair, true)
 	if countDown > time.Second*30 {
-		// return true to invalidate count down
-		return true
+		// invalidate count down
+		duDuLastCountdownPair.Reset("")
+		return
 	}
-	if playlist.MarkURLPlaying(userData.URL, -countDown) {
-		duduLogger.InfoLn("Confirmed", userData.URL, "will play after", countDown)
-		return true
+	if playlist.MarkURLPlaying(userDataDuDu.URL, -countDown) {
+		duduLogger.InfoLn("Confirmed", userDataDuDu.URL, "will play after", countDown)
+		duDuLastCountdownPair.Reset("")
+		duDuVideoChanged.Reset(false)
 	}
-	return false
+}
+
+func justPlayDuDuVideo() {
+	if playlist.MarkURLPlayingWithoutSync(userDataDuDu.URL) {
+		duduLogger.InfoLn("Confirmed", userDataDuDu.URL, "is playing, but we cannot sync with it")
+		duDuVideoPlaying.Reset(false)
+		duDuVideoChanged.Reset(false)
+	}
 }

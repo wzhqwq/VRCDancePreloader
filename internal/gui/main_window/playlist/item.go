@@ -2,7 +2,6 @@ package playlist
 
 import (
 	"image/color"
-	"time"
 
 	"fyne.io/fyne/v2/container"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
@@ -350,33 +349,30 @@ func (r *ItemRenderer) refreshTime() bool {
 	timeInfo := r.ig.ps.GetTimeInfo()
 
 	if timeInfo.IsPlaying {
-		r.PlayBar.Progress = float32(timeInfo.Progress)
-		r.PlayBar.Text = timeInfo.Text
-
-		r.PlayBar.Refresh()
-		if !r.PlayBar.Visible() {
-			r.PlayBar.Show()
-			go canvas.NewColorRGBAAnimation(
-				theme.Color(theme.ColorNameBackground),
-				theme.Color(theme.ColorNamePrimary),
-				500*time.Millisecond,
-				func(c color.Color) {
-					r.Background.StrokeColor = c
-				},
-			).Start()
-			return true
+		fyne.Do(func() {
+			r.Background.StrokeColor = theme.Color(theme.ColorNamePrimary)
+		})
+		if timeInfo.Progress < 0 {
+			// not synced
+			if r.PlayBar.Visible() {
+				r.PlayBar.Hide()
+				return true
+			}
+		} else {
+			r.PlayBar.Progress = float32(timeInfo.Progress)
+			r.PlayBar.Text = timeInfo.Text
+			r.PlayBar.Refresh()
+			if !r.PlayBar.Visible() {
+				r.PlayBar.Show()
+				return true
+			}
 		}
 	} else {
+		fyne.Do(func() {
+			r.Background.StrokeColor = theme.Color(theme.ColorNameBackground)
+		})
 		if r.PlayBar.Visible() {
 			r.PlayBar.Hide()
-			go canvas.NewColorRGBAAnimation(
-				theme.Color(theme.ColorNamePrimary),
-				theme.Color(theme.ColorNameBackground),
-				500*time.Millisecond,
-				func(c color.Color) {
-					r.Background.StrokeColor = c
-				},
-			).Start()
 			return true
 		}
 	}

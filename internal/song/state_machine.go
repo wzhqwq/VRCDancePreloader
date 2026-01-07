@@ -169,14 +169,28 @@ func (sm *StateMachine) StartDownloadLoop(task *download.Task) {
 	}
 }
 
-func (sm *StateMachine) PlaySongStartFrom(offset time.Duration) {
+func (sm *StateMachine) PlaySongAndSync(offset time.Duration) {
 	if sm.PlayStatus == Ended {
 		return
 	}
 
 	sm.syncTimeCh <- offset
 
-	if sm.PlayStatus == Queued {
+	queued := sm.PlayStatus == Queued
+	sm.PlayStatus = SyncPlaying
+	if queued {
+		go sm.StartPlayingLoop()
+	}
+}
+
+func (sm *StateMachine) PlaySong() {
+	if sm.PlayStatus == Ended {
+		return
+	}
+
+	queued := sm.PlayStatus == Queued
+	sm.PlayStatus = Playing
+	if queued {
 		go sm.StartPlayingLoop()
 	}
 }
@@ -192,10 +206,10 @@ func (sm *StateMachine) CancelPlayingLoop() {
 }
 
 func (sm *StateMachine) StartPlayingLoop() {
-	sm.PlayStatus = Playing
+	sm.ps.notifyTimeChange(false)
 	startTime := time.Now()
 	for {
-		if sm.PlayStatus != Playing {
+		if !sm.IsPlaying() {
 			break
 		}
 
@@ -215,7 +229,7 @@ func (sm *StateMachine) StartPlayingLoop() {
 			sm.PlayStatus = Ended
 			sm.ps.AddToHistory()
 			break
-		} else {
+		} else if sm.PlayStatus == SyncPlaying {
 			sm.ps.notifyTimeChange(routine)
 		}
 	}
@@ -224,7 +238,7 @@ func (sm *StateMachine) StartPlayingLoop() {
 
 func (sm *StateMachine) RemoveFromList() {
 	sm.DownloadStatus = Removed
-	if sm.PlayStatus == Playing {
+	if sm.IsPlaying() {
 		sm.PlayStatus = Ended
 		if sm.ps.TimePassed > 20*time.Second {
 			sm.ps.AddToHistory()

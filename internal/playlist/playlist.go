@@ -93,6 +93,19 @@ func (pl *PlayList) SyncWithTime(url string, now time.Duration) bool {
 	return false
 }
 
+func (pl *PlayList) MarkPlayingWithoutSync(url string) bool {
+	if pl.stopped {
+		return false
+	}
+
+	item := pl.SearchByUrl(url)
+	if item != nil {
+		item.PlaySong()
+		return true
+	}
+	return false
+}
+
 func (pl *PlayList) updateRoomBrand() {
 	if brand := utils.IdentifyRoomBrand(pl.RoomName); brand != "" {
 		pl.RoomBrand = brand
@@ -106,6 +119,13 @@ func MarkURLPlaying(url string, now time.Duration) bool {
 		return false
 	}
 	return currentPlaylist.SyncWithTime(url, now)
+}
+
+func MarkURLPlayingWithoutSync(url string) bool {
+	if currentPlaylist == nil {
+		return false
+	}
+	return currentPlaylist.MarkPlayingWithoutSync(url)
 }
 
 func updateRoomName(roomName string) {
