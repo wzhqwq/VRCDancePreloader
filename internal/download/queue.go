@@ -19,7 +19,9 @@ func (dm *downloadManager) Prioritize(ids ...string) {
 	}
 
 	dm.queue = append(
-		ids,
+		lo.Filter(ids, func(id string, _ int) bool {
+			return dm.tasks[id] != nil
+		}),
 		lo.Reject(dm.queue, func(id string, _ int) bool {
 			return lo.Contains(ids, id)
 		})...,
@@ -45,7 +47,7 @@ func (dm *downloadManager) UpdatePriorities() {
 		task, ok := dm.tasks[id]
 		return ok && !task.Done
 	})
-	logger.InfoLn("Download queue:", dm.queue)
+	dm.queueLogger.InfoLn("tasks:", dm.queue)
 	for i, id := range dm.queue {
 		task := dm.tasks[id]
 		if task != nil {

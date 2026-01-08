@@ -7,7 +7,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var logger = utils.NewUniqueLogger("Downloader")
+var logger = utils.NewLogger("Downloader")
 
 func CancelDownload(ids ...string) {
 	if len(ids) == 0 {

@@ -24,6 +24,8 @@ type downloadManager struct {
 	scheduler *utils.Scheduler
 	em        *utils.EventManager[ManagerChangeType]
 
+	queueLogger *utils.UniqueLogger
+
 	maxParallel int
 
 	inTransaction bool
@@ -35,6 +37,8 @@ func newDownloadManager(maxParallel int, minInterval time.Duration) *downloadMan
 		queue:     make([]string, 0),
 		scheduler: utils.NewScheduler(time.Second*3, minInterval),
 		em:        utils.NewEventManager[ManagerChangeType](),
+
+		queueLogger: utils.NewUniqueLogger("Download Queue"),
 
 		maxParallel: maxParallel,
 	}
