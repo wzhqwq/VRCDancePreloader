@@ -10,7 +10,7 @@ type DuDuFitDanceSong struct {
 
 	//Volume         float64 `json:"volume"`
 	//HorizontalFlip bool    `json:"hflip"`
-	//PublishedAt    int     `json:"original_published_at"`
+	PublishedAt int `json:"original_published_at"`
 
 	Group string
 	Title string

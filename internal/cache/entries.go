@@ -3,8 +3,10 @@ package cache
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -28,6 +30,12 @@ func NewEntry(id string) Entry {
 	}
 	if num, ok := utils.CheckIdIsDuDu(id); ok {
 		return newUrlBasedEntry(id, requesting.GetDuDuClient(), func(ctx context.Context) (*RemoteVideoInfo, error) {
+			if song, ok := raw_song.FindDuDuSong(num); ok {
+				return &RemoteVideoInfo{
+					FinalUrl:     utils.GetDuDuVideoUrl(num),
+					LastModified: time.Unix(int64(song.PublishedAt), 0),
+				}, nil
+			}
 			return &RemoteVideoInfo{
 				FinalUrl: utils.GetDuDuVideoUrl(num),
 			}, nil

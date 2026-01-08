@@ -32,8 +32,10 @@ func (e *UrlBasedEntry) resolveRemoteMedia(ctx context.Context) error {
 	}
 
 	url := info.FinalUrl
+	e.referer = ""
 	if !info.LastModified.IsZero() {
 		// BiliBili provide creation time through API
+		// DuDuFitDance CDN does not response with Last-Modified, but provide "publishTime" in manifest
 		e.remoteModTime = info.LastModified
 	}
 
@@ -81,7 +83,7 @@ func (e *UrlBasedEntry) checkWorkingFile(ctx context.Context) error {
 
 	localModTime := e.workingFile.ModTime()
 
-	if e.remoteModTime.IsZero() || e.resolvedUrl == "" {
+	if e.resolvedUrl == "" {
 		// make sure that we have recorded Last-Modified and url
 		err := e.resolveRemoteMedia(ctx)
 		if err != nil {
