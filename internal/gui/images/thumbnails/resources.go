@@ -47,7 +47,7 @@ var groupNameToThumbnail = map[string]string{
 	"Michael Jackson":     "thumbnail-michael.jpg",
 
 	// DuDuFitDance only
-	//"DuDu FitDance":                   "thumbnail-ddfd.jpg",
+	"DuDu FitDance":      "thumbnail-dudu.jpg",
 	"Just Dance Series":  "thumbnail-justdance.jpg",
 	"Other FitDance":     "thumbnail-fitness.jpg",
 	"Just Dance Fanmade": "thumbnail-justdance-fan.jpg",
