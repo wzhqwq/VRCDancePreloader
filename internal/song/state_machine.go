@@ -214,7 +214,7 @@ func (sm *StateMachine) StartPlayingLoop() {
 		}
 
 		realTimePassed := time.Since(startTime)
-		nextTime := (sm.ps.TimePassed/time.Second + 1) * time.Second
+		nextTime := (sm.ps.TimePassed + time.Second) / time.Second * time.Second
 		delta := nextTime - realTimePassed
 		routine := false
 		select {

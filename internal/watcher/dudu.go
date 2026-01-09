@@ -225,14 +225,18 @@ func syncDuDuVideoUsingStartTime() bool {
 }
 
 func syncDuDuVideoUsingCountdown(pair string) {
-	countDown := parseTimeStampWithOffset(pair, true)
+	countDown := -parseTimeStampWithOffset(pair, true)
 	if countDown > time.Second*30 {
 		// invalidate count down
 		duDuLastCountdownPair.Reset("")
 		return
 	}
 	if playlist.MarkURLPlaying(userDataDuDu.URL, -countDown) {
-		duduLogger.InfoLn("Confirmed", userDataDuDu.URL, "will play after", countDown)
+		if countDown > 0 {
+			duduLogger.InfoLn("Confirmed", userDataDuDu.URL, "will play after", countDown)
+		} else {
+			duduLogger.InfoLn("Confirmed", userDataDuDu.URL, "is playing from", -countDown)
+		}
 		duDuLastCountdownPair.Reset("")
 		duDuVideoChanged.Reset(false)
 	}
