@@ -349,9 +349,7 @@ func (r *ItemRenderer) refreshTime() bool {
 	timeInfo := r.ig.ps.GetTimeInfo()
 
 	if timeInfo.IsPlaying {
-		fyne.Do(func() {
-			r.Background.StrokeColor = theme.Color(theme.ColorNamePrimary)
-		})
+		r.Background.StrokeColor = theme.Color(theme.ColorNamePrimary)
 		if timeInfo.Progress < 0 {
 			// not synced
 			if r.PlayBar.Visible() {
@@ -368,9 +366,7 @@ func (r *ItemRenderer) refreshTime() bool {
 			}
 		}
 	} else {
-		fyne.Do(func() {
-			r.Background.StrokeColor = theme.Color(theme.ColorNameBackground)
-		})
+		r.Background.StrokeColor = theme.Color(theme.ColorNameBackground)
 		if r.PlayBar.Visible() {
 			r.PlayBar.Hide()
 			return true
