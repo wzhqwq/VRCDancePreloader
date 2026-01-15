@@ -11,6 +11,8 @@ type PlayBar struct {
 	widget.BaseWidget
 	Progress float32
 	Text     string
+
+	IsCountdown bool
 }
 
 type playBarRenderer struct {
@@ -29,7 +31,11 @@ func (r *playBarRenderer) Layout(size fyne.Size) {
 	offset := (size.Height-r.MinSize().Height)/2 + 4
 
 	r.rect1.Move(fyne.NewPos(0, offset))
-	r.rect2.Move(fyne.NewPos(0, offset))
+	if r.pb.IsCountdown {
+		r.rect2.Move(fyne.NewPos(size.Width*(1-r.pb.Progress)/2, offset))
+	} else {
+		r.rect2.Move(fyne.NewPos(0, offset))
+	}
 	r.text.Move(fyne.NewPos(0, offset+4))
 
 	r.rect1.Resize(fyne.NewSize(size.Width, 4))
@@ -42,7 +48,17 @@ func (r *playBarRenderer) Objects() []fyne.CanvasObject {
 
 func (r *playBarRenderer) Refresh() {
 	r.text.Text = r.pb.Text
-	r.rect2.Resize(fyne.NewSize(r.pb.Size().Width*r.pb.Progress, 4))
+
+	size := r.pb.Size()
+	offset := (size.Height-r.MinSize().Height)/2 + 4
+
+	r.rect2.Resize(fyne.NewSize(size.Width*r.pb.Progress, 4))
+	if r.pb.IsCountdown {
+		r.rect2.Move(fyne.NewPos(size.Width*(1-r.pb.Progress)/2, offset))
+	} else {
+		r.rect2.Move(fyne.NewPos(0, offset))
+	}
+
 	canvas.Refresh(r.pb)
 }
 

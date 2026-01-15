@@ -113,15 +113,27 @@ func (ps *PreloadedSong) GetError() string {
 // TimeInfo, only change during play
 
 type PreloadedSongTimeInfo struct {
-	Progress  float64
-	Text      string
-	IsPlaying bool
+	Progress float64
+	Text     string
+
+	IsPlaying   bool
+	IsCountdown bool
 }
 
 func (ps *PreloadedSong) GetTimeInfo() PreloadedSongTimeInfo {
 	if ps.sm.PlayStatus == SyncPlaying {
+		if ps.TimePassed < 0 {
+			countdown := (-ps.TimePassed).Seconds()
+			return PreloadedSongTimeInfo{
+				Progress: countdown / 10.0,
+				Text: i18n.T("wrapper_countdown", goeasyi18n.Options{
+					Data: map[string]any{"Countdown": int(countdown)},
+				}),
+				IsCountdown: true,
+			}
+		}
 		return PreloadedSongTimeInfo{
-			Progress:  max(0, float64(ps.TimePassed.Milliseconds())) / float64(ps.Duration.Milliseconds()),
+			Progress:  float64(ps.TimePassed.Milliseconds()) / float64(ps.Duration.Milliseconds()),
 			Text:      fmt.Sprintf("%s / %s", utils.PrettyTime(ps.TimePassed), utils.PrettyTime(ps.Duration)),
 			IsPlaying: true,
 		}

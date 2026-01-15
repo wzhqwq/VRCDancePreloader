@@ -37,6 +37,8 @@
   Default: "Requested by {{.Adder}}"
 - Key: tip_playlist_empty
   Default: "Waiting for playlist"
+- Key: wrapper_countdown
+  Default: "Countdown: {{.Countdown}}"
 
 - Key: app_name
   Default: "VRC Dancing Room Preloader"

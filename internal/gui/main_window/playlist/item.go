@@ -348,7 +348,7 @@ func (r *ItemRenderer) refreshProgress() {
 func (r *ItemRenderer) refreshTime() bool {
 	timeInfo := r.ig.ps.GetTimeInfo()
 
-	if timeInfo.IsPlaying {
+	if timeInfo.IsPlaying || timeInfo.IsCountdown {
 		r.Background.StrokeColor = theme.Color(theme.ColorNamePrimary)
 		if timeInfo.Progress < 0 {
 			// not synced
@@ -358,6 +358,7 @@ func (r *ItemRenderer) refreshTime() bool {
 			}
 		} else {
 			r.PlayBar.Progress = float32(timeInfo.Progress)
+			r.PlayBar.IsCountdown = timeInfo.IsCountdown
 			r.PlayBar.Text = timeInfo.Text
 			r.PlayBar.Refresh()
 			if !r.PlayBar.Visible() {

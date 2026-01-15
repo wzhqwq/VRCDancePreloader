@@ -103,7 +103,7 @@ func (ps *PreloadedSong) LivePlayStatusChange() LivePlayStatusChange {
 	return LivePlayStatusChange{
 		ID: ps.ID,
 
-		TimePassed: max(0, int(ps.TimePassed.Milliseconds())),
+		TimePassed: int(ps.TimePassed.Milliseconds()),
 		PlayStatus: string(ps.sm.PlayStatus),
 	}
 }
