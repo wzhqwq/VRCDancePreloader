@@ -95,11 +95,13 @@ func (item *WannaQueueItem) ToPreloaded() *song.PreloadedSong {
 	if item.SongID > 0 {
 		s := song.GetWannaSongForList(item.SongID)
 		// Try to complete the info with the queue item
-		if s.InfoNa && item.Title != "" && item.Group != "" && item.Duration > 0 {
+		if s.InfoNa && item.Title != "" && item.Group != "" {
 			prefix := fmt.Sprintf("%d. ", item.SongID)
 			item.Title = strings.TrimPrefix(item.Title, prefix)
 			s.WannaSong.Complete(item.Title, item.Group, item.Duration)
-			s.InfoNa = false
+			if item.Duration > 0 {
+				s.InfoNa = false
+			}
 		}
 		return s
 	}
@@ -152,13 +154,13 @@ func (item *DuDuQueueItem) ToPreloaded() *song.PreloadedSong {
 	if item.SongID >= 0 {
 		s := song.GetDuDuSongForList(item.SongID)
 		// Try to complete the info with the queue item
-		if s.InfoNa && item.Title != "" && item.Group != "" && item.Duration > 0 {
+		if s.InfoNa && item.Title != "" && item.Group != "" {
 			prefix := fmt.Sprintf("%d. ", item.SongID)
-			if strings.HasPrefix(item.Title, prefix) {
-				item.Title = strings.TrimPrefix(item.Title, prefix)
-			}
+			item.Title = strings.TrimPrefix(item.Title, prefix)
 			s.DuDuSong.Complete(item.Title, item.Group, item.Duration)
-			s.InfoNa = false
+			if item.Duration > 0 {
+				s.InfoNa = false
+			}
 		}
 		return s
 	}
