@@ -86,8 +86,8 @@ func (pc *ProxyConfig) Init() {
 
 	requesting.InitPypyClient(pc.Pypy)
 	requesting.InitWannaClient(pc.Wanna)
-	requesting.InitDuDuClient("")
-	requesting.InitBiliClient("")
+	requesting.InitDuDuClient(pc.DuDu)
+	requesting.InitBiliClient(pc.BiliBili)
 	//requesting.InitYoutubeVideoClient(pc.YoutubeVideo)
 	requesting.InitYoutubeImageClient(pc.YoutubeImage)
 	requesting.InitYoutubeApiClient(pc.YoutubeApi)
