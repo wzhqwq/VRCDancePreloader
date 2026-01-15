@@ -27,10 +27,6 @@ var duDuVideoPlaying = NewLastValue(false)
 
 var duduLogger = utils.NewLogger("DuDuFitDance Log Watcher")
 
-// A magic date (1761955200) used when the room does not use "server time" to sync with the master client
-// I don't know why this fixed date is used sometimes (to prevent failed calls to GetServerTimeInSeconds?)
-var serverStartTimeFallback = time.Date(2025, time.November, 1, 0, 0, 0, 0, time.UTC)
-
 type duDuUserData struct {
 	// Version       string  `json:"ver"`
 	ID      int  `json:"id"`
@@ -40,11 +36,11 @@ type duDuUserData struct {
 	URL  string `json:"url"`
 	// Flip      bool    `json:"flip"`
 	// Volume    float64 `json:"volume"`
-	Group     string  `json:"group"`
-	StartTime float64 `json:"starttime"`
-	Dancer    string  `json:"dancer"`
-	Artist    string  `json:"artist"`
-	Title     string  `json:"title"`
+	Group string `json:"group"`
+	//StartTime float64 `json:"starttime"`
+	Dancer string `json:"dancer"`
+	Artist string `json:"artist"`
+	Title  string `json:"title"`
 }
 
 func parseDuDuQueue(data []byte) ([]queue.DuDuQueueItem, error) {
@@ -186,11 +182,6 @@ func duDuPostProcess() {
 }
 
 func trySyncDuDuVideo() {
-	// try sync using start time
-	if syncDuDuVideoUsingStartTime() {
-		return
-	}
-
 	// try sync using count down
 	if lastCountdownPair := duDuLastCountdownPair.Get(); lastCountdownPair != "" {
 		syncDuDuVideoUsingCountdown(lastCountdownPair)
@@ -201,27 +192,6 @@ func trySyncDuDuVideo() {
 		// well, it's already playing and we cannot sync with it anymore
 		justPlayDuDuVideo()
 	}
-}
-
-func syncDuDuVideoUsingStartTime() bool {
-	var relativeStart = time.Duration(userDataDuDu.StartTime*1000) * time.Millisecond
-	// video waits a countdown (often 10s) to end before playing
-	var estimatedStart = serverStartTimeFallback.Add(relativeStart + time.Second*10)
-	var offset = time.Now().Sub(estimatedStart)
-
-	if offset > time.Hour {
-		// so it's not a fallback
-		// we cannot call GetServerTimeInSeconds (which is inside Udon) to calculate when server starts
-		// so unfortunately we cannot sync with the playing video unless the room is using fallback clock
-		return false
-	}
-
-	if playlist.MarkURLPlaying(userDataDuDu.URL, offset) {
-		duduLogger.InfoLn("Confirmed", userDataDuDu.URL, "is playing from", offset, "using 'starttime'")
-		duDuVideoChanged.Reset(false)
-	}
-
-	return true
 }
 
 func syncDuDuVideoUsingCountdown(pair string) {
