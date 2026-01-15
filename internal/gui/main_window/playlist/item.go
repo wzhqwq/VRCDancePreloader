@@ -383,6 +383,8 @@ func (r *ItemRenderer) refreshInfo() {
 	r.TitleWidget.Refresh()
 
 	r.GroupText.Text = info.Group
+
+	r.Thumbnail.LoadImageFromID(r.Thumbnail.ID)
 }
 
 func (r *ItemRenderer) Objects() []fyne.CanvasObject {
