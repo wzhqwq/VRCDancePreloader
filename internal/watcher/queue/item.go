@@ -37,6 +37,7 @@ func (item *PyPyQueueItem) ToPreloaded() *song.PreloadedSong {
 		if s.InfoNa && item.VideoName != "" && item.Group != "" && item.Length > 0 {
 			s.PyPySong.Complete(item.VideoName, item.Group, item.Length)
 			s.InfoNa = false
+			s.UpdateDuration()
 		}
 		return s
 	}
@@ -101,6 +102,7 @@ func (item *WannaQueueItem) ToPreloaded() *song.PreloadedSong {
 			s.WannaSong.Complete(item.Title, item.Group, item.Duration)
 			if item.Duration > 0 {
 				s.InfoNa = false
+				s.UpdateDuration()
 			}
 		}
 		return s
@@ -160,6 +162,7 @@ func (item *DuDuQueueItem) ToPreloaded() *song.PreloadedSong {
 			s.DuDuSong.Complete(item.Title, item.Group, item.Duration)
 			if item.Duration > 0 {
 				s.InfoNa = false
+				s.UpdateDuration()
 			}
 		}
 		return s

@@ -38,7 +38,7 @@ func CreatePreloadedPyPySong(id int) *PreloadedSong {
 	}
 
 	ret.PyPySong = song
-	ret.completeDuration()
+	ret.UpdateDuration()
 
 	return ret
 }
@@ -58,7 +58,7 @@ func CreatePreloadedWannaSong(id int) *PreloadedSong {
 	}
 
 	ret.WannaSong = song
-	ret.completeDuration()
+	ret.UpdateDuration()
 
 	return ret
 }
@@ -78,7 +78,7 @@ func CreatePreloadedDuDuSong(id int) *PreloadedSong {
 	}
 
 	ret.DuDuSong = song
-	ret.completeDuration()
+	ret.UpdateDuration()
 
 	return ret
 }
@@ -87,7 +87,7 @@ func CreatePreloadedCustomSong(url string) *PreloadedSong {
 	ret := constructBasicPreloadedSong()
 
 	ret.CustomSong = raw_song.FindOrCreateCustomSong(url)
-	ret.completeDuration()
+	ret.UpdateDuration()
 	ret.completeTitle()
 
 	return ret

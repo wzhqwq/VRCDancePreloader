@@ -8,7 +8,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 )
 
-func (ps *PreloadedSong) completeDuration() {
+func (ps *PreloadedSong) UpdateDuration() {
 	if ps.Duration > 1 {
 		return
 	}
@@ -83,7 +83,7 @@ func (ps *PreloadedSong) UpdateSong() bool {
 		}
 	}
 	if ps.CustomSong != nil {
-		ps.completeDuration()
+		ps.UpdateDuration()
 		ps.completeTitle()
 
 		return true
@@ -93,7 +93,7 @@ func (ps *PreloadedSong) UpdateSong() bool {
 complete:
 	ps.InfoNa = false
 	persistence.UpdateSavedTitle(ps.GetSongId(), completedTitle)
-	ps.completeDuration()
+	ps.UpdateDuration()
 	ps.notifyInfoChange()
 
 	return true

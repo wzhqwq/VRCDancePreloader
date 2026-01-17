@@ -153,13 +153,13 @@ func (ps *PreloadedSong) PlaySongStartFrom(offset time.Duration) bool {
 		ps.sm.PlaySongAndSync(offset)
 		return true
 	}
-	ps.completeDuration()
+	ps.UpdateDuration()
 	return false
 }
 func (ps *PreloadedSong) PlaySong() {
 	ps.sm.PlaySong()
 	if ps.Duration == 0 {
-		ps.completeDuration()
+		ps.UpdateDuration()
 	}
 }
 func (ps *PreloadedSong) CancelPlaying() {
