@@ -11,7 +11,7 @@ import (
 
 var timeStampRegex = regexp.MustCompile(`^\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}`)
 
-var shortExitRegex = regexp.MustCompile(`^\[(?:VRCXC|Vo|A)`)
+var shortExitRegex = regexp.MustCompile(`^\[(?:VRCXC|Vo|A|Per)`)
 
 func postProcess() {
 	behaviourPostProcess()
