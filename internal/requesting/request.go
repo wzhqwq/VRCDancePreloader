@@ -27,7 +27,7 @@ func (t *mixedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 func WithYoutubeApiClient(key string) option.ClientOption {
 	return option.WithHTTPClient(&http.Client{
 		Transport: &mixedTransport{
-			clientWithProxy: youtubeApiClient,
+			clientWithProxy: clients[YouTubeApi].client,
 			Key:             key,
 		},
 	})
@@ -43,10 +43,10 @@ func RequestThumbnail(url string) (*http.Response, error) {
 	defer thumbnailRequestSem.Release(1)
 
 	if utils.CheckPyPyResource(url) {
-		return pypyClient.Get(url)
+		return clients[PyPyDance].Get(url)
 	}
 	if utils.CheckYoutubeThumbnailURL(url) {
-		return youtubeImageClient.Get(url)
+		return clients[YouTubeImage].Get(url)
 	}
 	return http.Get(url)
 }

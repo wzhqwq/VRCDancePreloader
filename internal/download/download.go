@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/fragmented"
 )
 
@@ -142,8 +143,15 @@ func (t *Task) Download(retryDelay bool) {
 	t.Requesting = true
 	t.notifyStateChange()
 
+startRequest:
 	t.TotalSize, err = cacheEntry.TotalLen()
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			// triggered by ErrClientChanged
+			logger.InfoLn("Restarted", t.ID)
+			goto startRequest
+		}
+
 		t.Error = err
 		logger.ErrorLn("Failed to get total size of", t.ID, ":", err)
 		if errors.Is(err, cache.ErrThrottle) {
@@ -167,8 +175,12 @@ startTask:
 	if errors.Is(err, ErrCanceled) {
 		goto canceled
 	}
-	if errors.Is(err, io.EOF) || errors.Is(err, fragmented.ErrEndOfFragment) || errors.Is(err, ErrRestarted) {
-		logger.InfoLn("Restarted", t.ID)
+	if errors.Is(err, io.EOF) ||
+		errors.Is(err, fragmented.ErrEndOfFragment) ||
+		errors.Is(err, ErrRestarted) ||
+		errors.Is(err, requesting.ErrClientChanged) {
+
+		logger.InfoLn("Restarted", t.ID, "reason:", err.Error())
 		t.Requesting = true
 		goto startTask
 	}

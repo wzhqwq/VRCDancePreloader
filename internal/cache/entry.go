@@ -47,7 +47,7 @@ type Entry interface {
 
 type BaseEntry struct {
 	id     string
-	client *http.Client
+	client *requesting.ClientProvider
 
 	referer string
 
@@ -60,7 +60,7 @@ type BaseEntry struct {
 	logger *utils.CustomLogger
 }
 
-func ConstructBaseEntry(id string, client *http.Client) BaseEntry {
+func ConstructBaseEntry(id string, client *requesting.ClientProvider) BaseEntry {
 	return BaseEntry{
 		id:     id,
 		client: client,
@@ -129,7 +129,7 @@ type RemoteVideoInfo struct {
 
 func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*RemoteVideoInfo, error) {
 	e.logger.InfoLn("Request info", url)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := e.client.NewGetRequest(url, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*Remote
 }
 func (e *BaseEntry) requestHttpResBody(url string, offset int64, ctx context.Context) (io.ReadCloser, error) {
 	e.logger.InfoLn("Request body", url, offset)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := e.client.NewGetRequest(url, ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -1,128 +1,61 @@
 package requesting
 
 import (
-	"net/http"
-	"net/url"
+	"context"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var pypyClient *http.Client
-var wannaClient *http.Client
-var duduClient *http.Client
-var biliClient *http.Client
+type ClientName string
 
-var youtubeVideoClient *http.Client
-var youtubeApiClient *http.Client
-var youtubeImageClient *http.Client
+const (
+	PyPyDance    ClientName = "PyPyDance"
+	WannaDance   ClientName = "WannaDance"
+	DuDuFitDance ClientName = "DuDuFitDance"
+	BiliBiliApi  ClientName = "BiliBili API"
+	YouTubeVideo ClientName = "YouTube video"
+	YouTubeApi   ClientName = "YouTube API"
+	YouTubeImage ClientName = "YouTube thumbnail"
+)
 
-func createProxyClient(proxyURL string) *http.Client {
-	proxy, err := url.Parse(proxyURL)
-	if err != nil {
-		logger.FatalLn("Error parsing proxy URL:", err)
-	}
-	return &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxy),
-		},
-	}
-}
-
-func InitPypyClient(proxyUrl string) {
-	if proxyUrl != "" {
-		pypyClient = createProxyClient(proxyUrl)
-	} else {
-		pypyClient = &http.Client{}
-	}
-}
-func TestPypyClient() (bool, string) {
-	return testClient(pypyClient, "PyPyDance", videoTestCase(utils.GetPyPyVideoUrl(1)))
+var clients = map[ClientName]*ClientProvider{
+	PyPyDance:    nil,
+	WannaDance:   nil,
+	DuDuFitDance: nil,
+	BiliBiliApi:  nil,
+	YouTubeVideo: nil,
+	YouTubeApi:   nil,
+	YouTubeImage: nil,
 }
 
-func InitWannaClient(proxyUrl string) {
-	if proxyUrl != "" {
-		wannaClient = createProxyClient(proxyUrl)
-	} else {
-		wannaClient = &http.Client{}
-	}
-}
-func TestWannaClient() (bool, string) {
-	return testClient(wannaClient, "WannaDance", videoTestCase(utils.GetWannaVideoUrl(1)))
-}
-
-func InitDuDuClient(proxyUrl string) {
-	if proxyUrl != "" {
-		duduClient = createProxyClient(proxyUrl)
-	} else {
-		duduClient = &http.Client{}
-	}
-}
-func TestDuDuClient() (bool, string) {
-	return testClient(duduClient, "DuDuFitDance", videoTestCase(utils.GetDuDuVideoUrl(1)))
+var testCases = map[ClientName]testCase{
+	PyPyDance:    videoTestCase(utils.GetPyPyVideoUrl(1)),
+	WannaDance:   videoTestCase(utils.GetWannaVideoUrl(1)),
+	DuDuFitDance: videoTestCase(utils.GetDuDuVideoUrl(1)),
+	BiliBiliApi:  anonymousTestCaseGet(utils.GetBiliVideoInfoURL("BV17g7XzME13")),
+	YouTubeVideo: anonymousTestCase(utils.GetStandardYoutubeURL("qylu4Ajh6k8")),
+	YouTubeApi:   authenticatedTestCase("https://www.googleapis.com/youtube/v3/videos"),
+	YouTubeImage: anonymousTestCase(utils.GetYoutubeMQThumbnailURL("qylu4Ajh6k8")),
 }
 
-func InitBiliClient(proxyUrl string) {
-	if proxyUrl != "" {
-		biliClient = createProxyClient(proxyUrl)
-	} else {
-		biliClient = &http.Client{}
-	}
-}
-func TestBiliClient() (bool, string) {
-	return testClient(biliClient, "BiliBili api", anonymousTestCaseGet(utils.GetBiliVideoInfoURL("BV17g7XzME13")))
+func InitClient(name ClientName, proxyUrl string) {
+	clients[name] = NewProxyProvider(proxyUrl, string(name))
 }
 
-func InitYoutubeVideoClient(proxyUrl string) {
-	if proxyUrl != "" {
-		youtubeVideoClient = createProxyClient(proxyUrl)
-	} else {
-		youtubeVideoClient = &http.Client{}
-	}
-}
-func TestYoutubeVideoClient() (bool, string) {
-	return testClient(youtubeVideoClient, "Youtube video", anonymousTestCase(utils.GetStandardYoutubeURL("qylu4Ajh6k8")))
+func TestClient(name ClientName) (bool, string) {
+	return clients[name].Test(testCases[name])
 }
 
-func InitYoutubeApiClient(proxyUrl string) {
-	if proxyUrl != "" {
-		youtubeApiClient = createProxyClient(proxyUrl)
-	} else {
-		youtubeApiClient = &http.Client{}
-	}
-}
-func TestYoutubeApiClient() (bool, string) {
-	return testClient(youtubeApiClient, "Youtube API", authenticatedTestCase("https://www.googleapis.com/youtube/v3/videos"))
+func UpdateClient(name ClientName, proxyUrl string) {
+	clients[name].SetProxy(proxyUrl)
 }
 
-func InitYoutubeImageClient(proxyUrl string) {
-	if proxyUrl != "" {
-		youtubeImageClient = createProxyClient(proxyUrl)
-	} else {
-		youtubeImageClient = &http.Client{}
-	}
-}
-func TestYoutubeImageClient() (bool, string) {
-	return testClient(youtubeImageClient, "Youtube thumbnail", anonymousTestCase(utils.GetYoutubeMQThumbnailURL("qylu4Ajh6k8")))
+func GetClient(name ClientName) *ClientProvider {
+	return clients[name]
 }
 
-func GetPyPyClient() *http.Client {
-	return pypyClient
-}
-func GetWannaClient() *http.Client {
-	return wannaClient
-}
-func GetDuDuClient() *http.Client {
-	return duduClient
-}
-func GetBiliClient() *http.Client {
-	return biliClient
-}
-func GetYoutubeVideoClient() *http.Client {
-	return youtubeVideoClient
-}
-func GetYoutubeApiClient() *http.Client {
-	return youtubeApiClient
-}
-func GetYoutubeImageClient() *http.Client {
-	return youtubeImageClient
+// YouTube API
+
+func GetYoutubeApiContext() context.Context {
+	return clients[YouTubeApi].Context(context.Background())
 }

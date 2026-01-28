@@ -8,21 +8,21 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var pypyListResource *utils.RemoteResource[raw_song.PyPyDanceListResponse]
-var wannaListResource *utils.RemoteResource[raw_song.WannaDanceListResponse]
-var duduListResource *utils.RemoteResource[raw_song.DuDuFitDanceListResponse]
+var pypyListResource *RemoteResource[raw_song.PyPyDanceListResponse]
+var wannaListResource *RemoteResource[raw_song.WannaDanceListResponse]
+var duduListResource *RemoteResource[raw_song.DuDuFitDanceListResponse]
 
 var songCtx context.Context
 
 func InitSongList(ctx context.Context) {
-	pypyListResource = utils.NewJsonRemoteResource[raw_song.PyPyDanceListResponse](
-		"PyPyDance Manifest", utils.GetPyPyListUrl(), requesting.GetPyPyClient,
+	pypyListResource = NewJsonRemoteResource[raw_song.PyPyDanceListResponse](
+		"PyPyDance Manifest", utils.GetPyPyListUrl(), requesting.GetClient(requesting.PyPyDance),
 	)
-	wannaListResource = utils.NewJsonRemoteResource[raw_song.WannaDanceListResponse](
-		"WannaDance Manifest", utils.GetWannaListUrl(), requesting.GetWannaClient,
+	wannaListResource = NewJsonRemoteResource[raw_song.WannaDanceListResponse](
+		"WannaDance Manifest", utils.GetWannaListUrl(), requesting.GetClient(requesting.WannaDance),
 	)
-	duduListResource = utils.NewJsonRemoteResource[raw_song.DuDuFitDanceListResponse](
-		"DuDuFitDance Manifest", utils.GetDuDuListUrl(), requesting.GetDuDuClient,
+	duduListResource = NewJsonRemoteResource[raw_song.DuDuFitDanceListResponse](
+		"DuDuFitDance Manifest", utils.GetDuDuListUrl(), requesting.GetClient(requesting.DuDuFitDance),
 	)
 	songCtx = ctx
 	DownloadPyPySongs()

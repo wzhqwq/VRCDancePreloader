@@ -38,14 +38,16 @@ type BvInfo struct {
 }
 
 func requestBiliApi[T any](url, bvId string, ctx context.Context) (*T, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	client := requesting.GetClient(requesting.BiliBiliApi)
+
+	req, err := client.NewGetRequest(url, ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	requesting.SetupHeader(req, utils.GetStandardBiliURL(bvId))
 
-	res, err := requesting.GetBiliClient().Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

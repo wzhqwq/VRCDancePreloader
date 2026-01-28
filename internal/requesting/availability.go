@@ -29,6 +29,8 @@ func accessClient(client *http.Client, tc testCase) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
+
 	if tc.expectedStatus != 0 && resp.StatusCode != tc.expectedStatus {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}

@@ -84,13 +84,13 @@ func (pc *ProxyConfig) Init() {
 		"youtube-image":     NewProxyTester("youtube-image", pc.YoutubeImage),
 	}
 
-	requesting.InitPypyClient(pc.Pypy)
-	requesting.InitWannaClient(pc.Wanna)
-	requesting.InitDuDuClient(pc.DuDu)
-	requesting.InitBiliClient(pc.BiliBili)
-	//requesting.InitYoutubeVideoClient(pc.YoutubeVideo)
-	requesting.InitYoutubeImageClient(pc.YoutubeImage)
-	requesting.InitYoutubeApiClient(pc.YoutubeApi)
+	requesting.InitClient(requesting.PyPyDance, pc.Pypy)
+	requesting.InitClient(requesting.WannaDance, pc.Wanna)
+	requesting.InitClient(requesting.DuDuFitDance, pc.DuDu)
+	requesting.InitClient(requesting.BiliBiliApi, pc.BiliBili)
+	requesting.InitClient(requesting.YouTubeVideo, pc.YoutubeVideo)
+	requesting.InitClient(requesting.YouTubeImage, pc.YoutubeImage)
+	requesting.InitClient(requesting.YouTubeApi, pc.YoutubeApi)
 
 	if !skipTest {
 		pc.ProxyControllers["pypydance-api"].Test()
@@ -124,25 +124,25 @@ func (pc *ProxyConfig) Update(item, value string) error {
 	switch item {
 	case "pypydance-api":
 		pc.Pypy = value
-		requesting.InitPypyClient(value)
+		requesting.UpdateClient(requesting.PyPyDance, value)
 	case "wannadance-api":
 		pc.Wanna = value
-		requesting.InitWannaClient(value)
+		requesting.UpdateClient(requesting.WannaDance, value)
 	case "dudu-fitdance-api":
 		pc.DuDu = value
-		requesting.InitDuDuClient(value)
+		requesting.UpdateClient(requesting.DuDuFitDance, value)
 	case "bilibili-api":
 		pc.BiliBili = value
-		requesting.InitBiliClient(value)
+		requesting.UpdateClient(requesting.BiliBiliApi, value)
 	case "youtube-video":
 		pc.YoutubeVideo = value
-		requesting.InitYoutubeVideoClient(value)
+		requesting.UpdateClient(requesting.YouTubeVideo, value)
 	case "youtube-api":
 		pc.YoutubeApi = value
-		requesting.InitYoutubeApiClient(value)
+		requesting.UpdateClient(requesting.YouTubeApi, value)
 	case "youtube-image":
 		pc.YoutubeImage = value
-		requesting.InitYoutubeImageClient(value)
+		requesting.UpdateClient(requesting.YouTubeImage, value)
 	default:
 		logger.FatalLnf("Unknown proxy item: %s", item)
 	}
@@ -153,19 +153,19 @@ func (pc *ProxyConfig) Update(item, value string) error {
 func (pc *ProxyConfig) Test(item string) (bool, string) {
 	switch item {
 	case "pypydance-api":
-		return requesting.TestPypyClient()
+		return requesting.TestClient(requesting.PyPyDance)
 	case "wannadance-api":
-		return requesting.TestWannaClient()
+		return requesting.TestClient(requesting.WannaDance)
 	case "dudu-fitdance-api":
-		return requesting.TestDuDuClient()
+		return requesting.TestClient(requesting.DuDuFitDance)
 	case "bilibili-api":
-		return requesting.TestBiliClient()
+		return requesting.TestClient(requesting.BiliBiliApi)
 	case "youtube-video":
-		return requesting.TestYoutubeVideoClient()
+		return requesting.TestClient(requesting.YouTubeVideo)
 	case "youtube-api":
-		return requesting.TestYoutubeApiClient()
+		return requesting.TestClient(requesting.YouTubeApi)
 	case "youtube-image":
-		return requesting.TestYoutubeImageClient()
+		return requesting.TestClient(requesting.YouTubeImage)
 	default:
 		logger.FatalLnf("Unknown proxy item: %s", item)
 		return false, ""

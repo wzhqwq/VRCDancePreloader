@@ -3,9 +3,9 @@ package cache
 import (
 	"context"
 	"io"
-	"net/http"
 	"time"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -18,7 +18,7 @@ type UrlBasedEntry struct {
 	remoteModTime time.Time
 }
 
-func newUrlBasedEntry(id string, client *http.Client, initialInfoGetter func(ctx context.Context) (*RemoteVideoInfo, error)) *UrlBasedEntry {
+func newUrlBasedEntry(id string, client *requesting.ClientProvider, initialInfoGetter func(ctx context.Context) (*RemoteVideoInfo, error)) *UrlBasedEntry {
 	return &UrlBasedEntry{
 		BaseEntry:         ConstructBaseEntry(id, client),
 		initialInfoGetter: initialInfoGetter,

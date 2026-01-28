@@ -15,21 +15,21 @@ var ErrNotSupported = errors.New("video is not currently supported")
 
 func NewEntry(id string) Entry {
 	if num, ok := utils.CheckIdIsPyPy(id); ok {
-		return newUrlBasedEntry(id, requesting.GetPyPyClient(), func(ctx context.Context) (*RemoteVideoInfo, error) {
+		return newUrlBasedEntry(id, requesting.GetClient(requesting.PyPyDance), func(ctx context.Context) (*RemoteVideoInfo, error) {
 			return &RemoteVideoInfo{
 				FinalUrl: utils.GetPyPyVideoUrl(num),
 			}, nil
 		})
 	}
 	if num, ok := utils.CheckIdIsWanna(id); ok {
-		return newUrlBasedEntry(id, requesting.GetWannaClient(), func(ctx context.Context) (*RemoteVideoInfo, error) {
+		return newUrlBasedEntry(id, requesting.GetClient(requesting.WannaDance), func(ctx context.Context) (*RemoteVideoInfo, error) {
 			return &RemoteVideoInfo{
 				FinalUrl: utils.GetWannaVideoUrl(num),
 			}, nil
 		})
 	}
 	if num, ok := utils.CheckIdIsDuDu(id); ok {
-		return newUrlBasedEntry(id, requesting.GetDuDuClient(), func(ctx context.Context) (*RemoteVideoInfo, error) {
+		return newUrlBasedEntry(id, requesting.GetClient(requesting.DuDuFitDance), func(ctx context.Context) (*RemoteVideoInfo, error) {
 			if song, ok := raw_song.FindDuDuSong(num); ok {
 				return &RemoteVideoInfo{
 					FinalUrl:     utils.GetDuDuVideoUrl(num),
@@ -42,7 +42,7 @@ func NewEntry(id string) Entry {
 		})
 	}
 	if bvID, ok := utils.CheckIdIsBili(id); ok {
-		return newUrlBasedEntry(id, requesting.GetBiliClient(), func(ctx context.Context) (*RemoteVideoInfo, error) {
+		return newUrlBasedEntry(id, requesting.GetClient(requesting.BiliBiliApi), func(ctx context.Context) (*RemoteVideoInfo, error) {
 			mTime, err := third_party_api.GetBiliVideoModTime(bvID, ctx)
 			if err != nil {
 				return nil, err
@@ -60,7 +60,7 @@ func NewEntry(id string) Entry {
 		})
 	}
 	if ytID, ok := utils.CheckIdIsYoutube(id); ok {
-		return newUrlBasedEntry(id, requesting.GetYoutubeVideoClient(), func(ctx context.Context) (*RemoteVideoInfo, error) {
+		return newUrlBasedEntry(id, requesting.GetClient(requesting.YouTubeVideo), func(ctx context.Context) (*RemoteVideoInfo, error) {
 			return &RemoteVideoInfo{
 				FinalUrl: utils.GetStandardYoutubeURL(ytID),
 			}, nil

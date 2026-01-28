@@ -1,4 +1,4 @@
-package utils
+package cache
 
 import (
 	"context"
@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var ErrCanceled = errors.New("download task canceled")
@@ -16,8 +19,8 @@ type RemoteResource[T any] struct {
 	mu sync.Mutex
 	wg sync.WaitGroup
 
-	logger    *CustomLogger
-	scheduler *Scheduler
+	logger    *utils.CustomLogger
+	scheduler *utils.Scheduler
 
 	Result *T
 
@@ -30,8 +33,8 @@ type RemoteResource[T any] struct {
 
 func NewRemoteResource[T any](name string) *RemoteResource[T] {
 	r := &RemoteResource[T]{
-		logger:    NewLogger("Remote " + name),
-		scheduler: NewScheduler(time.Second*3, time.Second),
+		logger:    utils.NewLogger("Remote " + name),
+		scheduler: utils.NewScheduler(time.Second*3, time.Second),
 
 		DoDownload: func(ctx context.Context) (*T, error) {
 			panic("Implementation required")
@@ -45,18 +48,21 @@ func NewRemoteResource[T any](name string) *RemoteResource[T] {
 	return r
 }
 
-func NewJsonRemoteResource[T any](name string, url string, clientFn func() *http.Client) *RemoteResource[T] {
+func NewJsonRemoteResource[T any](name string, url string, client *requesting.ClientProvider) *RemoteResource[T] {
 	r := NewRemoteResource[T](name)
 	r.DoDownload = func(ctx context.Context) (*T, error) {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		req, err := client.NewGetRequest(url, ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		r.logger.InfoLn("Downloading", url)
 
-		resp, err := clientFn().Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return nil, context.Cause(ctx)
+			}
 			return nil, err
 		}
 		if resp.StatusCode >= 500 {
@@ -105,11 +111,17 @@ func (r *RemoteResource[T]) StartDownload(ctx context.Context) bool {
 			r.downloading = false
 		}()
 
-		data, err := r.DoDownload(ctx)
+		var data *T
+		var err error
+	start:
+		data, err = r.DoDownload(ctx)
 		if err != nil {
 			if errors.Is(err, ErrCanceled) {
 				r.wg.Done()
 			} else {
+				if errors.Is(err, requesting.ErrClientChanged) {
+					goto start
+				}
 				if errors.Is(err, ErrResourceUnavailable) {
 					r.logger.ErrorLn("Resource unavailable")
 				} else {
