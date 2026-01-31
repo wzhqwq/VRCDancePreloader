@@ -54,9 +54,9 @@ func (t *Task) singleDownload(entry cache.Entry) error {
 	}()
 
 	body, err := entry.GetDownloadStream(ctx)
-	if errors.Is(err, context.Canceled) {
+	if cause := context.Cause(ctx); errors.Is(err, context.Canceled) && cause != nil {
 		// canceled by myself
-		return context.Cause(ctx)
+		return cause
 	}
 	if err != nil {
 		return err

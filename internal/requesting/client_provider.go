@@ -3,6 +3,7 @@ package requesting
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -94,14 +95,45 @@ func (p *ClientProvider) Get(url string) (*http.Response, error) {
 		return nil, err
 	}
 
+	SetupHeader(req, url)
+
 	return p.Do(req)
 }
 
-func (p *ClientProvider) Do(req *http.Request) (resp *http.Response, err error) {
-	resp, err = p.client.Do(req)
-	if errors.Is(err, context.Canceled) {
-		// canceled by p.Context
-		err = context.Cause(req.Context())
+func (p *ClientProvider) Do(req *http.Request) (*http.Response, error) {
+	resp, err := p.client.Do(req)
+	if err != nil {
+		if cause := context.Cause(req.Context()); errors.Is(err, context.Canceled) && cause != nil {
+			// canceled by p.Context
+			return nil, cause
+		}
+		return nil, err
 	}
-	return
+
+	resp.Body = &ctxBody{
+		ctx:  req.Context(),
+		body: resp.Body,
+	}
+	return resp, nil
+}
+
+type ctxBody struct {
+	ctx  context.Context
+	body io.ReadCloser
+}
+
+func (c *ctxBody) Read(p []byte) (int, error) {
+	n, err := c.body.Read(p)
+
+	if err != nil {
+		if cause := context.Cause(c.ctx); errors.Is(err, context.Canceled) && cause != nil {
+			return n, cause
+		}
+	}
+
+	return n, err
+}
+
+func (c *ctxBody) Close() error {
+	return c.body.Close()
 }

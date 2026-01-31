@@ -36,8 +36,8 @@ func GetYoutubeInfoFromApi(videoID string) (*youtube.Video, error) {
 	call := svc.Videos.List([]string{"snippet", "contentDetails"}).Id(videoID)
 	resp, err := call.Do()
 	if err != nil {
-		if errors.Is(err, context.Canceled) {
-			err = context.Cause(ctx)
+		if cause := context.Cause(ctx); errors.Is(err, context.Canceled) && cause != nil {
+			return nil, cause
 		}
 		return nil, err
 	}

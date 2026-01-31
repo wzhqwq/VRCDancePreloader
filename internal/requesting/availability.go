@@ -66,7 +66,8 @@ func testClient(client *http.Client, serviceName string, tc testCase) (bool, str
 
 func videoTestCase(url string) testCase {
 	return testCase{
-		url: url,
+		url:    url,
+		useGet: true,
 
 		expectedStatus:   http.StatusOK,
 		minContentLength: 1024 * 1024,

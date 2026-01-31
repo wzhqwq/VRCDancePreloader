@@ -51,16 +51,9 @@ func NewRemoteResource[T any](name string) *RemoteResource[T] {
 func NewJsonRemoteResource[T any](name string, url string, client *requesting.ClientProvider) *RemoteResource[T] {
 	r := NewRemoteResource[T](name)
 	r.DoDownload = func(ctx context.Context) (*T, error) {
-		req, err := client.NewGetRequest(url, ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		requesting.SetupHeader(req, url)
-
 		r.logger.InfoLn("Downloading", url)
 
-		resp, err := client.Do(req)
+		resp, err := client.Get(url)
 		if err != nil {
 			return nil, err
 		}
