@@ -60,9 +60,6 @@ func NewJsonRemoteResource[T any](name string, url string, client *requesting.Cl
 
 		resp, err := client.Do(req)
 		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return nil, context.Cause(ctx)
-			}
 			return nil, err
 		}
 		if resp.StatusCode >= 500 {
@@ -111,27 +108,28 @@ func (r *RemoteResource[T]) StartDownload(ctx context.Context) bool {
 			r.downloading = false
 		}()
 
-		var data *T
-		var err error
-	start:
-		data, err = r.DoDownload(ctx)
-		if err != nil {
-			if errors.Is(err, ErrCanceled) {
-				r.wg.Done()
-			} else {
-				if errors.Is(err, requesting.ErrClientChanged) {
-					goto start
-				}
-				if errors.Is(err, ErrResourceUnavailable) {
-					r.logger.ErrorLn("Resource unavailable")
+		for {
+			data, err := r.DoDownload(ctx)
+			if err != nil {
+				if errors.Is(err, ErrCanceled) {
+					r.wg.Done()
 				} else {
-					r.logger.ErrorLnf("Failed to download resource: %v", err)
+					if errors.Is(err, requesting.ErrClientChanged) {
+						r.logger.InfoLn("Client settings changed, restart immediately")
+						continue
+					}
+					if errors.Is(err, ErrResourceUnavailable) {
+						r.logger.ErrorLn("Resource unavailable")
+					} else {
+						r.logger.ErrorLnf("Failed to download resource: %v", err)
+					}
+					r.planNextRetry(ctx)
 				}
-				r.planNextRetry(ctx)
+			} else {
+				r.Result = data
+				r.wg.Done()
 			}
-		} else {
-			r.Result = data
-			r.wg.Done()
+			return
 		}
 	}()
 

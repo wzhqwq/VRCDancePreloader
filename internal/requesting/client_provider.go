@@ -70,8 +70,10 @@ func (p *ClientProvider) Client() *http.Client {
 
 func (p *ClientProvider) Context(parent context.Context) context.Context {
 	ctx, cancel := context.WithCancelCause(parent)
-	ch := p.em.SubscribeEvent()
 	go func() {
+		ch := p.em.SubscribeEvent()
+		defer ch.Close()
+
 		select {
 		case <-ch.Channel:
 			cancel(ErrClientChanged)
@@ -92,9 +94,14 @@ func (p *ClientProvider) Get(url string) (*http.Response, error) {
 		return nil, err
 	}
 
-	return p.client.Do(req)
+	return p.Do(req)
 }
 
-func (p *ClientProvider) Do(req *http.Request) (*http.Response, error) {
-	return p.client.Do(req)
+func (p *ClientProvider) Do(req *http.Request) (resp *http.Response, err error) {
+	resp, err = p.client.Do(req)
+	if errors.Is(err, context.Canceled) {
+		// canceled by p.Context
+		err = context.Cause(req.Context())
+	}
+	return
 }

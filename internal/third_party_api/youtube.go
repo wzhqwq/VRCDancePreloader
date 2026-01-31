@@ -23,8 +23,10 @@ func GetYoutubeInfoFromApi(videoID string) (*youtube.Video, error) {
 		return nil, errors.New("empty YouTube API key")
 	}
 
-	ctx, cancel := context.WithTimeout(requesting.GetYoutubeApiContext(), 2*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+
+	ctx := requesting.GetYoutubeApiContext(timeoutCtx)
 
 	svc, err := youtube.NewService(ctx, requesting.WithYoutubeApiClient(YoutubeApiKey))
 	if err != nil {
@@ -34,6 +36,9 @@ func GetYoutubeInfoFromApi(videoID string) (*youtube.Video, error) {
 	call := svc.Videos.List([]string{"snippet", "contentDetails"}).Id(videoID)
 	resp, err := call.Do()
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			err = context.Cause(ctx)
+		}
 		return nil, err
 	}
 

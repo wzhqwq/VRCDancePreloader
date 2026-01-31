@@ -56,6 +56,6 @@ func GetClient(name ClientName) *ClientProvider {
 
 // YouTube API
 
-func GetYoutubeApiContext() context.Context {
-	return clients[YouTubeApi].Context(context.Background())
+func GetYoutubeApiContext(parent context.Context) context.Context {
+	return clients[YouTubeApi].Context(parent)
 }

@@ -55,6 +55,7 @@ func (t *Task) singleDownload(entry cache.Entry) error {
 
 	body, err := entry.GetDownloadStream(ctx)
 	if errors.Is(err, context.Canceled) {
+		// canceled by myself
 		return context.Cause(ctx)
 	}
 	if err != nil {
@@ -146,9 +147,8 @@ func (t *Task) Download(retryDelay bool) {
 startRequest:
 	t.TotalSize, err = cacheEntry.TotalLen()
 	if err != nil {
-		if errors.Is(err, context.Canceled) {
-			// triggered by ErrClientChanged
-			logger.InfoLn("Restarted", t.ID)
+		if errors.Is(err, requesting.ErrClientChanged) {
+			logger.InfoLn("Restarted", t.ID, "reason:", err.Error())
 			goto startRequest
 		}
 
