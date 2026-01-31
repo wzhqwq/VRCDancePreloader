@@ -18,10 +18,18 @@ type testCase struct {
 }
 
 func requestClient(client *http.Client, tc testCase) (*http.Response, error) {
+	method := "HEAD"
 	if tc.useGet {
-		return client.Get(tc.url)
+		method = "GET"
 	}
-	return client.Head(tc.url)
+
+	req, err := http.NewRequest(method, tc.url, nil)
+	if err != nil {
+		return nil, err
+	}
+	SetupHeader(req, tc.url)
+
+	return client.Do(req)
 }
 
 func accessClient(client *http.Client, tc testCase) error {

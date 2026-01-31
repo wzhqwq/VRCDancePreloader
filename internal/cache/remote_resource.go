@@ -56,6 +56,8 @@ func NewJsonRemoteResource[T any](name string, url string, client *requesting.Cl
 			return nil, err
 		}
 
+		requesting.SetupHeader(req, url)
+
 		r.logger.InfoLn("Downloading", url)
 
 		resp, err := client.Do(req)
