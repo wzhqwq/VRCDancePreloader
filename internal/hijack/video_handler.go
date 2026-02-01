@@ -73,6 +73,10 @@ func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req 
 			entry.UpdateReqRangeStart(parseRange(rangeHeader, contentLength))
 		}
 
+		if limitBandwidth {
+			rs = utils.NewPacingReader(rs, 25)
+		}
+
 		http.ServeContent(w, req, "video.mp4", entry.ModTime(), rs)
 	}()
 

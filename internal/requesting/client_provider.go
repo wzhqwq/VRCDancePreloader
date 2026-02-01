@@ -3,7 +3,6 @@ package requesting
 import (
 	"context"
 	"errors"
-	"io"
 	"net/http"
 	"net/url"
 
@@ -110,30 +109,6 @@ func (p *ClientProvider) Do(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	resp.Body = &ctxBody{
-		ctx:  req.Context(),
-		body: resp.Body,
-	}
+	resp.Body = utils.NewBodyWithContext(req.Context(), resp.Body)
 	return resp, nil
-}
-
-type ctxBody struct {
-	ctx  context.Context
-	body io.ReadCloser
-}
-
-func (c *ctxBody) Read(p []byte) (int, error) {
-	n, err := c.body.Read(p)
-
-	if err != nil {
-		if cause := context.Cause(c.ctx); errors.Is(err, context.Canceled) && cause != nil {
-			return n, cause
-		}
-	}
-
-	return n, err
-}
-
-func (c *ctxBody) Close() error {
-	return c.body.Close()
 }

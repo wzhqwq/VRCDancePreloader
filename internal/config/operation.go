@@ -72,6 +72,12 @@ func (hc *HijackConfig) UpdateEnablePWI(b bool) {
 	SaveConfig()
 }
 
+func (hc *HijackConfig) UpdateLimitBandwidth(b bool) {
+	hc.LimitBandwidth = b
+	hijack.SetLimitBandwidth(b)
+	SaveConfig()
+}
+
 func (pc *ProxyConfig) Init() {
 	//TODO cancel comment after implemented youtube preloading
 	pc.ProxyControllers = map[string]*ProxyTester{

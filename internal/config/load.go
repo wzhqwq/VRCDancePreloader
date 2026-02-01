@@ -43,6 +43,7 @@ type HijackConfig struct {
 	InterceptedSites []string `yaml:"intercepted-sites"`
 	EnableHttps      bool     `yaml:"enable-https"`
 	EnablePWI        bool     `yaml:"enable-pwi"`
+	LimitBandwidth   bool     `yaml:"limit-bandwidth"`
 
 	HijackRunner *input.ServerRunner `yaml:"-"`
 }
@@ -90,6 +91,7 @@ func FillDefaultSetting() {
 		InterceptedSites: constants.CopyAllSites(),
 		EnableHttps:      true,
 		EnablePWI:        false,
+		LimitBandwidth:   false,
 	}
 	config.Proxy = ProxyConfig{
 		Pypy:  "",

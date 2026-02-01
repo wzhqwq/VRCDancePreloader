@@ -36,6 +36,15 @@ func createHijackSettingsContent() fyne.CanvasObject {
 	enableHttpsCb.Checked = hijackConfig.EnableHttps
 	wholeContent.Add(enableHttpsCb)
 
+	limitBandwidthCb := widget.NewCheck(i18n.T("label_hijack_limit_bandwidth"), func(b bool) {
+		if hijackConfig.LimitBandwidth == b {
+			return
+		}
+		hijackConfig.UpdateLimitBandwidth(b)
+	})
+	limitBandwidthCb.Checked = hijackConfig.LimitBandwidth
+	wholeContent.Add(limitBandwidthCb)
+
 	wholeContent.Add(config.NewMultiSelectSites(hijackConfig.InterceptedSites))
 
 	return wholeContent

@@ -62,6 +62,8 @@
   Default: "Server port for proxy hijacking"
 - Key: label_hijack_enable_https
   Default: "Enable HTTPS hijacking"
+- Key: label_hijack_limit_bandwidth
+  Default: "limit playback bandwidth to 40Mbps (experimental)"
 - Key: label_hijack_intercepted_sites
   Default: "Sites to be intercepted"
 

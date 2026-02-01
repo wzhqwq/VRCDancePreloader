@@ -62,6 +62,8 @@
   Default: "提供代理劫持的服务器端口"
 - Key: label_hijack_enable_https
   Default: "启用HTTPS劫持"
+- Key: label_hijack_limit_bandwidth
+  Default: "限制播放带宽至40Mbps（实验）"
 - Key: label_hijack_intercepted_sites
   Default: "需要拦截的站点"
 
