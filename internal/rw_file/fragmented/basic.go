@@ -36,6 +36,7 @@ func (f *File) Clear() error {
 	// file won't be cleared if the file is active
 	// so we can safely reset fragments
 	f.File.ClearTrunks()
+	f.fragments = f.File.ToFragments()
 	f.activeFragment = f.fragments[0]
 	return nil
 }
