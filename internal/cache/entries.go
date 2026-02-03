@@ -30,6 +30,16 @@ func NewEntry(id string) Entry {
 	}
 	if num, ok := utils.CheckIdIsDuDu(id); ok {
 		return newUrlBasedEntry(id, requesting.GetClient(requesting.DuDuFitDance), func(ctx context.Context) (*RemoteVideoInfo, error) {
+			if num == 0 {
+				// it's an ending video without PublishedAt, but it must update every Tuesday
+				// So we assume the LastModified is 21:00 (UTF+8) at last Tuesday (or today's 21:00 if it's Tuesday)
+				daysToMinus := (int(time.Now().Weekday()) + 5) % 7
+				lastTuesday := time.Now().AddDate(0, 0, -daysToMinus).Truncate(24 * time.Hour)
+				return &RemoteVideoInfo{
+					FinalUrl:     utils.GetDuDuVideoUrl(num),
+					LastModified: lastTuesday.Add(time.Hour * 13),
+				}, nil
+			}
 			if song, ok := raw_song.FindDuDuSong(num); ok {
 				return &RemoteVideoInfo{
 					FinalUrl:     utils.GetDuDuVideoUrl(num),
