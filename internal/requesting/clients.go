@@ -16,6 +16,8 @@ const (
 	YouTubeVideo ClientName = "YouTube video"
 	YouTubeApi   ClientName = "YouTube API"
 	YouTubeImage ClientName = "YouTube thumbnail"
+	GitHubApi    ClientName = "GitHub API"
+	GitHubAssets ClientName = "GitHub Assets"
 )
 
 var clients = map[ClientName]*ClientProvider{
@@ -26,6 +28,8 @@ var clients = map[ClientName]*ClientProvider{
 	YouTubeVideo: nil,
 	YouTubeApi:   nil,
 	YouTubeImage: nil,
+	GitHubApi:    nil,
+	GitHubAssets: nil,
 }
 
 var testCases = map[ClientName]testCase{
@@ -36,6 +40,8 @@ var testCases = map[ClientName]testCase{
 	YouTubeVideo: anonymousTestCase(utils.GetStandardYoutubeURL("qylu4Ajh6k8")),
 	YouTubeApi:   authenticatedTestCase("https://www.googleapis.com/youtube/v3/videos"),
 	YouTubeImage: anonymousTestCase(utils.GetYoutubeMQThumbnailURL("qylu4Ajh6k8")),
+	GitHubApi:    anonymousTestCaseGet("https://api.github.com"),
+	GitHubAssets: storageServerTestCase("https://release-assets.githubusercontent.com"),
 }
 
 func InitClient(name ClientName, proxyUrl string) {

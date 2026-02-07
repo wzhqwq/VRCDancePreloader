@@ -103,6 +103,8 @@ func (pc *ProxyConfig) Init() {
 	requesting.InitClient(requesting.YouTubeVideo, pc.YoutubeVideo)
 	requesting.InitClient(requesting.YouTubeImage, pc.YoutubeImage)
 	requesting.InitClient(requesting.YouTubeApi, pc.YoutubeApi)
+	requesting.InitClient(requesting.GitHubApi, pc.GitHubApi)
+	requesting.InitClient(requesting.GitHubAssets, pc.GitHubAssets)
 
 	if !skipTest {
 		pc.ProxyControllers["pypydance-api"].Test()

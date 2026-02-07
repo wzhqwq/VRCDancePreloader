@@ -27,6 +27,9 @@ type ProxyConfig struct {
 	YoutubeApi   string `yaml:"youtube-api"`
 	YoutubeImage string `yaml:"youtube-image"`
 
+	GitHubApi    string `yaml:"github-api"`
+	GitHubAssets string `yaml:"github-assets"`
+
 	ProxyControllers map[string]*ProxyTester `yaml:"-"`
 }
 type YoutubeConfig struct {
