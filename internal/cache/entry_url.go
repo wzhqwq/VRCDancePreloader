@@ -16,6 +16,7 @@ type UrlBasedEntry struct {
 	initialInfoGetter func(ctx context.Context) (*RemoteVideoInfo, error)
 
 	remoteModTime time.Time
+	remoteSize    int64
 }
 
 func newUrlBasedEntry(id string, client *requesting.ClientProvider, initialInfoGetter func(ctx context.Context) (*RemoteVideoInfo, error)) *UrlBasedEntry {
@@ -61,13 +62,16 @@ func (e *UrlBasedEntry) resolveRemoteMedia(ctx context.Context) error {
 	}
 
 	if e.remoteModTime.IsZero() {
+		if info.LastModified.IsZero() {
+			e.logger.WarnLn("We cannot get the modified time of this file on the server, so it's not possible to check if the cache is expired")
+		}
 		e.remoteModTime = info.LastModified
 	}
 
-	e.workingFile.UpdateRemoteInfo(info.TotalSize, e.remoteModTime)
-
+	e.remoteSize = info.TotalSize
 	e.resolvedUrl = url
-	e.logger.InfoLn(e.id, "resolved to", url)
+	e.logger.InfoLn(e.id, "resolved to", url, "size:", e.remoteSize, "modified time:", e.remoteModTime.Local().String())
+
 	return nil
 }
 
@@ -91,7 +95,7 @@ func (e *UrlBasedEntry) checkWorkingFile(ctx context.Context) error {
 		}
 	}
 
-	if !localModTime.IsZero() && !e.remoteModTime.IsZero() && e.remoteModTime.After(localModTime) {
+	if !e.remoteModTime.IsZero() && e.remoteModTime.After(localModTime) {
 		// local cache is expired
 		e.logger.WarnLn("Local cache expired so we will re-download it completely")
 		err := e.workingFile.Clear()
@@ -99,6 +103,8 @@ func (e *UrlBasedEntry) checkWorkingFile(ctx context.Context) error {
 			return err
 		}
 	}
+
+	e.workingFile.UpdateRemoteInfo(e.remoteSize, e.remoteModTime)
 
 	return nil
 }
