@@ -254,11 +254,6 @@ func (e *BaseEntry) DownloadedSize() int64 {
 	return e.workingFile.GetDownloadedBytes()
 }
 
-func (e *BaseEntry) ModTime() time.Time {
-	// TODO
-	return unixEpochTime
-}
-
 func (e *BaseEntry) Write(bytes []byte) (int, error) {
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()

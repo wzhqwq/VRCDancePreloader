@@ -158,3 +158,13 @@ func (e *UrlBasedEntry) GetReadSeeker(ctx context.Context) (io.ReadSeeker, error
 
 	return e.getReadSeeker(ctx)
 }
+
+func (e *UrlBasedEntry) IsComplete() bool {
+	e.workingFileMutex.RLock()
+	defer e.workingFileMutex.RUnlock()
+
+	if err := e.checkWorkingFile(context.Background()); err != nil {
+		return false
+	}
+	return e.workingFile.IsComplete()
+}
