@@ -4,12 +4,18 @@ import (
 	"database/sql"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vs"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var DB *sql.DB
 
 var logger = utils.NewLogger("DB")
+
+var dataVersion = utils.ShortVersion{
+	Major: 1,
+	Minor: 0,
+}
 
 func InitDB(dbFilePath string) error {
 	var err error
@@ -18,26 +24,13 @@ func InitDB(dbFilePath string) error {
 		return err
 	}
 
-	_, err = DB.Exec(allowListTableSQL)
-	if err != nil {
-		return err
-	}
-
-	_, err = DB.Exec(danceRecordTableSQL)
-	if err != nil {
-		return err
-	}
-
-	_, err = DB.Exec(localSongTableSQL)
-	if err != nil {
-		return err
-	}
-	for _, query := range localSongTableIndicesSQLs {
-		_, err = DB.Exec(query)
-		if err != nil {
-			return err
-		}
-	}
+	db_vs.Init(
+		DB, dataVersion,
+		localSongTable,
+		danceRecordTable,
+		allowListTable,
+		worldDataTable,
+	)
 
 	_, err = DB.Exec(worldDataTableSQL)
 	if err != nil {

@@ -3,26 +3,38 @@ package persistence
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"math"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vs"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var localRecords *LocalRecords
 var currentRoomName string
 
-const danceRecordTableSQL = `
-CREATE TABLE IF NOT EXISTS dance_record (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		start_time INTEGER,
-		comment TEXT,
-		orders TEXT
-);
-`
+var danceRecordTable = db_vs.DefTable("dance_record").DefColumns(
+	db_vs.NewIncreasingId(),
+	db_vs.NewInt("start_time"),
+	db_vs.NewText("comment"),
+	db_vs.NewText("orders"),
+)
+
+var danceRecordColumns = []string{"id", "start_time", "comment", "orders"}
+
+var insertRecord = danceRecordTable.Insert(danceRecordColumns[1:]...).Build()
+
+var listSimplifiedRecords = danceRecordTable.Select("id", "start_time").Sort("start_time", false).Build()
+var getRecord = danceRecordTable.Select(danceRecordColumns...).Where("id = ?").Build()
+var getLatestRecord = danceRecordTable.Select(danceRecordColumns...).Sort("start_time", false).Limit(1).Build()
+
+var setOrders = danceRecordTable.Update().Set("orders = ?").Where("id = ?").Build()
+var setComment = danceRecordTable.Update().Set("comment = ?").Where("id = ?").Build()
+
+var deleteRecord = danceRecordTable.Delete().Where("id = ?").Build()
 
 type DanceRecord struct {
 	ID        int
@@ -33,6 +45,11 @@ type DanceRecord struct {
 	em *utils.EventManager[string]
 
 	ordersMutex sync.RWMutex
+}
+
+type SimplifiedDanceRecord struct {
+	ID        int
+	StartTime time.Time
 }
 
 func NewEmptyDanceRecord() *DanceRecord {
@@ -54,11 +71,14 @@ func NewDanceRecord() *DanceRecord {
 	}
 }
 
-func NewDanceRecordFromScan(rows *sql.Rows) (*DanceRecord, error) {
+func NewDanceRecordFromScan(row *sql.Row) (*DanceRecord, error) {
 	record := NewEmptyDanceRecord()
 	var orders string
 	var startTimeInt int64
-	if err := rows.Scan(&record.ID, &startTimeInt, &record.Comment, &orders); err != nil {
+	if err := row.Scan(&record.ID, &startTimeInt, &record.Comment, &orders); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("record not found")
+		}
 		return nil, err
 	}
 	record.StartTime = time.Unix(startTimeInt, 0)
@@ -148,11 +168,11 @@ func (r *DanceRecord) updateOrders() {
 		return
 	}
 
-	_, err = DB.Exec("UPDATE dance_record SET orders = ? WHERE id = ?", string(data), r.ID)
+	_, err = danceRecordTable.Exec(setOrders, string(data), r.ID)
 }
 
 func (r *DanceRecord) updateComment() {
-	_, err := DB.Exec("UPDATE dance_record SET comment = ? WHERE id = ?", r.Comment, r.ID)
+	_, err := danceRecordTable.Exec(setComment, r.Comment, r.ID)
 	if err != nil {
 		return
 	}
@@ -209,52 +229,47 @@ func (l *LocalRecords) ReplaceIfExists(record *DanceRecord) *DanceRecord {
 		existingRecord.ordersMutex.Unlock()
 
 		return existingRecord
-	} else {
-		l.Records[record.ID] = record
-		return record
 	}
+
+	l.Records[record.ID] = record
+	return record
 }
 
-func (l *LocalRecords) GetRecords() ([]*DanceRecord, error) {
-	rows, err := DB.Query("SELECT id, start_time, comment, orders FROM dance_record ORDER BY start_time DESC")
+func (l *LocalRecords) GetRecords() ([]*SimplifiedDanceRecord, error) {
+	rows, err := danceRecordTable.Query(listSimplifiedRecords)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var records []*DanceRecord
+	var records []*SimplifiedDanceRecord
 	for rows.Next() {
-		record, err := NewDanceRecordFromScan(rows)
-		if err != nil {
+		record := &SimplifiedDanceRecord{}
+		var startTimeInt int64
+		if err := rows.Scan(&record.ID, &startTimeInt); err != nil {
 			return nil, err
 		}
+		record.StartTime = time.Unix(startTimeInt, 0)
 
-		records = append(records, l.ReplaceIfExists(record))
+		records = append(records, record)
 	}
 
 	return records, nil
 }
 
 func (l *LocalRecords) GetRecord(id int) (*DanceRecord, error) {
-	rows, err := DB.Query("SELECT id, start_time, comment, orders FROM dance_record WHERE id = ?", id)
+	rows := danceRecordTable.QueryRow(getRecord, id)
+
+	record, err := NewDanceRecordFromScan(rows)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	if rows.Next() {
-		record, err := NewDanceRecordFromScan(rows)
-		if err != nil {
-			return nil, err
-		}
-		return l.ReplaceIfExists(record), nil
-	}
-
-	return nil, fmt.Errorf("record not found")
+	return l.ReplaceIfExists(record), nil
 }
 
 func (l *LocalRecords) DeleteRecord(id int) error {
-	_, err := DB.Exec("DELETE FROM dance_record WHERE id = ?", id)
+	_, err := danceRecordTable.Exec(deleteRecord, id)
 	if err != nil {
 		return err
 	}
@@ -268,8 +283,7 @@ func (l *LocalRecords) addRecord(r *DanceRecord) error {
 		return err
 	}
 
-	sql := "INSERT INTO dance_record (start_time, comment, orders) VALUES (?, ?, ?)"
-	result, err := DB.Exec(sql, r.StartTime.Unix(), r.Comment, string(data))
+	result, err := danceRecordTable.Exec(insertRecord, r.StartTime.Unix(), r.Comment, string(data))
 	if err != nil {
 		return err
 	}
@@ -293,21 +307,14 @@ func (l *LocalRecords) SubscribeEvent() *utils.EventSubscriber[string] {
 
 func (l *LocalRecords) getLatestRecord() (*DanceRecord, error) {
 	// get the latest record, which has the highest start_time
-	rows, err := DB.Query("SELECT id, start_time, comment, orders FROM dance_record ORDER BY start_time DESC LIMIT 1")
+	rows := danceRecordTable.QueryRow(getLatestRecord)
+
+	record, err := NewDanceRecordFromScan(rows)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	if rows.Next() {
-		record, err := NewDanceRecordFromScan(rows)
-		if err != nil {
-			return nil, err
-		}
-		return l.ReplaceIfExists(record), nil
-	}
-
-	return nil, nil
+	return l.ReplaceIfExists(record), nil
 }
 
 func (l *LocalRecords) GetNearestRecord() *DanceRecord {

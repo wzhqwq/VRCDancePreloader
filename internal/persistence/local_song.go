@@ -6,30 +6,34 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vs"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var currentLocalSongs *LocalSongs
 
-const localSongTableSQL = `
-CREATE TABLE IF NOT EXISTS local_song (
-    	id TEXT PRIMARY KEY,
-    	title TEXT,
-    	
-    	like INTEGER,
-    	skill INTEGER,
-                                    
-    	is_favorite BOOLEAN,
-        sync_in_game BOOLEAN
-);
-`
+var localSongTable = db_vs.DefTable("local_song").DefColumns(
+	db_vs.NewTextId(),
+	db_vs.NewText("title").SetIndexed(),
+	db_vs.NewInt("like").SetIndexed(),
+	db_vs.NewInt("skill").SetIndexed(),
+	db_vs.NewBool("is_favorite").SetIndexed(),
+	db_vs.NewBool("sync_in_game").SetIndexed(),
+)
 
-var localSongTableIndicesSQLs = []string{
-	"CREATE INDEX IF NOT EXISTS idx_local_song_is_favorite ON local_song (is_favorite)",
-	"CREATE INDEX IF NOT EXISTS idx_local_song_like ON local_song (like)",
-	"CREATE INDEX IF NOT EXISTS idx_local_song_skill ON local_song (skill)",
-	"CREATE INDEX IF NOT EXISTS idx_local_song_sync_in_game ON local_song (sync_in_game)",
-}
+var localSongColumns = []string{"id", "title", "like", "skill", "is_favorite", "sync_in_game"}
+
+var insertLocalSong = localSongTable.Insert(localSongColumns...).Build()
+
+var getLocalSong = localSongTable.Select(localSongColumns...).Where("id = ?").Build()
+var listFavoriteIds = localSongTable.Select("id").Where("is_favorite = true").Build()
+var getTotalFavorites = localSongTable.Select("COUNT(*)").Where("is_favorite = true").Build()
+var listFavorites = localSongTable.Select(localSongColumns...).Where("is_favorite = true").Paginate()
+
+var setFavorite = localSongTable.Update().Set("is_favorite = ?").Where("id = ?").Build()
+var setLocalSong = localSongTable.Update().Set("title = ?", "like = ?", "skill = ?").Where("id = ?").Build()
+
+var listFavoriteIdsInPyPy = localSongTable.Select("id").Where("is_favorite = true AND sync_in_game = true AND id LIKE ?").Build()
 
 type LocalSongs struct {
 	sync.Mutex
@@ -40,8 +44,7 @@ type LocalSongs struct {
 
 func (f *LocalSongs) addEntry(entry *LocalSongEntry) {
 	// save to db
-	query := "INSERT INTO local_song (id, title, like, skill, is_favorite, sync_in_game) VALUES (?, ?, ?, ?, ?, ?)"
-	_, err := DB.Exec(query, entry.ID, entry.Title, entry.Like, entry.Skill, entry.IsFavorite, entry.IsSyncInGame)
+	_, err := localSongTable.Exec(insertLocalSong, entry.ID, entry.Title, entry.Like, entry.Skill, entry.IsFavorite, entry.IsSyncInGame)
 	if err != nil {
 		logger.ErrorLn("Failed to save favorite entry:", err)
 	}
@@ -49,7 +52,7 @@ func (f *LocalSongs) addEntry(entry *LocalSongEntry) {
 
 func (f *LocalSongs) getEntry(id string) *LocalSongEntry {
 	// load from db
-	row := DB.QueryRow("SELECT id, title, like, skill, is_favorite, sync_in_game FROM local_song WHERE id = ?", id)
+	row := localSongTable.QueryRow(getLocalSong, id)
 
 	var entry LocalSongEntry
 	err := row.Scan(&entry.ID, &entry.Title, &entry.Like, &entry.Skill, &entry.IsFavorite, &entry.IsSyncInGame)
@@ -79,7 +82,7 @@ func (f *LocalSongs) SetFavorite(id, title string) {
 	if entry != nil {
 		if !entry.IsFavorite {
 			// update is_favorite
-			_, err := DB.Exec("UPDATE local_song SET is_favorite = ? WHERE id = ?", true, id)
+			_, err := localSongTable.Exec(setFavorite, true, id)
 			if err != nil {
 				logger.ErrorLn("Failed to update favorite entry:", err)
 				return
@@ -115,7 +118,7 @@ func (f *LocalSongs) UnsetFavorite(id string) {
 	}
 
 	// update is_favorite
-	_, err := DB.Exec("UPDATE local_song SET is_favorite = ? WHERE id = ?", false, id)
+	_, err := localSongTable.Exec(setFavorite, false, id)
 	if err != nil {
 		logger.ErrorLn("Failed to update favorite entry:", err)
 		return
@@ -153,7 +156,7 @@ func (f *LocalSongs) LoadEntries() error {
 	defer f.Unlock()
 
 	// load from db
-	rows, err := DB.Query("SELECT id FROM local_song WHERE is_favorite=true")
+	rows, err := localSongTable.Query(listFavoriteIds)
 	if err != nil {
 		return err
 	}
@@ -185,13 +188,7 @@ func (f *LocalSongs) ListFavorites(page, pageSize int, sortBy string, ascending 
 	defer f.Unlock()
 
 	// load from db
-	var query string
-	orderBy := "ORDER BY `" + sortBy + "`"
-	if !ascending {
-		orderBy += " DESC"
-	}
-	query = "SELECT id, title, like, skill, is_favorite, sync_in_game FROM local_song WHERE is_favorite=true " + orderBy + " LIMIT ? OFFSET ?"
-	rows, err := DB.Query(query, pageSize, page*pageSize)
+	rows, err := localSongTable.Query(listFavorites.Sort(sortBy, ascending).Build(), pageSize, page*pageSize)
 	if err != nil {
 		logger.ErrorLn("Failed to load favorite entries:", err)
 		return nil
@@ -219,7 +216,7 @@ func (f *LocalSongs) CalculateTotalPages(pageSize int) int {
 
 	// load from db
 	var total int
-	err := DB.QueryRow("SELECT COUNT(*) FROM local_song WHERE is_favorite=true").Scan(&total)
+	err := localSongTable.QueryRow(getTotalFavorites).Scan(&total)
 	if err != nil {
 		logger.ErrorLn("Failed to load favorite entries:", err)
 		return 0
@@ -233,8 +230,7 @@ func (f *LocalSongs) UpdateEntry(entry *LocalSongEntry) {
 	defer f.Unlock()
 
 	// update entry
-	q := "UPDATE local_song SET title = ?, like = ?, skill = ? WHERE id = ?"
-	_, err := DB.Exec(q, entry.Title, entry.Like, entry.Skill, entry.ID)
+	_, err := localSongTable.Exec(setLocalSong, entry.Title, entry.Like, entry.Skill, entry.ID)
 	if err != nil {
 		logger.ErrorLn("Failed to update entry:", err)
 		return
@@ -246,8 +242,7 @@ func (f *LocalSongs) ToPyPyFavorites() string {
 	defer f.Unlock()
 
 	// load from db
-	query := "SELECT id FROM local_song WHERE is_favorite = ? AND sync_in_game = ? AND id LIKE ?"
-	rows, err := DB.Query(query, true, true, "pypy_%")
+	rows, err := localSongTable.Query(listFavoriteIdsInPyPy, "pypy_%")
 	if err != nil {
 		logger.ErrorLn("Failed to load favorite entries:", err)
 		return ""

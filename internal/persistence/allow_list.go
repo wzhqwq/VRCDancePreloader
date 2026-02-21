@@ -3,16 +3,21 @@ package persistence
 import (
 	"sync"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vs"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-const allowListTableSQL = `
-CREATE TABLE IF NOT EXISTS allow_list (
-    		id TEXT PRIMARY KEY,
-    		size INTEGER
-);
-`
+var allowListTable = db_vs.DefTable("allow_list").DefColumns(
+	db_vs.NewTextId(),
+	db_vs.NewInt("size"),
+)
+
+var listAllowList = allowListTable.Select("id", "size").Build()
+
+var insertAllowEntry = allowListTable.Insert("id", "size").Build()
+
+var deleteAllowEntry = allowListTable.Delete().Where("id = ?").Build()
 
 type AllowList struct {
 	sync.Mutex
@@ -24,8 +29,7 @@ type AllowList struct {
 var currentAllowList *AllowList
 
 func (a *AllowList) addEntry(id string, size int64) {
-	query := "INSERT INTO allow_list (id, size) VALUES (?, ?)"
-	_, err := DB.Exec(query, id, size)
+	_, err := allowListTable.Exec(insertAllowEntry, id, size)
 	if err != nil {
 		logger.ErrorLn("Failed to save allow list entry:", err)
 		return
@@ -34,21 +38,8 @@ func (a *AllowList) addEntry(id string, size int64) {
 	a.Entries[id] = size
 }
 
-func (a *AllowList) getEntry(id string) int64 {
-	row := DB.QueryRow("SELECT size FROM allow_list WHERE id = ?", id)
-
-	var size int64
-	err := row.Scan(&size)
-	if err != nil {
-		return 0
-	}
-
-	return size
-}
-
 func (a *AllowList) removeEntry(id string) {
-	query := "DELETE FROM allow_list WHERE id = ?"
-	_, err := DB.Exec(query, id)
+	_, err := allowListTable.Exec(deleteAllowEntry, id)
 	if err != nil {
 		logger.ErrorLn("Failed to remove allow list entry:", err)
 		return
@@ -82,7 +73,7 @@ func (a *AllowList) RemoveFromAllowList(id string) {
 }
 
 func (a *AllowList) GetAllowList() []types.CacheFileInfo {
-	rows, err := DB.Query("SELECT id, size FROM allow_list")
+	rows, err := allowListTable.Query(listAllowList)
 	if err != nil {
 		logger.ErrorLn("Failed to load allow list:", err)
 		return nil
@@ -116,7 +107,7 @@ func (a *AllowList) LoadEntries() error {
 	a.Lock()
 	defer a.Unlock()
 
-	rows, err := DB.Query("SELECT id, size FROM allow_list")
+	rows, err := allowListTable.Query(listAllowList)
 	if err != nil {
 		logger.ErrorLn("Failed to load allow list:", err)
 		return err

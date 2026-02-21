@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vs"
 )
 
 var localWorlds *LocalWorlds
@@ -16,6 +18,20 @@ CREATE TABLE IF NOT EXISTS world_data (
 );
 `
 
+var worldDataTable = db_vs.DefTable("world_data").DefColumns(
+	db_vs.NewText("world").SetPrimary(),
+	db_vs.NewText("data"),
+	db_vs.NewText("settings"),
+)
+
+var worldDataColumns = []string{"world", "data", "settings"}
+
+var getWorldData = worldDataTable.Select(worldDataColumns[1:]...).Where("world = ?").Build()
+
+var insertWorldData = worldDataTable.Insert(worldDataColumns...).Build()
+
+var setWorldData = worldDataTable.Update().Set("data = ?", "settings = ?").Where("world = ?").Build()
+
 type WorldData struct {
 	sync.Mutex
 
@@ -25,7 +41,7 @@ type WorldData struct {
 }
 
 func NewWorldData(world string) *WorldData {
-	row := DB.QueryRow("SELECT data, settings FROM world_data WHERE world=?", world)
+	row := worldDataTable.QueryRow(getWorldData, world)
 
 	dataJson := ""
 	settingsJson := ""
@@ -57,8 +73,7 @@ func NewWorldData(world string) *WorldData {
 		panic(err)
 	}
 
-	q := "INSERT INTO world_data (world, data, settings) VALUES (?, ?, ?)"
-	_, err = DB.Exec(q, world, "{}", initialSettingsJson)
+	_, err = worldDataTable.Exec(insertWorldData, world, "{}", initialSettingsJson)
 	if err != nil {
 		logger.ErrorLn("Failed to add world data:", err)
 	}
@@ -126,7 +141,7 @@ func (w *WorldData) save() error {
 		logger.ErrorLn("Failed to save world data:", err)
 		return err
 	}
-	_, err = DB.Exec("UPDATE world_data SET data=?, settings=? WHERE world=?", dataJson, settingsJson, w.World)
+	_, err = worldDataTable.Exec(setWorldData, dataJson, settingsJson, w.World)
 	if err != nil {
 		logger.ErrorLn("Failed to save world data:", err)
 		return err

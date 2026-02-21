@@ -21,7 +21,7 @@ type Gui struct {
 
 	activeId int
 
-	Records []*persistence.DanceRecord
+	Records []*persistence.SimplifiedDanceRecord
 
 	stopCh chan struct{}
 
@@ -144,7 +144,7 @@ func (r *GuiRenderer) Layout(size fyne.Size) {
 }
 
 func (r *GuiRenderer) PushRecordButtons() {
-	buttons := lo.Map(r.g.Records, func(record *persistence.DanceRecord, _ int) *button.RecordButton {
+	buttons := lo.Map(r.g.Records, func(record *persistence.SimplifiedDanceRecord, _ int) *button.RecordButton {
 		if item, ok := r.buttonMap[record.ID]; ok {
 			if v := item.Value(); v != nil {
 				return v
