@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vs"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vc"
 )
 
 var localWorlds *LocalWorlds
@@ -18,10 +18,10 @@ CREATE TABLE IF NOT EXISTS world_data (
 );
 `
 
-var worldDataTable = db_vs.DefTable("world_data").DefColumns(
-	db_vs.NewText("world").SetPrimary(),
-	db_vs.NewText("data"),
-	db_vs.NewText("settings"),
+var worldDataTable = db_vc.DefTable("world_data").DefColumns(
+	db_vc.NewText("world").SetPrimary(),
+	db_vc.NewText("data"),
+	db_vc.NewText("settings"),
 )
 
 var worldDataColumns = []string{"world", "data", "settings"}

@@ -3,14 +3,14 @@ package persistence
 import (
 	"sync"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vs"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vc"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var allowListTable = db_vs.DefTable("allow_list").DefColumns(
-	db_vs.NewTextId(),
-	db_vs.NewInt("size"),
+var allowListTable = db_vc.DefTable("allow_list").DefColumns(
+	db_vc.NewTextId(),
+	db_vc.NewInt("size"),
 )
 
 var listAllowList = allowListTable.Select("id", "size").Build()

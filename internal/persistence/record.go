@@ -9,18 +9,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vs"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vc"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var localRecords *LocalRecords
 var currentRoomName string
 
-var danceRecordTable = db_vs.DefTable("dance_record").DefColumns(
-	db_vs.NewIncreasingId(),
-	db_vs.NewInt("start_time"),
-	db_vs.NewText("comment"),
-	db_vs.NewText("orders"),
+var danceRecordTable = db_vc.DefTable("dance_record").DefColumns(
+	db_vc.NewIncreasingId(),
+	db_vc.NewInt("start_time"),
+	db_vc.NewText("comment"),
+	db_vc.NewText("orders"),
 )
 
 var danceRecordColumns = []string{"id", "start_time", "comment", "orders"}

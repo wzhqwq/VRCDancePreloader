@@ -1,4 +1,4 @@
-package db_vs
+package db_vc
 
 import (
 	"database/sql"

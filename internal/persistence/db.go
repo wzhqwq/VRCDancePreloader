@@ -4,7 +4,7 @@ import (
 	"database/sql"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vs"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vc"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -24,7 +24,7 @@ func InitDB(dbFilePath string) error {
 		return err
 	}
 
-	db_vs.Init(
+	db_vc.Init(
 		DB, dataVersion,
 		localSongTable,
 		danceRecordTable,

@@ -6,19 +6,19 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vs"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vc"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var currentLocalSongs *LocalSongs
 
-var localSongTable = db_vs.DefTable("local_song").DefColumns(
-	db_vs.NewTextId(),
-	db_vs.NewText("title").SetIndexed(),
-	db_vs.NewInt("like").SetIndexed(),
-	db_vs.NewInt("skill").SetIndexed(),
-	db_vs.NewBool("is_favorite").SetIndexed(),
-	db_vs.NewBool("sync_in_game").SetIndexed(),
+var localSongTable = db_vc.DefTable("local_song").DefColumns(
+	db_vc.NewTextId(),
+	db_vc.NewText("title").SetIndexed(),
+	db_vc.NewInt("like").SetIndexed(),
+	db_vc.NewInt("skill").SetIndexed(),
+	db_vc.NewBool("is_favorite").SetIndexed(),
+	db_vc.NewBool("sync_in_game").SetIndexed(),
 )
 
 var localSongColumns = []string{"id", "title", "like", "skill", "is_favorite", "sync_in_game"}
