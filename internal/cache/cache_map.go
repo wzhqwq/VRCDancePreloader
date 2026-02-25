@@ -2,20 +2,22 @@ package cache
 
 import (
 	"sync"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
 )
 
 type CacheMap struct {
 	sync.Mutex
-	cache map[string]Entry
+	cache map[string]entry.Entry
 }
 
 func NewCacheMap() *CacheMap {
 	return &CacheMap{
-		cache: make(map[string]Entry),
+		cache: make(map[string]entry.Entry),
 	}
 }
 
-func (cm *CacheMap) findOrCreate(id string) (Entry, error) {
+func (cm *CacheMap) findOrCreate(id string) (entry.Entry, error) {
 	cm.Lock()
 	defer cm.Unlock()
 
@@ -23,7 +25,7 @@ func (cm *CacheMap) findOrCreate(id string) (Entry, error) {
 	if !ok {
 		e = NewEntry(id)
 		if e == nil {
-			return nil, ErrNotSupported
+			return nil, entry.ErrNotSupported
 		}
 		cm.cache[id] = e
 	}
@@ -31,7 +33,7 @@ func (cm *CacheMap) findOrCreate(id string) (Entry, error) {
 	return e, nil
 }
 
-func (cm *CacheMap) removeIfInactive(id string) (Entry, bool) {
+func (cm *CacheMap) removeIfInactive(id string) (entry.Entry, bool) {
 	cm.Lock()
 	defer cm.Unlock()
 
@@ -44,7 +46,7 @@ func (cm *CacheMap) removeIfInactive(id string) (Entry, bool) {
 	return e, true
 }
 
-func (cm *CacheMap) Open(id string) (Entry, error) {
+func (cm *CacheMap) Open(id string) (entry.Entry, error) {
 	e, err := cm.findOrCreate(id)
 	if err != nil {
 		return nil, err

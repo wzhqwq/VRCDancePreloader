@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -17,7 +18,7 @@ type StateMachine struct {
 	PlayStatus     PlayStatus
 
 	ps *PreloadedSong
-	ce cache.Entry
+	ce entry.Entry
 
 	// waiter
 	completeSongWg sync.WaitGroup
@@ -130,7 +131,7 @@ func (sm *StateMachine) StartDownloadLoop(task *download.Task) {
 					return
 				}
 				if task.Error != nil {
-					if errors.Is(task.Error, cache.ErrNotSupported) {
+					if errors.Is(task.Error, entry.ErrNotSupported) {
 						sm.SwitchDownloadStatus(NotAvailable)
 						download.CancelDownload(sm.ps.GetSongId())
 						return

@@ -19,7 +19,7 @@ type UrlBasedEntry struct {
 	remoteSize    int64
 }
 
-func newUrlBasedEntry(id string, client *requesting.ClientProvider, initialInfoGetter func(ctx context.Context) (*RemoteVideoInfo, error)) *UrlBasedEntry {
+func NewUrlBasedEntry(id string, client *requesting.ClientProvider, initialInfoGetter func(ctx context.Context) (*RemoteVideoInfo, error)) *UrlBasedEntry {
 	return &UrlBasedEntry{
 		BaseEntry:         ConstructBaseEntry(id, client),
 		initialInfoGetter: initialInfoGetter,

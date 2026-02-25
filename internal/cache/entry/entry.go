@@ -58,6 +58,8 @@ type BaseEntry struct {
 	workingFile rw_file.DeferredReadableFile
 
 	logger *utils.CustomLogger
+
+	baseName string
 }
 
 func ConstructBaseEntry(id string, client *requesting.ClientProvider) BaseEntry {
@@ -65,20 +67,19 @@ func ConstructBaseEntry(id string, client *requesting.ClientProvider) BaseEntry 
 		id:     id,
 		client: client,
 		logger: utils.NewLogger("Cached " + id),
-	}
-}
 
-func (e *BaseEntry) getVideoName() string {
-	return fmt.Sprintf("%s/%s.mp4", cachePath, e.id)
+		baseName: "video_" + id,
+	}
 }
 
 func (e *BaseEntry) checkLegacy() bool {
-	if _, err := os.Stat(e.getVideoName()); err == nil {
+	if local_cache.Exists(e.baseName + ".vrcdp") {
+		return false
+	}
+	if local_cache.Exists(e.baseName+".mp4") || local_cache.Exists(e.baseName+".mp4.dl") {
 		return true
 	}
-	if _, err := os.Stat(e.getVideoName() + ".dl"); err == nil {
-		return true
-	}
+
 	return false
 }
 
@@ -86,17 +87,15 @@ func (e *BaseEntry) checkLegacy() bool {
 
 func (e *BaseEntry) openFile() {
 	if e.checkLegacy() {
-		e.workingFile = legacy_file.NewFile(e.getVideoName())
+		e.workingFile = legacy_file.NewFile(e.baseName)
 	}
 
 	if e.workingFile == nil {
 		switch fileFormat {
 		case 1:
-			e.workingFile = continuous.NewFile(e.getVideoName())
+			e.workingFile = continuous.NewFile(e.baseName)
 		case 2:
-			e.workingFile = fragmented.NewFile(e.getVideoName())
-		default:
-			e.workingFile = legacy_file.NewFile(e.getVideoName())
+			e.workingFile = fragmented.NewFile(e.baseName)
 		}
 	}
 }

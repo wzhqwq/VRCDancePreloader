@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -56,7 +56,7 @@ func (pl *PlayList) FindCustomSong(url string) *song.PreloadedSong {
 	return nil
 }
 
-func Request(platform, id string, ctx context.Context) (cache.Entry, error) {
+func Request(platform, id string, ctx context.Context) (entry.Entry, error) {
 	var url string
 
 	switch platform {

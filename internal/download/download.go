@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/fragmented"
 )
@@ -33,7 +34,7 @@ func (t *Task) progressiveDownload(body io.ReadCloser, writer io.Writer) error {
 	return err
 }
 
-func (t *Task) singleDownload(entry cache.Entry) error {
+func (t *Task) singleDownload(entry entry.Entry) error {
 	ctx, cancel := context.WithCancelCause(context.Background())
 	defer cancel(nil)
 
@@ -154,7 +155,7 @@ startRequest:
 
 		t.Error = err
 		logger.ErrorLn("Failed to get total size of", t.ID, ":", err)
-		if errors.Is(err, cache.ErrThrottle) {
+		if errors.Is(err, entry.ErrThrottle) {
 			t.manager.slowDown()
 		}
 		return
@@ -187,7 +188,7 @@ startTask:
 
 	t.Error = err
 	logger.ErrorLn("Downloading error:", err.Error(), t.ID)
-	if errors.Is(err, cache.ErrThrottle) {
+	if errors.Is(err, entry.ErrThrottle) {
 		t.manager.slowDown()
 	}
 	return

@@ -4,6 +4,7 @@ import (
 	"net/url"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
@@ -229,11 +230,17 @@ func (dc *DownloadConfig) UpdateMaxDownload(max int) {
 }
 
 func (cc *CacheConfig) Init() {
+	if cc.FileFormat <= 0 {
+		logger.WarnLn("We no longer support writing legacy cache files. `cache.file-format` will be replaced with default value")
+		cc.FileFormat = 1
+		SaveConfig()
+	}
+
 	cache.SetupCache(cc.Path)
 	cache.SetMaxSize(int64(cc.MaxCacheSize) * 1024 * 1024)
 	cache.SetKeepFavorites(cc.KeepFavorites)
-	cache.SetFileFormat(cc.FileFormat)
-	cache.SetForceExpirationCheck(cc.ForceExpirationCheck)
+	entry.SetFileFormat(cc.FileFormat)
+	entry.SetForceExpirationCheck(cc.ForceExpirationCheck)
 }
 
 func (cc *CacheConfig) UpdateMaxSize(sizeInMb int) {
@@ -250,13 +257,13 @@ func (cc *CacheConfig) UpdateKeepFavorites(b bool) {
 
 func (cc *CacheConfig) UpdateForceExpirationCheck(b bool) {
 	cc.ForceExpirationCheck = b
-	cache.SetForceExpirationCheck(b)
+	entry.SetForceExpirationCheck(b)
 	SaveConfig()
 }
 
 func (cc *CacheConfig) UpdateFileFormat(fileFormat int) {
 	cc.FileFormat = fileFormat
-	cache.SetFileFormat(fileFormat)
+	entry.SetFileFormat(fileFormat)
 	SaveConfig()
 }
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -23,8 +24,6 @@ const (
 var cachePath string
 var maxSize int64
 var keepFavorites bool
-var fileFormat int
-var forceExpirationCheck bool
 
 var cacheMap = NewCacheMap()
 var cleanUpChan = make(chan struct{}, 1)
@@ -65,12 +64,6 @@ func GetMaxSize() int64 {
 }
 func SetKeepFavorites(b bool) {
 	keepFavorites = b
-}
-func SetFileFormat(format int) {
-	fileFormat = format
-}
-func SetForceExpirationCheck(b bool) {
-	forceExpirationCheck = b
 }
 
 func CleanUpCache() {

@@ -198,7 +198,6 @@ func createCacheSettingsContent() fyne.CanvasObject {
 	wholeContent.Add(pathInput)
 
 	formatOptions := []string{
-		i18n.T("option_legacy"),
 		i18n.T("option_continuous"),
 		i18n.T("option_fragmented"),
 	}
@@ -210,9 +209,9 @@ func createCacheSettingsContent() fyne.CanvasObject {
 		if index == -1 {
 			index = 0
 		}
-		cacheConfig.UpdateFileFormat(index)
+		cacheConfig.UpdateFileFormat(index + 1)
 	})
-	formatSelect.Selected = formatOptions[cacheConfig.FileFormat]
+	formatSelect.Selected = formatOptions[cacheConfig.FileFormat-1]
 	formatSelect.Horizontal = true
 	wholeContent.Add(container.NewVBox(formatLabel, formatSelect))
 

@@ -57,45 +57,8 @@ func (f *File) Close() error {
 	return f.file.Close()
 }
 
-func (f *File) Save() error {
-	f.fileMutex.Lock()
-	defer f.fileMutex.Unlock()
-
-	if f.file.Name() != f.baseName {
-		err := os.Rename(f.baseName+".dl", f.baseName)
-		if err != nil {
-			return err
-		}
-
-		f.file, err = openFile(f.baseName)
-	}
-
-	return nil
-}
-
-func (f *File) Rename(to string) error {
-	f.fileMutex.Lock()
-	defer f.fileMutex.Unlock()
-
-	err := os.Rename(f.baseName+".dl", to)
-	if err != nil {
-		return err
-	}
-
-	f.file, err = openFile(f.baseName)
-
-	return nil
-}
-
 func (f *File) ModTime() time.Time {
-	f.fileMutex.Lock()
-	defer f.fileMutex.Unlock()
-
-	info, err := f.file.Stat()
-	if err != nil {
-		return time.Now()
-	}
-	return info.ModTime()
+	return time.Time{}
 }
 
 func (f *File) GetDownloadOffset() int64 {

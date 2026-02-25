@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
@@ -79,7 +80,7 @@ func (ps *PreloadedSong) GetSongId() string {
 func (ps *PreloadedSong) GetPreloadStatus() DownloadStatus {
 	return ps.sm.DownloadStatus
 }
-func (ps *PreloadedSong) DownloadInstantly(complete bool, ctx context.Context) (cache.Entry, error) {
+func (ps *PreloadedSong) DownloadInstantly(complete bool, ctx context.Context) (entry.Entry, error) {
 	err := ps.sm.DownloadInstantly(complete)
 	if err != nil {
 		return nil, err
