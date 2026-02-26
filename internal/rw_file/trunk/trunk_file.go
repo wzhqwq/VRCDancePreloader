@@ -31,23 +31,29 @@ type File struct {
 }
 
 func NewTrunkFile(baseName string) *File {
-	dlf, err := os.OpenFile(baseName+".vrcdp", os.O_RDWR|os.O_CREATE, 0666)
-	if err != nil {
-		logger.ErrorLn("Failed to open cache file:", err)
-		return nil
-	}
+	name := baseName + ".vrcdp"
 
-	f := &File{
-		file:         dlf,
-		trunks:       make([]byte, numTrunks),
-		LastModified: time.Time{},
-	}
-	if !f.tryRead() {
-		if !f.tryCreate() {
+	f, ok := cache_fs.Get(name)
+	if !ok {
+		var err error
+		f, err = cache_fs.Create(name)
+		if err != nil {
+			logger.ErrorLn("Failed to open cache file:", err)
 			return nil
 		}
 	}
-	return f
+
+	tf := &File{
+		file:         f,
+		trunks:       make([]byte, numTrunks),
+		LastModified: time.Time{},
+	}
+	if !tf.tryRead() {
+		if !tf.tryCreate() {
+			return nil
+		}
+	}
+	return tf
 }
 
 func (f *File) AppendTo(frag *Fragment, data []byte) error {

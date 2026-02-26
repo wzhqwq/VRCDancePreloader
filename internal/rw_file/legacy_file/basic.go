@@ -88,15 +88,17 @@ func (f *File) RequestRs(ctx context.Context) io.ReadSeeker {
 }
 
 func NewFile(baseName string) *File {
-	totalLen := getFileSize(baseName)
-	downloaded := totalLen
+	totalLen := int64(0)
+	downloaded := int64(0)
 
-	file, _ := openFile(baseName)
-	if file == nil {
-		downloaded = getFileSize(baseName + ".dl")
-		file, _ = os.Open(baseName + ".dl")
-		if file == nil {
-			return nil
+	f, ok := cache_fs.Get(baseName + ".mp4")
+	if ok {
+		totalLen = getFileSize(f)
+		downloaded = totalLen
+	} else {
+		f, ok = cache_fs.Get(baseName + ".mp4.dl")
+		if ok {
+			downloaded = getFileSize(f)
 		}
 	}
 
@@ -107,15 +109,12 @@ func NewFile(baseName string) *File {
 
 		em: utils.NewEventManager[int64](),
 
-		file: file,
+		file: f,
 	}
 }
 
-func openFile(path string) (*os.File, error) {
-	return os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
-}
-func getFileSize(path string) int64 {
-	stat, err := os.Stat(path)
+func getFileSize(file *os.File) int64 {
+	stat, err := file.Stat()
 	if err != nil {
 		return 0
 	}
