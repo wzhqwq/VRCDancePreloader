@@ -214,3 +214,11 @@
 
 - Key: message_download_throttled
   Default: "下载限流（{{.Time}}秒）"
+
+- Key: message_title_db_migrated
+  Default: "数据库迁移完成"
+- Key: message_db_migration
+  Default: >
+    数据库已迁移至用户目录（{{.Dir}}），
+    新版数据库不再支持2.4.0版本前的软件，
+    原数据库仍然保留以供老版本软件使用。

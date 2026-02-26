@@ -214,3 +214,11 @@
 
 - Key: message_download_throttled
   Default: "Throttled ({{.Time}}s)"
+
+- Key: message_title_db_migrated
+  Default: "Database Migrated"
+- Key: message_db_migration
+  Default: >
+    The database has been migrated to the user directory ({{.Dir}}).
+    The new database no longer supports software versions prior to 2.4.0.
+    The original database is still retained for use by older software versions.

@@ -18,8 +18,13 @@ var dataVersion = utils.ShortVersion{
 }
 
 func InitDB(dbFilePath string) error {
+	params := url.Values{}
+	params.Add("_journal_mode", "WAL")
+	params.Add("_synchronous", "NORMAL")
+	params.Add("_temp_store", "MEMORY")
+
 	var err error
-	DB, err = sql.Open("sqlite3", dbFilePath)
+	DB, err = sql.Open("sqlite3", dbFilePath+"?"+params.Encode())
 	if err != nil {
 		return err
 	}

@@ -1,7 +1,11 @@
 package config
 
 import (
+	"io"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
@@ -268,7 +272,60 @@ func (cc *CacheConfig) UpdateFileFormat(fileFormat int) {
 }
 
 func (dc *DbConfig) Init() error {
-	err := persistence.InitDB(dc.Path)
+	// migration
+
+	// AppData copied from ytdlp-test branch
+	const AppName = "VRCDP"
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		panic(err)
+	}
+
+	AppDataRoot := ""
+	if strings.HasSuffix(configDir, "Roaming") {
+		// it's Windows, and we should store large data to LocalLow
+		AppDataRoot = filepath.Join(configDir, "..", "LocalLow", AppName)
+	} else {
+		AppDataRoot = filepath.Join(configDir, AppName, "data")
+	}
+
+	permanentDbPath := filepath.Join(AppDataRoot, "db", "data.db")
+	if _, err := os.Stat(permanentDbPath); os.IsNotExist(err) {
+		err := os.MkdirAll(filepath.Dir(permanentDbPath), 0755)
+		if err != nil {
+			return err
+		}
+		if dc.Path != "" {
+			if _, err = os.Stat(dc.Path); err == nil {
+				file, err := os.Open(dc.Path)
+				if err != nil {
+					return err
+				}
+				defer file.Close()
+
+				newFile, err := os.Create(permanentDbPath)
+				if err != nil {
+					return err
+				}
+				defer newFile.Close()
+
+				_, err = io.Copy(newFile, file)
+				if err != nil {
+					return err
+				}
+
+				err = newFile.Sync()
+				if err != nil {
+					return err
+				}
+
+				logger.InfoLn("Migrated database to", permanentDbPath)
+				global_state.SetDbMigrationPath(permanentDbPath)
+			}
+		}
+	}
+
+	err = persistence.InitDB(permanentDbPath)
 	if err != nil {
 		return err
 	}

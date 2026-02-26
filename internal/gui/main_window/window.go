@@ -3,6 +3,9 @@ package main_window
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"github.com/eduardolat/goeasyi18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window/favorite"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window/history"
@@ -14,6 +17,18 @@ import (
 func Start() {
 	custom_fyne.InitFyne()
 	MainWindow()
+
+	if path := global_state.GetDbMigrationPath(); path != "" {
+		dialog.NewInformation(
+			i18n.T("message_title_db_migrated"),
+			i18n.T("message_db_migration", goeasyi18n.Options{
+				Data: map[string]interface{}{
+					"Dir": path,
+				},
+			}),
+			custom_fyne.GetParent(),
+		).Show()
+	}
 }
 func Stop() {
 }
