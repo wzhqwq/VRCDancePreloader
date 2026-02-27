@@ -185,5 +185,5 @@ func (e *UrlBasedEntry) IsComplete() bool {
 	if err := e.checkWorkingFile(context.Background()); err != nil {
 		return false
 	}
-	return e.workingFile.IsComplete()
+	return e.checkIfCompleteAndSync()
 }

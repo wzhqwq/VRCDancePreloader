@@ -5,6 +5,10 @@ import (
 )
 
 func (e *BaseEntry) syncWithFS() {
+	if e.workingFile == nil {
+		return
+	}
+
 	e.meta = e.getOrRecordMeta()
 	e.meta.Access()
 	e.meta.SetPartial(!e.workingFile.IsComplete())
@@ -23,4 +27,12 @@ func (e *BaseEntry) getOrRecordMeta() *persistence.CacheMeta {
 		size, created := e.workingFile.Stat()
 		return persistence.NewCacheMeta(e.id, "video", size, e.workingFile.ModTime(), created)
 	})
+}
+
+func (e *BaseEntry) checkIfCompleteAndSync() bool {
+	complete := e.workingFile.IsComplete()
+	if complete && e.meta.Partial {
+		e.meta.SetPartial(false)
+	}
+	return complete
 }

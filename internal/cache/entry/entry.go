@@ -254,7 +254,7 @@ func (e *BaseEntry) IsComplete() bool {
 	if e.workingFile == nil {
 		return false
 	}
-	return e.workingFile.IsComplete()
+	return e.checkIfCompleteAndSync()
 }
 
 func (e *BaseEntry) DownloadedSize() int64 {
