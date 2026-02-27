@@ -8,6 +8,7 @@ func (e *BaseEntry) syncWithFS() {
 	e.meta = e.getOrRecordMeta()
 	e.meta.Access()
 	e.meta.SetPartial(!e.workingFile.IsComplete())
+	e.readEtag()
 }
 
 func (e *BaseEntry) getOrRecordMeta() *persistence.CacheMeta {

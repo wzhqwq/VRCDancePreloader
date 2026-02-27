@@ -45,6 +45,7 @@ type Entry interface {
 	GetDownloadStream(ctx context.Context) (io.ReadCloser, error)
 	IsComplete() bool
 	ModTime() time.Time
+	Etag() string
 	UpdateReqRangeStart(start int64)
 }
 
@@ -53,6 +54,7 @@ type BaseEntry struct {
 	client *requesting.ClientProvider
 
 	referer string
+	etag    string
 
 	openCount atomic.Int32
 
@@ -131,6 +133,7 @@ type RemoteVideoInfo struct {
 	FinalUrl     string
 	TotalSize    int64
 	LastModified time.Time
+	Etag         string
 }
 
 func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*RemoteVideoInfo, error) {
@@ -144,6 +147,9 @@ func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*Remote
 		e.referer = url
 	}
 	requesting.SetupHeader(req, e.referer)
+	//if e.etag != "" {
+	//	req.Header.Set("If-None-Match", e.etag)
+	//}
 	res, err := e.client.Do(req)
 	if err != nil {
 		e.logger.ErrorLn("Failed to get ", url, "reason:", err)
@@ -170,6 +176,7 @@ func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*Remote
 		FinalUrl:     res.Request.URL.String(),
 		TotalSize:    res.ContentLength,
 		LastModified: lastModified,
+		Etag:         res.Header.Get("ETag"),
 	}, nil
 }
 func (e *BaseEntry) requestHttpResBody(url string, offset int64, ctx context.Context) (io.ReadCloser, error) {
@@ -258,6 +265,10 @@ func (e *BaseEntry) DownloadedSize() int64 {
 		return 0
 	}
 	return e.workingFile.GetDownloadedBytes()
+}
+
+func (e *BaseEntry) Etag() string {
+	return e.etag
 }
 
 func (e *BaseEntry) Write(bytes []byte) (int, error) {
