@@ -14,14 +14,11 @@ type Manager struct {
 
 	currentList *playlist.PlayList
 
-	stopCh chan struct{}
-
 	listChanged bool
 }
 
 func NewPlaylistManager() *Manager {
 	m := &Manager{
-		stopCh:      make(chan struct{}),
 		currentList: playlist.GetCurrentPlaylist(),
 	}
 
@@ -30,13 +27,13 @@ func NewPlaylistManager() *Manager {
 	return m
 }
 
-func (m *Manager) RenderLoop() {
+func (m *Manager) RenderLoop(stopCh chan struct{}) {
 	ch := playlist.SubscribeNewListEvent()
 	defer ch.Close()
 
 	for {
 		select {
-		case <-m.stopCh:
+		case <-stopCh:
 			return
 		case pl := <-ch.Channel:
 			m.currentList = pl
@@ -49,8 +46,6 @@ func (m *Manager) RenderLoop() {
 }
 
 func (m *Manager) CreateRenderer() fyne.WidgetRenderer {
-	go m.RenderLoop()
-
 	var list *ListGui
 	if m.currentList != nil {
 		list = NewListGui(m.currentList)
@@ -62,16 +57,22 @@ func (m *Manager) CreateRenderer() fyne.WidgetRenderer {
 		NewBroadcastButton(),
 	)
 
-	return &managerRender{
+	r := &managerRender{
 		manager: m,
+		stopCh:  make(chan struct{}),
 		list:    list,
 
 		statusBar: statusBar,
 	}
+	go m.RenderLoop(r.stopCh)
+
+	return r
 }
 
 type managerRender struct {
 	manager *Manager
+
+	stopCh chan struct{}
 
 	list *ListGui
 
@@ -122,5 +123,5 @@ func (r *managerRender) Objects() []fyne.CanvasObject {
 }
 
 func (r *managerRender) Destroy() {
-	close(r.manager.stopCh)
+	close(r.stopCh)
 }

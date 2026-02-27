@@ -23,8 +23,6 @@ type Gui struct {
 
 	Records []*persistence.SimplifiedDanceRecord
 
-	stopCh chan struct{}
-
 	recordsChanged bool
 	activeChanged  bool
 }
@@ -39,8 +37,6 @@ func NewGui() *Gui {
 		activeId: -1,
 
 		Records: records,
-
-		stopCh: make(chan struct{}),
 	}
 
 	g.ExtendBaseWidget(g)
@@ -75,13 +71,13 @@ func (g *Gui) SetActive(id int) {
 	})
 }
 
-func (g *Gui) RenderLoop() {
+func (g *Gui) RenderLoop(stopCh chan struct{}) {
 	ch := persistence.GetLocalRecords().SubscribeEvent()
 	defer ch.Close()
 
 	for {
 		select {
-		case <-g.stopCh:
+		case <-stopCh:
 			return
 		case <-ch.Channel:
 			g.UpdateRecords()
@@ -95,10 +91,10 @@ func (g *Gui) CreateRenderer() fyne.WidgetRenderer {
 
 	leftScroll := container.NewVScroll(container.NewPadded(left))
 
-	go g.RenderLoop()
-
 	r := &GuiRenderer{
 		g: g,
+
+		stopCh: make(chan struct{}),
 
 		Left:       left,
 		LeftScroll: leftScroll,
@@ -110,6 +106,8 @@ func (g *Gui) CreateRenderer() fyne.WidgetRenderer {
 		buttonMap: make(map[int]weak.Pointer[button.RecordButton]),
 	}
 
+	go g.RenderLoop(r.stopCh)
+
 	r.PushRecordButtons()
 
 	return r
@@ -117,6 +115,8 @@ func (g *Gui) CreateRenderer() fyne.WidgetRenderer {
 
 type GuiRenderer struct {
 	g *Gui
+
+	stopCh chan struct{}
 
 	Left       *fyne.Container
 	LeftScroll fyne.CanvasObject
@@ -227,5 +227,5 @@ func (r *GuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *GuiRenderer) Destroy() {
-	close(r.g.stopCh)
+	close(r.stopCh)
 }

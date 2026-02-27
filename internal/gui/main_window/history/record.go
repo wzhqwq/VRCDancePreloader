@@ -21,16 +21,12 @@ type RecordGui struct {
 
 	Record *persistence.DanceRecord
 
-	stopCh chan struct{}
-
 	orderChanged   bool
 	commentChanged bool
 }
 
 func NewRecordGui(record *persistence.DanceRecord) *RecordGui {
 	g := &RecordGui{
-		stopCh: make(chan struct{}),
-
 		Record: record,
 	}
 
@@ -47,13 +43,13 @@ func (g *RecordGui) UpdateOrders() {
 	})
 }
 
-func (g *RecordGui) RenderLoop() {
+func (g *RecordGui) RenderLoop(stopCh chan struct{}) {
 	ch := g.Record.SubscribeEvent()
 	defer ch.Close()
 
 	for {
 		select {
-		case <-g.stopCh:
+		case <-stopCh:
 			return
 		case <-ch.Channel:
 			g.UpdateOrders()
@@ -94,6 +90,8 @@ func (g *RecordGui) CreateRenderer() fyne.WidgetRenderer {
 	r := &RecordGuiRenderer{
 		g: g,
 
+		stopCh: make(chan struct{}),
+
 		Title:   title,
 		Comment: comment,
 
@@ -110,13 +108,15 @@ func (g *RecordGui) CreateRenderer() fyne.WidgetRenderer {
 
 	r.pushOrders()
 
-	go g.RenderLoop()
+	go g.RenderLoop(r.stopCh)
 
 	return r
 }
 
 type RecordGuiRenderer struct {
 	g *RecordGui
+
+	stopCh chan struct{}
 
 	Title   fyne.CanvasObject
 	Comment *widgets.EllipseText
@@ -218,5 +218,5 @@ func (r *RecordGuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *RecordGuiRenderer) Destroy() {
-	close(r.g.stopCh)
+	close(r.stopCh)
 }

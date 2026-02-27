@@ -25,8 +25,6 @@ type FavoritesGui struct {
 
 	entries []*persistence.LocalSongEntry
 
-	stopCh chan struct{}
-
 	active bool
 }
 
@@ -53,8 +51,6 @@ func NewFavoritesGui() *FavoritesGui {
 
 		sortBy:    "id",
 		ascending: true,
-
-		stopCh: make(chan struct{}),
 	}
 
 	g.ExtendBaseWidget(g)
@@ -68,18 +64,20 @@ func (fg *FavoritesGui) refreshItems() {
 	fg.Refresh()
 }
 
-func (fg *FavoritesGui) RenderLoop() {
+func (fg *FavoritesGui) RenderLoop(stopCh chan struct{}) {
 	ch := fg.Favorites.SubscribeEvent()
 	defer ch.Close()
 
 	for {
 		select {
-		case <-fg.stopCh:
+		case <-stopCh:
 			return
 		case <-ch.Channel:
-			fyne.Do(func() {
-				fg.refreshItems()
-			})
+			if fg.active {
+				fyne.Do(func() {
+					fg.refreshItems()
+				})
+			}
 		}
 	}
 }
@@ -136,7 +134,11 @@ func (fg *FavoritesGui) CreateRenderer() fyne.WidgetRenderer {
 		RefreshBtn:   refreshBtn,
 
 		g: fg,
+
+		stopCh: make(chan struct{}),
 	}
+
+	go fg.RenderLoop(r.stopCh)
 
 	return r
 }
@@ -147,7 +149,6 @@ func (fg *FavoritesGui) Activate() {
 	}
 	fg.active = true
 	fg.refreshItems()
-	go fg.RenderLoop()
 }
 
 type favoritesGuiRenderer struct {
@@ -161,6 +162,8 @@ type favoritesGuiRenderer struct {
 	RefreshBtn   *widget.Button
 
 	g *FavoritesGui
+
+	stopCh chan struct{}
 }
 
 func (r *favoritesGuiRenderer) MinSize() fyne.Size {
@@ -214,5 +217,5 @@ func (r *favoritesGuiRenderer) Refresh() {
 }
 
 func (r *favoritesGuiRenderer) Destroy() {
-	close(r.g.stopCh)
+	close(r.stopCh)
 }

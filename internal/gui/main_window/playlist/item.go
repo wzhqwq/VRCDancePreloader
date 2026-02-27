@@ -27,8 +27,6 @@ type ItemGui struct {
 
 	// static UI
 
-	stopCh chan struct{}
-
 	statusChanged   bool
 	timeChanged     bool
 	progressChanged bool
@@ -39,8 +37,6 @@ func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
 	ig := &ItemGui{
 		ps: ps,
 		dl: dl,
-
-		stopCh: make(chan struct{}, 10),
 
 		statusChanged:   true,
 		timeChanged:     true,
@@ -53,13 +49,13 @@ func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
 	return ig
 }
 
-func (ig *ItemGui) RenderLoop() {
+func (ig *ItemGui) RenderLoop(stopCh chan struct{}) {
 	ch := ig.ps.SubscribeEvent(false)
 	defer ch.Close()
 
 	for {
 		select {
-		case <-ig.stopCh:
+		case <-stopCh:
 			return
 		case event := <-ch.Channel:
 			switch event {
@@ -160,10 +156,10 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	thumbnailMask.StrokeWidth = theme.Padding() / 2
 	thumbnailMask.StrokeColor = theme.Color(theme.ColorNameBackground)
 
-	go ig.RenderLoop()
-
 	r := &ItemRenderer{
 		ig: ig,
+
+		stopCh: make(chan struct{}),
 
 		TitleWidget:   title,
 		Background:    cardBackground,
@@ -182,6 +178,8 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 		FavoriteBtn: button.NewFavoriteBtn(info.ID, info.Title),
 	}
 
+	go ig.RenderLoop(r.stopCh)
+
 	return r
 }
 
@@ -193,6 +191,8 @@ var topHeight float32 = 30
 
 type ItemRenderer struct {
 	ig *ItemGui
+
+	stopCh chan struct{}
 
 	Background    *canvas.Rectangle
 	ThumbnailMask *canvas.Rectangle
@@ -404,5 +404,5 @@ func (r *ItemRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *ItemRenderer) Destroy() {
-	close(r.ig.stopCh)
+	close(r.stopCh)
 }

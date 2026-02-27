@@ -24,8 +24,8 @@ func NewDownloaderStatus() *DownloaderStatus {
 
 func (s *DownloaderStatus) CreateRenderer() fyne.WidgetRenderer {
 	r := &DownloaderStatusRenderer{
-		text:     canvas.NewText("", theme.Color(theme.ColorNameWarning)),
-		cancelCh: make(chan struct{}),
+		text:   canvas.NewText("", theme.Color(theme.ColorNameWarning)),
+		stopCh: make(chan struct{}),
 	}
 	go r.RenderLoop()
 	return r
@@ -34,7 +34,7 @@ func (s *DownloaderStatus) CreateRenderer() fyne.WidgetRenderer {
 type DownloaderStatusRenderer struct {
 	text *canvas.Text
 
-	cancelCh chan struct{}
+	stopCh chan struct{}
 }
 
 func (r *DownloaderStatusRenderer) RenderLoop() {
@@ -45,6 +45,8 @@ func (r *DownloaderStatusRenderer) RenderLoop() {
 
 	for {
 		select {
+		case <-r.stopCh:
+			return
 		case interval := <-defaultCh.Channel:
 			r.renderThrottleMessage(interval.Seconds())
 		case interval := <-pypyCh.Channel:
@@ -82,5 +84,5 @@ func (r *DownloaderStatusRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *DownloaderStatusRenderer) Destroy() {
-	close(r.cancelCh)
+	close(r.stopCh)
 }

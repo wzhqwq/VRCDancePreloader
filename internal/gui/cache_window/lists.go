@@ -27,22 +27,20 @@ type LocalFilesGui struct {
 }
 
 func NewLocalFilesGui() *LocalFilesGui {
-	g := &LocalFilesGui{
-		stopCh: make(chan struct{}),
-	}
+	g := &LocalFilesGui{}
 
 	g.ExtendBaseWidget(g)
 
 	return g
 }
 
-func (g *LocalFilesGui) RenderLoop() {
+func (g *LocalFilesGui) RenderLoop(stopCh chan struct{}) {
 	localCh := persistence.SubscribeMetaTableChange()
 	defer localCh.Close()
 
 	for {
 		select {
-		case <-g.stopCh:
+		case <-stopCh:
 			return
 		case message := <-localCh.Channel:
 			if message.Type == "video" {
@@ -77,6 +75,8 @@ func (g *LocalFilesGui) CreateRenderer() fyne.WidgetRenderer {
 	r := &LocalFilesGuiRenderer{
 		g: g,
 
+		stopCh: make(chan struct{}),
+
 		Scroll:      container.NewVScroll(list),
 		List:        list,
 		Label:       label,
@@ -88,7 +88,7 @@ func (g *LocalFilesGui) CreateRenderer() fyne.WidgetRenderer {
 
 	r.updateItems()
 
-	go g.RenderLoop()
+	go g.RenderLoop(r.stopCh)
 
 	return r
 }
@@ -102,6 +102,8 @@ func (g *LocalFilesGui) RefreshFiles() {
 
 type LocalFilesGuiRenderer struct {
 	g *LocalFilesGui
+
+	stopCh chan struct{}
 
 	Scroll      *container.Scroll
 	List        *fyne.Container
@@ -192,7 +194,7 @@ func (r *LocalFilesGuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *LocalFilesGuiRenderer) Destroy() {
-	close(r.g.stopCh)
+	close(r.stopCh)
 }
 
 type AllowListGui struct {
@@ -200,27 +202,23 @@ type AllowListGui struct {
 
 	infos     []video_cache.LocalVideoInfo
 	changedId string
-
-	stopCh chan struct{}
 }
 
 func NewAllowListGui() *AllowListGui {
-	g := &AllowListGui{
-		stopCh: make(chan struct{}),
-	}
+	g := &AllowListGui{}
 
 	g.ExtendBaseWidget(g)
 
 	return g
 }
 
-func (g *AllowListGui) RenderLoop() {
+func (g *AllowListGui) RenderLoop(stopCh chan struct{}) {
 	ch := persistence.SubscribePreservedListChange()
 	defer ch.Close()
 
 	for {
 		select {
-		case <-g.stopCh:
+		case <-stopCh:
 			return
 		case message := <-ch.Channel:
 			if message.Type == "video" {
@@ -260,6 +258,8 @@ func (g *AllowListGui) CreateRenderer() fyne.WidgetRenderer {
 	r := &AllowListGuiRenderer{
 		g: g,
 
+		stopCh: make(chan struct{}),
+
 		Scroll:     container.NewVScroll(list),
 		List:       list,
 		Label:      label,
@@ -270,13 +270,15 @@ func (g *AllowListGui) CreateRenderer() fyne.WidgetRenderer {
 
 	r.updateItems()
 
-	go g.RenderLoop()
+	go g.RenderLoop(r.stopCh)
 
 	return r
 }
 
 type AllowListGuiRenderer struct {
 	g *AllowListGui
+
+	stopCh chan struct{}
 
 	Scroll     *container.Scroll
 	List       *fyne.Container
@@ -354,5 +356,5 @@ func (r *AllowListGuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *AllowListGuiRenderer) Destroy() {
-	close(r.g.stopCh)
+	close(r.stopCh)
 }

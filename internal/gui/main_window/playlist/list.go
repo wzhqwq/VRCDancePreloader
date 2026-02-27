@@ -21,8 +21,6 @@ type ListGui struct {
 
 	pl *playlist.PlayList
 
-	stopCh chan struct{}
-
 	itemChanged bool
 	roomChanged bool
 }
@@ -30,8 +28,6 @@ type ListGui struct {
 func NewListGui(pl *playlist.PlayList) *ListGui {
 	g := &ListGui{
 		pl: pl,
-
-		stopCh: make(chan struct{}),
 	}
 
 	g.ExtendBaseWidget(g)
@@ -39,13 +35,13 @@ func NewListGui(pl *playlist.PlayList) *ListGui {
 	return g
 }
 
-func (l *ListGui) RenderLoop() {
+func (l *ListGui) RenderLoop(stopCh chan struct{}) {
 	ch := l.pl.SubscribeChangeEvent()
 	defer ch.Close()
 
 	for {
 		select {
-		case <-l.stopCh:
+		case <-stopCh:
 			return
 		case change := <-ch.Channel:
 			switch change {
@@ -79,6 +75,8 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 	r := &listGuiRenderer{
 		list: l,
 
+		stopCh: make(chan struct{}),
+
 		Container:  scroll,
 		Background: canvas.NewRectangle(theme.Color(custom_fyne.ColorNameOuterBackground)),
 
@@ -92,7 +90,7 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 
 	r.updateItems()
 
-	go l.RenderLoop()
+	go l.RenderLoop(r.stopCh)
 
 	return r
 }
@@ -101,6 +99,8 @@ var playlistTopHeight = float32(30)
 
 type listGuiRenderer struct {
 	list *ListGui
+
+	stopCh chan struct{}
 
 	Container  *container.Scroll
 	Background *canvas.Rectangle
@@ -194,5 +194,5 @@ func (r *listGuiRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *listGuiRenderer) Destroy() {
-	close(r.list.stopCh)
+	close(r.stopCh)
 }
