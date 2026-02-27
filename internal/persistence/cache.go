@@ -27,7 +27,7 @@ var getMeta = cacheMetaTable.Select(cacheMetaColumns...).Where("name = ?").Build
 var listAllByType = cacheMetaTable.Select(cacheMetaColumns...).Where("type = ?").Paginate()
 var listPreservedByType = cacheMetaTable.Select(cacheMetaColumns...).Where("type = ? AND preserved = true").Paginate()
 var listSortedIDsByType = cacheMetaTable.Select("entity_id").Where("type = ?").Sort("entity_id", true).Build()
-var sumOfSizeByType = cacheMetaTable.Select("SUM(*)").Where("type = ?").Build()
+var sumOfSizeByType = cacheMetaTable.Select("SUM(size)").Where("type = ?").Build()
 var sumOfSizeGroupedByType = cacheMetaTable.Select("type", "SUM(size)").Group("type").Build()
 var listCleanupCandidates = cacheMetaTable.Select("entity_id", "size").Where("type = ? AND preserved = false").Sort("last_accessed", true).Build()
 
@@ -120,7 +120,7 @@ func (c *CacheMeta) UpdateInfo(size int64, remoteLM, createdTime time.Time) erro
 	c.RemoteLastModified = remoteLM
 	c.CreatedTime = createdTime
 
-	_, err := cacheMetaTable.Exec(setMetaInfo, size, remoteLM.Unix(), createdTime.Unix())
+	_, err := cacheMetaTable.Exec(setMetaInfo, size, remoteLM.Unix(), createdTime.Unix(), c.Name)
 	if err != nil {
 		return err
 	}
@@ -169,9 +169,9 @@ func AddCacheMeta(c *CacheMeta, tx ...*sql.Tx) error {
 
 	var err error
 	if len(tx) > 0 {
-		_, err = tx[0].Exec(addMeta, args)
+		_, err = tx[0].Exec(addMeta, args...)
 	} else {
-		_, err = cacheMetaTable.Exec(addMeta, args)
+		_, err = cacheMetaTable.Exec(addMeta, args...)
 	}
 	if err != nil {
 		return err

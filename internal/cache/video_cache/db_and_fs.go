@@ -11,7 +11,7 @@ func (cm *CacheMap) Remove(id string) error {
 	cm.Lock()
 	defer cm.Unlock()
 
-	return cm.Remove(id)
+	return cm.remove(id)
 }
 
 func (cm *CacheMap) remove(id string) error {
@@ -86,6 +86,9 @@ func (cm *CacheMap) cleanUp() {
 			tx.MarkRemoved(record.ID, "video")
 
 			size -= record.Size
+			if size <= maxSize {
+				break
+			}
 		}
 	}
 	logger.InfoLn("Cleaned up cache,", utils.PrettyByteSize(totalSize), "->", utils.PrettyByteSize(size))
