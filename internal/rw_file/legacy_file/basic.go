@@ -2,11 +2,14 @@ package legacy_file
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"sync"
+	"syscall"
 	"time"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/cache_fs"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -25,18 +28,10 @@ type File struct {
 	file      *os.File
 }
 
-func (f *File) Clear() error {
-	f.fileMutex.RLock()
-	defer f.fileMutex.RUnlock()
+func (f *File) Init(_ int64, _ time.Time) error {
+	logger.ErrorLn("We no longer support writing/creating legacy cache file")
 
-	err := f.file.Truncate(0)
-	if err != nil {
-		return err
-	}
-
-	f.downloaded = 0
-
-	return nil
+	return errors.New("not supported")
 }
 
 func (f *File) IsRequestFulfilled() bool {
@@ -76,8 +71,14 @@ func (f *File) IsComplete() bool {
 func (f *File) TotalLen() int64 {
 	return f.totalLen
 }
-func (f *File) UpdateRemoteInfo(contentLength int64, _ time.Time) {
-	f.totalLen = contentLength
+func (f *File) Stat() (int64, time.Time) {
+	var created time.Time
+	if stat, err := f.file.Stat(); err != nil {
+		if attr, ok := stat.Sys().(*syscall.Win32FileAttributeData); ok {
+			created = time.Unix(0, attr.CreationTime.Nanoseconds())
+		}
+	}
+	return f.downloaded, created
 }
 
 func (f *File) RequestRs(ctx context.Context) io.ReadSeeker {

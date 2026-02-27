@@ -50,8 +50,12 @@ func (t *Table) toCreationDDL() string {
 	return fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n%s\n);", t.name, strings.Join(cDefs, ",\n"))
 }
 
+func (t *Table) toRemovalDDL() string {
+	return fmt.Sprintf("DROP TABLE IF EXISTS %s;", t.name)
+}
+
 func (t *Table) addColumn(c *Column) error {
-	ddl := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", t.name, c.toDDL())
+	ddl := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", t.name, c.toDDL())
 	_, err := t.db.Exec(ddl)
 	return err
 }
@@ -101,7 +105,9 @@ func (t *Table) Init(db *sql.DB, upgrade bool) error {
 			return ErrUpgradeNeeded
 		}
 		_, err := db.Exec(t.toCreationDDL())
-		return err
+		if err != nil {
+			return err
+		}
 	}
 	if upgrade {
 		for _, c := range t.columns {
@@ -143,6 +149,20 @@ func (t *Table) QueryRow(query string, args ...any) *sql.Row {
 		panic(ErrMismatchedPlaceholders)
 	}
 	return t.db.QueryRow(query, args...)
+}
+
+func (t *Table) Tx() (*sql.Tx, error) {
+	if t.db == nil {
+		panic(ErrNotInitialized)
+	}
+	return t.db.Begin()
+}
+
+func (t *Table) Prepare(query string) (*sql.Stmt, error) {
+	if t.db == nil {
+		panic(ErrNotInitialized)
+	}
+	return t.db.Prepare(query)
 }
 
 func (t *Table) Select(columns ...string) *QuickSelect {

@@ -58,7 +58,7 @@ func (l *legacyFileLocator) Scan() ([]DirEntry, error) {
 		}
 
 		return DirEntry{
-			Name:    "video$" + name,
+			Name:    "video$" + strings.Replace(name, ".mp4.vrcdp", ".vrcdp", 1),
 			Size:    info.Size(),
 			Created: created,
 		}, true

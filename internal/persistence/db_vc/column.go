@@ -1,6 +1,7 @@
 package db_vc
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -24,9 +25,16 @@ type Column struct {
 	since      utils.ShortVersion
 }
 
-func (c *Column) syncIndexingState() error {
+func (c *Column) syncIndexingState(tx ...*sql.Tx) error {
 	ddl := c.toIndexDDL(c.indexed)
-	_, err := c.table.db.Exec(ddl)
+
+	var err error
+	if len(tx) > 0 {
+		_, err = tx[0].Exec(ddl)
+	} else {
+		_, err = c.table.db.Exec(ddl)
+	}
+
 	return err
 }
 
@@ -35,7 +43,7 @@ func (c *Column) toIndexDDL(creating bool) string {
 	if creating {
 		return fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_%s_%s ON %s (%s)", tName, c.name, tName, c.name)
 	}
-	return fmt.Sprintf("DROP INDEX idx_%s_%s", tName, c.name)
+	return fmt.Sprintf("DROP INDEX IF EXISTS idx_%s_%s", tName, c.name)
 }
 
 func (c *Column) toDDL() string {

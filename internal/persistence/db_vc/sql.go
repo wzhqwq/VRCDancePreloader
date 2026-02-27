@@ -61,10 +61,11 @@ func checkColumns(table *Table, columns []string) {
 type QuickSelect struct {
 	table *Table
 
-	prefix  string
-	locator string
-	sorter  string
-	limiter string
+	prefix   string
+	locator  string
+	grouping string
+	sorter   string
+	limiter  string
 }
 
 func (q *QuickSelect) Where(expression string) *QuickSelect {
@@ -73,10 +74,24 @@ func (q *QuickSelect) Where(expression string) *QuickSelect {
 	return q
 }
 
+func (q *QuickSelect) Group(by string) *QuickSelect {
+	c, ok := q.table.columns[by]
+	if !ok {
+		logger.FatalLn("Bad GROUP BY: undefined column", by)
+	}
+	if c.deprecated {
+		logger.WarnLn("Usage of deprecated column", by)
+	}
+
+	q.grouping = " GROUP BY " + by
+
+	return q
+}
+
 func (q *QuickSelect) Sort(name string, ascending bool) *QuickSelect {
 	c, ok := q.table.columns[name]
 	if !ok {
-		logger.FatalLn("Bad SELECT: undefined column", name)
+		logger.FatalLn("Bad ORDER BY: undefined column", name)
 	}
 	if c.deprecated {
 		logger.WarnLn("Usage of deprecated column", name)
@@ -101,7 +116,7 @@ func (q *QuickSelect) Limit(count int) *QuickSelect {
 }
 
 func (q *QuickSelect) Build() string {
-	return q.prefix + q.locator + q.sorter + q.limiter
+	return q.prefix + q.locator + q.grouping + q.sorter + q.limiter
 }
 
 func newSelect(table *Table, columns []string) *QuickSelect {
@@ -190,6 +205,9 @@ func (q *QuickDelete) Where(expression string) *QuickDelete {
 }
 
 func (q *QuickDelete) Build() string {
+	if q.locator == "" {
+		logger.FatalLn("Deletion without where clause is forbidden")
+	}
 	return q.prefix + q.locator
 }
 

@@ -1,10 +1,14 @@
 package trunk
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"sync"
+	"syscall"
 	"time"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/cache_fs"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -88,28 +92,52 @@ func (f *File) Close() error {
 	return f.file.Close()
 }
 
-func (f *File) ClearTrunks() {
+var ErrWriteFailed = errors.New("failed to write changes to disk")
+
+func (f *File) Init(contentLength int64, lastModified time.Time) error {
+	f.FullSize = contentLength
+	f.LastModified = lastModified
+
 	// remove complete flag
 	f.Completed = false
-	f.writeStates()
+	if !f.writeStates() {
+		return ErrWriteFailed
+	}
+
 	// fill zeros
 	for i := 0; i < numTrunks; i++ {
 		f.trunks[i] = 0
 	}
-	f.writeTrunks()
-}
-
-func (f *File) Init(contentLength int64, lastModified time.Time) {
-	f.FullSize = contentLength
-	f.LastModified = lastModified
-
-	err := f.file.Truncate(bodyOffset + contentLength)
-	if err != nil {
-		logger.ErrorLn("Failed to truncate trunk file:", err)
+	if !f.writeTrunks() {
+		return ErrWriteFailed
 	}
 
-	f.writeFullSize()
-	f.writeLastModifiedTime()
+	// write full size
+	if !f.writeFullSize() {
+		return ErrWriteFailed
+	}
+	// write last modified time
+	if !f.writeLastModifiedTime() {
+		return ErrWriteFailed
+	}
+
+	// resize
+	err := f.file.Truncate(bodyOffset + contentLength)
+	if err != nil {
+		return fmt.Errorf("failed to truncate trunk file: %v", err)
+	}
+
+	return nil
+}
+
+func (f *File) Stat() (int64, time.Time) {
+	var created time.Time
+	if stat, err := f.file.Stat(); err != nil {
+		if attr, ok := stat.Sys().(*syscall.Win32FileAttributeData); ok {
+			created = time.Unix(0, attr.CreationTime.Nanoseconds())
+		}
+	}
+	return bodyOffset + f.FullSize, created
 }
 
 func (f *File) MarkCompleted() {

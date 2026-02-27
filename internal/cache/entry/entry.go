@@ -1,4 +1,4 @@
-package cache
+package entry
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/cache_fs"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/continuous"
@@ -22,6 +24,7 @@ import (
 var unixEpochTime = time.Time{}
 
 var ErrThrottle = errors.New("too many requests, slow down")
+var ErrNotSupported = errors.New("video is not currently supported")
 
 type Entry interface {
 	io.Writer
@@ -60,6 +63,8 @@ type BaseEntry struct {
 	logger *utils.CustomLogger
 
 	baseName string
+
+	meta *persistence.CacheMeta
 }
 
 func ConstructBaseEntry(id string, client *requesting.ClientProvider) BaseEntry {
@@ -68,15 +73,15 @@ func ConstructBaseEntry(id string, client *requesting.ClientProvider) BaseEntry 
 		client: client,
 		logger: utils.NewLogger("Cached " + id),
 
-		baseName: "video_" + id,
+		baseName: "video$" + id,
 	}
 }
 
 func (e *BaseEntry) checkLegacy() bool {
-	if local_cache.Exists(e.baseName + ".vrcdp") {
+	if cache_fs.Exists(e.baseName + ".vrcdp") {
 		return false
 	}
-	if local_cache.Exists(e.baseName+".mp4") || local_cache.Exists(e.baseName+".mp4.dl") {
+	if cache_fs.Exists(e.baseName+".mp4") || cache_fs.Exists(e.baseName+".mp4.dl") {
 		return true
 	}
 
@@ -98,6 +103,8 @@ func (e *BaseEntry) openFile() {
 			e.workingFile = fragmented.NewFile(e.baseName)
 		}
 	}
+
+	e.syncWithFS()
 }
 
 func (e *BaseEntry) closeFile() error {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file"
@@ -32,12 +33,17 @@ type File struct {
 	lastestRequestStart int64
 }
 
-func (f *File) Clear() error {
+func (f *File) Init(contentLength int64, lastModified time.Time) error {
+	err := f.File.Init(contentLength, lastModified)
+	if err != nil {
+		return err
+	}
+
 	// file won't be cleared if the file is active
 	// so we can safely reset fragments
-	f.File.ClearTrunks()
 	f.fragments = f.File.ToFragments()
 	f.activeFragment = f.fragments[0]
+
 	return nil
 }
 

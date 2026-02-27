@@ -21,8 +21,11 @@ func (f *BaseFile) TotalLen() int64 {
 func (f *BaseFile) ModTime() time.Time {
 	return f.File.LastModified
 }
-func (f *BaseFile) UpdateRemoteInfo(contentLength int64, lastModified time.Time) {
-	f.File.Init(contentLength, lastModified)
+func (f *BaseFile) Stat() (int64, time.Time) {
+	return f.File.Stat()
+}
+func (f *BaseFile) Init(contentLength int64, lastModified time.Time) error {
+	return f.File.Init(contentLength, lastModified)
 }
 func (f *BaseFile) IsComplete() bool {
 	return f.File.Completed

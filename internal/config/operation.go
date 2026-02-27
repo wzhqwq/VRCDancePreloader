@@ -9,6 +9,7 @@ import (
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/video_cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
@@ -241,21 +242,22 @@ func (cc *CacheConfig) Init() {
 	}
 
 	cache.SetupCache(cc.Path)
-	cache.SetMaxSize(int64(cc.MaxCacheSize) * 1024 * 1024)
-	cache.SetKeepFavorites(cc.KeepFavorites)
+	video_cache.SetMaxSize(int64(cc.MaxCacheSize) * 1024 * 1024)
+	video_cache.SetKeepFavorites(cc.KeepFavorites)
 	entry.SetFileFormat(cc.FileFormat)
 	entry.SetForceExpirationCheck(cc.ForceExpirationCheck)
 }
 
 func (cc *CacheConfig) UpdateMaxSize(sizeInMb int) {
 	cc.MaxCacheSize = sizeInMb
-	cache.SetMaxSize(int64(sizeInMb) * 1024 * 1024)
+	video_cache.SetMaxSize(int64(sizeInMb) * 1024 * 1024)
+	cache.CleanUpCache()
 	SaveConfig()
 }
 
 func (cc *CacheConfig) UpdateKeepFavorites(b bool) {
 	cc.KeepFavorites = b
-	cache.SetKeepFavorites(b)
+	video_cache.SetKeepFavorites(b)
 	SaveConfig()
 }
 

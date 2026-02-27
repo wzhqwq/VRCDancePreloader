@@ -7,14 +7,15 @@ import (
 )
 
 type DeferredReadableFile interface {
-	UpdateRemoteInfo(contentLength int64, lastModified time.Time)
+	Init(contentLength int64, lastModified time.Time) error
+
 	TotalLen() int64
 	ModTime() time.Time
 
 	Append(bytes []byte) (int, error)
 	ReadAt(p []byte, off int64) (int, error)
 	Close() error
-	Clear() error
+	Stat() (int64, time.Time)
 
 	RequestRs(ctx context.Context) io.ReadSeeker
 

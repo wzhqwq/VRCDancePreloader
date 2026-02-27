@@ -10,17 +10,17 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/video_cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 )
 
 type LocalFilesGui struct {
 	widget.BaseWidget
 
-	infos     []types.CacheFileInfo
+	infos     []video_cache.LocalVideoInfo
 	changedId string
 
 	stopCh chan struct{}
@@ -37,32 +37,23 @@ func NewLocalFilesGui() *LocalFilesGui {
 }
 
 func (g *LocalFilesGui) RenderLoop() {
-	localCh := cache.SubscribeLocalFileEvent()
+	localCh := persistence.SubscribeMetaTableChange()
 	defer localCh.Close()
-	allowCh := persistence.GetAllowList().SubscribeEvent()
-	defer allowCh.Close()
 
 	for {
 		select {
 		case <-g.stopCh:
 			return
 		case message := <-localCh.Channel:
-			if message[0] == '*' {
-				g.changedId = message[1:]
-				fyne.Do(func() {
-					g.Refresh()
-				})
-			} else {
-				g.RefreshFiles()
-			}
-		case message := <-allowCh.Channel:
-			if message[0] == '*' {
-				g.changedId = message[1:]
-				fyne.Do(func() {
-					g.Refresh()
-				})
-			} else {
-				g.RefreshFiles()
+			if message.Type == "video" {
+				if message.T == "*" {
+					g.changedId = message.ID
+					fyne.Do(func() {
+						g.Refresh()
+					})
+				} else {
+					g.RefreshFiles()
+				}
 			}
 		}
 	}
@@ -77,7 +68,7 @@ func (g *LocalFilesGui) CreateRenderer() fyne.WidgetRenderer {
 	refreshBtn := button.NewPaddedIconBtn(theme.ViewRefreshIcon())
 	refreshBtn.SetMinSquareSize(30)
 
-	progressBar := widgets.NewSizeProgressBar(cache.GetMaxSize(), 0)
+	progressBar := widgets.NewSizeProgressBar(video_cache.GetMaxSize(), 0)
 
 	refreshBtn.OnClick = func() {
 		g.RefreshFiles()
@@ -103,7 +94,7 @@ func (g *LocalFilesGui) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (g *LocalFilesGui) RefreshFiles() {
-	g.infos = cache.GetLocalCacheInfos()
+	g.infos = cache.GetLocalCacheInfos(0, "size", false)
 	fyne.Do(func() {
 		g.Refresh()
 	})
@@ -147,11 +138,11 @@ func (r *LocalFilesGuiRenderer) Layout(size fyne.Size) {
 }
 
 func (r *LocalFilesGuiRenderer) updateItems() {
-	totalSize := lo.Reduce(r.g.infos, func(sum int64, info types.CacheFileInfo, _ int) int64 {
-		return sum + info.Size
+	totalSize := lo.Reduce(r.g.infos, func(sum int64, info video_cache.LocalVideoInfo, _ int) int64 {
+		return sum + info.Meta.Size
 	}, 0)
 
-	items := lo.Map(r.g.infos, func(info types.CacheFileInfo, _ int) *LocalFileGui {
+	items := lo.Map(r.g.infos, func(info video_cache.LocalVideoInfo, _ int) *LocalFileGui {
 		if item, ok := r.itemMap[info.ID]; ok {
 			if v := item.Value(); v != nil {
 				v.UpdateInfo(info)
@@ -207,7 +198,7 @@ func (r *LocalFilesGuiRenderer) Destroy() {
 type AllowListGui struct {
 	widget.BaseWidget
 
-	infos     []types.CacheFileInfo
+	infos     []video_cache.LocalVideoInfo
 	changedId string
 
 	stopCh chan struct{}
@@ -224,7 +215,7 @@ func NewAllowListGui() *AllowListGui {
 }
 
 func (g *AllowListGui) RenderLoop() {
-	ch := persistence.GetAllowList().SubscribeEvent()
+	ch := persistence.SubscribePreservedListChange()
 	defer ch.Close()
 
 	for {
@@ -232,20 +223,22 @@ func (g *AllowListGui) RenderLoop() {
 		case <-g.stopCh:
 			return
 		case message := <-ch.Channel:
-			if message[0] == '*' {
-				g.changedId = message[1:]
-				fyne.Do(func() {
-					g.Refresh()
-				})
-			} else {
-				g.RefreshFiles()
+			if message.Type == "video" {
+				if message.T == "*" {
+					g.changedId = message.ID
+					fyne.Do(func() {
+						g.Refresh()
+					})
+				} else {
+					g.RefreshFiles()
+				}
 			}
 		}
 	}
 }
 
 func (g *AllowListGui) RefreshFiles() {
-	g.infos = persistence.GetAllowListEntries()
+	g.infos = cache.GetLocalCacheInfos(0, "size", true)
 	fyne.Do(func() {
 		g.Refresh()
 	})
@@ -314,7 +307,7 @@ func (r *AllowListGuiRenderer) Layout(size fyne.Size) {
 }
 
 func (r *AllowListGuiRenderer) updateItems() {
-	items := lo.Map(r.g.infos, func(info types.CacheFileInfo, _ int) *LocalFileGui {
+	items := lo.Map(r.g.infos, func(info video_cache.LocalVideoInfo, _ int) *LocalFileGui {
 		if item, ok := r.itemMap[info.ID]; ok {
 			if v := item.Value(); v != nil {
 				v.UpdateInfo(info)

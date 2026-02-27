@@ -10,14 +10,6 @@ import (
 
 var localWorlds *LocalWorlds
 
-const worldDataTableSQL = `
-CREATE TABLE IF NOT EXISTS world_data (
-		world TEXT PRIMARY KEY,
-		data TEXT,
-    	settings TEXT
-);
-`
-
 var worldDataTable = db_vc.DefTable("world_data").DefColumns(
 	db_vc.NewText("world").SetPrimary(),
 	db_vc.NewText("data"),

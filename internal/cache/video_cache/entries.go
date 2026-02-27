@@ -1,4 +1,4 @@
-package cache
+package video_cache
 
 import (
 	"context"

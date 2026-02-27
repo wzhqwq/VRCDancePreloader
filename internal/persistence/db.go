@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"database/sql"
+	"net/url"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence/db_vc"
@@ -35,17 +36,25 @@ func InitDB(dbFilePath string) error {
 		danceRecordTable,
 		allowListTable,
 		worldDataTable,
+		cacheMetaTable,
+		scheduleTable,
 	)
-
-	_, err = DB.Exec(worldDataTableSQL)
-	if err != nil {
-		return err
-	}
 
 	InitLocalSongs()
 	InitAllowList()
 	InitLocalRecords()
 	return nil
+}
+
+func WalCheckpoint() {
+	if DB == nil {
+		return
+	}
+
+	_, err := DB.Exec("PRAGMA wal_checkpoint(PASSIVE);")
+	if err != nil {
+		logger.ErrorLn("Failed to set WAL checkpoint:", err)
+	}
 }
 
 func CloseDB() {

@@ -3,6 +3,7 @@ package continuous
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/trunk"
@@ -17,9 +18,14 @@ type File struct {
 	em *utils.EventManager[int64]
 }
 
-func (f *File) Clear() error {
+func (f *File) Init(contentLength int64, lastModified time.Time) error {
+	err := f.File.Init(contentLength, lastModified)
+	if err != nil {
+		return err
+	}
+
 	f.fragment.Length = 0
-	f.File.ClearTrunks()
+
 	return nil
 }
 
