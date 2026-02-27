@@ -42,10 +42,24 @@ func Scan() ([]DirEntry, error) {
 	return legacy.Scan()
 }
 
-func Get(name string) (*os.File, bool) {
+func GetRO(name string) (*os.File, bool) {
 	filePath := legacy.GetPath(name)
 
 	f, err := os.Open(filePath)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			logger.ErrorLn("Failed to open file:", filePath)
+		}
+		return nil, false
+	}
+
+	return f, true
+}
+
+func Get(name string) (*os.File, bool) {
+	filePath := legacy.GetPath(name)
+
+	f, err := os.OpenFile(filePath, os.O_RDWR, 0666)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			logger.ErrorLn("Failed to open file:", filePath)

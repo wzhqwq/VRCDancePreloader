@@ -8,6 +8,13 @@ func (e *BaseEntry) syncWithFS() {
 	e.meta = e.getOrRecordMeta()
 	e.meta.Access()
 	e.meta.SetPartial(!e.workingFile.IsComplete())
+	if e.meta.CreatedTime.IsZero() || e.meta.RemoteLastModified != e.workingFile.ModTime() {
+		size, created := e.workingFile.Stat()
+		err := e.meta.UpdateInfo(size, e.workingFile.ModTime(), created)
+		if err != nil {
+			e.logger.ErrorLn("Failed to update meta info:", err)
+		}
+	}
 	e.readEtag()
 }
 

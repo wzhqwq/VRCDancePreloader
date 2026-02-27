@@ -71,8 +71,8 @@ func (e *UrlBasedEntry) resolveRemoteMedia(ctx context.Context) error {
 
 	e.remoteSize = info.TotalSize
 	e.resolvedUrl = url
-	e.etag = info.Etag
-	e.logger.InfoLn(e.id, "resolved to", url, "size:", e.remoteSize, "modified time:", e.remoteModTime.Local().String(), "etag:", e.etag)
+	e.remoteEtag = info.Etag
+	e.logger.InfoLn(e.id, "resolved to", url, "size:", e.remoteSize, "modified time:", e.remoteModTime.Local().String(), "etag:", e.remoteEtag)
 
 	return nil
 }
@@ -97,11 +97,14 @@ func (e *UrlBasedEntry) checkWorkingFile(ctx context.Context) error {
 		}
 	}
 
+	if e.workingFile.TotalLen() == 0 {
+		return e.init()
+	}
 	if e.remoteEtag != "" && e.etag == e.remoteEtag {
 		// not changed
 		return nil
 	}
-	if e.remoteEtag != "" || (!e.remoteModTime.IsZero() && e.remoteModTime.Before(localModTime)) {
+	if e.remoteEtag != "" || (!e.remoteModTime.IsZero() && e.remoteModTime.After(localModTime)) {
 		if e.workingFile.GetDownloadedBytes() > 0 {
 			// local cache is expired
 			e.logger.WarnLn("Local cache expired so we will re-download it completely")
@@ -121,8 +124,8 @@ func (e *UrlBasedEntry) init() error {
 		e.setEtag(e.remoteEtag)
 	}
 
-	_, created := e.workingFile.Stat()
-	return e.meta.UpdateInfo(e.remoteSize, e.remoteModTime, created)
+	size, created := e.workingFile.Stat()
+	return e.meta.UpdateInfo(size, e.remoteModTime, created)
 }
 
 func (e *UrlBasedEntry) ModTime() time.Time {

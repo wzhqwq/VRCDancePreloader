@@ -8,14 +8,17 @@ import (
 
 func (e *BaseEntry) readEtag() {
 	if e.etag == "" {
-		file, ok := cache_fs.Get("etag$" + e.id + ".txt")
+		file, ok := cache_fs.GetRO("etag$" + e.id + ".txt")
 		if ok {
 			// read file as string
 			b, err := io.ReadAll(file)
 			if err != nil {
 				e.logger.ErrorLn("Failed to read etag file:", err)
+			} else {
+				e.etag = string(b)
 			}
-			e.etag = string(b)
+
+			file.Close()
 		}
 	}
 }
