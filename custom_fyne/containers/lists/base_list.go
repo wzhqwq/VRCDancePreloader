@@ -5,9 +5,14 @@ import (
 	"slices"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/custom_fyne/containers/scroll"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
+	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -19,6 +24,7 @@ type ListItem[T any] interface {
 	RefreshWidget()
 	Data() T
 	Dirty() bool
+	Removed() bool
 
 	updateData(T)
 	setActive(bool)
@@ -76,8 +82,8 @@ func (i *BaseListItem[T]) RefreshWidget() {
 	if i.active {
 		fyne.Do(func() {
 			i.Refresh()
+			i.dirty = false
 		})
-		i.dirty = false
 	}
 }
 func (i *BaseListItem[T]) Data() T {
@@ -85,6 +91,9 @@ func (i *BaseListItem[T]) Data() T {
 }
 func (i *BaseListItem[T]) Dirty() bool {
 	return i.dirty
+}
+func (i *BaseListItem[T]) Removed() bool {
+	return i.removed
 }
 
 func (i *BaseListItem[T]) updateData(data T) {
@@ -108,10 +117,11 @@ type BaseList[T DataWithID] struct {
 	ReusableList[T]
 	fyne.Scrollable
 
-	Lazy bool
+	Lazy    bool
+	showTip bool
 
-	changed  bool
-	scrolled bool
+	scrolled     bool
+	itemsChanged bool
 
 	passivelyScrolled bool
 
@@ -122,11 +132,13 @@ type BaseList[T DataWithID] struct {
 	scrollOffset  float32
 	contentHeight float32
 
-	// stub
+	// public stubs
 	SubscriberFn func() *utils.EventSubscriber[ListItemChange]
 	RendererFn   func(item ListItem[T]) fyne.WidgetRenderer
 	GetDataFn    func(id string) T
 	ListDataFn   func(offset int) []T
+	// private stubs
+	scrolledFn func(offset float32)
 	// for override
 	newItemFn func(index int) ListItem[T]
 
@@ -188,7 +200,8 @@ func (l *BaseList[T]) newItem(index int) (ListItem[T], fyne.CanvasObject) {
 
 func (l *BaseList[T]) addItem(id string) {
 	if l.Lazy {
-		l.changed = true
+		l.itemsChanged = true
+		l.showTip = true
 		fyne.Do(func() {
 			l.Refresh()
 		})
@@ -203,6 +216,8 @@ func (l *BaseList[T]) addItem(id string) {
 	item, obj := l.newItem(len(l.items))
 	l.items = append(l.items, obj)
 	l.itemMap[id] = item
+	l.itemsChanged = true
+
 	fyne.Do(func() {
 		l.Refresh()
 	})
@@ -214,7 +229,8 @@ func (l *BaseList[T]) removeItem(id string) {
 			item.setRemoved()
 			delete(l.itemMap, id)
 		}
-		l.changed = true
+		l.itemsChanged = true
+		l.showTip = true
 		fyne.Do(func() {
 			l.Refresh()
 		})
@@ -230,6 +246,8 @@ func (l *BaseList[T]) removeItem(id string) {
 		}
 		delete(l.itemMap, id)
 	}
+	l.itemsChanged = true
+
 	fyne.Do(func() {
 		l.Refresh()
 	})
@@ -257,7 +275,8 @@ func (l *BaseList[T]) RefreshItems() {
 		return obj
 	})
 
-	l.changed = false
+	l.showTip = false
+	l.itemsChanged = true
 	fyne.Do(func() {
 		l.Refresh()
 	})
@@ -278,6 +297,7 @@ func (l *BaseList[T]) appendItems() {
 		l.items = append(l.items, obj)
 		l.itemMap[data.ID()] = item
 	}
+	l.itemsChanged = true
 
 	fyne.Do(func() {
 		l.Refresh()
@@ -294,17 +314,34 @@ func (l *BaseList[T]) Scrolled(e *fyne.ScrollEvent) {
 	l.scrollOffset = offset
 	l.scrolled = true
 	l.Refresh()
+	if l.scrolledFn != nil {
+		l.scrolledFn(offset)
+	}
 }
 
 func (l *BaseList[T]) CreateRenderer() fyne.WidgetRenderer {
+	bar := scroll.NewBar(scroll.Vertical, func(offset float32) {
+		l.scrollOffset = offset
+		l.passivelyScrolled = true
+		l.Refresh()
+		if l.scrolledFn != nil {
+			l.scrolledFn(offset)
+		}
+	})
+
+	text := canvas.NewText(i18n.T("message_lazy_list_changed"), theme.Color(theme.ColorNameForeground))
+	text.TextSize = 14
+	tip := container.NewStack(
+		canvas.NewRectangle(theme.Color(custom_fyne.ColorNameOuterBackground)),
+		container.NewCenter(container.NewPadded(text)),
+	)
+
 	r := &listRenderer[T]{
 		l: l,
 
-		bar: scroll.NewBar(scroll.Vertical, func(offset float32) {
-			l.scrollOffset = offset
-			l.passivelyScrolled = true
-			l.Refresh()
-		}),
+		container: &fyne.Container{Layout: &listLayout{}, Objects: l.items},
+		bar:       bar,
+		tip:       tip,
 
 		stopCh: make(chan struct{}),
 	}
@@ -318,7 +355,12 @@ func (l *BaseList[T]) CreateRenderer() fyne.WidgetRenderer {
 type listRenderer[T DataWithID] struct {
 	l *BaseList[T]
 
-	bar *scroll.Bar
+	bar       *scroll.Bar
+	container *fyne.Container
+	tip       fyne.CanvasObject
+
+	topPadding    float32
+	bottomPadding float32
 
 	stopCh chan struct{}
 }
@@ -345,6 +387,12 @@ func (l *listRenderer[T]) eventLoop(sub *utils.EventSubscriber[ListItemChange]) 
 }
 
 func (l *listRenderer[T]) layout(size fyne.Size) {
+	listHeight := l.topPadding + l.container.MinSize().Height + l.bottomPadding
+	if math.Abs(float64(listHeight-l.l.contentHeight)) > 1e-4 {
+		l.l.contentHeight = listHeight
+		l.bar.SetContentLength(listHeight)
+	}
+
 	l.l.scrollHeight = max(0, l.l.contentHeight-size.Height)
 	width := size.Width
 
@@ -358,13 +406,14 @@ func (l *listRenderer[T]) layout(size fyne.Size) {
 		l.bar.Hide()
 	}
 
-	yOffset := -l.l.scrollOffset
-	objs := l.l.items
-	for _, obj := range objs {
-		height := obj.MinSize().Height
-		obj.Move(fyne.NewPos(0, yOffset))
-		obj.Resize(fyne.NewSize(width, height))
-		yOffset += height
+	l.container.Move(fyne.NewPos(0, l.topPadding-l.l.scrollOffset))
+	l.container.Resize(fyne.NewSize(width, 0))
+	if l.l.showTip {
+		l.tip.Move(fyne.NewPos(0, 0))
+		l.tip.Resize(fyne.NewSize(width, l.tip.MinSize().Height))
+		l.tip.Show()
+	} else {
+		l.tip.Hide()
 	}
 }
 
@@ -377,27 +426,20 @@ func (l *listRenderer[T]) Layout(size fyne.Size) {
 }
 
 func (l *listRenderer[T]) MinSize() fyne.Size {
-	minWidth := float32(0)
-	objs := l.l.items
-	if len(objs) > 0 {
-		minWidth = objs[0].MinSize().Width
-	}
+	listSize := l.container.MinSize()
 
 	if !l.l.NoScroll {
-		return fyne.NewSize(minWidth-l.bar.MinSize().Width, l.l.MinHeight)
+		return fyne.NewSize(listSize.Width+l.bar.MinSize().Width, l.l.MinHeight)
 	}
 
-	return fyne.NewSize(minWidth, l.l.contentHeight)
+	return listSize
 }
 
 func (l *listRenderer[T]) Objects() []fyne.CanvasObject {
-	return append(l.l.items, l.bar)
+	return []fyne.CanvasObject{l.container, l.bar, l.tip}
 }
 
 func (l *listRenderer[T]) Refresh() {
-	if l.l.Lazy && l.l.changed {
-		// TODO: render tip
-	}
 	if l.l.scrolled {
 		l.bar.SetOffset(l.l.scrollOffset)
 		l.layout(l.l.Size())
@@ -408,17 +450,57 @@ func (l *listRenderer[T]) Refresh() {
 		l.l.passivelyScrolled = false
 	}
 
-	totalHeight := float32(0)
+	if l.l.itemsChanged {
+		if l.l.showTip {
+			tipHeight := l.tip.MinSize().Height
+			l.l.scrollOffset += tipHeight - l.topPadding
+			l.topPadding = tipHeight
+		} else {
+			l.l.scrollOffset = max(0, l.l.scrollOffset-l.topPadding)
+			l.topPadding = 0
+		}
 
-	objs := l.l.items
-	for _, obj := range objs {
-		obj.(ListItem[T]).RefreshWidget()
-		totalHeight += obj.MinSize().Height
-	}
-
-	if math.Abs(float64(totalHeight-l.l.contentHeight)) > 1e-4 {
-		l.l.contentHeight = totalHeight
-		l.bar.SetContentLength(totalHeight)
+		l.container.Objects = l.l.items
+		l.container.Layout.(*listLayout).itemsChanged = true
+		l.container.Refresh()
 		l.layout(l.l.Size())
+		l.l.itemsChanged = false
 	}
+
+	canvas.Refresh(l.l)
+}
+
+type listLayout struct {
+	itemsChanged bool
+
+	height float32
+}
+
+func (*listLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
+	yOffset := float32(0)
+	width := size.Width
+	for _, obj := range objects {
+		height := obj.MinSize().Height
+		obj.Move(fyne.NewPos(0, yOffset))
+		obj.Resize(fyne.NewSize(width, height))
+		yOffset += height
+	}
+}
+
+func (l *listLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
+	minWidth := float32(0)
+	if len(objects) > 0 {
+		minWidth = objects[0].MinSize().Width
+	}
+
+	if l.itemsChanged {
+		height := float32(0)
+		for _, obj := range objects {
+			height += obj.MinSize().Height
+		}
+		l.height = height
+		l.itemsChanged = false
+	}
+
+	return fyne.NewSize(minWidth, l.height)
 }

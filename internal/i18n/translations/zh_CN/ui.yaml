@@ -130,6 +130,8 @@
   Default: "在白名单里"
 - Key: label_cache_is_partial
   Default: "部分下载"
+- Key: label_cache_removed
+  Default: "已删除"
 
 - Key: tip_connectivity_test_pass
   Default: "连接测试通过"
@@ -193,7 +195,7 @@
 - Key: btn_tip_close
   Default: "善"
 - Key: message_title_tip
-  Default: "解惑"
+  Default: "解释"
 
 - Key: btn_close
   Default: "关闭"
@@ -222,3 +224,6 @@
     数据库已迁移至用户目录（{{.Dir}}），
     新版数据库不再支持2.4.0版本前的软件，
     原数据库仍然保留以供老版本软件使用。
+
+- Key: message_lazy_list_changed
+  Default: "列表发生变化，请重新加载"

@@ -16,7 +16,6 @@ type SizeProgressBar struct {
 	widget.BaseWidget
 
 	Bar        *canvas.Rectangle
-	BarExceed  *canvas.Rectangle
 	Background *canvas.Rectangle
 	Text       *canvas.Text
 
@@ -26,18 +25,15 @@ type SizeProgressBar struct {
 
 func NewSizeProgressBar(totalSize int64, currentSize int64) *SizeProgressBar {
 	bar := canvas.NewRectangle(theme.Color(custom_fyne.ColorNamePrimaryBackground))
-	barExceed := canvas.NewRectangle(theme.Color(theme.ColorNameError))
 	background := canvas.NewRectangle(theme.Color(custom_fyne.ColorNamePrimaryGrayscale))
 	text := canvas.NewText("", theme.Color(theme.ColorNameForegroundOnPrimary))
 	text.TextSize = 12
 
 	bar.CornerRadius = cornerRadius
-	barExceed.CornerRadius = cornerRadius
 	background.CornerRadius = cornerRadius
 
 	g := &SizeProgressBar{
 		Bar:        bar,
-		BarExceed:  barExceed,
 		Background: background,
 		Text:       text,
 
@@ -75,19 +71,15 @@ func (g *SizeProgressBar) SetTotalSize(size int64) {
 func (g *SizeProgressBar) updateBar() {
 	ratio := float32(g.CurrentSize) / float32(g.TotalSize)
 	totalSize := g.Background.Size()
-	if ratio > 1.0 {
-		exceedWidth := max(1, totalSize.Width*(ratio-1.0)/ratio-barGap/2)
-		fullWidth := totalSize.Width - exceedWidth
-		g.BarExceed.Show()
-		g.BarExceed.Resize(fyne.NewSize(exceedWidth, totalSize.Height))
-		g.BarExceed.Move(fyne.NewPos(fullWidth, 0))
 
-		fullWidth -= barGap
-		g.Bar.Resize(fyne.NewSize(fullWidth, totalSize.Height))
+	if ratio > 1 {
+		ratio = 1
+		g.Bar.FillColor = theme.Color(theme.ColorNameError)
 	} else {
-		g.BarExceed.Hide()
-		g.Bar.Resize(fyne.NewSize(totalSize.Width*ratio, totalSize.Height))
+		g.Bar.FillColor = theme.Color(custom_fyne.ColorNamePrimaryBackground)
 	}
+
+	g.Bar.Resize(fyne.NewSize(totalSize.Width*ratio, totalSize.Height))
 }
 
 func (g *SizeProgressBar) updateText() {
@@ -133,7 +125,6 @@ func (r *SizeProgressBarRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{
 		r.g.Background,
 		r.g.Bar,
-		r.g.BarExceed,
 		r.g.Text,
 	}
 }

@@ -36,9 +36,9 @@ func (em *EventManager[T]) NotifySubscribers(payload T) {
 	em.weakSubscribers = lo.Filter(em.weakSubscribers, func(p weak.Pointer[EventSubscriber[T]], _ int) bool {
 		if s := p.Value(); s != nil {
 			return s.send(payload)
-		} else {
-			return false
 		}
+
+		return false
 	})
 }
 
@@ -51,6 +51,7 @@ type EventSubscriber[T any] struct {
 func (es *EventSubscriber[T]) Close() {
 	es.closedMutex.Lock()
 	defer es.closedMutex.Unlock()
+
 	if !es.closed {
 		close(es.Channel)
 		es.closed = true
@@ -60,6 +61,7 @@ func (es *EventSubscriber[T]) Close() {
 func (es *EventSubscriber[T]) send(payload T) bool {
 	es.closedMutex.RLock()
 	defer es.closedMutex.RUnlock()
+
 	if es.closed {
 		return false
 	}
@@ -68,4 +70,24 @@ func (es *EventSubscriber[T]) send(payload T) bool {
 	default:
 	}
 	return true
+}
+
+func PipeEvent[In any, Out any](sub *EventSubscriber[In], mapFilter func(payload In) (Out, bool)) *EventSubscriber[Out] {
+	channel := make(chan Out, 10)
+	newSub := &EventSubscriber[Out]{
+		Channel: channel,
+	}
+
+	go func() {
+		defer sub.Close()
+		for payload := range sub.Channel {
+			if newPayload, ok := mapFilter(payload); ok {
+				if !newSub.send(newPayload) {
+					break
+				}
+			}
+		}
+	}()
+
+	return newSub
 }

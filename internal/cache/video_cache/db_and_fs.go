@@ -97,14 +97,18 @@ func (cm *CacheMap) cleanUp() {
 type LocalVideoInfo struct {
 	Meta *persistence.CacheMeta
 
-	ID     string
+	id     string
 	Active bool
 }
 
-const localVideosPageSize = 50
+func (i LocalVideoInfo) ID() string {
+	return i.id
+}
 
-func (cm *CacheMap) ListLocalVideos(page int, sortColumn string, preservedOnly bool) []LocalVideoInfo {
-	videos, err := persistence.ListCacheMeta("video", sortColumn, page, localVideosPageSize, preservedOnly)
+const localVideosPageSize = 20
+
+func (cm *CacheMap) ListLocalVideos(offset int, sortColumn string, preservedOnly bool) []LocalVideoInfo {
+	videos, err := persistence.ListCacheMeta("video", sortColumn, offset, localVideosPageSize, preservedOnly)
 	if err != nil {
 		logger.ErrorLn("Failed to list local videos:", err)
 	}
@@ -112,7 +116,7 @@ func (cm *CacheMap) ListLocalVideos(page int, sortColumn string, preservedOnly b
 	return lo.Map(videos, func(item *persistence.CacheMeta, _ int) LocalVideoInfo {
 		return LocalVideoInfo{
 			Meta:   item,
-			ID:     item.EntityID,
+			id:     item.EntityID,
 			Active: cm.isActive(item.EntityID),
 		}
 	})
@@ -123,12 +127,12 @@ func (cm *CacheMap) GetLocalVideoInfo(id string) LocalVideoInfo {
 	if ok {
 		return LocalVideoInfo{
 			Meta:   meta,
-			ID:     id,
+			id:     id,
 			Active: cm.IsActive(id),
 		}
 	}
 
 	return LocalVideoInfo{
-		ID: id,
+		id: id,
 	}
 }

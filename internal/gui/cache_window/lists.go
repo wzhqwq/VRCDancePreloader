@@ -1,360 +1,142 @@
 package cache_window
 
 import (
-	"weak"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/samber/lo"
+	"github.com/wzhqwq/VRCDancePreloader/custom_fyne/containers/lists"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache/video_cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-type LocalFilesGui struct {
-	widget.BaseWidget
+func configure(list lists.ReusableList[video_cache.LocalVideoInfo], isInPreserved bool, loadedCh chan struct{}) func() {
+	subFn := persistence.SubscribeMetaTableChange
+	if isInPreserved {
+		subFn = persistence.SubscribePreservedListChange
+	}
 
-	infos     []video_cache.LocalVideoInfo
-	changedId string
+	SubscriberFn := func() *utils.EventSubscriber[lists.ListItemChange] {
+		return utils.PipeEvent(subFn(), func(payload persistence.MetaChange) (lists.ListItemChange, bool) {
+			if payload.Type == "video" {
+				return lists.ListItemChange{Op: payload.Op, ID: payload.ID}, true
+			}
+			return lists.ListItemChange{}, false
+		})
+	}
+	RendererFn := func(item lists.ListItem[video_cache.LocalVideoInfo]) fyne.WidgetRenderer {
+		return newLocalFileRenderer(item, isInPreserved)
+	}
+	GetDataFn := cache.GetVideoCache().GetLocalVideoInfo
+	ListDataFn := func(offset int) []video_cache.LocalVideoInfo {
+		return cache.GetVideoCache().ListLocalVideos(offset, "size", isInPreserved)
+	}
 
-	stopCh chan struct{}
+	list.ConfigureAllStubs(SubscriberFn, RendererFn, GetDataFn, ListDataFn)
+	go func() {
+		<-loadedCh
+		list.RefreshItems()
+	}()
+
+	return list.RefreshItems
 }
 
-func NewLocalFilesGui() *LocalFilesGui {
-	g := &LocalFilesGui{}
+type FileListGui struct {
+	widget.BaseWidget
+
+	IsInPreserved bool
+
+	loadedCh chan struct{}
+}
+
+func NewFileListGui(isInPreserved bool) *FileListGui {
+	g := &FileListGui{
+		IsInPreserved: isInPreserved,
+
+		loadedCh: make(chan struct{}, 1),
+	}
 
 	g.ExtendBaseWidget(g)
 
 	return g
 }
 
-func (g *LocalFilesGui) RenderLoop(stopCh chan struct{}) {
-	localCh := persistence.SubscribeMetaTableChange()
-	defer localCh.Close()
-
-	for {
-		select {
-		case <-stopCh:
-			return
-		case message := <-localCh.Channel:
-			if message.Type == "video" {
-				if message.T == "*" {
-					g.changedId = message.ID
-					fyne.Do(func() {
-						g.Refresh()
-					})
-				} else {
-					g.RefreshFiles()
-				}
-			}
-		}
-	}
-}
-
-func (g *LocalFilesGui) CreateRenderer() fyne.WidgetRenderer {
-	list := container.NewVBox()
-
-	label := canvas.NewText(i18n.T("label_cache_local"), theme.Color(theme.ColorNameForeground))
-	label.TextSize = 14
+func (g *FileListGui) CreateRenderer() fyne.WidgetRenderer {
+	var list fyne.CanvasObject
+	var labelText string
 
 	refreshBtn := button.NewPaddedIconBtn(theme.ViewRefreshIcon())
 	refreshBtn.SetMinSquareSize(30)
 
-	progressBar := widgets.NewSizeProgressBar(video_cache.GetMaxSize(), 0)
-
-	refreshBtn.OnClick = func() {
-		g.RefreshFiles()
+	if g.IsInPreserved {
+		labelText = i18n.T("label_cache_allow_list")
+		l := lists.NewBaseList[video_cache.LocalVideoInfo]()
+		refreshBtn.OnClick = configure(l, true, g.loadedCh)
+		list = l
+	} else {
+		labelText = i18n.T("label_cache_local")
+		l := lists.NewInfiniteList[video_cache.LocalVideoInfo]()
+		refreshBtn.OnClick = configure(l, false, g.loadedCh)
+		list = l
 	}
 
-	r := &LocalFilesGuiRenderer{
-		g: g,
-
-		stopCh: make(chan struct{}),
-
-		Scroll:      container.NewVScroll(list),
-		List:        list,
-		Label:       label,
-		RefreshBtn:  refreshBtn,
-		ProgressBar: progressBar,
-
-		itemMap: make(map[string]weak.Pointer[LocalFileGui]),
-	}
-
-	r.updateItems()
-
-	go g.RenderLoop(r.stopCh)
-
-	return r
-}
-
-func (g *LocalFilesGui) RefreshFiles() {
-	g.infos = cache.GetLocalCacheInfos(0, "size", false)
-	fyne.Do(func() {
-		g.Refresh()
-	})
-}
-
-type LocalFilesGuiRenderer struct {
-	g *LocalFilesGui
-
-	stopCh chan struct{}
-
-	Scroll      *container.Scroll
-	List        *fyne.Container
-	Label       *canvas.Text
-	RefreshBtn  *button.PaddedIconBtn
-	ProgressBar *widgets.SizeProgressBar
-
-	itemMap map[string]weak.Pointer[LocalFileGui]
-}
-
-func (r *LocalFilesGuiRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(400, 400)
-}
-
-func (r *LocalFilesGuiRenderer) Layout(size fyne.Size) {
-	p := theme.Padding()
-	btnSize := r.RefreshBtn.MinSize().Height
-	topHeight := btnSize + p
-
-	labelHeight := r.Label.MinSize().Height
-
-	r.Label.Resize(r.Label.MinSize())
-	r.Label.Move(fyne.NewPos(p, (topHeight-labelHeight)/2))
-	r.RefreshBtn.Resize(r.RefreshBtn.MinSize())
-	r.RefreshBtn.Move(fyne.NewPos(size.Width-btnSize-p/2, p/2))
-
-	progressX := r.Label.MinSize().Width + p*2
-	progressWidth := size.Width - progressX - btnSize - p*2
-	r.ProgressBar.Resize(fyne.NewSize(progressWidth, btnSize))
-	r.ProgressBar.Move(fyne.NewPos(progressX, p/2))
-
-	r.Scroll.Resize(fyne.NewSize(size.Width, size.Height-topHeight-theme.Padding()))
-	r.Scroll.Move(fyne.NewPos(0, topHeight+theme.Padding()))
-}
-
-func (r *LocalFilesGuiRenderer) updateItems() {
-	totalSize := lo.Reduce(r.g.infos, func(sum int64, info video_cache.LocalVideoInfo, _ int) int64 {
-		return sum + info.Meta.Size
-	}, 0)
-
-	items := lo.Map(r.g.infos, func(info video_cache.LocalVideoInfo, _ int) *LocalFileGui {
-		if item, ok := r.itemMap[info.ID]; ok {
-			if v := item.Value(); v != nil {
-				v.UpdateInfo(info)
-				return v
-			}
-		}
-		newGui := NewLocalFileGui(info, false)
-		r.itemMap[info.ID] = weak.Make(newGui)
-		return newGui
-	})
-
-	if r.List.Objects != nil {
-		r.List.RemoveAll()
-	}
-	for _, item := range items {
-		r.List.Add(item)
-	}
-	r.List.Refresh()
-	r.Scroll.Refresh()
-
-	r.ProgressBar.SetCurrentSize(totalSize)
-}
-
-func (r *LocalFilesGuiRenderer) Refresh() {
-	if r.g.changedId != "" {
-		if item, ok := r.itemMap[r.g.changedId]; ok {
-			if v := item.Value(); v != nil {
-				v.UpdateInfo(cache.GetLocalCacheInfo(r.g.changedId))
-			}
-		}
-		r.g.changedId = ""
-		return
-	}
-
-	r.updateItems()
-
-	canvas.Refresh(r.g)
-}
-
-func (r *LocalFilesGuiRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{
-		r.Scroll,
-		r.Label,
-		r.RefreshBtn,
-		r.ProgressBar,
-	}
-}
-
-func (r *LocalFilesGuiRenderer) Destroy() {
-	close(r.stopCh)
-}
-
-type AllowListGui struct {
-	widget.BaseWidget
-
-	infos     []video_cache.LocalVideoInfo
-	changedId string
-}
-
-func NewAllowListGui() *AllowListGui {
-	g := &AllowListGui{}
-
-	g.ExtendBaseWidget(g)
-
-	return g
-}
-
-func (g *AllowListGui) RenderLoop(stopCh chan struct{}) {
-	ch := persistence.SubscribePreservedListChange()
-	defer ch.Close()
-
-	for {
-		select {
-		case <-stopCh:
-			return
-		case message := <-ch.Channel:
-			if message.Type == "video" {
-				if message.T == "*" {
-					g.changedId = message.ID
-					fyne.Do(func() {
-						g.Refresh()
-					})
-				} else {
-					g.RefreshFiles()
-				}
-			}
-		}
-	}
-}
-
-func (g *AllowListGui) RefreshFiles() {
-	g.infos = cache.GetLocalCacheInfos(0, "size", true)
-	fyne.Do(func() {
-		g.Refresh()
-	})
-}
-
-func (g *AllowListGui) CreateRenderer() fyne.WidgetRenderer {
-	list := container.NewVBox()
-
-	label := canvas.NewText(i18n.T("label_cache_allow_list"), theme.Color(theme.ColorNameForeground))
+	label := canvas.NewText(labelText, theme.Color(theme.ColorNameForeground))
 	label.TextSize = 14
 
-	refreshBtn := button.NewPaddedIconBtn(theme.ViewRefreshIcon())
-	refreshBtn.SetMinSquareSize(30)
-
-	refreshBtn.OnClick = func() {
-		g.RefreshFiles()
-	}
-
-	r := &AllowListGuiRenderer{
+	r := &fileListRenderer{
 		g: g,
 
-		stopCh: make(chan struct{}),
-
-		Scroll:     container.NewVScroll(list),
-		List:       list,
-		Label:      label,
-		RefreshBtn: refreshBtn,
-
-		itemMap: make(map[string]weak.Pointer[LocalFileGui]),
+		label:      label,
+		refreshBtn: refreshBtn,
+		list:       list,
 	}
-
-	r.updateItems()
-
-	go g.RenderLoop(r.stopCh)
 
 	return r
 }
 
-type AllowListGuiRenderer struct {
-	g *AllowListGui
+type fileListRenderer struct {
+	g *FileListGui
 
-	stopCh chan struct{}
-
-	Scroll     *container.Scroll
-	List       *fyne.Container
-	Label      *canvas.Text
-	RefreshBtn *button.PaddedIconBtn
-
-	itemMap map[string]weak.Pointer[LocalFileGui]
+	label      *canvas.Text
+	refreshBtn fyne.CanvasObject
+	list       fyne.CanvasObject
 }
 
-func (r *AllowListGuiRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(400, 400)
+func (r *fileListRenderer) MinSize() fyne.Size {
+	return fyne.NewSize(0, 0)
 }
 
-func (r *AllowListGuiRenderer) Layout(size fyne.Size) {
+func (r *fileListRenderer) Layout(size fyne.Size) {
 	p := theme.Padding()
-	btnSize := r.RefreshBtn.MinSize().Height
-	topHeight := btnSize + p
+	btnSize := r.refreshBtn.MinSize().Height
+	topHeight := btnSize + p*2
 
-	labelHeight := r.Label.MinSize().Height
+	labelHeight := r.label.MinSize().Height
 
-	r.Label.Resize(r.Label.MinSize())
-	r.Label.Move(fyne.NewPos(p, (topHeight-labelHeight)/2))
-	r.RefreshBtn.Resize(r.RefreshBtn.MinSize())
-	r.RefreshBtn.Move(fyne.NewPos(size.Width-btnSize-p/2, p/2))
+	r.label.Resize(r.label.MinSize())
+	r.label.Move(fyne.NewPos(p*2, (topHeight-labelHeight)/2))
+	r.refreshBtn.Resize(r.refreshBtn.MinSize())
+	r.refreshBtn.Move(fyne.NewPos(size.Width-btnSize-p, p))
 
-	r.Scroll.Resize(fyne.NewSize(size.Width, size.Height-topHeight-theme.Padding()))
-	r.Scroll.Move(fyne.NewPos(0, topHeight+theme.Padding()))
+	r.list.Resize(fyne.NewSize(size.Width, size.Height-topHeight))
+	r.list.Move(fyne.NewPos(0, topHeight))
 }
 
-func (r *AllowListGuiRenderer) updateItems() {
-	items := lo.Map(r.g.infos, func(info video_cache.LocalVideoInfo, _ int) *LocalFileGui {
-		if item, ok := r.itemMap[info.ID]; ok {
-			if v := item.Value(); v != nil {
-				v.UpdateInfo(info)
-				return v
-			}
-		}
-		newGui := NewLocalFileGui(info, true)
-		r.itemMap[info.ID] = weak.Make(newGui)
-		return newGui
-	})
-
-	if r.List.Objects != nil {
-		r.List.RemoveAll()
-	}
-	for _, item := range items {
-		r.List.Add(item)
-	}
-	r.List.Refresh()
-	r.Scroll.Refresh()
-}
-
-func (r *AllowListGuiRenderer) Refresh() {
-	if r.g.changedId != "" {
-		if item, ok := r.itemMap[r.g.changedId]; ok {
-			if v := item.Value(); v != nil {
-				v.UpdateInfo(cache.GetLocalCacheInfo(r.g.changedId))
-			}
-		}
-		r.g.changedId = ""
-		return
-	}
-
-	r.updateItems()
-
+func (r *fileListRenderer) Refresh() {
 	canvas.Refresh(r.g)
 }
 
-func (r *AllowListGuiRenderer) Objects() []fyne.CanvasObject {
+func (r *fileListRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{
-		r.Scroll,
-		r.Label,
-		r.RefreshBtn,
+		r.list,
+		r.label,
+		r.refreshBtn,
 	}
 }
 
-func (r *AllowListGuiRenderer) Destroy() {
-	close(r.stopCh)
+func (r *fileListRenderer) Destroy() {
 }

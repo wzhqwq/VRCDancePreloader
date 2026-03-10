@@ -26,7 +26,7 @@ var cacheMetaColumns = []string{"name", "entity_id", "type", "size", "partial", 
 
 var getMeta = cacheMetaTable.Select(cacheMetaColumns...).Where("name = ?").Build()
 var listAllByType = cacheMetaTable.Select(cacheMetaColumns...).Where("type = ?").Paginate()
-var listPreservedByType = cacheMetaTable.Select(cacheMetaColumns...).Where("type = ? AND preserved = true").Paginate()
+var listPreservedByType = cacheMetaTable.Select(cacheMetaColumns...).Where("type = ? AND preserved = true")
 var listSortedIDsByType = cacheMetaTable.Select("entity_id").Where("type = ?").Sort("entity_id", true).Build()
 var sumOfSizeByType = cacheMetaTable.Select("SUM(size)").Where("type = ?").Build()
 var sumOfSizeGroupedByType = cacheMetaTable.Select("type", "SUM(size)").Group("type").Build()
@@ -44,7 +44,7 @@ var setMetaInfo = cacheMetaTable.Update().Set(
 var deleteMeta = cacheMetaTable.Delete().Where("name = ?").Build()
 
 type MetaChange struct {
-	T    string
+	Op   byte
 	ID   string
 	Type string
 }
@@ -80,9 +80,9 @@ func (c *CacheMeta) Access() {
 		logger.ErrorLn("Failed to update access time of", c.Name)
 	}
 
-	metaTableEm.NotifySubscribers(MetaChange{T: "*", ID: c.EntityID, Type: c.Type})
+	metaTableEm.NotifySubscribers(MetaChange{Op: '*', ID: c.EntityID, Type: c.Type})
 	if c.Preserved {
-		preservedListEm.NotifySubscribers(MetaChange{T: "*", ID: c.EntityID, Type: c.Type})
+		preservedListEm.NotifySubscribers(MetaChange{Op: '*', ID: c.EntityID, Type: c.Type})
 	}
 }
 
@@ -94,9 +94,9 @@ func (c *CacheMeta) SetPartial(partial bool) {
 		logger.ErrorLn("Failed to update the integrity of", c.Name)
 	}
 
-	metaTableEm.NotifySubscribers(MetaChange{T: "*", ID: c.EntityID, Type: c.Type})
+	metaTableEm.NotifySubscribers(MetaChange{Op: '*', ID: c.EntityID, Type: c.Type})
 	if c.Preserved {
-		preservedListEm.NotifySubscribers(MetaChange{T: "*", ID: c.EntityID, Type: c.Type})
+		preservedListEm.NotifySubscribers(MetaChange{Op: '*', ID: c.EntityID, Type: c.Type})
 	}
 }
 
@@ -108,11 +108,11 @@ func (c *CacheMeta) SetPreserved(preserved bool) {
 		logger.ErrorLn("Failed to update preserved state of", c.Name)
 	}
 
-	metaTableEm.NotifySubscribers(MetaChange{T: "*", ID: c.EntityID, Type: c.Type})
+	metaTableEm.NotifySubscribers(MetaChange{Op: '*', ID: c.EntityID, Type: c.Type})
 	if preserved {
-		preservedListEm.NotifySubscribers(MetaChange{T: "+", ID: c.EntityID, Type: c.Type})
+		preservedListEm.NotifySubscribers(MetaChange{Op: '+', ID: c.EntityID, Type: c.Type})
 	} else {
-		preservedListEm.NotifySubscribers(MetaChange{T: "-", ID: c.EntityID, Type: c.Type})
+		preservedListEm.NotifySubscribers(MetaChange{Op: '-', ID: c.EntityID, Type: c.Type})
 	}
 }
 
@@ -126,9 +126,9 @@ func (c *CacheMeta) UpdateInfo(size int64, remoteLM, createdTime time.Time) erro
 		return err
 	}
 
-	metaTableEm.NotifySubscribers(MetaChange{T: "*", ID: c.EntityID, Type: c.Type})
+	metaTableEm.NotifySubscribers(MetaChange{Op: '*', ID: c.EntityID, Type: c.Type})
 	if c.Preserved {
-		preservedListEm.NotifySubscribers(MetaChange{T: "*", ID: c.EntityID, Type: c.Type})
+		preservedListEm.NotifySubscribers(MetaChange{Op: '*', ID: c.EntityID, Type: c.Type})
 	}
 	return nil
 }
@@ -144,9 +144,9 @@ func (c *CacheMeta) Delete(tx ...*sql.Tx) {
 		logger.ErrorLn("Failed to remove cache meta", c.Name)
 	}
 
-	metaTableEm.NotifySubscribers(MetaChange{T: "-", ID: c.EntityID, Type: c.Type})
+	metaTableEm.NotifySubscribers(MetaChange{Op: '-', ID: c.EntityID, Type: c.Type})
 	if c.Preserved {
-		preservedListEm.NotifySubscribers(MetaChange{T: "-", ID: c.EntityID, Type: c.Type})
+		preservedListEm.NotifySubscribers(MetaChange{Op: '-', ID: c.EntityID, Type: c.Type})
 	}
 }
 
@@ -178,9 +178,9 @@ func AddCacheMeta(c *CacheMeta, tx ...*sql.Tx) error {
 		return err
 	}
 
-	metaTableEm.NotifySubscribers(MetaChange{T: "+", ID: c.EntityID, Type: c.Type})
+	metaTableEm.NotifySubscribers(MetaChange{Op: '+', ID: c.EntityID, Type: c.Type})
 	if c.Preserved {
-		preservedListEm.NotifySubscribers(MetaChange{T: "+", ID: c.EntityID, Type: c.Type})
+		preservedListEm.NotifySubscribers(MetaChange{Op: '+', ID: c.EntityID, Type: c.Type})
 	}
 	return nil
 }
@@ -211,10 +211,13 @@ func GetCacheMeta(entityID, fileType string, tx ...*sql.Tx) (*CacheMeta, bool) {
 	return c, true
 }
 
-func ListCacheMeta(fileType, sortColumn string, page, pageSize int, preserved bool) ([]*CacheMeta, error) {
+func ListCacheMeta(fileType, sortColumn string, offset, pageSize int, preserved bool) ([]*CacheMeta, error) {
 	q := listAllByType
+	args := []any{fileType}
 	if preserved {
 		q = listPreservedByType
+	} else {
+		args = append(args, pageSize, offset)
 	}
 	switch sortColumn {
 	case "id":
@@ -226,7 +229,7 @@ func ListCacheMeta(fileType, sortColumn string, page, pageSize int, preserved bo
 	case "accessed":
 		q.StableSort("last_accessed", true)
 	}
-	rows, err := cacheMetaTable.Query(q.Build(), fileType, pageSize, page*pageSize)
+	rows, err := cacheMetaTable.Query(q.Build(), args...)
 
 	if err != nil {
 		return nil, err

@@ -38,16 +38,12 @@ func CleanUpCache() {
 	cacheMap.CleanUp()
 }
 
-func GetLocalCacheInfos(page int, sortColumn string, preservedOnly bool) []video_cache.LocalVideoInfo {
-	return cacheMap.ListLocalVideos(page, sortColumn, preservedOnly)
-}
-
-func GetLocalCacheInfo(id string) video_cache.LocalVideoInfo {
-	return cacheMap.GetLocalVideoInfo(id)
-}
-
 func RemoveLocalCacheById(id string) error {
 	return cacheMap.Remove(id)
+}
+
+func GetVideoCache() *video_cache.CacheMap {
+	return cacheMap
 }
 
 func OpenCacheEntry(id string, logger utils.LoggerImpl) (entry.Entry, error) {
