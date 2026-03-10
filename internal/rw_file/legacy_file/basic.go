@@ -16,6 +16,8 @@ import (
 
 var logger = utils.NewLogger("Cache File (Legacy)")
 
+var ErrLegacyDeprecated = errors.New("not supported")
+
 type File struct {
 	baseName string
 	totalLen int64
@@ -31,7 +33,7 @@ type File struct {
 func (f *File) Init(_ int64, _ time.Time) error {
 	logger.ErrorLn("We no longer support writing/creating legacy cache file")
 
-	return errors.New("not supported")
+	return ErrLegacyDeprecated
 }
 
 func (f *File) IsRequestFulfilled() bool {

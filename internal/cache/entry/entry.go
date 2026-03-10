@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,6 +26,7 @@ var unixEpochTime = time.Time{}
 
 var ErrThrottle = errors.New("too many requests, slow down")
 var ErrNotSupported = errors.New("video is not currently supported")
+var ErrUpgrading = errors.New("video cache is upgrading")
 
 type Entry interface {
 	io.Writer
@@ -59,6 +61,8 @@ type BaseEntry struct {
 	openCount atomic.Int32
 
 	workingFileMutex sync.RWMutex
+	fileUpgrading    atomic.Bool
+	fileClosing      atomic.Bool
 
 	workingFile rw_file.DeferredReadableFile
 
@@ -116,6 +120,57 @@ func (e *BaseEntry) closeFile() error {
 	}
 
 	return err
+}
+
+func (e *BaseEntry) upgradeFile() {
+	e.workingFileMutex.Lock()
+	defer func() {
+		e.fileUpgrading.Store(false)
+		e.workingFileMutex.Unlock()
+	}()
+
+	if e.workingFile == nil {
+		e.logger.WarnLn("Try to upgrade a closed file")
+		return
+	}
+	if _, ok := e.workingFile.(*legacy_file.File); !ok {
+		e.logger.WarnLn("Try to upgrade a non-legacy file")
+		return
+	}
+
+	err := e.workingFile.Close()
+	if err != nil {
+		e.logger.ErrorLn("Failed to close working file", err)
+		return
+	}
+	e.workingFile = nil
+
+	err = cache_fs.DeleteWithoutExt("video$" + e.id)
+	if err != nil {
+		e.logger.ErrorLn("Failed to delete old file", err)
+	}
+
+	e.openFile()
+}
+
+func (e *BaseEntry) Upgrade() {
+	e.fileUpgrading.Store(true)
+	go e.upgradeFile()
+}
+
+func (e *BaseEntry) acquireFileRLock() {
+	// avoid starving upgrading and closing lock
+	for e.fileUpgrading.Load() {
+		runtime.Gosched()
+	}
+	for e.fileClosing.Load() {
+		runtime.Gosched()
+	}
+	e.workingFileMutex.RLock()
+}
+
+func (e *BaseEntry) releaseFileRLock() {
+	e.workingFileMutex.RUnlock()
 }
 
 func (e *BaseEntry) getReadSeeker(ctx context.Context) (io.ReadSeeker, error) {
@@ -238,8 +293,12 @@ func (e *BaseEntry) Active() bool {
 }
 
 func (e *BaseEntry) Close() error {
+	e.fileClosing.Store(true)
 	e.workingFileMutex.Lock()
-	defer e.workingFileMutex.Unlock()
+	defer func() {
+		e.fileClosing.Store(false)
+		e.workingFileMutex.Unlock()
+	}()
 
 	if e.workingFile == nil {
 		return nil
@@ -248,8 +307,8 @@ func (e *BaseEntry) Close() error {
 }
 
 func (e *BaseEntry) IsComplete() bool {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
+	e.acquireFileRLock()
+	defer e.releaseFileRLock()
 
 	if e.workingFile == nil {
 		return false
@@ -258,8 +317,8 @@ func (e *BaseEntry) IsComplete() bool {
 }
 
 func (e *BaseEntry) DownloadedSize() int64 {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
+	e.acquireFileRLock()
+	defer e.releaseFileRLock()
 
 	if e.workingFile == nil {
 		return 0
@@ -272,8 +331,8 @@ func (e *BaseEntry) Etag() string {
 }
 
 func (e *BaseEntry) Write(bytes []byte) (int, error) {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
+	e.acquireFileRLock()
+	defer e.releaseFileRLock()
 
 	if e.workingFile == nil {
 		return 0, io.ErrClosedPipe
@@ -282,8 +341,8 @@ func (e *BaseEntry) Write(bytes []byte) (int, error) {
 }
 
 func (e *BaseEntry) UpdateReqRangeStart(start int64) {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
+	e.acquireFileRLock()
+	defer e.releaseFileRLock()
 
 	if e.workingFile != nil {
 		e.workingFile.NotifyRequestStart(start)

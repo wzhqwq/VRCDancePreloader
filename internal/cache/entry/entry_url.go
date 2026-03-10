@@ -2,10 +2,13 @@ package entry
 
 import (
 	"context"
+	"errors"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/legacy_file"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -14,6 +17,8 @@ type UrlBasedEntry struct {
 
 	resolvedUrl       string
 	initialInfoGetter func(ctx context.Context) (*RemoteVideoInfo, error)
+
+	checkingMutex sync.Mutex
 
 	remoteModTime time.Time
 	remoteSize    int64
@@ -78,6 +83,13 @@ func (e *UrlBasedEntry) resolveRemoteMedia(ctx context.Context) error {
 }
 
 func (e *UrlBasedEntry) checkWorkingFile(ctx context.Context) error {
+	e.checkingMutex.Lock()
+	defer e.checkingMutex.Unlock()
+
+	if e.fileUpgrading.Load() {
+		return ErrUpgrading
+	}
+
 	if e.workingFile == nil {
 		return io.ErrClosedPipe
 	}
@@ -118,6 +130,11 @@ func (e *UrlBasedEntry) checkWorkingFile(ctx context.Context) error {
 func (e *UrlBasedEntry) init() error {
 	err := e.workingFile.Init(e.remoteSize, e.remoteModTime)
 	if err != nil {
+		if errors.Is(err, legacy_file.ErrLegacyDeprecated) {
+			e.logger.WarnLn("Legacy file format detected, we will re-download it completely")
+			e.Upgrade()
+			return ErrUpgrading
+		}
 		return err
 	}
 	if e.remoteEtag != "" {
@@ -129,8 +146,8 @@ func (e *UrlBasedEntry) init() error {
 }
 
 func (e *UrlBasedEntry) ModTime() time.Time {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
+	e.acquireFileRLock()
+	defer e.releaseFileRLock()
 
 	if err := e.checkWorkingFile(context.Background()); err != nil {
 		return unixEpochTime
@@ -140,8 +157,8 @@ func (e *UrlBasedEntry) ModTime() time.Time {
 }
 
 func (e *UrlBasedEntry) TotalLen() (int64, error) {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
+	e.acquireFileRLock()
+	defer e.releaseFileRLock()
 
 	if err := e.checkWorkingFile(context.Background()); err != nil {
 		return 0, err
@@ -150,8 +167,8 @@ func (e *UrlBasedEntry) TotalLen() (int64, error) {
 	return e.workingFile.TotalLen(), nil
 }
 func (e *UrlBasedEntry) GetDownloadStream(ctx context.Context) (io.ReadCloser, error) {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
+	e.acquireFileRLock()
+	defer e.releaseFileRLock()
 
 	if err := e.checkWorkingFile(ctx); err != nil {
 		return nil, err
@@ -168,8 +185,8 @@ func (e *UrlBasedEntry) Reset() {
 	e.resolvedUrl = ""
 }
 func (e *UrlBasedEntry) GetReadSeeker(ctx context.Context) (io.ReadSeeker, error) {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
+	e.acquireFileRLock()
+	defer e.releaseFileRLock()
 
 	if err := e.checkWorkingFile(ctx); err != nil {
 		return nil, err
@@ -179,8 +196,8 @@ func (e *UrlBasedEntry) GetReadSeeker(ctx context.Context) (io.ReadSeeker, error
 }
 
 func (e *UrlBasedEntry) IsComplete() bool {
-	e.workingFileMutex.RLock()
-	defer e.workingFileMutex.RUnlock()
+	e.acquireFileRLock()
+	defer e.releaseFileRLock()
 
 	if err := e.checkWorkingFile(context.Background()); err != nil {
 		return false

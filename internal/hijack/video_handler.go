@@ -2,11 +2,13 @@ package hijack
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"sync"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -45,21 +47,27 @@ func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req 
 		// TODO consider using req.Context?
 		defer cancel()
 
-		entry, err := playlist.Request(platform, id, ctx)
+		f, err := playlist.Request(platform, id, ctx)
 		if err != nil {
 			requestLogger.ErrorLnf("Failed to load %s video, reason: %v", platform, err)
 			handledCh <- false
 			return
 		}
 
-		rs, err := entry.GetReadSeeker(ctx)
+		rs, err := f.GetReadSeeker(ctx)
+		if errors.Is(err, entry.ErrUpgrading) {
+			rs, err = f.GetReadSeeker(ctx)
+		}
 		if err != nil {
 			requestLogger.ErrorLnf("Failed to load %s video, reason: %v", platform, err)
 			handledCh <- false
 			return
 		}
 
-		contentLength, err := entry.TotalLen()
+		contentLength, err := f.TotalLen()
+		if errors.Is(err, entry.ErrUpgrading) {
+			contentLength, err = f.TotalLen()
+		}
 		if err != nil {
 			requestLogger.ErrorLnf("Failed to load %s video, reason: %v", platform, err)
 			handledCh <- false
@@ -70,14 +78,14 @@ func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req 
 		handledCh <- true
 
 		if rangeHeader != "" {
-			entry.UpdateReqRangeStart(parseRange(rangeHeader, contentLength))
+			f.UpdateReqRangeStart(parseRange(rangeHeader, contentLength))
 		}
 
 		if limitBandwidth {
 			rs = utils.NewPacingReader(rs, 25)
 		}
 
-		http.ServeContent(w, req, "video.mp4", entry.ModTime(), rs)
+		http.ServeContent(w, req, "video.mp4", f.ModTime(), rs)
 	}()
 
 	return <-handledCh

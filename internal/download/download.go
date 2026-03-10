@@ -34,7 +34,7 @@ func (t *Task) progressiveDownload(body io.ReadCloser, writer io.Writer) error {
 	return err
 }
 
-func (t *Task) singleDownload(entry entry.Entry) error {
+func (t *Task) singleDownload(e entry.Entry) error {
 	ctx, cancel := context.WithCancelCause(context.Background())
 	defer cancel(nil)
 
@@ -54,7 +54,7 @@ func (t *Task) singleDownload(entry entry.Entry) error {
 		t.connected = false
 	}()
 
-	body, err := entry.GetDownloadStream(ctx)
+	body, err := e.GetDownloadStream(ctx)
 	if cause := context.Cause(ctx); errors.Is(err, context.Canceled) && cause != nil {
 		// canceled by myself
 		return cause
@@ -68,7 +68,7 @@ func (t *Task) singleDownload(entry entry.Entry) error {
 	}
 	defer body.Close()
 
-	t.DownloadedSize = entry.DownloadedSize()
+	t.DownloadedSize = e.DownloadedSize()
 	t.Requesting = false
 	t.resetEta()
 
@@ -76,7 +76,7 @@ func (t *Task) singleDownload(entry entry.Entry) error {
 	t.notifyStateChange()
 
 	// Copy the body to the file, which will also update the download progress
-	return t.progressiveDownload(body, entry)
+	return t.progressiveDownload(body, e)
 }
 
 func (t *Task) markAsDone() {
@@ -148,7 +148,7 @@ func (t *Task) Download(retryDelay bool) {
 startRequest:
 	t.TotalSize, err = cacheEntry.TotalLen()
 	if err != nil {
-		if errors.Is(err, requesting.ErrClientChanged) {
+		if errors.Is(err, requesting.ErrClientChanged) || errors.Is(err, entry.ErrUpgrading) {
 			logger.InfoLn("Restarted", t.ID, "reason:", err.Error())
 			goto startRequest
 		}
@@ -179,7 +179,8 @@ startTask:
 	if errors.Is(err, io.EOF) ||
 		errors.Is(err, fragmented.ErrEndOfFragment) ||
 		errors.Is(err, ErrRestarted) ||
-		errors.Is(err, requesting.ErrClientChanged) {
+		errors.Is(err, requesting.ErrClientChanged) ||
+		errors.Is(err, entry.ErrUpgrading) {
 
 		logger.InfoLn("Restarted", t.ID, "reason:", err.Error())
 		t.Requesting = true
