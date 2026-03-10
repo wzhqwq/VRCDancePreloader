@@ -9,16 +9,17 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
+var cacheMetaPrimary = db_vc.NewText("name").SetPrimary()
 var cacheMetaTable = db_vc.DefTable("cache_meta").DefColumns(
-	db_vc.NewText("name").SetPrimary(),
+	cacheMetaPrimary,
 	db_vc.NewText("entity_id").SetIndexed(),
 	db_vc.NewText("type").SetIndexed(),
-	db_vc.NewInt("size").SetIndexed(),
+	db_vc.NewInt("size").SetStableOrder(cacheMetaPrimary, false),
 	db_vc.NewBool("partial"),
 	db_vc.NewBool("preserved").SetIndexed(),
 	db_vc.NewInt("remote_last_modified"),
-	db_vc.NewInt("created_time").SetIndexed(),
-	db_vc.NewInt("last_accessed").SetIndexed(),
+	db_vc.NewInt("created_time").SetStableOrder(cacheMetaPrimary, true),
+	db_vc.NewInt("last_accessed").SetStableOrder(cacheMetaPrimary, true),
 )
 
 var cacheMetaColumns = []string{"name", "entity_id", "type", "size", "partial", "preserved", "remote_last_modified", "created_time", "last_accessed"}
@@ -29,7 +30,7 @@ var listPreservedByType = cacheMetaTable.Select(cacheMetaColumns...).Where("type
 var listSortedIDsByType = cacheMetaTable.Select("entity_id").Where("type = ?").Sort("entity_id", true).Build()
 var sumOfSizeByType = cacheMetaTable.Select("SUM(size)").Where("type = ?").Build()
 var sumOfSizeGroupedByType = cacheMetaTable.Select("type", "SUM(size)").Group("type").Build()
-var listCleanupCandidates = cacheMetaTable.Select("entity_id", "size").Where("type = ? AND preserved = false").Sort("last_accessed", true).Build()
+var listCleanupCandidates = cacheMetaTable.Select("entity_id", "size").Where("type = ? AND preserved = false").StableSort("last_accessed", true).Build()
 
 var addMeta = cacheMetaTable.Insert(cacheMetaColumns...).Build()
 
@@ -219,11 +220,11 @@ func ListCacheMeta(fileType, sortColumn string, page, pageSize int, preserved bo
 	case "id":
 		q.Sort("entity_id", true)
 	case "size":
-		q.Sort("size", false)
+		q.StableSort("size", false)
 	case "created":
-		q.Sort("created_time", true)
+		q.StableSort("created_time", true)
 	case "accessed":
-		q.Sort("last_accessed", true)
+		q.StableSort("last_accessed", true)
 	}
 	rows, err := cacheMetaTable.Query(q.Build(), fileType, pageSize, page*pageSize)
 

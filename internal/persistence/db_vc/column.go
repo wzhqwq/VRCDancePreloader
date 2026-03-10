@@ -18,7 +18,7 @@ type Column struct {
 	sqlType string
 
 	primary    bool
-	indexed    bool
+	indexCol   string
 	decorators string
 
 	deprecated bool
@@ -26,7 +26,7 @@ type Column struct {
 }
 
 func (c *Column) syncIndexingState(tx ...*sql.Tx) error {
-	ddl := c.toIndexDDL(c.indexed)
+	ddl := c.toIndexDDL(c.indexCol != "")
 
 	var err error
 	if len(tx) > 0 {
@@ -41,7 +41,7 @@ func (c *Column) syncIndexingState(tx ...*sql.Tx) error {
 func (c *Column) toIndexDDL(creating bool) string {
 	tName := c.table.name
 	if creating {
-		return fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_%s_%s ON %s (%s)", tName, c.name, tName, c.name)
+		return fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_%s_%s ON %s (%s)", tName, c.name, tName, c.indexCol)
 	}
 	return fmt.Sprintf("DROP INDEX IF EXISTS idx_%s_%s", tName, c.name)
 }
@@ -58,7 +58,12 @@ func (c *Column) toDDL() string {
 }
 
 func (c *Column) SetIndexed() *Column {
-	c.indexed = true
+	c.indexCol = c.name
+	return c
+}
+
+func (c *Column) SetStableOrder(primary *Column, ascending bool) *Column {
+	c.indexCol = StableOrder(c, primary, ascending)
 	return c
 }
 

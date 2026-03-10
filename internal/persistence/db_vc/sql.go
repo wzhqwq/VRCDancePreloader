@@ -105,6 +105,41 @@ func (q *QuickSelect) Sort(name string, ascending bool) *QuickSelect {
 	return q
 }
 
+func (q *QuickSelect) StableSort(name string, ascending bool) *QuickSelect {
+	c, ok := q.table.columns[name]
+	if !ok {
+		logger.FatalLn("Bad ORDER BY: undefined column", name)
+	}
+	if c.deprecated {
+		logger.WarnLn("Usage of deprecated column", name)
+	}
+
+	primary := q.table.FindPrimaryKey()
+	if primary == nil {
+		logger.FatalLn("No primary key defined for table", q.table.name)
+		return q
+	}
+
+	order := StableOrder(c, primary, ascending)
+	if order != c.indexCol {
+		logger.WarnLn("Order", order, "for", name, "is not indexed")
+	}
+
+	q.sorter = " ORDER BY " + order
+
+	return q
+}
+
+func StableOrder(sorting, primary *Column, ascending bool) string {
+	result := sorting.name + " "
+	if ascending {
+		result += "ASC"
+	} else {
+		result += "DESC"
+	}
+	return result + ", " + primary.name + " ASC"
+}
+
 func (q *QuickSelect) Paginate() *QuickSelect {
 	q.limiter = " LIMIT ? OFFSET ?"
 	return q

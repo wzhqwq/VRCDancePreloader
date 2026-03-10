@@ -201,6 +201,15 @@ func (t *Table) SetDeprecated(since utils.ShortVersion) *Table {
 	return t
 }
 
+func (t *Table) FindPrimaryKey() *Column {
+	for _, c := range t.columns {
+		if c.primary {
+			return c
+		}
+	}
+	return nil
+}
+
 func DefTable(name string) *Table {
 	return &Table{
 		name:    name,
