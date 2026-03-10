@@ -4,6 +4,12 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 )
 
+func (e *BaseEntry) updateMeta() error {
+	size, created := e.workingFile.Stat()
+	size += e.getEtagSize()
+	return e.meta.UpdateInfo(size, e.workingFile.ModTime(), created)
+}
+
 func (e *BaseEntry) syncWithFS() {
 	if e.workingFile == nil {
 		return
@@ -13,8 +19,7 @@ func (e *BaseEntry) syncWithFS() {
 	e.meta.Access()
 	e.meta.SetPartial(!e.workingFile.IsComplete())
 	if e.meta.CreatedTime.IsZero() || e.meta.RemoteLastModified != e.workingFile.ModTime() {
-		size, created := e.workingFile.Stat()
-		err := e.meta.UpdateInfo(size, e.workingFile.ModTime(), created)
+		err := e.updateMeta()
 		if err != nil {
 			e.logger.ErrorLn("Failed to update meta info:", err)
 		}

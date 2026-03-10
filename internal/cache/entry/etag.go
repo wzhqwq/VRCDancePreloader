@@ -39,3 +39,14 @@ func (e *BaseEntry) setEtag(etag string) {
 		return
 	}
 }
+
+func (e *BaseEntry) getEtagSize() int64 {
+	f, ok := cache_fs.GetRO("etag$" + e.id + ".txt")
+	if ok {
+		stat, err := f.Stat()
+		if err == nil {
+			return stat.Size()
+		}
+	}
+	return 0
+}

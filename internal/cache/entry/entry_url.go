@@ -141,8 +141,7 @@ func (e *UrlBasedEntry) init() error {
 		e.setEtag(e.remoteEtag)
 	}
 
-	size, created := e.workingFile.Stat()
-	return e.meta.UpdateInfo(size, e.remoteModTime, created)
+	return e.updateMeta()
 }
 
 func (e *UrlBasedEntry) ModTime() time.Time {
