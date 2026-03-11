@@ -27,6 +27,8 @@ func AddCacheMetaIfNotExists(entityID, fileType string, constructor func() *Cach
 
 	tx.Commit()
 
+	meta.NotifyCreation()
+
 	return meta
 }
 
@@ -38,12 +40,17 @@ func RemoveCacheMetaIfExists(entityID, fileType string) {
 	}
 	defer tx.Rollback()
 
+	removed := false
 	meta, ok := GetCacheMeta(entityID, fileType, tx)
 	if ok {
-		meta.Delete(tx)
+		removed = meta.Delete(tx)
 	}
 
 	tx.Commit()
+
+	if removed {
+		meta.NotifyDeletion()
+	}
 }
 
 type CacheSyncTx struct {
@@ -163,6 +170,8 @@ func (t *CacheSyncTx) Diff(insert []*CacheMeta, delete []string) error {
 
 type CacheCleanupTx struct {
 	SealedTx
+
+	removedMetas []*CacheMeta
 }
 
 func BeginCacheCleanupTx() (*CacheCleanupTx, error) {
@@ -218,10 +227,16 @@ func (t *CacheCleanupTx) ListCandidates(fileType string) ([]CleanupCandidate, er
 func (t *CacheCleanupTx) MarkRemoved(entityID, fileType string) {
 	meta, ok := GetCacheMeta(entityID, fileType, t.tx)
 	if ok {
-		meta.Delete(t.tx)
+		if meta.Delete(t.tx) {
+			t.removedMetas = append(t.removedMetas, meta)
+		}
 	}
 }
 
 func (t *CacheCleanupTx) Finish() error {
+	for _, meta := range t.removedMetas {
+		meta.NotifyDeletion()
+	}
+	t.removedMetas = nil
 	return t.finish()
 }

@@ -49,8 +49,14 @@ type MetaChange struct {
 	Type string
 }
 
+type SizeChange struct {
+	Delta int64
+	Type  string
+}
+
 var metaTableEm = utils.NewEventManager[MetaChange]()
 var preservedListEm = utils.NewEventManager[MetaChange]()
+var totalSizeDeltaEm = utils.NewEventManager[SizeChange]()
 
 type CacheMeta struct {
 	// use name as primary key, we use video$<id>
@@ -117,6 +123,8 @@ func (c *CacheMeta) SetPreserved(preserved bool) {
 }
 
 func (c *CacheMeta) UpdateInfo(size int64, remoteLM, createdTime time.Time) error {
+	delta := size - c.Size
+
 	c.Size = size
 	c.RemoteLastModified = remoteLM
 	c.CreatedTime = createdTime
@@ -130,10 +138,13 @@ func (c *CacheMeta) UpdateInfo(size int64, remoteLM, createdTime time.Time) erro
 	if c.Preserved {
 		preservedListEm.NotifySubscribers(MetaChange{Op: '*', ID: c.EntityID, Type: c.Type})
 	}
+	if delta != 0 {
+		totalSizeDeltaEm.NotifySubscribers(SizeChange{Delta: delta, Type: c.Type})
+	}
 	return nil
 }
 
-func (c *CacheMeta) Delete(tx ...*sql.Tx) {
+func (c *CacheMeta) Delete(tx ...*sql.Tx) bool {
 	var err error
 	if len(tx) > 0 {
 		_, err = tx[0].Exec(deleteMeta, c.Name)
@@ -142,12 +153,25 @@ func (c *CacheMeta) Delete(tx ...*sql.Tx) {
 	}
 	if err != nil {
 		logger.ErrorLn("Failed to remove cache meta", c.Name)
+		return false
 	}
+	return true
+}
 
+func (c *CacheMeta) NotifyCreation() {
+	metaTableEm.NotifySubscribers(MetaChange{Op: '+', ID: c.EntityID, Type: c.Type})
+	if c.Preserved {
+		preservedListEm.NotifySubscribers(MetaChange{Op: '+', ID: c.EntityID, Type: c.Type})
+	}
+	totalSizeDeltaEm.NotifySubscribers(SizeChange{Delta: c.Size, Type: c.Type})
+}
+
+func (c *CacheMeta) NotifyDeletion() {
 	metaTableEm.NotifySubscribers(MetaChange{Op: '-', ID: c.EntityID, Type: c.Type})
 	if c.Preserved {
 		preservedListEm.NotifySubscribers(MetaChange{Op: '-', ID: c.EntityID, Type: c.Type})
 	}
+	totalSizeDeltaEm.NotifySubscribers(SizeChange{Delta: -c.Size, Type: c.Type})
 }
 
 func NewCacheMeta(entityID, fileType string, size int64, remoteLM, createdTime time.Time) *CacheMeta {
@@ -178,10 +202,6 @@ func AddCacheMeta(c *CacheMeta, tx ...*sql.Tx) error {
 		return err
 	}
 
-	metaTableEm.NotifySubscribers(MetaChange{Op: '+', ID: c.EntityID, Type: c.Type})
-	if c.Preserved {
-		preservedListEm.NotifySubscribers(MetaChange{Op: '+', ID: c.EntityID, Type: c.Type})
-	}
 	return nil
 }
 
@@ -304,4 +324,8 @@ func SubscribeMetaTableChange() *utils.EventSubscriber[MetaChange] {
 
 func SubscribePreservedListChange() *utils.EventSubscriber[MetaChange] {
 	return preservedListEm.SubscribeEvent()
+}
+
+func SubscribeTotalSizeChange() *utils.EventSubscriber[SizeChange] {
+	return totalSizeDeltaEm.SubscribeEvent()
 }

@@ -1,14 +1,11 @@
 package cache_window
 
 import (
-	"time"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache/video_cache"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
@@ -21,7 +18,8 @@ func OpenCacheWindow() {
 		return
 	}
 
-	openedWindow = custom_fyne.NewWindow(i18n.T("label_cache_local"))
+	//openedWindow = custom_fyne.NewWindow(i18n.T("label_cache_local"))
+	openedWindow = fyne.CurrentApp().NewWindow(i18n.T("label_cache_local"))
 
 	cacheWindow := &CacheWindow{
 		loadedCh: make(chan struct{}),
@@ -35,13 +33,43 @@ func OpenCacheWindow() {
 		openedWindow = nil
 	})
 
-	cacheWindow.loadedCh <- struct{}{}
+	close(cacheWindow.loadedCh)
 }
 
 type CacheWindow struct {
 	widget.BaseWidget
 
+	space int64
+
+	spaceChanged bool
+
 	loadedCh chan struct{}
+}
+
+func (c *CacheWindow) updateTotalSize() {
+	totalSize, err := persistence.SummarizeCacheSize()
+	if err != nil {
+		return
+	}
+
+	if size, ok := totalSize["video"]; ok {
+		c.space = size
+	} else {
+		c.space = 0
+	}
+	c.spaceChanged = true
+
+	fyne.Do(func() {
+		c.Refresh()
+	})
+}
+
+func (c *CacheWindow) totalSizeDelta(delta int64) {
+	c.space += delta
+	c.spaceChanged = true
+	fyne.Do(func() {
+		c.Refresh()
+	})
 }
 
 func (c *CacheWindow) CreateRenderer() fyne.WidgetRenderer {
@@ -63,10 +91,9 @@ func (c *CacheWindow) CreateRenderer() fyne.WidgetRenderer {
 
 	go func() {
 		<-c.loadedCh
-		<-time.After(time.Millisecond * 300)
-		r.updateTotalSize()
-		localFiles.loadedCh <- struct{}{}
-		preserved.loadedCh <- struct{}{}
+		c.updateTotalSize()
+		close(localFiles.loadedCh)
+		close(preserved.loadedCh)
 
 		r.Loop()
 	}()
@@ -86,13 +113,13 @@ type cacheWindowRenderer struct {
 }
 
 func (r *cacheWindowRenderer) Loop() {
-	ch := persistence.SubscribeMetaTableChange()
+	ch := persistence.SubscribeTotalSizeChange()
 	defer ch.Close()
 	for {
 		select {
 		case e := <-ch.Channel:
-			if e.Type == "video" && e.Op != '*' {
-				r.updateTotalSize()
+			if e.Type == "video" {
+				r.c.totalSizeDelta(e.Delta)
 			}
 		case <-r.stopCh:
 			return
@@ -130,23 +157,12 @@ func (r *cacheWindowRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *cacheWindowRenderer) Refresh() {
-	r.progressBar.Refresh()
-	r.localFiles.Refresh()
-	r.preserved.Refresh()
-}
-
-func (r *cacheWindowRenderer) updateTotalSize() {
-	totalSize, err := persistence.SummarizeCacheSize()
-	if err != nil {
-		return
+	if r.c.spaceChanged {
+		r.progressBar.SetCurrentSize(r.c.space)
+		r.c.spaceChanged = false
+		r.progressBar.Refresh()
 	}
 
-	size, ok := totalSize["video"]
-	fyne.Do(func() {
-		if ok {
-			r.progressBar.SetCurrentSize(size)
-		} else {
-			r.progressBar.SetCurrentSize(0)
-		}
-	})
+	r.localFiles.Refresh()
+	r.preserved.Refresh()
 }
