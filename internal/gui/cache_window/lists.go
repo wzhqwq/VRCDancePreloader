@@ -14,7 +14,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-func configure(list lists.ReusableList[video_cache.LocalVideoInfo], isInPreserved bool, loadedCh chan struct{}) func() {
+func configure(list lists.ReusableList[video_cache.LocalVideoInfo], isInPreserved bool) func() {
 	subFn := persistence.SubscribeMetaTableChange
 	if isInPreserved {
 		subFn = persistence.SubscribePreservedListChange
@@ -37,10 +37,7 @@ func configure(list lists.ReusableList[video_cache.LocalVideoInfo], isInPreserve
 	}
 
 	list.ConfigureAllStubs(SubscriberFn, RendererFn, GetDataFn, ListDataFn)
-	go func() {
-		<-loadedCh
-		list.RefreshItems()
-	}()
+	go list.RefreshItems()
 
 	return list.RefreshItems
 }
@@ -49,15 +46,11 @@ type FileListGui struct {
 	widget.BaseWidget
 
 	IsInPreserved bool
-
-	loadedCh chan struct{}
 }
 
 func NewFileListGui(isInPreserved bool) *FileListGui {
 	g := &FileListGui{
 		IsInPreserved: isInPreserved,
-
-		loadedCh: make(chan struct{}, 1),
 	}
 
 	g.ExtendBaseWidget(g)
@@ -75,12 +68,12 @@ func (g *FileListGui) CreateRenderer() fyne.WidgetRenderer {
 	if g.IsInPreserved {
 		labelText = i18n.T("label_cache_allow_list")
 		l := lists.NewBaseList[video_cache.LocalVideoInfo]()
-		refreshBtn.OnClick = configure(l, true, g.loadedCh)
+		refreshBtn.OnClick = configure(l, true)
 		list = l
 	} else {
 		labelText = i18n.T("label_cache_local")
 		l := lists.NewInfiniteList[video_cache.LocalVideoInfo]()
-		refreshBtn.OnClick = configure(l, false, g.loadedCh)
+		refreshBtn.OnClick = configure(l, false)
 		list = l
 	}
 

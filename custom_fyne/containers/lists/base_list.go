@@ -462,12 +462,9 @@ func (l *listRenderer[T]) Refresh() {
 
 		l.container.Objects = l.l.items
 		l.container.Layout.(*listLayout).itemsChanged = true
-		l.container.Refresh()
 		l.layout(l.l.Size())
 		l.l.itemsChanged = false
 	}
-
-	canvas.Refresh(l.l)
 }
 
 type listLayout struct {

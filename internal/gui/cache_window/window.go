@@ -18,7 +18,6 @@ func OpenCacheWindow() {
 		return
 	}
 
-	//openedWindow = custom_fyne.NewWindow(i18n.T("label_cache_local"))
 	openedWindow = fyne.CurrentApp().NewWindow(i18n.T("label_cache_local"))
 
 	cacheWindow := &CacheWindow{
@@ -32,8 +31,6 @@ func OpenCacheWindow() {
 	openedWindow.SetOnClosed(func() {
 		openedWindow = nil
 	})
-
-	close(cacheWindow.loadedCh)
 }
 
 type CacheWindow struct {
@@ -90,11 +87,7 @@ func (c *CacheWindow) CreateRenderer() fyne.WidgetRenderer {
 	}
 
 	go func() {
-		<-c.loadedCh
 		c.updateTotalSize()
-		close(localFiles.loadedCh)
-		close(preserved.loadedCh)
-
 		r.Loop()
 	}()
 

@@ -28,10 +28,6 @@ func NewMainWindow(title string) fyne.Window {
 	return mainWindow
 }
 
-func NewWindow(title string) fyne.Window {
-	return a.NewWindow(title)
-}
-
 func GetParent() fyne.Window {
 	return mainWindow
 }
