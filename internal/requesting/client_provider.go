@@ -33,6 +33,8 @@ type ClientProvider struct {
 	client *http.Client
 	name   string
 
+	ProxyUrl string
+
 	em *utils.EventManager[ClientEvent]
 }
 
@@ -47,7 +49,10 @@ func NewProxyProvider(proxyUrl, name string) *ClientProvider {
 	return &ClientProvider{
 		client: c,
 		name:   name,
-		em:     utils.NewEventManager[ClientEvent](),
+
+		ProxyUrl: proxyUrl,
+
+		em: utils.NewEventManager[ClientEvent](),
 	}
 }
 

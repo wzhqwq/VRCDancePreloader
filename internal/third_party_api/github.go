@@ -67,14 +67,17 @@ type GitHubReleaseAsset struct {
 type BriefRelease struct {
 	GitHubReleaseAsset
 
-	ID      int
-	TagName string
-	Name    string
-	Body    string
+	ID          int
+	TagName     string
+	ReleaseName string
+	ReleaseBody string
 
 	TargetCommitish string
 
 	PublishedAt time.Time
+
+	Compatible   bool
+	LocalVersion string
 }
 
 func FindRelease(repoName, assetName string, ctx context.Context) (*BriefRelease, error) {
@@ -93,10 +96,10 @@ func FindRelease(repoName, assetName string, ctx context.Context) (*BriefRelease
 	brief := &BriefRelease{
 		GitHubReleaseAsset: asset,
 
-		ID:      release.ID,
-		TagName: release.TagName,
-		Name:    release.Name,
-		Body:    release.Body,
+		ID:          release.ID,
+		TagName:     release.TagName,
+		ReleaseName: release.Name,
+		ReleaseBody: release.Body,
 
 		TargetCommitish: release.TargetCommitish,
 

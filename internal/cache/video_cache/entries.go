@@ -7,9 +7,21 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
-	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
+
+type UrlResourceProvider func(id string, ctx context.Context) (*entry.RemoteVideoInfo, error)
+
+var biliBiliUrlProvider UrlResourceProvider
+var youtubeUrlProvider UrlResourceProvider
+
+func SetBiliBiliUrlProvider(provider UrlResourceProvider) {
+	biliBiliUrlProvider = provider
+}
+
+func SetYoutubeUrlProvider(provider UrlResourceProvider) {
+	youtubeUrlProvider = provider
+}
 
 func NewEntry(id string) entry.Entry {
 	if num, ok := utils.CheckIdIsPyPy(id); ok {
@@ -51,24 +63,19 @@ func NewEntry(id string) entry.Entry {
 	}
 	if bvID, ok := utils.CheckIdIsBili(id); ok {
 		return entry.NewUrlBasedEntry(id, requesting.GetClient(requesting.BiliBiliApi), func(ctx context.Context) (*entry.RemoteVideoInfo, error) {
-			mTime, err := third_party_api.GetBiliVideoModTime(bvID, ctx)
-			if err != nil {
-				return nil, err
+			if biliBiliUrlProvider != nil {
+				return biliBiliUrlProvider(bvID, ctx)
 			}
-
-			url, err := third_party_api.GetBiliVideoUrl(bvID, ctx)
-			if err != nil {
-				return nil, err
-			}
-
 			return &entry.RemoteVideoInfo{
-				FinalUrl:     url,
-				LastModified: mTime,
+				FinalUrl: utils.GetStandardBiliURL(bvID),
 			}, nil
 		})
 	}
 	if ytID, ok := utils.CheckIdIsYoutube(id); ok {
 		return entry.NewUrlBasedEntry(id, requesting.GetClient(requesting.YouTubeVideo), func(ctx context.Context) (*entry.RemoteVideoInfo, error) {
+			if youtubeUrlProvider != nil {
+				return youtubeUrlProvider(ytID, ctx)
+			}
 			return &entry.RemoteVideoInfo{
 				FinalUrl: utils.GetStandardYoutubeURL(ytID),
 			}, nil

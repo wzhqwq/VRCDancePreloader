@@ -3,7 +3,9 @@ package download
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"net/http"
 	"sync"
 	"time"
 
@@ -198,4 +200,37 @@ canceled:
 	t.Error = ErrCanceled
 	logger.InfoLn("Canceled download task", t.ID)
 	return
+}
+
+func (t *Task) DownloadWithoutManager(url string, ctx context.Context, client *requesting.ClientProvider, writer io.Writer) error {
+	t.Requesting = true
+	t.notifyStateChange()
+
+	var err error
+
+	req, err := client.NewGetRequest(url, ctx)
+	if err != nil {
+		return err
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download %s: %s", t.ID, res.Status)
+	}
+
+	t.TotalSize = res.ContentLength
+	t.DownloadedSize = 0
+	t.Requesting = false
+	t.resetEta()
+
+	// Notify about the total size and that the request header is done
+	t.notifyStateChange()
+
+	// Copy the body to the file, which will also update the download progress
+	return t.progressiveDownload(res.Body, writer)
 }

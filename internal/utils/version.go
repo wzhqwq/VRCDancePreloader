@@ -51,6 +51,25 @@ func (v Version) NewerThan(right Version) bool {
 	return false
 }
 
+func (v Version) OlderThanOrEqual(right Version) bool {
+	return !v.NewerThan(right)
+}
+
+func (v Version) IsNewPatchOf(right Version) bool {
+	return v.Major == right.Major && v.Minor == right.Minor && v.Patch > right.Patch
+}
+
+func (v Version) IsNewBetaOf(right Version) bool {
+	if !v.Beta {
+		return false
+	}
+	return v.NewerThan(right)
+}
+
+func (v Version) IsCompatibleWith(minimum, maximum Version) bool {
+	return minimum.OlderThanOrEqual(v) && v.OlderThanOrEqual(maximum)
+}
+
 func (v Version) String() string {
 	result := fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
 	if v.Alpha {
@@ -64,6 +83,10 @@ func (v Version) String() string {
 	}
 
 	return result
+}
+
+func (v Version) DateString() string {
+	return fmt.Sprintf("%d.%02d.%02d", v.Major, v.Minor, v.Patch)
 }
 
 var versionRegex = regexp.MustCompile(`(\d+)\.(\d+)(?:\.(\d+)|)`)
@@ -88,7 +111,7 @@ func ParseVersion(text string) (Version, bool) {
 		Minor: int(minor),
 	}
 	if len(matches) > 3 {
-		patch, err := strconv.ParseInt(matches[2], 10, 32)
+		patch, err := strconv.ParseInt(matches[3], 10, 32)
 		if err != nil {
 			panic(err)
 		}

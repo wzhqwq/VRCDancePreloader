@@ -33,7 +33,6 @@ config.yaml
 *.key
 *.db
 
-/internal/third_party_api/binaries/*
 /internal/live/web/*
 
 !.gitkeep

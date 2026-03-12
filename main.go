@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/video_cache/providers"
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
@@ -78,6 +79,8 @@ func main() {
 	songListCtx, cancel := context.WithCancel(context.Background())
 	cache.InitSongList(songListCtx)
 	defer cancel()
+
+	providers.InitThirdPartyVideoProviders()
 
 	err := config.GetDbConfig().Init()
 	if err != nil {

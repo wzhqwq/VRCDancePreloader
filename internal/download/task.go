@@ -55,6 +55,14 @@ func newTask(manager *downloadManager, id string) *Task {
 	}
 }
 
+func newTaskWithoutManager(id string) *Task {
+	return &Task{
+		em: utils.NewEventManager[TaskChangeType](),
+
+		ID: id,
+	}
+}
+
 func (t *Task) unlockAndNotifyStateChange() {
 	t.Unlock()
 	t.notifyStateChange()
