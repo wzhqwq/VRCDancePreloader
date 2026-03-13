@@ -90,16 +90,20 @@ func (pc *ProxyConfig) Init() {
 		"pypydance-api":     NewProxyTester("pypydance-api", pc.Pypy),
 		"wannadance-api":    NewProxyTester("wannadance-api", pc.Wanna),
 		"dudu-fitdance-api": NewProxyTester("dudu-fitdance-api", pc.DuDu),
-		"bilibili-api":      NewProxyTester("bilibili-api", pc.BiliBili),
+		"bilibili-api":      NewProxyTester("bilibili-api", pc.BiliBiliAPI),
+		"bilibili-video":    NewProxyTester("bilibili-video", pc.BiliBiliVideo),
 		"youtube-video":     NewProxyTester("youtube-video", pc.YoutubeVideo),
 		"youtube-api":       NewProxyTester("youtube-api", pc.YoutubeApi),
 		"youtube-image":     NewProxyTester("youtube-image", pc.YoutubeImage),
+		"github-api":        NewProxyTester("github-api", pc.GitHubApi),
+		"github-assets":     NewProxyTester("github-assets", pc.GitHubAssets),
 	}
 
 	requesting.InitClient(requesting.PyPyDance, pc.Pypy)
 	requesting.InitClient(requesting.WannaDance, pc.Wanna)
 	requesting.InitClient(requesting.DuDuFitDance, pc.DuDu)
-	requesting.InitClient(requesting.BiliBiliApi, pc.BiliBili)
+	requesting.InitClient(requesting.BiliBiliApi, pc.BiliBiliAPI)
+	requesting.InitClient(requesting.BiliBiliVideo, pc.BiliBiliVideo)
 	requesting.InitClient(requesting.YouTubeVideo, pc.YoutubeVideo)
 	requesting.InitClient(requesting.YouTubeImage, pc.YoutubeImage)
 	requesting.InitClient(requesting.YouTubeApi, pc.YoutubeApi)
@@ -111,12 +115,9 @@ func (pc *ProxyConfig) Init() {
 		pc.ProxyControllers["wannadance-api"].Test()
 		pc.ProxyControllers["dudu-fitdance-api"].Test()
 		pc.ProxyControllers["bilibili-api"].Test()
+		pc.ProxyControllers["bilibili-video"].Test()
+		pc.ProxyControllers["youtube-video"].Test()
 	}
-	//if config.Youtube.EnableVideo {
-	//	if !skipTest {
-	//		pc.ProxyControllers["youtube-video"].Test()
-	//	}
-	//}
 	if config.Youtube.EnableThumbnail {
 		if !skipTest {
 			pc.ProxyControllers["youtube-image"].Test()
@@ -146,8 +147,11 @@ func (pc *ProxyConfig) Update(item, value string) error {
 		pc.DuDu = value
 		requesting.UpdateClient(requesting.DuDuFitDance, value)
 	case "bilibili-api":
-		pc.BiliBili = value
+		pc.BiliBiliAPI = value
 		requesting.UpdateClient(requesting.BiliBiliApi, value)
+	case "bilibili-video":
+		pc.BiliBiliVideo = value
+		requesting.UpdateClient(requesting.BiliBiliVideo, value)
 	case "youtube-video":
 		pc.YoutubeVideo = value
 		requesting.UpdateClient(requesting.YouTubeVideo, value)
@@ -157,6 +161,12 @@ func (pc *ProxyConfig) Update(item, value string) error {
 	case "youtube-image":
 		pc.YoutubeImage = value
 		requesting.UpdateClient(requesting.YouTubeImage, value)
+	case "github-api":
+		pc.GitHubApi = value
+		requesting.UpdateClient(requesting.GitHubApi, value)
+	case "github-assets":
+		pc.GitHubAssets = value
+		requesting.UpdateClient(requesting.GitHubAssets, value)
 	default:
 		logger.FatalLnf("Unknown proxy item: %s", item)
 	}
@@ -174,12 +184,18 @@ func (pc *ProxyConfig) Test(item string) (bool, string) {
 		return requesting.TestClient(requesting.DuDuFitDance)
 	case "bilibili-api":
 		return requesting.TestClient(requesting.BiliBiliApi)
+	case "bilibili-video":
+		return requesting.TestClient(requesting.BiliBiliVideo)
 	case "youtube-video":
 		return requesting.TestClient(requesting.YouTubeVideo)
 	case "youtube-api":
 		return requesting.TestClient(requesting.YouTubeApi)
 	case "youtube-image":
 		return requesting.TestClient(requesting.YouTubeImage)
+	case "github-api":
+		return requesting.TestClient(requesting.GitHubApi)
+	case "github-assets":
+		return requesting.TestClient(requesting.GitHubAssets)
 	default:
 		logger.FatalLnf("Unknown proxy item: %s", item)
 		return false, ""

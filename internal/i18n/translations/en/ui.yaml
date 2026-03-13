@@ -80,12 +80,18 @@
   Default: "Proxy server for DuDuFitDance API"
 - Key: label_bili_proxy
   Default: "Proxy server for BiliBili API"
+- Key: label_bili_video_proxy
+  Default: "Proxy server for BiliBili video"
 - Key: label_yt_video_proxy
   Default: "Proxy server for YouTube video"
 - Key: label_yt_api_proxy
   Default: "Proxy server for YouTube API"
 - Key: label_yt_image_proxy
   Default: "Proxy server for YouTube video thumbnail"
+- Key: label_github_proxy
+  Default: "Proxy server for GitHub API"
+- Key: label_github_assets_proxy
+  Default: "Proxy server for GitHub assets"
 - Key: label_yt_api_key
   Default: "YouTube API key"
 - Key: label_yt_api_enable

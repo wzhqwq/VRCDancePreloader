@@ -80,12 +80,18 @@
   Default: "DuDuFitDance API代理服务器 (国内一般无需设置)"
 - Key: label_bili_proxy
   Default: "BiliBili API代理服务器 (国内一般无需设置)"
+- Key: label_bili_video_proxy
+  Default: "BiliBili视频代理服务器 (国内一般无需设置)"
 - Key: label_yt_video_proxy
   Default: "YouTube视频代理服务器"
 - Key: label_yt_api_proxy
   Default: "YouTube API代理服务器"
 - Key: label_yt_image_proxy
   Default: "YouTube视频缩略图代理服务器"
+- Key: label_github_proxy
+  Default: "GitHub API代理服务器"
+- Key: label_github_assets_proxy
+  Default: "GitHub文件服务代理服务器"
 - Key: label_yt_api_key
   Default: "YouTube的API key"
 - Key: label_yt_api_enable

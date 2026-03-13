@@ -21,7 +21,8 @@ type ProxyConfig struct {
 	Wanna string `yaml:"wannadance-api"`
 	DuDu  string `yaml:"dudu-fitdance-api"`
 
-	BiliBili string `yaml:"bilibili-api"`
+	BiliBiliAPI   string `yaml:"bilibili-api"`
+	BiliBiliVideo string `yaml:"bilibili-video"`
 
 	YoutubeVideo string `yaml:"youtube-video"`
 	YoutubeApi   string `yaml:"youtube-api"`
@@ -101,7 +102,7 @@ func FillDefaultSetting() {
 		Wanna: "",
 		DuDu:  "",
 
-		BiliBili: "",
+		BiliBiliAPI: "",
 
 		YoutubeVideo: "",
 		YoutubeApi:   "",

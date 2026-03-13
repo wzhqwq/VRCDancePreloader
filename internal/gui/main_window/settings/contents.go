@@ -62,10 +62,12 @@ func createProxySettingsContent() fyne.CanvasObject {
 	wholeContent.Add(proxyConfig.ProxyControllers["wannadance-api"].GetInput(i18n.T("label_wanna_proxy")))
 	wholeContent.Add(proxyConfig.ProxyControllers["dudu-fitdance-api"].GetInput(i18n.T("label_dudu_proxy")))
 	wholeContent.Add(proxyConfig.ProxyControllers["bilibili-api"].GetInput(i18n.T("label_bili_proxy")))
-	//TODO cancel comment after implemented youtube preloading
-	//wholeContent.Add(proxyConfig.ProxyControllers["youtube-video"].GetInput(i18n.T("label_yt_video_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["bilibili-video"].GetInput(i18n.T("label_bili_video_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["youtube-video"].GetInput(i18n.T("label_yt_video_proxy")))
 	wholeContent.Add(proxyConfig.ProxyControllers["youtube-api"].GetInput(i18n.T("label_yt_api_proxy")))
 	wholeContent.Add(proxyConfig.ProxyControllers["youtube-image"].GetInput(i18n.T("label_yt_image_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["github-api"].GetInput(i18n.T("label_github_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["github-assets"].GetInput(i18n.T("label_github_assets_proxy")))
 
 	return wholeContent
 }
