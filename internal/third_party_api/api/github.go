@@ -1,4 +1,4 @@
-package third_party_api
+package api
 
 import (
 	"context"

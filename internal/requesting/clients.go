@@ -9,39 +9,48 @@ import (
 type ClientName string
 
 const (
+	NoProxy ClientName = "NoProxy"
+
 	PyPyDance    ClientName = "PyPyDance"
 	WannaDance   ClientName = "WannaDance"
 	DuDuFitDance ClientName = "DuDuFitDance"
-	BiliBiliApi  ClientName = "BiliBili API"
+
+	BiliBiliApi   ClientName = "BiliBili API"
+	BiliBiliVideo ClientName = "BiliBili video"
+
 	YouTubeVideo ClientName = "YouTube video"
 	YouTubeApi   ClientName = "YouTube API"
 	YouTubeImage ClientName = "YouTube thumbnail"
+
 	GitHubApi    ClientName = "GitHub API"
 	GitHubAssets ClientName = "GitHub Assets"
 )
 
 var clients = map[ClientName]*ClientProvider{
-	PyPyDance:    nil,
-	WannaDance:   nil,
-	DuDuFitDance: nil,
-	BiliBiliApi:  nil,
-	YouTubeVideo: nil,
-	YouTubeApi:   nil,
-	YouTubeImage: nil,
-	GitHubApi:    nil,
-	GitHubAssets: nil,
+	NoProxy:       NewProxyProvider("", "default"),
+	PyPyDance:     nil,
+	WannaDance:    nil,
+	DuDuFitDance:  nil,
+	BiliBiliApi:   nil,
+	BiliBiliVideo: nil,
+	YouTubeVideo:  nil,
+	YouTubeApi:    nil,
+	YouTubeImage:  nil,
+	GitHubApi:     nil,
+	GitHubAssets:  nil,
 }
 
 var testCases = map[ClientName]testCase{
-	PyPyDance:    videoTestCase(utils.GetPyPyVideoUrl(1)),
-	WannaDance:   videoTestCase(utils.GetWannaVideoUrl(1)),
-	DuDuFitDance: videoTestCase(utils.GetDuDuVideoUrl(1)),
-	BiliBiliApi:  anonymousTestCaseGet(utils.GetBiliVideoInfoURL("BV17g7XzME13")),
-	YouTubeVideo: anonymousTestCase(utils.GetStandardYoutubeURL("qylu4Ajh6k8")),
-	YouTubeApi:   authenticatedTestCase("https://www.googleapis.com/youtube/v3/videos"),
-	YouTubeImage: anonymousTestCase(utils.GetYoutubeMQThumbnailURL("qylu4Ajh6k8")),
-	GitHubApi:    anonymousTestCaseGet("https://api.github.com"),
-	GitHubAssets: storageServerTestCase("https://release-assets.githubusercontent.com"),
+	PyPyDance:     videoTestCase(utils.GetPyPyVideoUrl(1)),
+	WannaDance:    videoTestCase(utils.GetWannaVideoUrl(1)),
+	DuDuFitDance:  videoTestCase(utils.GetDuDuVideoUrl(1)),
+	BiliBiliApi:   anonymousTestCaseGet(utils.GetBiliVideoInfoURL("BV17g7XzME13")),
+	BiliBiliVideo: anonymousTestCaseGet(utils.GetBiliVideoInfoURL("BV17g7XzME13")),
+	YouTubeVideo:  anonymousTestCase(utils.GetStandardYoutubeURL("qylu4Ajh6k8")),
+	YouTubeApi:    authenticatedTestCase("https://www.googleapis.com/youtube/v3/videos"),
+	YouTubeImage:  anonymousTestCase(utils.GetYoutubeMQThumbnailURL("qylu4Ajh6k8")),
+	GitHubApi:     anonymousTestCaseGet("https://api.github.com"),
+	GitHubAssets:  storageServerTestCase("https://release-assets.githubusercontent.com"),
 }
 
 func InitClient(name ClientName, proxyUrl string) {

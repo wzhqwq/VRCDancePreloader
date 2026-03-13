@@ -4,13 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
-	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
+	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api/api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -29,6 +33,16 @@ const (
 )
 
 func getYtDlpVersion(ctx context.Context) (utils.Version, bool) {
+	err := raiseIntegrityLevel("vrcdp_yt-dlp.exe")
+	if err != nil {
+		return utils.Version{}, false
+	}
+	defer func() {
+		err := resumeIntegrityLevel("vrcdp_yt-dlp.exe")
+		if err != nil {
+			logger.ErrorLn("Failed to resume integrity level of yt-dlp: ", err)
+		}
+	}()
 	v, ok := execVersionCheck("vrcdp_yt-dlp.exe", ctx)
 	if !ok {
 		return utils.Version{}, false
@@ -75,7 +89,7 @@ func parseYtDlpVersion(version string) (utils.Version, bool) {
 	return ver, true
 }
 
-func parseYtDlpReleaseVersion(release *third_party_api.BriefRelease) (utils.Version, bool) {
+func parseYtDlpReleaseVersion(release *api.BriefRelease) (utils.Version, bool) {
 	v, ok := parseYtDlpVersion(release.TagName)
 	if ok {
 		return v, true
@@ -89,8 +103,8 @@ func parseYtDlpReleaseVersion(release *third_party_api.BriefRelease) (utils.Vers
 	return parseYtDlpVersion(matches[1])
 }
 
-func GetLatestYtDlp(ctx context.Context, channel YtDlpBuildChannel) (*third_party_api.BriefRelease, bool) {
-	release, err := third_party_api.FindRelease("yt-dlp/"+string(channel), "yt-dlp.exe", ctx)
+func GetLatestYtDlp(ctx context.Context, channel YtDlpBuildChannel) (*api.BriefRelease, bool) {
+	release, err := api.FindRelease("yt-dlp/"+string(channel), "yt-dlp.exe", ctx)
 	if err != nil {
 		return nil, false
 	}
@@ -111,20 +125,38 @@ func GetLatestYtDlp(ctx context.Context, channel YtDlpBuildChannel) (*third_part
 	return release, true
 }
 
-func DownloadYtDlp(release *third_party_api.BriefRelease, ctx context.Context, onProgress func(total, downloaded int64)) error {
+func DownloadYtDlp(release *api.BriefRelease, ctx context.Context, onProgress func(total, downloaded int64)) error {
 	return DownloadAndReplace("vrcdp_yt-dlp.exe", release, ctx, onProgress)
 }
 
-func printVideoInfoWithYtDlp(videoId, metaKey string, ctx context.Context) (string, error) {
-	url := utils.GetStandardYoutubeURL(videoId)
+func printVideoInfoWithYtDlp(url, metaKey string, ctx context.Context) (string, error) {
 	executable, ok := getLocalBinary("vrcdp_yt-dlp.exe")
 	if !ok {
 		return "", errors.New("yt-dlp not found")
 	}
 
+	err := raiseIntegrityLevel("vrcdp_yt-dlp.exe")
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		err := resumeIntegrityLevel("vrcdp_yt-dlp.exe")
+		if err != nil {
+			logger.ErrorLn("Failed to resume integrity level of yt-dlp: ", err)
+		}
+	}()
+
+	tempPath := filepath.Join(custom_fyne.AppDataRoot, "temp")
+	err = os.MkdirAll(tempPath, 0755)
+	if err != nil {
+		return "", err
+	}
+
 	var args = []string{
+		"-v",
 		"--print", metaKey,
 		"-f", "mp4[height<=?720]",
+		"-P", "temp:" + tempPath,
 		"--no-playlist",
 		"--no-warnings",
 		"--no-check-certificates",
@@ -139,21 +171,26 @@ func printVideoInfoWithYtDlp(videoId, metaKey string, ctx context.Context) (stri
 	output, err := cmd.Output()
 
 	if err != nil {
-		return "", fmt.Errorf("failed to execute '%s': %e", cmd.String(), err)
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			logger.InfoLn("stderr:\n" + string(ee.Stderr))
+		}
+
+		return "", fmt.Errorf("failed to execute '%s': %v", cmd.String(), err)
 	}
 
-	return string(output), nil
+	return strings.TrimSpace(string(output)), nil
 }
 
-func ResolveVideoUrlWithYtDlp(videoId string, ctx context.Context) (string, error) {
-	return printVideoInfoWithYtDlp(videoId, "urls", ctx)
+func ResolveVideoUrlWithYtDlp(url string, ctx context.Context) (string, error) {
+	return printVideoInfoWithYtDlp(url, "urls", ctx)
 }
 
-func GetVideoTitleWithYtDlp(videoId string, ctx context.Context) (string, error) {
-	return printVideoInfoWithYtDlp(videoId, "title", ctx)
+func GetVideoTitleWithYtDlp(url string, ctx context.Context) (string, error) {
+	return printVideoInfoWithYtDlp(url, "title", ctx)
 }
 
-func parseDuration(h, m, s string) (int, error) {
+func parseDuration(h, m, s string) (time.Duration, error) {
 	hours, err := strconv.ParseInt(h, 10, 32)
 	if err != nil {
 		return 0, err
@@ -166,11 +203,11 @@ func parseDuration(h, m, s string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return int(hours*3600 + minutes*60 + seconds), nil
+	return time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second, nil
 }
 
-func GetDurationWithYtDlp(videoId string, ctx context.Context) (int, error) {
-	str, err := printVideoInfoWithYtDlp(videoId, "duration_string", ctx)
+func GetDurationWithYtDlp(url string, ctx context.Context) (time.Duration, error) {
+	str, err := printVideoInfoWithYtDlp(url, "duration_string", ctx)
 	if err != nil {
 		return 0, err
 	}

@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
-	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
+	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api/api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -36,7 +37,18 @@ func getLocalBinaryDownloadPath() string {
 	return filepath.Join(getLocalBinariesPath(), "download")
 }
 
-func downloadFile(release *third_party_api.BriefRelease, ctx context.Context, onProgress func(total, downloaded int64)) error {
+func raiseIntegrityLevel(name string) error {
+	// icacls "C:\path\to\yt-dlp.exe" /setintegritylevel medium
+	cmd := exec.Command("icacls", filepath.Join(getLocalBinariesPath(), name), "/setintegritylevel", "medium")
+	return cmd.Run()
+}
+
+func resumeIntegrityLevel(name string) error {
+	cmd := exec.Command("icacls", filepath.Join(getLocalBinariesPath(), name), "/setintegritylevel", "low")
+	return cmd.Run()
+}
+
+func downloadFile(release *api.BriefRelease, ctx context.Context, onProgress func(total, downloaded int64)) error {
 	downloadPath := filepath.Join(getLocalBinaryDownloadPath(), release.Name)
 	file, err := os.OpenFile(downloadPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0755)
 	if err != nil {
@@ -72,7 +84,7 @@ func downloadFile(release *third_party_api.BriefRelease, ctx context.Context, on
 	}
 }
 
-func DownloadAndReplace(name string, release *third_party_api.BriefRelease, ctx context.Context, onProgress func(total, downloaded int64)) error {
+func DownloadAndReplace(name string, release *api.BriefRelease, ctx context.Context, onProgress func(total, downloaded int64)) error {
 	err := os.MkdirAll(getLocalBinaryDownloadPath(), 0755)
 	if err != nil {
 		return err

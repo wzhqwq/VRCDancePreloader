@@ -47,7 +47,7 @@ func (cm *CacheMap) findOrCreate(id string) (entry.Entry, error) {
 
 	e, ok := cm.cache[id]
 	if !ok {
-		e = NewEntry(id)
+		e = entry.NewEntry(id)
 		if e == nil {
 			return nil, entry.ErrNotSupported
 		}

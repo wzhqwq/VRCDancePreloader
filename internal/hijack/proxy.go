@@ -58,7 +58,8 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) (bool, *sync.W
 	if handlePypyRequest(w, req, wg) ||
 		handleWannaRequest(w, req, wg) ||
 		handleDuDuRequest(w, req, wg) ||
-		handleBiliRequest(w, req, wg) {
+		handleBiliRequest(w, req, wg) ||
+		handleYouTubeRequest(w, req, wg) {
 		return true, wg
 	}
 	return false, nil

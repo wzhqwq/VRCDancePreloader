@@ -184,56 +184,6 @@ func (e *BaseEntry) getReadSeeker(ctx context.Context) (io.ReadSeeker, error) {
 
 // http utils
 
-type RemoteVideoInfo struct {
-	FinalUrl     string
-	TotalSize    int64
-	LastModified time.Time
-	Etag         string
-}
-
-func (e *BaseEntry) requestHttpResInfo(url string, ctx context.Context) (*RemoteVideoInfo, error) {
-	e.logger.InfoLn("Request info", url)
-	req, err := e.client.NewGetRequest(url, ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if e.referer == "" {
-		e.referer = url
-	}
-	requesting.SetupHeader(req, e.referer)
-	//if e.etag != "" {
-	//	req.Header.Set("If-None-Match", e.etag)
-	//}
-	res, err := e.client.Do(req)
-	if err != nil {
-		e.logger.ErrorLn("Failed to get ", url, "reason:", err)
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode == http.StatusTooManyRequests {
-		return nil, ErrThrottle
-	}
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
-	}
-
-	lastModified := unixEpochTime
-	if lastModifiedText := res.Header.Get("Last-Modified"); lastModifiedText != "" {
-		lastModified, _ = http.ParseTime(lastModifiedText)
-	}
-
-	e.referer = res.Request.Header.Get("Referer")
-
-	return &RemoteVideoInfo{
-		FinalUrl:     res.Request.URL.String(),
-		TotalSize:    res.ContentLength,
-		LastModified: lastModified,
-		Etag:         res.Header.Get("ETag"),
-	}, nil
-}
 func (e *BaseEntry) requestHttpResBody(url string, offset int64, ctx context.Context) (io.ReadCloser, error) {
 	e.logger.InfoLn("Request body", url, offset)
 	req, err := e.client.NewGetRequest(url, ctx)

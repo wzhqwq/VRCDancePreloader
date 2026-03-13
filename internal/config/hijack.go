@@ -16,10 +16,11 @@ import (
 type MultiSelectSites struct {
 	widget.BaseWidget
 
-	PyPySelected  []string
-	WannaSelected []string
-	DuDuSelected  []string
-	BiliSelected  []string
+	PyPySelected    []string
+	WannaSelected   []string
+	DuDuSelected    []string
+	BiliSelected    []string
+	YouTubeSelected []string
 }
 
 func NewMultiSelectSites(selected []string) *MultiSelectSites {
@@ -35,12 +36,16 @@ func NewMultiSelectSites(selected []string) *MultiSelectSites {
 	biliSelected := lo.Filter(selected, func(site string, _ int) bool {
 		return constants.IsBiliSite(site)
 	})
+	youTubeSelected := lo.Filter(selected, func(site string, _ int) bool {
+		return constants.IsYouTubeSite(site)
+	})
 
 	m := &MultiSelectSites{
-		PyPySelected:  pypySelected,
-		WannaSelected: wannaSelected,
-		DuDuSelected:  duduSelected,
-		BiliSelected:  biliSelected,
+		PyPySelected:    pypySelected,
+		WannaSelected:   wannaSelected,
+		DuDuSelected:    duduSelected,
+		BiliSelected:    biliSelected,
+		YouTubeSelected: youTubeSelected,
 	}
 	m.ExtendBaseWidget(m)
 	return m
@@ -70,6 +75,11 @@ func (m *MultiSelectSites) CreateRenderer() fyne.WidgetRenderer {
 		m.BiliSelected = sites
 		m.update()
 	}
+	youTubeSelect := widgets.NewMultiSelect(constants.AllYouTubeSites(), m.YouTubeSelected)
+	youTubeSelect.OnChange = func(sites []string) {
+		m.YouTubeSelected = sites
+		m.update()
+	}
 
 	form := container.New(
 		layout.NewFormLayout(),
@@ -81,6 +91,8 @@ func (m *MultiSelectSites) CreateRenderer() fyne.WidgetRenderer {
 		duduSelect,
 		container.NewCenter(widget.NewLabel("BiliBili")),
 		biliSelect,
+		container.NewCenter(widget.NewLabel("YouTube")),
+		youTubeSelect,
 	)
 
 	return widget.NewSimpleRenderer(container.NewVBox(label, form))
@@ -90,6 +102,7 @@ func (m *MultiSelectSites) update() {
 	allSites := append(m.PyPySelected, m.WannaSelected...)
 	allSites = append(allSites, m.DuDuSelected...)
 	allSites = append(allSites, m.BiliSelected...)
+	allSites = append(allSites, m.YouTubeSelected...)
 
 	config.Hijack.UpdateSites(allSites)
 }

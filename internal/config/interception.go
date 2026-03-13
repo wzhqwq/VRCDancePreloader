@@ -12,6 +12,7 @@ func checkInterceptionConflict() {
 	pypyIntercepted := false
 	wannaIntercepted := false
 	biliIntercepted := false
+	youTubeIntercepted := false
 	for _, site := range config.Hijack.InterceptedSites {
 		if constants.IsPyPySite(site) {
 			pypyIntercepted = true
@@ -21,6 +22,9 @@ func checkInterceptionConflict() {
 		}
 		if constants.IsBiliSite(site) {
 			biliIntercepted = true
+		}
+		if constants.IsYouTubeSite(site) {
+			youTubeIntercepted = true
 		}
 	}
 	if !pypyIntercepted {
@@ -42,6 +46,13 @@ func checkInterceptionConflict() {
 			config.Preload.EnabledPlatforms = slices.Delete(config.Preload.EnabledPlatforms, index, index+1)
 			logger.WarnLn("[Config Changed] According to the hijack config, none of the video sources providing BiliBili videos are intercepted, so the BiliBili video will not be preloaded.")
 			logger.InfoLn("Valid sources for BiliBili:", strings.Join(constants.AllBiliSites(), ", "))
+		}
+	}
+	if !youTubeIntercepted {
+		if index := lo.IndexOf(config.Preload.EnabledRooms, "YouTube"); index != -1 {
+			config.Preload.EnabledPlatforms = slices.Delete(config.Preload.EnabledPlatforms, index, index+1)
+			logger.WarnLn("[Config Changed] According to the hijack config, none of the video sources providing YouTube videos are intercepted, so the YouTube video will not be preloaded.")
+			logger.InfoLn("Valid sources for YouTube:", strings.Join(constants.AllYouTubeSites(), ", "))
 		}
 	}
 }

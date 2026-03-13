@@ -130,3 +130,13 @@ func handleBiliRequest(w http.ResponseWriter, req *http.Request, wg *sync.WaitGr
 	}
 	return false
 }
+
+func handleYouTubeRequest(w http.ResponseWriter, req *http.Request, wg *sync.WaitGroup) bool {
+	if !constants.IsYouTubeSite(req.Host) {
+		return false
+	}
+	if id, ok := utils.CheckYouTubeRequest(req); ok {
+		return handlePlatformVideoRequest("YouTube", id, w, req, wg)
+	}
+	return false
+}
