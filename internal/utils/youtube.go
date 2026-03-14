@@ -2,12 +2,9 @@ package utils
 
 import (
 	"fmt"
-	"net/http"
 	"regexp"
 	"strings"
 )
-
-var youTubePathRegex = regexp.MustCompile(`/([a-zA-Z0-9_-]{11})$`)
 
 func GetStandardYoutubeURL(videoID string) string {
 	return fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
@@ -33,20 +30,6 @@ func CheckYoutubeURL(url string) (string, bool) {
 		return matched[1], true
 	}
 
-	return "", false
-}
-
-func CheckYouTubeRequest(req *http.Request) (string, bool) {
-	// for v=
-	id := req.URL.Query().Get("v")
-	if id != "" {
-		return id, true
-	}
-	// for path
-
-	if matched := youTubePathRegex.FindStringSubmatch(req.URL.Path); len(matched) > 1 {
-		return matched[1], true
-	}
 	return "", false
 }
 

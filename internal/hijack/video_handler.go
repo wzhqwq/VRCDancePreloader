@@ -135,7 +135,13 @@ func handleYouTubeRequest(w http.ResponseWriter, req *http.Request, wg *sync.Wai
 	if !constants.IsYouTubeSite(req.Host) {
 		return false
 	}
-	if id, ok := utils.CheckYouTubeRequest(req); ok {
+	if id, ok := CheckYouTubeWebPageRequest(req); ok {
+		return handleYouTubeWebpage(w, id, wg)
+	}
+	if id, ok := CheckInnerTubeApiRequest(req); ok {
+		return handleInnerTubeApi(w, id, wg)
+	}
+	if id, ok := CheckYouTubeLocalRequest(req); ok {
 		return handlePlatformVideoRequest("YouTube", id, w, req, wg)
 	}
 	return false

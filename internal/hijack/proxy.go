@@ -55,6 +55,7 @@ func handleVideoRequest(w http.ResponseWriter, req *http.Request) (bool, *sync.W
 	}()
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+	//logger.InfoLn("We got:", req.Method, req.URL.String())
 	if handlePypyRequest(w, req, wg) ||
 		handleWannaRequest(w, req, wg) ||
 		handleDuDuRequest(w, req, wg) ||
@@ -80,7 +81,7 @@ func handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
 		req, err := http.ReadRequest(clientBuf.Reader)
 		orPanic(err)
 
-		if req.Method == http.MethodGet {
+		if req.Method == http.MethodGet || req.Method == http.MethodPost {
 			rw := NewWriterGivenRespWriter(client)
 			if ok, wg := handleVideoRequest(rw, req); ok {
 				wg.Wait()
@@ -112,7 +113,7 @@ func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http
 		}
 	}()
 
-	if req.Method == http.MethodGet {
+	if req.Method == http.MethodGet || req.Method == http.MethodPost {
 		rw, respCh := NewDeferredRespWriter(req)
 		if ok, wg := handleVideoRequest(rw, req); ok {
 			go func() {
