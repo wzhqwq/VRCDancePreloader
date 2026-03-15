@@ -130,11 +130,12 @@ func BuildFakeInnerTubeApiResponse(id string) string {
 }
 
 func handleYouTubeWebpage(w http.ResponseWriter, id string, wg *sync.WaitGroup) bool {
+	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(http.StatusOK)
+
 	go func() {
 		defer wg.Done()
-		w.Header().Set("Content-Type", "text/html")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.WriteHeader(http.StatusOK)
 
 		_, err := w.Write([]byte(BuildFakeYouTubeWebpage(id)))
 		if err != nil {
@@ -145,11 +146,12 @@ func handleYouTubeWebpage(w http.ResponseWriter, id string, wg *sync.WaitGroup) 
 }
 
 func handleInnerTubeApi(w http.ResponseWriter, id string, wg *sync.WaitGroup) bool {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(http.StatusOK)
+
 	go func() {
 		defer wg.Done()
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.WriteHeader(http.StatusOK)
 
 		_, err := w.Write([]byte(BuildFakeInnerTubeApiResponse(id)))
 		if err != nil {

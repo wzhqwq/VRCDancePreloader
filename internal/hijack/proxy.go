@@ -149,7 +149,10 @@ func Start(sites []string, enableHttps bool, port int) error {
 		proxy.OnRequest(goproxy.ReqHostIs(site)).DoFunc(handleRequest)
 	}
 
-	runningServer = &http.Server{Addr: "127.0.0.1:" + strconv.Itoa(port), Handler: proxy}
+	runningServer = &http.Server{
+		Addr:    "127.0.0.1:" + strconv.Itoa(port),
+		Handler: &MixedProxyServer{proxyService: proxy},
+	}
 	logger.InfoLn("Starting server on port", port)
 
 	if err := runningServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
