@@ -137,21 +137,8 @@ delete: [ ]
 
 ```yaml
 prepend:
-  - 'AND,((DOMAIN,api.pypy.dance),(PROCESS-NAME-REGEX,VRChat)),vrcDancePreload'
-  - 'AND,((DOMAIN,api.pypy.dance),(PROCESS-NAME-REGEX,yt-dlp)),vrcDancePreload'
-  - 'AND,((DOMAIN,api.udon.dance),(PROCESS-NAME-REGEX,VRChat)),vrcDancePreload'
-  - 'AND,((DOMAIN,api.udon.dance),(PROCESS-NAME-REGEX,yt-dlp)),vrcDancePreload'
-append: [ ]
-delete: [ ]
-```
-
-**如果你同时使用加速器和Clash，可能需要增加放行VRChat流量的规则：**
-```yaml
-prepend:
-  - 'DOMAIN-SUFFIX,vrchat.com,DIRECT'
-  - 'DOMAIN-SUFFIX,vrchat.cloud,DIRECT'
-  - 'AND,((DOMAIN,api.pypy.dance),(PROCESS-NAME-REGEX,VRChat)),vrcDancePreload'
-  - 'AND,((DOMAIN,api.pypy.dance),(PROCESS-NAME-REGEX,yt-dlp)),vrcDancePreload'
+  - 'AND,((DOMAIN-SUFFIX,pypy.dance),(PROCESS-NAME-REGEX,VRChat)),vrcDancePreload'
+  - 'AND,((DOMAIN-SUFFIX,pypy.dance),(PROCESS-NAME-REGEX,yt-dlp)),vrcDancePreload'
   - 'AND,((DOMAIN,api.udon.dance),(PROCESS-NAME-REGEX,VRChat)),vrcDancePreload'
   - 'AND,((DOMAIN,api.udon.dance),(PROCESS-NAME-REGEX,yt-dlp)),vrcDancePreload'
 append: [ ]
