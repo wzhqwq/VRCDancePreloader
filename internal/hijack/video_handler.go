@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"path/filepath"
+	"strconv"
 	"sync"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -89,6 +92,16 @@ func handlePypyRequest(w http.ResponseWriter, req *http.Request, wg *sync.WaitGr
 	}
 	if id, ok := utils.CheckPyPyRequest(req); ok {
 		return handlePlatformVideoRequest("PyPyDance", id, w, req, wg)
+	}
+	// Try reverse lookup from CDN URL filename
+	filename := filepath.Base(req.URL.Path)
+	if filename != "" && filename != "." && filename != "/" {
+		if songID, ok := persistence.FindSongIDByCdnFilename(filename); ok && songID != "" {
+			// Extract numeric ID from pypy_xxxx format
+			if num, ok := utils.CheckIdIsPyPy(songID); ok {
+				return handlePlatformVideoRequest("PyPyDance", strconv.Itoa(num), w, req, wg)
+			}
+		}
 	}
 	return false
 }
