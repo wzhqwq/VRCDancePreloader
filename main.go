@@ -9,6 +9,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api/local_executables"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tui"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 
@@ -44,6 +45,8 @@ var args struct {
 
 func main() {
 	arg.MustParse(&args)
+
+	custom_fyne.InitRoot()
 
 	// Apply build tag
 	if buildGuiOn {
@@ -96,6 +99,12 @@ func main() {
 	defer func() {
 		logger.InfoLn("Stopping cache")
 		cache.StopCache()
+	}()
+
+	config.GetExecutableConfig().Init()
+	defer func() {
+		logger.InfoLn("Stopping downloading executables")
+		local_executables.Stop()
 	}()
 
 	config.GetDownloadConfig().Init()

@@ -13,6 +13,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/cache_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/config_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 )
 
@@ -45,7 +46,7 @@ func createHijackSettingsContent() fyne.CanvasObject {
 	limitBandwidthCb.Checked = hijackConfig.LimitBandwidth
 	wholeContent.Add(limitBandwidthCb)
 
-	wholeContent.Add(config.NewMultiSelectSites(hijackConfig.InterceptedSites))
+	wholeContent.Add(config_widgets.NewMultiSelectSites(hijackConfig.InterceptedSites))
 
 	return wholeContent
 }

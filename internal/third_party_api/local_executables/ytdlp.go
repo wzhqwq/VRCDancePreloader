@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -32,19 +31,12 @@ const (
 	YtDlpMaster  YtDlpBuildChannel = "yt-dlp-master-builds"
 )
 
+const ytDlpAssetName = "yt-dlp.exe"
+const ytDlpLocalName = "y-t-d-l-p.exe"
+
 func getYtDlpVersion(ctx context.Context) (utils.Version, bool) {
-	err := raiseIntegrityLevel("vrcdp_yt-dlp.exe")
+	v, err := Get("ytdlp").Execute(ctx, "--version")
 	if err != nil {
-		return utils.Version{}, false
-	}
-	defer func() {
-		err := resumeIntegrityLevel("vrcdp_yt-dlp.exe")
-		if err != nil {
-			logger.ErrorLn("Failed to resume integrity level of yt-dlp: ", err)
-		}
-	}()
-	v, ok := execVersionCheck("vrcdp_yt-dlp.exe", ctx)
-	if !ok {
 		return utils.Version{}, false
 	}
 	// Although the version of yt-dlp is in date format, semantic version is still compatible with it
@@ -77,7 +69,7 @@ func parseYtDlpVersion(version string) (utils.Version, bool) {
 		Patch: int(day),
 	}
 
-	if len(matches) > 4 {
+	if len(matches) > 4 && len(matches[4]) > 0 {
 		build, err := strconv.ParseInt(matches[4], 10, 32)
 		if err != nil {
 			panic(err)
@@ -103,51 +95,58 @@ func parseYtDlpReleaseVersion(release *api.BriefRelease) (utils.Version, bool) {
 	return parseYtDlpVersion(matches[1])
 }
 
-func GetLatestYtDlp(ctx context.Context, channel YtDlpBuildChannel) (*api.BriefRelease, bool) {
-	release, err := api.FindRelease("yt-dlp/"+string(channel), "yt-dlp.exe", ctx)
+func GetLatestYtDlp(ctx context.Context, channel YtDlpBuildChannel) (*api.BriefRelease, error) {
+	release, err := api.FindRelease("yt-dlp/"+string(channel), ytDlpAssetName, ctx)
 	if err != nil {
-		return nil, false
+		return nil, err
 	}
 
 	latestVersion, ok := parseYtDlpReleaseVersion(release)
 	if !ok {
-		return nil, false
+		return nil, ErrParsingReleaseVersion
 	}
 
 	release.Compatible = latestVersion.IsCompatibleWith(ytDlpMinimumCompatible, ytDlpMaximumCompatible)
+	release.Version = latestVersion.DateString()
 
 	localVersion, ok := getYtDlpVersion(ctx)
 	if ok && latestVersion.OlderThanOrEqual(localVersion) {
-		return nil, false
+		return nil, nil
 	}
 
 	release.LocalVersion = localVersion.DateString()
-	return release, true
+	return release, nil
 }
 
-func DownloadYtDlp(release *api.BriefRelease, ctx context.Context, onProgress func(total, downloaded int64)) error {
-	return DownloadAndReplace("vrcdp_yt-dlp.exe", release, ctx, onProgress)
+func GetLocalYtDlpInfo(ctx context.Context) BinaryInfo {
+	executable, ok := getLocalBinary(ytDlpLocalName)
+	if !ok {
+		return BinaryInfo{}
+	}
+
+	size := int64(0)
+	if stat, err := os.Stat(executable); err == nil {
+		size = stat.Size()
+	}
+
+	v, ok := getYtDlpVersion(ctx)
+	if !ok {
+		return BinaryInfo{
+			Exists: true,
+			Size:   size,
+		}
+	}
+
+	return BinaryInfo{
+		Exists:  true,
+		Version: v.DateString(),
+		Size:    size,
+	}
 }
 
 func printVideoInfoWithYtDlp(url, metaKey string, ctx context.Context) (string, error) {
-	executable, ok := getLocalBinary("vrcdp_yt-dlp.exe")
-	if !ok {
-		return "", errors.New("yt-dlp not found")
-	}
-
-	err := raiseIntegrityLevel("vrcdp_yt-dlp.exe")
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		err := resumeIntegrityLevel("vrcdp_yt-dlp.exe")
-		if err != nil {
-			logger.ErrorLn("Failed to resume integrity level of yt-dlp: ", err)
-		}
-	}()
-
 	tempPath := filepath.Join(custom_fyne.AppDataRoot, "temp")
-	err = os.MkdirAll(tempPath, 0755)
+	err := os.MkdirAll(tempPath, 0755)
 	if err != nil {
 		return "", err
 	}
@@ -155,7 +154,7 @@ func printVideoInfoWithYtDlp(url, metaKey string, ctx context.Context) (string, 
 	var args = []string{
 		"-v",
 		"--print", metaKey,
-		"-f", "mp4[height<=?720]",
+		"-f", "mp4[height<=?720][protocol^=http]",
 		"-P", "temp:" + tempPath,
 		"--no-playlist",
 		"--no-warnings",
@@ -165,21 +164,23 @@ func printVideoInfoWithYtDlp(url, metaKey string, ctx context.Context) (string, 
 		args = append(args, "--proxy", proxy)
 	}
 
-	args = append(args, url)
-
-	cmd := exec.CommandContext(ctx, executable, args...)
-	output, err := cmd.Output()
-
-	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			logger.InfoLn("stderr:\n" + string(ee.Stderr))
-		}
-
-		return "", fmt.Errorf("failed to execute '%s': %v", cmd.String(), err)
+	err = Get("deno").RequestRunnableIntegrity(ctx)
+	defer Get("deno").ReleaseRunnableIntegrity()
+	if err != nil && !errors.Is(err, ErrExecutableNotFound) {
+		return "", err
+	}
+	if err == nil {
+		args = append(args, "--js-runtimes", "deno:"+Get("deno").Path)
 	}
 
-	return strings.TrimSpace(string(output)), nil
+	args = append(args, url)
+
+	output, err := Get("ytdlp").Execute(ctx, args...)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(output), nil
 }
 
 func ResolveVideoUrlWithYtDlp(url string, ctx context.Context) (string, error) {

@@ -1,13 +1,19 @@
 package local_executables
 
 import (
+	"archive/zip"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
+	"time"
 
+	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
@@ -37,18 +43,7 @@ func getLocalBinaryDownloadPath() string {
 	return filepath.Join(getLocalBinariesPath(), "download")
 }
 
-func raiseIntegrityLevel(name string) error {
-	// icacls "C:\path\to\yt-dlp.exe" /setintegritylevel medium
-	cmd := exec.Command("icacls", filepath.Join(getLocalBinariesPath(), name), "/setintegritylevel", "medium")
-	return cmd.Run()
-}
-
-func resumeIntegrityLevel(name string) error {
-	cmd := exec.Command("icacls", filepath.Join(getLocalBinariesPath(), name), "/setintegritylevel", "low")
-	return cmd.Run()
-}
-
-func downloadFile(release *api.BriefRelease, ctx context.Context, onProgress func(total, downloaded int64)) error {
+func (d *DownloadableBinary) downloadFile(release *api.BriefRelease) error {
 	downloadPath := filepath.Join(getLocalBinaryDownloadPath(), release.Name)
 	file, err := os.OpenFile(downloadPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0755)
 	if err != nil {
@@ -57,43 +52,236 @@ func downloadFile(release *api.BriefRelease, ctx context.Context, onProgress fun
 	defer file.Close()
 
 	client := requesting.GetClient(requesting.GitHubAssets)
-
 	id := fmt.Sprintf("%s (%s)", release.Name, release.ReleaseName)
-	task := download.DownloadWithoutManager(id, release.BrowserDownloadURL, ctx, client, file)
 
-	ch := task.SubscribeChanges()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	d.Task = download.DownloadWithoutManager(id, release.BrowserDownloadURL, ctx, client, file)
+	defer func() {
+		d.Task = nil
+	}()
+
+	ch := d.Task.SubscribeChanges()
 	defer ch.Close()
+	var lastNotify time.Time
 	for {
 		select {
-		case <-ctx.Done():
-			err = ctx.Err()
-			if errors.Is(err, context.Canceled) {
-				return context.Cause(ctx)
-			}
+		case <-d.Task.CancelCh:
+			cancel()
 		case <-ch.Channel:
-			if task.Done {
+			if d.Task.Done {
 				return nil
 			}
-			if task.Error != nil {
-				return task.Error
+			if d.Task.Error != nil {
+				return d.Task.Error
 			}
-			if task.TotalSize > 0 {
-				onProgress(task.TotalSize, task.DownloadedSize)
+			if d.Task.TotalSize > 0 && time.Since(lastNotify) > time.Millisecond*500 {
+				d.em.NotifySubscribers(BinProgress)
+				lastNotify = time.Now()
 			}
 		}
 	}
 }
 
-func DownloadAndReplace(name string, release *api.BriefRelease, ctx context.Context, onProgress func(total, downloaded int64)) error {
+func (d *DownloadableBinary) raiseIntegrityLevel(ctx context.Context) error {
+	if !strings.Contains(d.Path, "LocalLow") {
+		return nil
+	}
+	// icacls path /setintegritylevel medium
+	if d.lowLevel.CompareAndSwap(true, false) {
+		cmd := exec.CommandContext(ctx, "icacls", d.Path, "/setintegritylevel", "M")
+		return cmd.Run()
+	}
+	return nil
+}
+
+func (d *DownloadableBinary) resumeIntegrityLevel() error {
+	if !strings.Contains(d.Path, "LocalLow") {
+		return nil
+	}
+	if d.lowLevel.CompareAndSwap(false, true) {
+		cmd := exec.Command("icacls", d.Path, "/setintegritylevel", "L")
+		return cmd.Run()
+	}
+	return nil
+}
+
+var integrityLevelRegex = regexp.MustCompile(`([^\\]+) Mandatory Level`)
+
+func (d *DownloadableBinary) checkIntegrityLevel() {
+	d.lowLevel.Store(false)
+
+	ctx, cancel := d.generateContext(3 * time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "icacls", d.Path)
+
+	output, err := cmd.Output()
+	if err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			logger.InfoLn("stderr:\n" + string(ee.Stderr))
+		}
+
+		logger.WarnLn("Failed to determine integrity level of", d.Path)
+	}
+
+	matches := integrityLevelRegex.FindStringSubmatch(string(output))
+	if len(matches) != 2 {
+		d.lowLevel.Store(false)
+		logger.WarnLn("Failed to determine integrity level of", d.Path)
+	} else {
+		d.lowLevel.Store(matches[1] == "Low")
+	}
+}
+
+func (d *DownloadableBinary) SetPathAndCheck(path string) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	d.Path = path
+	if path != "" {
+		d.checkIntegrityLevel()
+	}
+}
+
+var ErrExecutableNotFound = errors.New("executable not found")
+var ErrParsingReleaseVersion = errors.New("failed to parse release version")
+
+func (d *DownloadableBinary) Execute(ctx context.Context, arg ...string) (string, error) {
+	d.mutex.RLock()
+	defer d.mutex.RUnlock()
+
+	if d.Path == "" {
+		return "", ErrExecutableNotFound
+	}
+
+	err := d.raiseIntegrityLevel(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		err := d.resumeIntegrityLevel()
+		if err != nil {
+			logger.ErrorLn("Failed to resume integrity level of ", d.Path, ":", err)
+		}
+	}()
+
+	cmd := exec.CommandContext(ctx, d.Path, arg...)
+	output, err := cmd.Output()
+	if err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			logger.InfoLn("stderr:\n" + string(ee.Stderr))
+		}
+
+		return "", fmt.Errorf("failed to execute '%s': %v", cmd.String(), err)
+	}
+
+	return string(output), nil
+}
+
+func (d *DownloadableBinary) RequestRunnableIntegrity(ctx context.Context) error {
+	d.mutex.RLock()
+	if d.Path == "" {
+		return ErrExecutableNotFound
+	}
+
+	return d.raiseIntegrityLevel(ctx)
+}
+
+func (d *DownloadableBinary) ReleaseRunnableIntegrity() {
+	d.mutex.RUnlock()
+	if d.Path == "" {
+		return
+	}
+
+	err := d.resumeIntegrityLevel()
+	if err != nil {
+		logger.ErrorLn("Failed to resume integrity level of ", d.Path, ":", err)
+	}
+}
+
+func (d *DownloadableBinary) DownloadAndReplace() error {
 	err := os.MkdirAll(getLocalBinaryDownloadPath(), 0755)
 	if err != nil {
 		return err
 	}
 
-	err = downloadFile(release, ctx, onProgress)
+	downloadedExecutable := filepath.Join(getLocalBinaryDownloadPath(), d.Release.Name)
+	defer func() {
+		if _, err := os.Stat(downloadedExecutable); err == nil {
+			if err := os.Remove(downloadedExecutable); err != nil {
+				logger.ErrorLn("Failed to remove downloaded executable: ", err)
+			}
+		}
+	}()
+
+	err = d.downloadFile(d.Release)
 	if err != nil {
 		return err
 	}
 
-	return os.Rename(filepath.Join(getLocalBinaryDownloadPath(), release.Name), filepath.Join(getLocalBinariesPath(), name))
+	if strings.HasSuffix(d.Release.Name, ".zip") {
+		downloadedExecutable, err = UnzipExecutable(downloadedExecutable)
+		if err != nil {
+			return err
+		}
+	}
+
+	d.setState(BinDownloaded)
+
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	return os.Rename(downloadedExecutable, d.Path)
+}
+
+func UnzipExecutable(zipPath string) (string, error) {
+	defer func() {
+		err := os.Remove(zipPath)
+		if err != nil {
+			logger.ErrorLn("Failed to remove zip file", zipPath, err)
+		} else {
+			logger.InfoLn("Removed zip file", zipPath)
+		}
+	}()
+
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+
+	f, found := lo.Find(r.File, func(f *zip.File) bool {
+		return strings.HasSuffix(f.Name, ".exe")
+	})
+	if !found {
+		return "", errors.New("there is no executable file in the archive")
+	}
+
+	path := filepath.Join(filepath.Dir(zipPath), f.Name)
+
+	dstFile, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0755)
+	if err != nil {
+		return "", err
+	}
+	defer dstFile.Close()
+
+	rc, err := f.Open()
+	if err != nil {
+		return "", err
+	}
+
+	_, err = io.Copy(dstFile, rc)
+	if err != nil {
+		return "", err
+	}
+
+	return path, nil
+}
+
+type BinaryInfo struct {
+	Exists  bool
+	Version string
+	Size    int64
 }

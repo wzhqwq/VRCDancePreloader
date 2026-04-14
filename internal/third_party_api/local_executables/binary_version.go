@@ -1,10 +1,5 @@
 package local_executables
 
-import (
-	"context"
-	"os/exec"
-)
-
 //type BinaryVersions struct {
 //	YtDlp string `yaml:"yt-dlp"`
 //}
@@ -49,20 +44,3 @@ import (
 //		logger.FatalLnf("Failed to save versions.yaml: %s", err)
 //	}
 //}
-
-func execVersionCheck(name string, ctx context.Context) (string, bool) {
-	executable, ok := getLocalBinary(name)
-	if !ok {
-		return "", false
-	}
-
-	cmd := exec.CommandContext(ctx, executable, "--version")
-	output, err := cmd.Output()
-
-	if err != nil {
-		logger.ErrorLn("Failed to get version of", name, err)
-		return "", false
-	}
-
-	return string(output), true
-}

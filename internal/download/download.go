@@ -232,5 +232,13 @@ func (t *Task) DownloadWithoutManager(url string, ctx context.Context, client *r
 	t.notifyStateChange()
 
 	// Copy the body to the file, which will also update the download progress
-	return t.progressiveDownload(res.Body, writer)
+	err = t.progressiveDownload(res.Body, writer)
+	if err != nil {
+		t.Error = err
+	} else {
+		t.Done = true
+	}
+	t.notifyStateChange()
+
+	return err
 }

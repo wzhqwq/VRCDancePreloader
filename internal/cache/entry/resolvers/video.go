@@ -2,6 +2,7 @@ package resolvers
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
@@ -35,6 +36,9 @@ type YtDlpResolver struct {
 }
 
 func (r *YtDlpResolver) Resolve(logger utils.LoggerImpl, ctx context.Context) (*entry.RemoteVideoInfo, error) {
+	if !third_party_api.EnableYtDlp {
+		return nil, errors.New("yt-dlp feature is not enabled")
+	}
 	logger.InfoLn("Resolving", r.url, "using yt-dlp")
 	url, err := local_executables.ResolveVideoUrlWithYtDlp(r.url, ctx)
 	if err != nil {

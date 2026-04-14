@@ -5,115 +5,40 @@ import (
 	"os"
 	"sync"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"gopkg.in/yaml.v3"
 )
 
 var logger = utils.NewLogger("Config File")
 
-type KeyConfig struct {
-	Youtube string `yaml:"youtube-api"`
-}
-type ProxyConfig struct {
-	Pypy  string `yaml:"pypydance-api"`
-	Wanna string `yaml:"wannadance-api"`
-	DuDu  string `yaml:"dudu-fitdance-api"`
-
-	BiliBiliAPI   string `yaml:"bilibili-api"`
-	BiliBiliVideo string `yaml:"bilibili-video"`
-
-	YoutubeVideo string `yaml:"youtube-video"`
-	YoutubeApi   string `yaml:"youtube-api"`
-	YoutubeImage string `yaml:"youtube-image"`
-
-	GitHubApi    string `yaml:"github-api"`
-	GitHubAssets string `yaml:"github-assets"`
-
-	ProxyControllers map[string]*ProxyTester `yaml:"-"`
-}
-type YoutubeConfig struct {
-	EnableApi       bool `yaml:"enable-youtube-api"`
-	EnableThumbnail bool `yaml:"enable-youtube-thumbnail"`
-}
-type PreloadConfig struct {
-	EnabledRooms     []string `yaml:"enabled-rooms"`
-	EnabledPlatforms []string `yaml:"enabled-platforms"`
-	MaxPreload       int      `yaml:"max-preload-count"`
-}
-type HijackConfig struct {
-	ProxyPort        int      `yaml:"proxy-port"`
-	InterceptedSites []string `yaml:"intercepted-sites"`
-	EnableHttps      bool     `yaml:"enable-https"`
-	EnablePWI        bool     `yaml:"enable-pwi"`
-	LimitBandwidth   bool     `yaml:"limit-bandwidth"`
-
-	HijackRunner *input.ServerRunner `yaml:"-"`
-}
-type DownloadConfig struct {
-	MaxDownload int `yaml:"max-parallel-download-count"`
-}
-type CacheConfig struct {
-	Path          string `yaml:"path"`
-	MaxCacheSize  int    `yaml:"max-cache-size"`
-	KeepFavorites bool   `yaml:"keep-favorites"`
-	//RWBufferSize  int    `yaml:"rw-buffer-size"`
-	// 0: legacy, 1: continuous, 2: fragmented
-	FileFormat int `yaml:"file-format"`
-
-	ForceExpirationCheck bool `yaml:"force-expiration-check"`
-}
-type DbConfig struct {
-	Path string `yaml:"path"`
-}
-type LiveConfig struct {
-	Enabled  bool   `yaml:"enabled"`
-	Port     int    `yaml:"port"`
-	Settings string `yaml:"settings"`
-
-	LiveRunner *input.ServerRunner `yaml:"-"`
-}
-
 var config struct {
-	Version  string         `yaml:"version"`
-	Hijack   HijackConfig   `yaml:"hijack"`
-	Proxy    ProxyConfig    `yaml:"proxy"`
-	Keys     KeyConfig      `yaml:"keys"`
-	Youtube  YoutubeConfig  `yaml:"youtube"`
+	Version string `yaml:"version"`
+
+	Hijack HijackConfig `yaml:"hijack"`
+	Proxy  ProxyConfig  `yaml:"proxy"`
+
+	Keys       KeyConfig        `yaml:"keys"`
+	Youtube    YoutubeConfig    `yaml:"youtube"`
+	Executable ExecutableConfig `yaml:"executable"`
+
 	Preload  PreloadConfig  `yaml:"preload"`
 	Download DownloadConfig `yaml:"download"`
-	Cache    CacheConfig    `yaml:"cache"`
-	Db       DbConfig       `yaml:"db"`
-	Live     LiveConfig     `yaml:"live"`
+
+	Cache CacheConfig `yaml:"cache"`
+	Db    DbConfig    `yaml:"db"`
+
+	Live LiveConfig `yaml:"live"`
 }
 
 func FillDefaultSetting() {
 	config.Version = "2.2"
-	config.Hijack = HijackConfig{
-		ProxyPort:        7653,
-		InterceptedSites: constants.CopyAllSites(),
-		EnableHttps:      true,
-		EnablePWI:        false,
-		LimitBandwidth:   false,
-	}
-	config.Proxy = ProxyConfig{
-		Pypy:  "",
-		Wanna: "",
-		DuDu:  "",
-
-		BiliBiliAPI: "",
-
-		YoutubeVideo: "",
-		YoutubeApi:   "",
-		YoutubeImage: "",
-	}
-	config.Keys = KeyConfig{
-		Youtube: "",
-	}
-	config.Youtube = YoutubeConfig{
-		EnableApi:       false,
-		EnableThumbnail: false,
+	config.Hijack = defaultHijackConfig
+	config.Proxy = defaultProxyConfig
+	config.Keys = KeyConfig{}
+	config.Youtube = defaultYoutubeConfig
+	config.Executable = ExecutableConfig{
+		YtDlpPath: "<vrcdp>",
+		DenoPath:  "<vrcdp>",
 	}
 	config.Preload = PreloadConfig{
 		EnabledRooms: []string{
@@ -133,21 +58,11 @@ func FillDefaultSetting() {
 	config.Download = DownloadConfig{
 		MaxDownload: 1,
 	}
-	config.Cache = CacheConfig{
-		Path:          "./cache",
-		MaxCacheSize:  300,
-		KeepFavorites: false,
-		//RWBufferSize:  1,
-		FileFormat: 1,
-	}
+	config.Cache = defaultCacheConfig
 	config.Db = DbConfig{
 		Path: "./data.db",
 	}
-	config.Live = LiveConfig{
-		Enabled:  false,
-		Port:     7652,
-		Settings: "{}",
-	}
+	config.Live = defaultLiveConfig
 }
 
 var configMutex = sync.Mutex{}
@@ -200,32 +115,4 @@ func SaveConfig() {
 	if err != nil {
 		logger.FatalLnf("Failed to save config.yaml: %s", err)
 	}
-}
-
-func GetHijackConfig() *HijackConfig {
-	return &config.Hijack
-}
-func GetKeyConfig() *KeyConfig {
-	return &config.Keys
-}
-func GetProxyConfig() *ProxyConfig {
-	return &config.Proxy
-}
-func GetPreloadConfig() *PreloadConfig {
-	return &config.Preload
-}
-func GetDownloadConfig() *DownloadConfig {
-	return &config.Download
-}
-func GetCacheConfig() *CacheConfig {
-	return &config.Cache
-}
-func GetDbConfig() *DbConfig {
-	return &config.Db
-}
-func GetYoutubeConfig() *YoutubeConfig {
-	return &config.Youtube
-}
-func GetLiveConfig() *LiveConfig {
-	return &config.Live
 }

@@ -77,6 +77,7 @@ type BriefRelease struct {
 	PublishedAt time.Time
 
 	Compatible   bool
+	Version      string
 	LocalVersion string
 }
 

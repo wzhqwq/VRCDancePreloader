@@ -17,10 +17,7 @@ var AppConfigRoot string
 
 const AppName = "VRCDP"
 
-func InitFyne() {
-	a = app.New()
-	a.Settings().SetTheme(&cTheme{})
-
+func InitRoot() {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		panic(err)
@@ -33,6 +30,11 @@ func InitFyne() {
 	} else {
 		AppDataRoot = filepath.Join(AppConfigRoot, "data")
 	}
+}
+
+func InitFyne() {
+	a = app.New()
+	a.Settings().SetTheme(&cTheme{})
 }
 
 func MainLoop() {
