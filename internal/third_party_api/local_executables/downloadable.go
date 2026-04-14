@@ -79,6 +79,16 @@ func (d *DownloadableBinary) generateContext(dur time.Duration) (context.Context
 	return ctx, cancel
 }
 
+func (d *DownloadableBinary) Valid() bool {
+	if d.Path == "" {
+		return false
+	}
+	if _, err := os.Stat(d.Path); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
 func (d *DownloadableBinary) Init() {
 	if d.State == BinCheckingUpdates || d.State == BinDownloading {
 		return
@@ -166,6 +176,7 @@ func (d *DownloadableBinary) Upgrade() {
 	logger.InfoLn("Downloaded latest version of", d.Name)
 
 	d.setState(BinCheckingLocal)
+	d.checkIntegrityLevel()
 	d.Init()
 }
 

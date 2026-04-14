@@ -1,0 +1,12 @@
+- Key: seconds
+  Default: 秒
+- Key: minutes
+  Default: 分钟
+- Key: hours
+  Default: 小时
+- Key: days
+  Default: 天
+#- Key: since
+#  Default: {{.Duration}}前
+#- Key: after
+#  Default: {{.Duration}}后

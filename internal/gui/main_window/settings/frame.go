@@ -19,6 +19,7 @@ func CreateSettingsContainer() fyne.CanvasObject {
 			widgets.NewCard(createProxySettingsContent()),
 			widgets.NewCard(createKeySettingsContent()),
 			widgets.NewCard(createYoutubeSettingsContent()),
+			widgets.NewCard(createExecutableSettingsContent()),
 			widgets.NewCard(createPreloadSettingsContent()),
 			widgets.NewCard(createDownloadSettingsContent()),
 			widgets.NewCard(createCacheSettingsContent()),

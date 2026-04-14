@@ -84,9 +84,6 @@ func (d *DownloadableBinary) downloadFile(release *api.BriefRelease) error {
 }
 
 func (d *DownloadableBinary) raiseIntegrityLevel(ctx context.Context) error {
-	if !strings.Contains(d.Path, "LocalLow") {
-		return nil
-	}
 	// icacls path /setintegritylevel medium
 	if d.lowLevel.CompareAndSwap(true, false) {
 		cmd := exec.CommandContext(ctx, "icacls", d.Path, "/setintegritylevel", "M")
@@ -96,9 +93,6 @@ func (d *DownloadableBinary) raiseIntegrityLevel(ctx context.Context) error {
 }
 
 func (d *DownloadableBinary) resumeIntegrityLevel() error {
-	if !strings.Contains(d.Path, "LocalLow") {
-		return nil
-	}
 	if d.lowLevel.CompareAndSwap(false, true) {
 		cmd := exec.Command("icacls", d.Path, "/setintegritylevel", "L")
 		return cmd.Run()
@@ -140,7 +134,7 @@ func (d *DownloadableBinary) SetPathAndCheck(path string) {
 	defer d.mutex.Unlock()
 
 	d.Path = path
-	if path != "" {
+	if d.Valid() {
 		d.checkIntegrityLevel()
 	}
 }
@@ -152,7 +146,7 @@ func (d *DownloadableBinary) Execute(ctx context.Context, arg ...string) (string
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 
-	if d.Path == "" {
+	if !d.Valid() {
 		return "", ErrExecutableNotFound
 	}
 
@@ -183,7 +177,7 @@ func (d *DownloadableBinary) Execute(ctx context.Context, arg ...string) (string
 
 func (d *DownloadableBinary) RequestRunnableIntegrity(ctx context.Context) error {
 	d.mutex.RLock()
-	if d.Path == "" {
+	if !d.Valid() {
 		return ErrExecutableNotFound
 	}
 
@@ -192,7 +186,7 @@ func (d *DownloadableBinary) RequestRunnableIntegrity(ctx context.Context) error
 
 func (d *DownloadableBinary) ReleaseRunnableIntegrity() {
 	d.mutex.RUnlock()
-	if d.Path == "" {
+	if !d.Valid() {
 		return
 	}
 

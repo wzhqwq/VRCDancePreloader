@@ -8,14 +8,17 @@ import (
 )
 
 func PrettyByteSize(b int64) string {
-	bf := float64(b)
+	return PrettyByteSizeF(float64(b))
+}
+
+func PrettyByteSizeF(b float64) string {
 	for _, unit := range []string{"", "K", "M", "G", "T", "P", "E", "Z"} {
-		if math.Abs(bf) < 1024.0 {
-			return fmt.Sprintf("%3.1f%sB", bf, unit)
+		if math.Abs(b) < 1024.0 {
+			return fmt.Sprintf("%3.1f%sB", b, unit)
 		}
-		bf /= 1024.0
+		b /= 1024.0
 	}
-	return fmt.Sprintf("%.1fYiB", bf)
+	return fmt.Sprintf("%.1fYiB", b)
 }
 
 func PrettyTime(s time.Duration) string {

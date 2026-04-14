@@ -124,19 +124,41 @@ func createYoutubeSettingsContent() fyne.CanvasObject {
 	enableThumbnailCheck.Checked = youtubeConfig.EnableThumbnail
 	wholeContent.Add(enableThumbnailCheck)
 
-	//TODO cancel comment after implemented youtube preloading
-	//enableVideoCheck := widget.NewCheck(i18n.T("label_yt_video_enable"), func(b bool) {
-	//	if config.Youtube.EnableVideo == b {
-	//		return
-	//	}
-	//	config.Youtube.EnableVideo = b
-	//	SaveConfig()
-	//	if b && config.Proxy.ProxyControllers["youtube-video"].Status != ProxyStatusOk {
-	//		config.Proxy.ProxyControllers["youtube-video"].Test()
-	//	}
-	//})
-	//enableVideoCheck.Checked = config.Youtube.EnableVideo
-	//wholeContent.Add(enableVideoCheck)
+	enableVideoCheck := widget.NewCheck(i18n.T("label_yt_video_enable"), func(b bool) {
+		if youtubeConfig.EnableYtDlp == b {
+			return
+		}
+		youtubeConfig.UpdateEnableYtDlp(b)
+		if b {
+			proxyConfig.ProxyControllers["youtube-video"].TestIfNotOk()
+		}
+	})
+	enableVideoCheck.Checked = youtubeConfig.EnableYtDlp
+	wholeContent.Add(enableVideoCheck)
+
+	return wholeContent
+}
+
+func createExecutableSettingsContent() fyne.CanvasObject {
+	executableConfig := config.GetExecutableConfig()
+
+	wholeContent := container.NewVBox()
+	wholeContent.Add(container.NewHBox(
+		widget.NewLabel(i18n.T("label_executable")),
+		container.NewCenter(button.NewTipButton("tip_on_executable")),
+	))
+
+	enableAutoCheckCb := widget.NewCheck(i18n.T("label_executable_auto_check"), func(b bool) {
+		if executableConfig.CheckUpdateOnStart == b {
+			return
+		}
+		executableConfig.UpdateCheckUpdateOnStart(b)
+	})
+	enableAutoCheckCb.Checked = executableConfig.CheckUpdateOnStart
+	wholeContent.Add(enableAutoCheckCb)
+
+	wholeContent.Add(config_widgets.NewDownloadableBinaryGui("ytdlp", executableConfig.YtDlpPath, executableConfig.UpdateYtDlpPath))
+	wholeContent.Add(config_widgets.NewDownloadableBinaryGui("deno", executableConfig.DenoPath, executableConfig.UpdateDenoPath))
 
 	return wholeContent
 }

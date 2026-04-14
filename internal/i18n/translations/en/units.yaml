@@ -1,0 +1,8 @@
+- Key: seconds
+  Default: " secs"
+- Key: minutes
+  Default: " mins"
+- Key: hours
+  Default: " hrs"
+- Key: days
+  Default: " days"

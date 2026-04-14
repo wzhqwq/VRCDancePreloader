@@ -51,6 +51,8 @@
   Default: "API密钥"
 - Key: label_youtube
   Default: "YouTube加载功能"
+- Key: label_executable
+  Default: "第三方程序"
 - Key: label_preload
   Default: "预加载设置"
 - Key: label_download
@@ -92,6 +94,7 @@
   Default: "GitHub API代理服务器"
 - Key: label_github_assets_proxy
   Default: "GitHub文件服务代理服务器"
+
 - Key: label_yt_api_key
   Default: "YouTube的API key"
 - Key: label_yt_api_enable
@@ -100,6 +103,7 @@
   Default: "允许获取YouTube视频缩略图"
 - Key: label_yt_video_enable
   Default: "允许通过ytdlp预加载YouTube视频"
+
 - Key: label_max_preload_count
   Default: "预加载最大数量 (包括当前播放视频)"
 - Key: label_max_parallel_download_count
@@ -233,3 +237,28 @@
 
 - Key: message_lazy_list_changed
   Default: "列表发生变化，请重新加载"
+
+- Key: label_executable_auto_check
+  Default: "启动时检查更新"
+- Key: label_executable_use_custom
+  Default: "使用自定义路径"
+- Key: label_executable_path
+  Default: "程序的绝对路径"
+- Key: placeholder_not_downloaded
+  Default: "未下载"
+- Key: placeholder_checking_local
+  Default: "正在获取本地版本"
+- Key: placeholder_waiting_unlock
+  Default: "正在等待程序结束"
+- Key: btn_check_update
+  Default: "检查更新"
+- Key: btn_upgrade
+  Default: "更新"
+- Key: btn_download
+  Default: "下载"
+- Key: btn_cancel_download
+  Default: "取消下载"
+- Key: btn_remove
+  Default: "删除"
+- Key: message_time_remaining
+  Default: "还剩{{.Duration}}"
