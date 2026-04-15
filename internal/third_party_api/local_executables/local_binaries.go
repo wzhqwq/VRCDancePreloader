@@ -123,7 +123,6 @@ func (d *DownloadableBinary) checkIntegrityLevel() {
 	matches := integrityLevelRegex.FindStringSubmatch(string(output))
 	if len(matches) != 2 {
 		d.lowLevel.Store(false)
-		logger.WarnLn("Failed to determine integrity level of", d.Path)
 	} else {
 		d.lowLevel.Store(matches[1] == "Low")
 	}
