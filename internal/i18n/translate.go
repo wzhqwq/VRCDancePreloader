@@ -2,6 +2,7 @@ package i18n
 
 import (
 	"embed"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -33,6 +34,8 @@ type DateTranslations struct {
 }
 
 var dateTranslations DateTranslations
+
+var durationUnits []string
 
 func Init() {
 	localLang, err := jibber_jabber.DetectIETF()
@@ -69,6 +72,13 @@ func Init() {
 			panic(err)
 		}
 	}
+
+	durationUnits = []string{
+		T("seconds"),
+		T("minutes"),
+		T("hours"),
+		T("days"),
+	}
 }
 
 func T(key string, options ...goeasyi18n.Options) string {
@@ -91,6 +101,19 @@ func ParseDate(date time.Time) map[string]string {
 		"Day":   strconv.Itoa(day),
 		"Time":  date.Format("15:04"),
 	}
+}
+
+func ParseDuration(d time.Duration) string {
+	if d > time.Hour*24 {
+		return fmt.Sprintf("%d%s", int(d.Hours()/24), durationUnits[3])
+	}
+	if d > time.Hour {
+		return fmt.Sprintf("%d%s", int(d.Hours()), durationUnits[2])
+	}
+	if d > time.Minute {
+		return fmt.Sprintf("%d%s", int(d.Minutes()), durationUnits[1])
+	}
+	return fmt.Sprintf("%d%s", int(d.Seconds()), durationUnits[0])
 }
 
 func GetLangWrapping() fyne.TextWrap {

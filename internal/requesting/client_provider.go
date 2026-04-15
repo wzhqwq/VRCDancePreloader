@@ -33,6 +33,8 @@ type ClientProvider struct {
 	client *http.Client
 	name   string
 
+	ProxyUrl string
+
 	em *utils.EventManager[ClientEvent]
 }
 
@@ -47,7 +49,10 @@ func NewProxyProvider(proxyUrl, name string) *ClientProvider {
 	return &ClientProvider{
 		client: c,
 		name:   name,
-		em:     utils.NewEventManager[ClientEvent](),
+
+		ProxyUrl: proxyUrl,
+
+		em: utils.NewEventManager[ClientEvent](),
 	}
 }
 
@@ -58,6 +63,21 @@ func (p *ClientProvider) SetProxy(proxyUrl string) {
 		p.client = &http.Client{}
 	}
 	p.em.NotifySubscribers(ClientChanged)
+}
+
+func (p *ClientProvider) AddRedirectionInterceptor() {
+	if p.client.CheckRedirect != nil {
+		return
+	}
+	p.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) > 10 {
+			return http.ErrUseLastResponse
+		}
+		if req.URL.Host == "www.youtube.com" {
+			return http.ErrUseLastResponse
+		}
+		return nil
+	}
 }
 
 func (p *ClientProvider) Test(tc testCase) (bool, string) {
@@ -100,6 +120,7 @@ func (p *ClientProvider) Get(url string) (*http.Response, error) {
 }
 
 func (p *ClientProvider) Do(req *http.Request) (*http.Response, error) {
+	p.AddRedirectionInterceptor()
 	resp, err := p.client.Do(req)
 	if err != nil {
 		if cause := context.Cause(req.Context()); errors.Is(err, context.Canceled) && cause != nil {

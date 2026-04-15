@@ -51,6 +51,8 @@
   Default: "API keys"
 - Key: label_youtube
   Default: "YouTube features"
+- Key: label_executable
+  Default: "Third-party executables"
 - Key: label_preload
   Default: "Preload settings"
 - Key: label_download
@@ -80,12 +82,19 @@
   Default: "Proxy server for DuDuFitDance API"
 - Key: label_bili_proxy
   Default: "Proxy server for BiliBili API"
+- Key: label_bili_video_proxy
+  Default: "Proxy server for BiliBili video"
 - Key: label_yt_video_proxy
   Default: "Proxy server for YouTube video"
 - Key: label_yt_api_proxy
   Default: "Proxy server for YouTube API"
 - Key: label_yt_image_proxy
   Default: "Proxy server for YouTube video thumbnail"
+- Key: label_github_proxy
+  Default: "Proxy server for GitHub API"
+- Key: label_github_assets_proxy
+  Default: "Proxy server for GitHub assets"
+
 - Key: label_yt_api_key
   Default: "YouTube API key"
 - Key: label_yt_api_enable
@@ -94,6 +103,7 @@
   Default: "Enable display thumbnail for YouTube video"
 - Key: label_yt_video_enable
   Default: "Enable preload YouTube video using ytdlp"
+
 - Key: label_max_preload_count
   Default: "Maximal preload count (including current playing)"
 - Key: label_max_parallel_download_count
@@ -227,3 +237,28 @@
 
 - Key: message_lazy_list_changed
   Default: "list changed, refresh needed"
+
+- Key: label_executable_auto_check
+  Default: "Check updates on startup"
+- Key: label_executable_use_custom
+  Default: "Use Custom Path"
+- Key: label_executable_path
+  Default: "Absolute Program Path"
+- Key: placeholder_not_downloaded
+  Default: "Not downloaded"
+- Key: placeholder_checking_local
+  Default: "Checking local version"
+- Key: placeholder_waiting_unlock
+  Default: "Waiting for the program to terminate"
+- Key: btn_check_update
+  Default: "Check Updates"
+- Key: btn_upgrade
+  Default: "Upgrade"
+- Key: btn_download
+  Default: "Download"
+- Key: btn_cancel_download
+  Default: "Cancel Download"
+- Key: btn_remove
+  Default: "Remove"
+- Key: message_time_remaining
+  Default: "{{.Duration}} left"

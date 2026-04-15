@@ -1,8 +1,11 @@
 package download
 
 import (
+	"context"
+	"io"
 	"time"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/stability"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -58,6 +61,15 @@ func Download(id string) *Task {
 		dm.UpdatePriorities()
 	}()
 
+	return task
+}
+
+func DownloadWithoutManager(id string, url string, ctx context.Context, client *requesting.ClientProvider, writer io.Writer) *Task {
+	task := newTaskWithoutManager(id)
+	go func() {
+		task.Error = task.DownloadWithoutManager(url, ctx, client, writer)
+		task.notifyStateChange()
+	}()
 	return task
 }
 

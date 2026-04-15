@@ -3,6 +3,7 @@ package download
 import (
 	"io"
 	"sync"
+	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -55,6 +56,16 @@ func newTask(manager *downloadManager, id string) *Task {
 	}
 }
 
+func newTaskWithoutManager(id string) *Task {
+	return &Task{
+		em: utils.NewEventManager[TaskChangeType](),
+
+		ID: id,
+
+		CancelCh: make(chan struct{}),
+	}
+}
+
 func (t *Task) unlockAndNotifyStateChange() {
 	t.Unlock()
 	t.notifyStateChange()
@@ -96,9 +107,26 @@ func (t *Task) addBytes(size int64) {
 	t.em.NotifySubscribers(Progress)
 }
 
+func (t *Task) Speed() float64 {
+	if t.eta == nil {
+		return 0
+	}
+	return t.eta.QuerySpeed()
+}
+
+func (t *Task) RemainTime() time.Duration {
+	if t.eta == nil {
+		return -1
+	}
+	return t.eta.QueryRemainTime()
+}
+
 // Destroy
 
 func (t *Task) Cancel() {
+	if t.CancelCh == nil {
+		return
+	}
 	close(t.CancelCh)
 }
 

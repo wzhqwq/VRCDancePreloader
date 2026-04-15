@@ -1,12 +1,36 @@
 package custom_fyne
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 )
 
 var a fyne.App
 var mainWindow fyne.Window
+
+var AppDataRoot string
+var AppConfigRoot string
+
+const AppName = "VRCDP"
+
+func InitRoot() {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		panic(err)
+	}
+
+	AppConfigRoot = filepath.Join(configDir, AppName)
+	if strings.HasSuffix(configDir, "Roaming") {
+		// it's Windows, and we should store large data to LocalLow
+		AppDataRoot = filepath.Join(configDir, "..", "LocalLow", AppName)
+	} else {
+		AppDataRoot = filepath.Join(AppConfigRoot, "data")
+	}
+}
 
 func InitFyne() {
 	a = app.New()

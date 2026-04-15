@@ -20,6 +20,10 @@ var biliSites = []string{
 	"b23.tv",
 	"api.xin.moe",
 }
+var youTubeSites = []string{
+	"www.youtube.com",
+	"youtu.be",
+}
 var allSites = []string{
 	// PyPyDance
 	"jd.pypy.moe",
@@ -47,6 +51,10 @@ var httpsSites = []string{
 	"www.bilibili.com",
 	"b23.tv",
 	"api.xin.moe",
+
+	// YouTube
+	"www.youtube.com",
+	"youtu.be",
 }
 
 func IsPyPySite(host string) bool {
@@ -60,6 +68,9 @@ func IsDuDuSite(host string) bool {
 }
 func IsBiliSite(host string) bool {
 	return lo.IndexOf(biliSites, host) >= 0
+}
+func IsYouTubeSite(host string) bool {
+	return lo.IndexOf(youTubeSites, host) >= 0
 }
 func IsHttpsSite(host string) bool {
 	return lo.IndexOf(httpsSites, host) >= 0
@@ -76,6 +87,9 @@ func AllDuDuSites() []string {
 }
 func AllBiliSites() []string {
 	return biliSites
+}
+func AllYouTubeSites() []string {
+	return youTubeSites
 }
 
 func CopyAllSites() []string {

@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry/resolvers"
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/download"
 	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api/local_executables"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tui"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 
@@ -44,6 +46,8 @@ var args struct {
 func main() {
 	arg.MustParse(&args)
 
+	custom_fyne.InitRoot()
+
 	// Apply build tag
 	if buildGuiOn {
 		args.GuiEnabled = true
@@ -79,6 +83,8 @@ func main() {
 	cache.InitSongList(songListCtx)
 	defer cancel()
 
+	resolvers.InitThirdPartyVideoProviders()
+
 	err := config.GetDbConfig().Init()
 	if err != nil {
 		logger.InfoLn("Failed to init database:", err)
@@ -93,6 +99,12 @@ func main() {
 	defer func() {
 		logger.InfoLn("Stopping cache")
 		cache.StopCache()
+	}()
+
+	config.GetExecutableConfig().Init()
+	defer func() {
+		logger.InfoLn("Stopping downloading executables")
+		local_executables.Stop()
 	}()
 
 	config.GetDownloadConfig().Init()

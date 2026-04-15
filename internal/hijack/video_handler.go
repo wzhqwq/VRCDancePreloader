@@ -130,3 +130,19 @@ func handleBiliRequest(w http.ResponseWriter, req *http.Request, wg *sync.WaitGr
 	}
 	return false
 }
+
+func handleYouTubeRequest(w http.ResponseWriter, req *http.Request, wg *sync.WaitGroup) bool {
+	if !constants.IsYouTubeSite(req.Host) {
+		return false
+	}
+	if id, ok := CheckYouTubeWebPageRequest(req); ok {
+		return handleYouTubeWebpage(w, id, wg)
+	}
+	if id, ok := CheckInnerTubeApiRequest(req); ok {
+		return handleInnerTubeApi(w, id, wg)
+	}
+	if id, ok := CheckYouTubeLocalRequest(req); ok {
+		return handlePlatformVideoRequest("YouTube", id, w, req, wg)
+	}
+	return false
+}

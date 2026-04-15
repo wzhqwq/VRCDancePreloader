@@ -100,6 +100,10 @@ const hangingConnectionTimeout = time.Second * 30
 
 // BlockIfPending keeps blocked until this task is able to continue or is canceled (returning error)
 func (t *Task) BlockIfPending() error {
+	if t.manager == nil {
+		return nil
+	}
+
 	var priority int
 	select {
 	case priority = <-t.PriorityCh:

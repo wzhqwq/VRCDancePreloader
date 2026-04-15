@@ -1,101 +1,96 @@
 package config
 
 import (
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
-	"github.com/samber/lo"
+	"strconv"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
-	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
+	"github.com/wzhqwq/VRCDancePreloader/internal/hijack"
+	"github.com/wzhqwq/VRCDancePreloader/internal/service"
 )
 
-type MultiSelectSites struct {
-	widget.BaseWidget
+type HijackConfig struct {
+	ProxyPort        int      `yaml:"proxy-port"`
+	InterceptedSites []string `yaml:"intercepted-sites"`
+	EnableHttps      bool     `yaml:"enable-https"`
+	EnablePWI        bool     `yaml:"enable-pwi"`
+	LimitBandwidth   bool     `yaml:"limit-bandwidth"`
 
-	PyPySelected  []string
-	WannaSelected []string
-	DuDuSelected  []string
-	BiliSelected  []string
+	HijackRunner *input.ServerRunner `yaml:"-"`
 }
 
-func NewMultiSelectSites(selected []string) *MultiSelectSites {
-	pypySelected := lo.Filter(selected, func(site string, _ int) bool {
-		return constants.IsPyPySite(site)
-	})
-	wannaSelected := lo.Filter(selected, func(site string, _ int) bool {
-		return constants.IsWannaSite(site)
-	})
-	duduSelected := lo.Filter(selected, func(site string, _ int) bool {
-		return constants.IsDuDuSite(site)
-	})
-	biliSelected := lo.Filter(selected, func(site string, _ int) bool {
-		return constants.IsBiliSite(site)
-	})
-
-	m := &MultiSelectSites{
-		PyPySelected:  pypySelected,
-		WannaSelected: wannaSelected,
-		DuDuSelected:  duduSelected,
-		BiliSelected:  biliSelected,
-	}
-	m.ExtendBaseWidget(m)
-	return m
+func GetHijackConfig() *HijackConfig {
+	return &config.Hijack
 }
 
-func (m *MultiSelectSites) CreateRenderer() fyne.WidgetRenderer {
-	label := canvas.NewText(i18n.T("label_hijack_intercepted_sites"), theme.Color(theme.ColorNamePlaceHolder))
-	label.TextSize = 12
-
-	pypySelect := widgets.NewMultiSelect(constants.AllPyPySites(), m.PyPySelected)
-	pypySelect.OnChange = func(sites []string) {
-		m.PyPySelected = sites
-		m.update()
-	}
-	wannaSelect := widgets.NewMultiSelect(constants.AllWannaSites(), m.WannaSelected)
-	wannaSelect.OnChange = func(sites []string) {
-		m.WannaSelected = sites
-		m.update()
-	}
-	duduSelect := widgets.NewMultiSelect(constants.AllDuDuSites(), m.DuDuSelected)
-	duduSelect.OnChange = func(sites []string) {
-		m.DuDuSelected = sites
-		m.update()
-	}
-	biliSelect := widgets.NewMultiSelect(constants.AllBiliSites(), m.BiliSelected)
-	biliSelect.OnChange = func(sites []string) {
-		m.BiliSelected = sites
-		m.update()
-	}
-
-	form := container.New(
-		layout.NewFormLayout(),
-		container.NewCenter(widget.NewLabel("PyPyDance")),
-		pypySelect,
-		container.NewCenter(widget.NewLabel("WannaDance")),
-		wannaSelect,
-		container.NewCenter(widget.NewLabel("DuDuFitDance")),
-		duduSelect,
-		container.NewCenter(widget.NewLabel("BiliBili")),
-		biliSelect,
-	)
-
-	return widget.NewSimpleRenderer(container.NewVBox(label, form))
+var defaultHijackConfig = HijackConfig{
+	ProxyPort:        7653,
+	InterceptedSites: constants.CopyAllSites(),
 }
 
-func (m *MultiSelectSites) update() {
-	allSites := append(m.PyPySelected, m.WannaSelected...)
-	allSites = append(allSites, m.DuDuSelected...)
-	allSites = append(allSites, m.BiliSelected...)
+func (hc *HijackConfig) Init() {
+	runner := input.NewServerRunner(hc.ProxyPort)
+	runner.OnSave = hc.UpdatePort
+	runner.StartServer = func() error {
+		if err := hijack.Start(hc.InterceptedSites, hc.EnableHttps, hc.ProxyPort); err != nil {
+			if global_state.IsInGui() {
+				return err
+			}
 
-	config.Hijack.UpdateSites(allSites)
+			logger.FatalLn("Failed to start hijack server:", err)
+		}
+		return nil
+	}
+	runner.StopServer = config.Hijack.Stop
+	runner.Run()
+
+	hc.HijackRunner = runner
+	if hc.EnablePWI {
+		service.StartPWIServer()
+	}
+	//service.StartStubServer()
+	service.ProxyServerPort = strconv.Itoa(hc.ProxyPort)
 }
 
-type MultiSelectSitesRenderer struct {
-	m *MultiSelectSites
+func (hc *HijackConfig) Stop() {
+	hijack.Stop()
+	if hc.EnablePWI {
+		service.StopPWIServer()
+	}
+	//service.StopStubServer()
+}
 
-	c *fyne.Container
+func (hc *HijackConfig) UpdatePort(port int) {
+	hc.ProxyPort = port
+	SaveConfig()
+	service.ProxyServerPort = strconv.Itoa(hc.ProxyPort)
+}
+
+func (hc *HijackConfig) UpdateEnableHttps(b bool) {
+	hc.EnableHttps = b
+	hc.HijackRunner.Run()
+	SaveConfig()
+}
+
+func (hc *HijackConfig) UpdateSites(sites []string) {
+	hc.InterceptedSites = sites
+	hc.HijackRunner.Run()
+	SaveConfig()
+}
+
+func (hc *HijackConfig) UpdateEnablePWI(b bool) {
+	hc.EnablePWI = b
+	if hc.EnablePWI {
+		service.StartPWIServer()
+	} else {
+		service.StopPWIServer()
+	}
+	SaveConfig()
+}
+
+func (hc *HijackConfig) UpdateLimitBandwidth(b bool) {
+	hc.LimitBandwidth = b
+	hijack.SetLimitBandwidth(b)
+	SaveConfig()
 }

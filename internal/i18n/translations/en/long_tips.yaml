@@ -24,6 +24,17 @@
     Set the API key that comes with this software when accessing some APIs that require authentication,
     such as the YouTube API. You can apply for it in the Google Cloud console.
 
+- Key: tip_on_executable
+  Default: >
+    YouTube video downloads rely on third-party programs. You can download and view these programs here, and you can also
+    specify a custom program path.
+    
+    
+    `yt-dlp` is a video parsing and downloading program; we only use the parsing function.
+    
+    
+    `deno` is a JavaScript runtime environment; it has a large package size (>100MB) and is optional.
+    Downloading it can reduce the chances of `yt-dlp` failing to parse the video.
 - Key: tip_on_cache
   Default: >
     The cache is used to store preloaded videos. Video downloads and responses are performed in the cache directory
@@ -44,9 +55,6 @@
 
     - Fragmented: Saves in the vrcdp format and supports both resumable downloads and fragmented downloads,
     shortening loading times for videos that are playing mid-stream.
-
-    - Legacy: Saves in the mp4 and dl formats and supports resumable downloads. These formats are now deprecated.
-    If you experience issues with the first two formats, try using the legacy format instead.
 
 - Key: tip_on_live
   Default: >

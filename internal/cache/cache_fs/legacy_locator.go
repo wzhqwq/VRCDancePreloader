@@ -3,7 +3,7 @@ package cache_fs
 import (
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -68,5 +68,5 @@ func (l *legacyFileLocator) Scan() ([]DirEntry, error) {
 func (l *legacyFileLocator) GetPath(name string) string {
 	legacyName := strings.TrimPrefix(name, "video$")
 	legacyName = strings.Replace(legacyName, ".vrcdp", ".mp4.vrcdp", 1)
-	return path.Join(l.basePath, legacyName)
+	return filepath.Join(l.basePath, legacyName)
 }

@@ -32,10 +32,17 @@ func newEtaCalculator(goal int64) *etaCalculator {
 func (c *etaCalculator) Add(size int64) {
 	if c.lastTime.IsZero() {
 		c.lastTime = time.Now()
-		return
 	}
-	c.window[c.p] = etaSlice{size, time.Now().Sub(c.lastTime)}
-	c.p = (c.p + 1) % MaxWindowSize
+
+	c.window[c.p].size += size
+	c.window[c.p].passed = time.Since(c.lastTime)
+
+	if c.window[c.p].passed > time.Millisecond {
+		c.lastTime = time.Now()
+		c.p = (c.p + 1) % MaxWindowSize
+		c.window[c.p] = etaSlice{}
+	}
+
 	c.achieved += size
 }
 
@@ -66,9 +73,25 @@ func (c *etaCalculator) QueryEta() (time.Time, bool) {
 		return time.Now(), true
 	}
 
-	eta := float64(remaining) / speed
+	remainTime := float64(remaining) / speed
 
-	return time.Now().Add(time.Duration(eta * float64(time.Second))), true
+	return time.Now().Add(time.Duration(remainTime * float64(time.Second))), true
+}
+
+func (c *etaCalculator) QueryRemainTime() time.Duration {
+	speed := c.QuerySpeed()
+	if c.goal == 0 || speed == 0 {
+		return -1
+	}
+
+	remaining := c.goal - c.achieved
+	if remaining <= 0 {
+		return 0
+	}
+
+	remainTime := float64(remaining) / speed
+
+	return time.Duration(remainTime * float64(time.Second))
 }
 
 func (c *etaCalculator) Passed() time.Duration {

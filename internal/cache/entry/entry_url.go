@@ -9,14 +9,13 @@ import (
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/legacy_file"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type UrlBasedEntry struct {
 	BaseEntry
 
-	resolvedUrl       string
-	initialInfoGetter func(ctx context.Context) (*RemoteVideoInfo, error)
+	resolvedUrl string
+	resolver    UrlResolver
 
 	checkingMutex sync.Mutex
 
@@ -25,59 +24,56 @@ type UrlBasedEntry struct {
 	remoteEtag    string
 }
 
-func NewUrlBasedEntry(id string, client *requesting.ClientProvider, initialInfoGetter func(ctx context.Context) (*RemoteVideoInfo, error)) *UrlBasedEntry {
+func NewUrlBasedEntry(id string, resolver UrlResolver) *UrlBasedEntry {
 	return &UrlBasedEntry{
-		BaseEntry:         ConstructBaseEntry(id, client),
-		initialInfoGetter: initialInfoGetter,
+		BaseEntry: ConstructBaseEntry(id, requesting.GetClient(requesting.NoProxy)),
+		resolver:  resolver,
 	}
 }
 
 func (e *UrlBasedEntry) resolveRemoteMedia(ctx context.Context) error {
-	info, err := e.initialInfoGetter(ctx)
-	if err != nil {
-		return err
-	}
-
-	url := info.FinalUrl
-	e.referer = ""
-	if !info.LastModified.IsZero() {
-		// BiliBili provide creation time through API
-		// DuDuFitDance CDN does not response with Last-Modified, but provide "publishTime" in manifest
-		e.remoteModTime = info.LastModified
-	}
+	resolver := e.resolver
+	var info *RemoteVideoInfo
+	var err error
+	var lastUrl string
 
 	for {
-		if _, ok := utils.CheckYoutubeURL(url); ok {
-			// TODO youtube handler
+		if resolver == nil {
+			if err != nil {
+				return err
+			}
 			return ErrNotSupported
 		}
-		info, err = e.requestHttpResInfo(url, ctx)
+
+		info, err = resolver.Resolve(e.logger, ctx)
 		if err != nil {
-			return err
+			resolver = resolver.Next(lastUrl)
+			continue
 		}
-		changed := info.FinalUrl != url
-		url = info.FinalUrl
+		lastUrl = info.FinalUrl
 
 		// check if it's a real video, at least 1MB
 		if info.TotalSize > 1024*1024 {
 			break
-		} else if !changed {
-			// not redirected and not a video
-			return ErrNotSupported
+		} else {
+			resolver = resolver.Next(info.FinalUrl)
 		}
 	}
 
 	if e.remoteModTime.IsZero() {
-		if info.LastModified.IsZero() {
-			e.logger.WarnLn("We cannot get the modified time of this file on the server, so it's not possible to check if the cache is expired")
+		if info.LastModified.IsZero() && info.Etag == "" {
+			e.logger.WarnLn("We cannot get the modified time or etag of this file on the server, so it's not possible to check if the cache is expired")
 		}
 		e.remoteModTime = info.LastModified
 	}
 
 	e.remoteSize = info.TotalSize
-	e.resolvedUrl = url
+	e.resolvedUrl = info.FinalUrl
 	e.remoteEtag = info.Etag
-	e.logger.InfoLn(e.id, "resolved to", url, "size:", e.remoteSize, "modified time:", e.remoteModTime.Local().String(), "etag:", e.remoteEtag)
+	if info.Client != nil {
+		e.client = info.Client
+	}
+	e.logger.InfoLn(e.id, "resolved to", info.FinalUrl, "size:", e.remoteSize, "modified time:", e.remoteModTime.Local().String(), "etag:", e.remoteEtag)
 
 	return nil
 }

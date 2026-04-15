@@ -28,6 +28,11 @@ go.work.sum
 config.yaml
 
 /cache/
+/binaries/
 *.crt
 *.key
 *.db
+
+/internal/live/web/*
+
+!.gitkeep

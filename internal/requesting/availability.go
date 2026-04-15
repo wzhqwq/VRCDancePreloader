@@ -91,6 +91,15 @@ func anonymousTestCaseGet(url string) testCase {
 	}
 }
 
+func storageServerTestCase(url string) testCase {
+	return testCase{
+		url:    url,
+		useGet: true,
+
+		expectedStatus: http.StatusNotFound,
+	}
+}
+
 func authenticatedTestCase(url string) testCase {
 	return testCase{
 		url:    url,

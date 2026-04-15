@@ -98,7 +98,8 @@ func Request(platform, id string, ctx context.Context) (entry.Entry, error) {
 
 	case "BiliBili":
 		url = utils.GetStandardBiliURL(id)
-		// TODO youtube
+	case "YouTube":
+		url = utils.GetStandardYoutubeURL(id)
 	default:
 		return nil, errors.New("invalid platform")
 	}

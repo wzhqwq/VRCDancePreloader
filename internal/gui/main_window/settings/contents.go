@@ -13,6 +13,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/cache_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/config_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 )
 
@@ -45,7 +46,7 @@ func createHijackSettingsContent() fyne.CanvasObject {
 	limitBandwidthCb.Checked = hijackConfig.LimitBandwidth
 	wholeContent.Add(limitBandwidthCb)
 
-	wholeContent.Add(config.NewMultiSelectSites(hijackConfig.InterceptedSites))
+	wholeContent.Add(config_widgets.NewMultiSelectSites(hijackConfig.InterceptedSites))
 
 	return wholeContent
 }
@@ -62,10 +63,12 @@ func createProxySettingsContent() fyne.CanvasObject {
 	wholeContent.Add(proxyConfig.ProxyControllers["wannadance-api"].GetInput(i18n.T("label_wanna_proxy")))
 	wholeContent.Add(proxyConfig.ProxyControllers["dudu-fitdance-api"].GetInput(i18n.T("label_dudu_proxy")))
 	wholeContent.Add(proxyConfig.ProxyControllers["bilibili-api"].GetInput(i18n.T("label_bili_proxy")))
-	//TODO cancel comment after implemented youtube preloading
-	//wholeContent.Add(proxyConfig.ProxyControllers["youtube-video"].GetInput(i18n.T("label_yt_video_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["bilibili-video"].GetInput(i18n.T("label_bili_video_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["youtube-video"].GetInput(i18n.T("label_yt_video_proxy")))
 	wholeContent.Add(proxyConfig.ProxyControllers["youtube-api"].GetInput(i18n.T("label_yt_api_proxy")))
 	wholeContent.Add(proxyConfig.ProxyControllers["youtube-image"].GetInput(i18n.T("label_yt_image_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["github-api"].GetInput(i18n.T("label_github_proxy")))
+	wholeContent.Add(proxyConfig.ProxyControllers["github-assets"].GetInput(i18n.T("label_github_assets_proxy")))
 
 	return wholeContent
 }
@@ -121,19 +124,41 @@ func createYoutubeSettingsContent() fyne.CanvasObject {
 	enableThumbnailCheck.Checked = youtubeConfig.EnableThumbnail
 	wholeContent.Add(enableThumbnailCheck)
 
-	//TODO cancel comment after implemented youtube preloading
-	//enableVideoCheck := widget.NewCheck(i18n.T("label_yt_video_enable"), func(b bool) {
-	//	if config.Youtube.EnableVideo == b {
-	//		return
-	//	}
-	//	config.Youtube.EnableVideo = b
-	//	SaveConfig()
-	//	if b && config.Proxy.ProxyControllers["youtube-video"].Status != ProxyStatusOk {
-	//		config.Proxy.ProxyControllers["youtube-video"].Test()
-	//	}
-	//})
-	//enableVideoCheck.Checked = config.Youtube.EnableVideo
-	//wholeContent.Add(enableVideoCheck)
+	enableVideoCheck := widget.NewCheck(i18n.T("label_yt_video_enable"), func(b bool) {
+		if youtubeConfig.EnableYtDlp == b {
+			return
+		}
+		youtubeConfig.UpdateEnableYtDlp(b)
+		if b {
+			proxyConfig.ProxyControllers["youtube-video"].TestIfNotOk()
+		}
+	})
+	enableVideoCheck.Checked = youtubeConfig.EnableYtDlp
+	wholeContent.Add(enableVideoCheck)
+
+	return wholeContent
+}
+
+func createExecutableSettingsContent() fyne.CanvasObject {
+	executableConfig := config.GetExecutableConfig()
+
+	wholeContent := container.NewVBox()
+	wholeContent.Add(container.NewHBox(
+		widget.NewLabel(i18n.T("label_executable")),
+		container.NewCenter(button.NewTipButton("tip_on_executable")),
+	))
+
+	enableAutoCheckCb := widget.NewCheck(i18n.T("label_executable_auto_check"), func(b bool) {
+		if executableConfig.CheckUpdateOnStart == b {
+			return
+		}
+		executableConfig.UpdateCheckUpdateOnStart(b)
+	})
+	enableAutoCheckCb.Checked = executableConfig.CheckUpdateOnStart
+	wholeContent.Add(enableAutoCheckCb)
+
+	wholeContent.Add(config_widgets.NewDownloadableBinaryGui("ytdlp", executableConfig.YtDlpPath, executableConfig.UpdateYtDlpPath))
+	wholeContent.Add(config_widgets.NewDownloadableBinaryGui("deno", executableConfig.DenoPath, executableConfig.UpdateDenoPath))
 
 	return wholeContent
 }
