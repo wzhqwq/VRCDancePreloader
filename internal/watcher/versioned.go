@@ -27,8 +27,7 @@ func (lv *LastValue[T]) Set(version int32, value T) bool {
 			return false
 		}
 		nw := &versionedValue[T]{version: version, value: value}
-		if lv.slot.CompareAndSwap(old, old) {
-			lv.slot.Store(nw)
+		if lv.slot.CompareAndSwap(old, nw) {
 			return true
 		}
 	}
