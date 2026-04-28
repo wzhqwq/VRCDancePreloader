@@ -1,12 +1,15 @@
 package constants
 
 import (
+	"strings"
+
 	"github.com/samber/lo"
 )
 
 var pypySites = []string{
 	//"jd.pypy.moe",
 	"api.pypy.dance",
+	"cdn.pypy.dance",
 }
 var wannaSites = []string{
 	"api.udon.dance",
@@ -50,7 +53,9 @@ var httpsSites = []string{
 }
 
 func IsPyPySite(host string) bool {
-	return lo.IndexOf(pypySites, host) >= 0
+	return lo.IndexOf(pypySites, host) >= 0 ||
+		strings.HasSuffix(host, ".api.pypy.dance") ||
+		strings.HasSuffix(host, ".cdn.pypy.dance")
 }
 func IsWannaSite(host string) bool {
 	return lo.IndexOf(wannaSites, host) >= 0

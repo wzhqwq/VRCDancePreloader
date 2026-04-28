@@ -44,6 +44,13 @@ func InitDB(dbFilePath string) error {
 		return err
 	}
 
+	_, err = DB.Exec(cdnUrlMappingTableSQL)
+	if err != nil {
+		return err
+	}
+
+	InitCdnUrlMapping()
+
 	InitLocalSongs()
 	InitAllowList()
 	InitLocalRecords()

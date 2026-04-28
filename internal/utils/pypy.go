@@ -58,7 +58,7 @@ func CheckPyPyRequest(req *http.Request) (string, bool) {
 }
 
 func CheckPyPyResource(url string) bool {
-	return strings.Contains(url, "api.pypy.dance") || strings.Contains(url, "jd.pypy.moe")
+	return strings.Contains(url, "pypy.dance") || strings.Contains(url, "jd.pypy.moe")
 }
 
 func CheckIdIsPyPy(id string) (int, bool) {

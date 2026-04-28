@@ -5,6 +5,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -71,6 +72,9 @@ func (e *UrlBasedEntry) resolveRemoteMedia(ctx context.Context) error {
 	e.remoteSize = info.TotalSize
 	e.resolvedUrl = url
 	e.logger.InfoLn(e.id, "resolved to", url, "size:", e.remoteSize, "modified time:", e.remoteModTime.Local().String())
+
+	// Save CDN URL to song ID mapping for reverse lookup
+	persistence.SaveCdnUrlMapping(e.id, url)
 
 	return nil
 }
