@@ -102,7 +102,7 @@
 - Key: label_yt_thumbnail_enable
   Default: "Enable display thumbnail for YouTube video"
 - Key: label_yt_video_enable
-  Default: "Enable preload YouTube video using ytdlp"
+  Default: "Enable preload and read info of YouTube video using ytdlp"
 
 - Key: label_max_preload_count
   Default: "Maximal preload count (including current playing)"

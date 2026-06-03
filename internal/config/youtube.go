@@ -22,21 +22,21 @@ func (yc *YoutubeConfig) Init() {
 
 func (yc *YoutubeConfig) UpdateEnableApi(enabled bool) {
 	yc.EnableApi = enabled
-	SaveConfig()
+	saveAndNotify("youtube")
 
 	third_party_api.EnableYoutubeApi = enabled
 }
 
 func (yc *YoutubeConfig) UpdateEnableThumbnail(enabled bool) {
 	yc.EnableThumbnail = enabled
-	SaveConfig()
+	saveAndNotify("youtube")
 
 	third_party_api.EnableYoutubeThumbnail = enabled
 }
 
 func (yc *YoutubeConfig) UpdateEnableYtDlp(enabled bool) {
 	yc.EnableYtDlp = enabled
-	SaveConfig()
+	saveAndNotify("youtube")
 
 	third_party_api.EnableYtDlp = enabled
 }

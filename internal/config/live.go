@@ -58,17 +58,17 @@ func (lc *LiveConfig) UpdateEnable(b bool) {
 	} else {
 		live.StopLiveServer()
 	}
-	SaveConfig()
+	saveAndNotify("live")
 }
 
 func (lc *LiveConfig) UpdatePort(port int) {
 	lc.Port = port
-	SaveConfig()
+	saveAndNotify("live")
 }
 
 func (lc *LiveConfig) UpdateSettings(settings string) {
 	lc.Settings = settings
-	SaveConfig()
+	saveAndNotify("live")
 }
 
 func (lc *LiveConfig) Stop() {

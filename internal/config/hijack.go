@@ -63,20 +63,20 @@ func (hc *HijackConfig) Stop() {
 
 func (hc *HijackConfig) UpdatePort(port int) {
 	hc.ProxyPort = port
-	SaveConfig()
+	saveAndNotify("hijack")
 	service.ProxyServerPort = strconv.Itoa(hc.ProxyPort)
 }
 
 func (hc *HijackConfig) UpdateEnableHttps(b bool) {
 	hc.EnableHttps = b
 	hc.HijackRunner.Run()
-	SaveConfig()
+	saveAndNotify("hijack")
 }
 
 func (hc *HijackConfig) UpdateSites(sites []string) {
 	hc.InterceptedSites = sites
 	hc.HijackRunner.Run()
-	SaveConfig()
+	saveAndNotify("hijack")
 }
 
 func (hc *HijackConfig) UpdateEnablePWI(b bool) {
@@ -86,11 +86,11 @@ func (hc *HijackConfig) UpdateEnablePWI(b bool) {
 	} else {
 		service.StopPWIServer()
 	}
-	SaveConfig()
+	saveAndNotify("hijack")
 }
 
 func (hc *HijackConfig) UpdateLimitBandwidth(b bool) {
 	hc.LimitBandwidth = b
 	hijack.SetLimitBandwidth(b)
-	SaveConfig()
+	saveAndNotify("hijack")
 }

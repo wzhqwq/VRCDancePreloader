@@ -11,6 +11,8 @@ import (
 
 var logger = utils.NewLogger("Config File")
 
+var em = utils.NewEventManager[string]()
+
 var config struct {
 	Version string `yaml:"version"`
 
@@ -115,4 +117,13 @@ func SaveConfig() {
 	if err != nil {
 		logger.FatalLnf("Failed to save config.yaml: %s", err)
 	}
+}
+
+func saveAndNotify(category string) {
+	SaveConfig()
+	em.NotifySubscribers(category)
+}
+
+func Subscribe() *utils.EventSubscriber[string] {
+	return em.SubscribeEvent()
 }

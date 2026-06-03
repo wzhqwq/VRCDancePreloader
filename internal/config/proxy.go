@@ -124,7 +124,7 @@ func (pc *ProxyConfig) Update(item, value string) error {
 	default:
 		logger.FatalLnf("Unknown proxy item: %s", item)
 	}
-	SaveConfig()
+	saveAndNotify("proxy")
 	return nil
 }
 

@@ -32,7 +32,7 @@ func (cc *CacheConfig) Init() {
 	if cc.FileFormat <= 0 {
 		logger.WarnLn("We no longer support writing legacy cache files. `cache.file-format` will be replaced with default value")
 		cc.FileFormat = 1
-		SaveConfig()
+		saveAndNotify("cache")
 	}
 
 	cache.SetupCache(cc.Path)
@@ -46,23 +46,28 @@ func (cc *CacheConfig) UpdateMaxSize(sizeInMb int) {
 	cc.MaxCacheSize = sizeInMb
 	video_cache.SetMaxSize(int64(sizeInMb) * 1024 * 1024)
 	cache.CleanUpCache()
-	SaveConfig()
+	saveAndNotify("cache")
 }
 
 func (cc *CacheConfig) UpdateKeepFavorites(b bool) {
 	cc.KeepFavorites = b
 	video_cache.SetKeepFavorites(b)
-	SaveConfig()
+	saveAndNotify("cache")
 }
 
 func (cc *CacheConfig) UpdateForceExpirationCheck(b bool) {
 	cc.ForceExpirationCheck = b
 	entry.SetForceExpirationCheck(b)
-	SaveConfig()
+	saveAndNotify("cache")
 }
 
 func (cc *CacheConfig) UpdateFileFormat(fileFormat int) {
 	cc.FileFormat = fileFormat
 	entry.SetFileFormat(fileFormat)
-	SaveConfig()
+	saveAndNotify("cache")
+}
+
+func (cc *CacheConfig) UpdatePath(path string) {
+	cc.Path = path
+	saveAndNotify("cache")
 }

@@ -33,6 +33,12 @@ func (kc *KeyConfig) Init() {
 	}
 }
 
+func (kc *KeyConfig) UpdateYouTubeApiKey(api string) {
+	kc.Youtube = api
+	third_party_api.YoutubeApiKey = kc.Youtube
+	saveAndNotify("keys")
+}
+
 type ExecutableConfig struct {
 	CheckUpdateOnStart bool `yaml:"check_update_on_start"`
 
@@ -51,18 +57,18 @@ func (ec *ExecutableConfig) Init() {
 
 func (ec *ExecutableConfig) UpdateCheckUpdateOnStart(enable bool) {
 	ec.CheckUpdateOnStart = enable
-	SaveConfig()
+	saveAndNotify("executable")
 }
 
 func (ec *ExecutableConfig) UpdateYtDlpPath(p string) {
 	ec.YtDlpPath = p
-	SaveConfig()
+	saveAndNotify("executable")
 	local_executables.InitYtDlp(ec.CheckUpdateOnStart, ec.YtDlpPath)
 }
 
 func (ec *ExecutableConfig) UpdateDenoPath(p string) {
 	ec.DenoPath = p
-	SaveConfig()
+	saveAndNotify("executable")
 	local_executables.InitDeno(ec.CheckUpdateOnStart, ec.DenoPath)
 }
 
@@ -85,7 +91,7 @@ func (pc *PreloadConfig) Init() {
 func (pc *PreloadConfig) UpdateMaxPreload(max int) {
 	pc.MaxPreload = max
 	playlist.SetMaxPreload(max)
-	SaveConfig()
+	saveAndNotify("preload")
 }
 
 type DownloadConfig struct {
@@ -103,7 +109,7 @@ func (dc *DownloadConfig) Init() {
 func (dc *DownloadConfig) UpdateMaxDownload(max int) {
 	dc.MaxDownload = max
 	download.SetMaxParallel(max)
-	SaveConfig()
+	saveAndNotify("download")
 }
 
 type DbConfig struct {

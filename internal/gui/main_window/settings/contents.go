@@ -84,8 +84,7 @@ func createKeySettingsContent() fyne.CanvasObject {
 
 	youtubeKeyInput := input.NewInputWithSave(keyConfig.Youtube, i18n.T("label_yt_api_key"))
 	youtubeKeyInput.OnSave = func() error {
-		keyConfig.Youtube = youtubeKeyInput.Value
-		config.SaveConfig()
+		keyConfig.UpdateYouTubeApiKey(youtubeKeyInput.Value)
 		return nil
 	}
 
@@ -216,8 +215,7 @@ func createCacheSettingsContent() fyne.CanvasObject {
 
 	pathInput := input.NewInputWithSave(cacheConfig.Path, i18n.T("label_cache_path"))
 	pathInput.OnSave = func() error {
-		cacheConfig.Path = pathInput.Value
-		config.SaveConfig()
+		cacheConfig.UpdatePath(pathInput.Value)
 		return nil
 	}
 	wholeContent.Add(pathInput)

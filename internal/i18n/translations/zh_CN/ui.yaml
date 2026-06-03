@@ -102,7 +102,7 @@
 - Key: label_yt_thumbnail_enable
   Default: "允许获取YouTube视频缩略图"
 - Key: label_yt_video_enable
-  Default: "允许通过ytdlp预加载YouTube视频"
+  Default: "允许通过ytdlp预载YouTube视频和读取信息"
 
 - Key: label_max_preload_count
   Default: "预加载最大数量 (包括当前播放视频)"
