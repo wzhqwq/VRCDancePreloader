@@ -65,7 +65,9 @@
 - Key: label_hijack_enable_https
   Default: "Enable HTTPS hijacking"
 - Key: label_hijack_limit_bandwidth
-  Default: "limit playback bandwidth to 25Mbps (experimental)"
+  Default: "limit playback bandwidth (experimental)"
+- Key: label_hijack_max_bandwidth
+  Default: "maximum playback bandwidth (Mbps)"
 - Key: label_hijack_intercepted_sites
   Default: "Sites to be intercepted"
 

@@ -16,6 +16,7 @@ type HijackConfig struct {
 	EnableHttps      bool     `yaml:"enable-https"`
 	EnablePWI        bool     `yaml:"enable-pwi"`
 	LimitBandwidth   bool     `yaml:"limit-bandwidth"`
+	MaxBandwidth     int      `yaml:"max-bandwidth"`
 
 	HijackRunner *input.ServerRunner `yaml:"-"`
 }
@@ -27,9 +28,13 @@ func GetHijackConfig() *HijackConfig {
 var defaultHijackConfig = HijackConfig{
 	ProxyPort:        7653,
 	InterceptedSites: constants.CopyAllSites(),
+	MaxBandwidth:     25,
 }
 
 func (hc *HijackConfig) Init() {
+	hijack.SetLimitBandwidth(hc.LimitBandwidth)
+	hijack.SetMaxBandwidth(hc.MaxBandwidth)
+
 	runner := input.NewServerRunner(hc.ProxyPort)
 	runner.OnSave = hc.UpdatePort
 	runner.StartServer = func() error {
@@ -92,5 +97,11 @@ func (hc *HijackConfig) UpdateEnablePWI(b bool) {
 func (hc *HijackConfig) UpdateLimitBandwidth(b bool) {
 	hc.LimitBandwidth = b
 	hijack.SetLimitBandwidth(b)
+	saveAndNotify("hijack")
+}
+
+func (hc *HijackConfig) UpdateMaxBandwidth(b int) {
+	hc.MaxBandwidth = b
+	hijack.SetMaxBandwidth(b)
 	saveAndNotify("hijack")
 }

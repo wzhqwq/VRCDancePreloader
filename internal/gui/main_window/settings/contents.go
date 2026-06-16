@@ -46,6 +46,18 @@ func createHijackSettingsContent() fyne.CanvasObject {
 	limitBandwidthCb.Checked = hijackConfig.LimitBandwidth
 	wholeContent.Add(limitBandwidthCb)
 
+	maxBandwidthInput := input.NewInputWithSave(strconv.Itoa(hijackConfig.MaxBandwidth), i18n.T("label_hijack_max_bandwidth"))
+	maxBandwidthInput.ForceDigits = true
+	maxBandwidthInput.OnSave = func() error {
+		mbps, err := strconv.Atoi(maxBandwidthInput.Value)
+		if err != nil {
+			return err
+		}
+		hijackConfig.UpdateMaxBandwidth(mbps)
+		return nil
+	}
+	wholeContent.Add(maxBandwidthInput)
+
 	wholeContent.Add(config_widgets.NewMultiSelectSites(hijackConfig.InterceptedSites))
 
 	return wholeContent

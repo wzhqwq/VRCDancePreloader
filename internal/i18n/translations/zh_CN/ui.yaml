@@ -65,7 +65,9 @@
 - Key: label_hijack_enable_https
   Default: "启用HTTPS劫持"
 - Key: label_hijack_limit_bandwidth
-  Default: "限制播放带宽至25Mbps（实验）"
+  Default: "限制播放带宽 (实验)"
+- Key: label_hijack_max_bandwidth
+  Default: "最大播放带宽 (Mbps)"
 - Key: label_hijack_intercepted_sites
   Default: "需要拦截的站点"
 
