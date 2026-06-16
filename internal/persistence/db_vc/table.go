@@ -1,6 +1,7 @@
 package db_vc
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -122,47 +123,67 @@ func (t *Table) Init(db *sql.DB, upgrade bool) error {
 }
 
 func (t *Table) Exec(query string, args ...any) (sql.Result, error) {
+	return t.ExecContext(context.Background(), query, args...)
+}
+
+func (t *Table) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	if t.db == nil {
 		panic(ErrNotInitialized)
 	}
 	if strings.Count(query, "?") != len(args) {
 		panic(ErrMismatchedPlaceholders)
 	}
-	return t.db.Exec(query, args...)
+	return t.db.ExecContext(contextOrBackground(ctx), query, args...)
 }
 
 func (t *Table) Query(query string, args ...any) (*sql.Rows, error) {
+	return t.QueryContext(context.Background(), query, args...)
+}
+
+func (t *Table) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	if t.db == nil {
 		panic(ErrNotInitialized)
 	}
 	if strings.Count(query, "?") != len(args) {
 		panic(ErrMismatchedPlaceholders)
 	}
-	return t.db.Query(query, args...)
+	return t.db.QueryContext(contextOrBackground(ctx), query, args...)
 }
 
 func (t *Table) QueryRow(query string, args ...any) *sql.Row {
+	return t.QueryRowContext(context.Background(), query, args...)
+}
+
+func (t *Table) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
 	if t.db == nil {
 		panic(ErrNotInitialized)
 	}
 	if strings.Count(query, "?") != len(args) {
 		panic(ErrMismatchedPlaceholders)
 	}
-	return t.db.QueryRow(query, args...)
+	return t.db.QueryRowContext(contextOrBackground(ctx), query, args...)
 }
 
 func (t *Table) Tx() (*sql.Tx, error) {
+	return t.TxContext(context.Background())
+}
+
+func (t *Table) TxContext(ctx context.Context) (*sql.Tx, error) {
 	if t.db == nil {
 		panic(ErrNotInitialized)
 	}
-	return t.db.Begin()
+	return t.db.BeginTx(contextOrBackground(ctx), nil)
 }
 
 func (t *Table) Prepare(query string) (*sql.Stmt, error) {
+	return t.PrepareContext(context.Background(), query)
+}
+
+func (t *Table) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
 	if t.db == nil {
 		panic(ErrNotInitialized)
 	}
-	return t.db.Prepare(query)
+	return t.db.PrepareContext(contextOrBackground(ctx), query)
 }
 
 func (t *Table) Select(columns ...string) *QuickSelect {
@@ -171,6 +192,12 @@ func (t *Table) Select(columns ...string) *QuickSelect {
 
 func (t *Table) Insert(columns ...string) *QuickInsert {
 	return newInsert(t, columns)
+}
+
+func (t *Table) InsertOrReplace(columns ...string) *QuickInsert {
+	i := newInsert(t, columns)
+	i.prefix = strings.Replace(i.prefix, "INSERT", "INSERT OR REPLACE", 1)
+	return i
 }
 
 func (t *Table) Update() *QuickUpdate {
@@ -215,4 +242,11 @@ func DefTable(name string) *Table {
 		name:    name,
 		columns: map[string]*Column{},
 	}
+}
+
+func contextOrBackground(ctx context.Context) context.Context {
+	if ctx == nil {
+		return context.Background()
+	}
+	return ctx
 }
