@@ -105,6 +105,12 @@ func NewInt(name string) *Column {
 	}
 }
 
+func NewReal(name string) *Column {
+	return &Column{
+		name:    name,
+		sqlType: "REAL",
+	}
+}
 func NewBool(name string) *Column {
 	return &Column{
 		name:    name,

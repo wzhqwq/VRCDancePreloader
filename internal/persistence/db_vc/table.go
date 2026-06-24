@@ -12,9 +12,9 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var tableNames = map[string]struct{}{}
+func getTableNames(db *sql.DB) map[string]struct{} {
+	tableNames := map[string]struct{}{}
 
-func getTableNames(db *sql.DB) {
 	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'sql_%'")
 	if err != nil {
 		log.Fatalf("Failed to query tables: %v", err)
@@ -28,6 +28,8 @@ func getTableNames(db *sql.DB) {
 		}
 		tableNames[tableName] = struct{}{}
 	}
+
+	return tableNames
 }
 
 type Table struct {
@@ -83,6 +85,7 @@ var ErrMismatchedPlaceholders = errors.New("the number of placeholders mismatche
 
 func (t *Table) Init(db *sql.DB, upgrade bool) error {
 	t.db = db
+	tableNames := getTableNames(db)
 	if _, ok := tableNames[t.name]; ok {
 		localColumns := t.getColumnsInDB()
 		for _, c := range t.columns {

@@ -17,7 +17,7 @@ var maximumDataVersion utils.ShortVersion
 var currentDataVersion utils.ShortVersion
 
 func InitCompatibility(db *sql.DB) {
-	_, compatibilityExists := tableNames[compatibilityTable.name]
+	_, compatibilityExists := getTableNames(db)[compatibilityTable.name]
 	err := compatibilityTable.Init(db, !compatibilityExists)
 	if err != nil {
 		logger.FatalLn("Failed to initialize compatibility table", err)
