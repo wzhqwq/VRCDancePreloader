@@ -57,6 +57,8 @@ func NewJsonRemoteResource[T any](name string, url string, client *requesting.Cl
 		if err != nil {
 			return nil, err
 		}
+		defer resp.Body.Close()
+
 		if resp.StatusCode >= 500 {
 			r.scheduler.AddDelay(time.Second * 10)
 			return nil, ErrResourceUnavailable
