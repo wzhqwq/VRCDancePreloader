@@ -1,6 +1,7 @@
 package playlist
 
 import (
+	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -27,4 +28,12 @@ func (pl *PlayList) SubscribeChangeEvent() *utils.EventSubscriber[ChangeType] {
 
 func (pl *PlayList) notifyChange(changeType ChangeType) {
 	pl.em.NotifySubscribers(changeType)
+}
+
+func (pl *PlayList) SubscribeActiveSongEvent() *utils.EventSubscriber[*song.PreloadedSong] {
+	return pl.activeEm.SubscribeEvent()
+}
+
+func (pl *PlayList) notifyActiveSongChange(song *song.PreloadedSong) {
+	pl.activeEm.NotifySubscribers(song)
 }

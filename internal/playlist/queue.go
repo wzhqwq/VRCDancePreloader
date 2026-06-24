@@ -22,11 +22,23 @@ func (pl *PlayList) Update(items []*song.PreloadedSong) {
 		return
 	}
 
+	var changedActiveItem *song.PreloadedSong
+
 	pl.ItemsLock.Lock()
+	if len(items) > 0 {
+		if len(pl.Items) == 0 {
+			changedActiveItem = items[0]
+		} else if !pl.Items[0].Match(items[0]) {
+			changedActiveItem = items[0]
+		}
+	}
 	pl.Items = items
 	pl.ItemsLock.Unlock()
 
 	pl.notifyChange(ItemsChange)
+	if changedActiveItem != nil {
+		pl.notifyActiveSongChange(changedActiveItem)
+	}
 	pl.CriticalUpdate()
 }
 

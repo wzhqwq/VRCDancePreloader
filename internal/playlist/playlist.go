@@ -29,7 +29,8 @@ type PlayList struct {
 	dirty bool
 
 	// event
-	em *utils.EventManager[ChangeType]
+	em       *utils.EventManager[ChangeType]
+	activeEm *utils.EventManager[*song.PreloadedSong]
 
 	// lightweight locks
 	ItemsLock sync.RWMutex
@@ -47,7 +48,8 @@ func newPlayList(maxPreload int) *PlayList {
 
 		maxPreload: maxPreload,
 
-		em: utils.NewEventManager[ChangeType](),
+		em:       utils.NewEventManager[ChangeType](),
+		activeEm: utils.NewEventManager[*song.PreloadedSong](),
 	}
 }
 
