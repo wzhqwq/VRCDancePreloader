@@ -37,26 +37,26 @@ func createHijackSettingsContent() fyne.CanvasObject {
 	enableHttpsCb.Checked = hijackConfig.EnableHttps
 	wholeContent.Add(enableHttpsCb)
 
-	limitBandwidthCb := widget.NewCheck(i18n.T("label_hijack_limit_bandwidth"), func(b bool) {
-		if hijackConfig.LimitBandwidth == b {
-			return
-		}
-		hijackConfig.UpdateLimitBandwidth(b)
-	})
-	limitBandwidthCb.Checked = hijackConfig.LimitBandwidth
-	wholeContent.Add(limitBandwidthCb)
+	//limitBandwidthCb := widget.NewCheck(i18n.T("label_hijack_limit_bandwidth"), func(b bool) {
+	//	if hijackConfig.LimitBandwidth == b {
+	//		return
+	//	}
+	//	hijackConfig.UpdateLimitBandwidth(b)
+	//})
+	//limitBandwidthCb.Checked = hijackConfig.LimitBandwidth
+	//wholeContent.Add(limitBandwidthCb)
 
-	maxBandwidthInput := input.NewInputWithSave(strconv.Itoa(hijackConfig.MaxBandwidth), i18n.T("label_hijack_max_bandwidth"))
-	maxBandwidthInput.ForceDigits = true
-	maxBandwidthInput.OnSave = func() error {
-		mbps, err := strconv.Atoi(maxBandwidthInput.Value)
-		if err != nil {
-			return err
-		}
-		hijackConfig.UpdateMaxBandwidth(mbps)
-		return nil
-	}
-	wholeContent.Add(maxBandwidthInput)
+	//maxBandwidthInput := input.NewInputWithSave(strconv.Itoa(hijackConfig.MaxBandwidth), i18n.T("label_hijack_max_bandwidth"))
+	//maxBandwidthInput.ForceDigits = true
+	//maxBandwidthInput.OnSave = func() error {
+	//	mbps, err := strconv.Atoi(maxBandwidthInput.Value)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	hijackConfig.UpdateMaxBandwidth(mbps)
+	//	return nil
+	//}
+	//wholeContent.Add(maxBandwidthInput)
 
 	wholeContent.Add(config_widgets.NewMultiSelectSites(hijackConfig.InterceptedSites))
 

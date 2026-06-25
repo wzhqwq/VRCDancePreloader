@@ -1,4 +1,4 @@
-package hijack
+package mixed_server
 
 import (
 	"fmt"

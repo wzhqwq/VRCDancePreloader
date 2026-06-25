@@ -1,15 +1,12 @@
-package hijack
+package mixed_server
 
 import (
 	"bufio"
 	"context"
-	"errors"
 	"net"
 	"net/http"
 	"runtime/debug"
-	"strconv"
 	"sync"
-	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -126,7 +123,7 @@ func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http
 	return req, nil
 }
 
-func Start(sites []string, enableHttps bool, port int) error {
+func getProxyHandler(sites []string, enableHttps bool) http.Handler {
 	proxy = goproxy.NewProxyHttpServer()
 
 	// for http proxy using CONNECT first
@@ -149,30 +146,9 @@ func Start(sites []string, enableHttps bool, port int) error {
 		proxy.OnRequest(goproxy.ReqHostIs(site)).DoFunc(handleRequest)
 	}
 
-	runningServer = &http.Server{
-		Addr:    "127.0.0.1:" + strconv.Itoa(port),
-		Handler: &MixedProxyServer{proxyService: proxy},
-	}
-	logger.InfoLn("Starting server on port", port)
-
-	if err := runningServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
-	return nil
+	return proxy
 }
 
 func SelfCheck() {
 	// check for dial loop
-}
-
-func Stop() {
-	if runningServer != nil {
-		shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
-		defer shutdownRelease()
-
-		if err := runningServer.Shutdown(shutdownCtx); err != nil {
-			logger.FatalLn("HTTP shutdown error:", err)
-		}
-		runningServer = nil
-	}
 }

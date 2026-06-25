@@ -1,4 +1,4 @@
-package hijack
+package mixed_server
 
 import (
 	"context"
@@ -79,10 +79,6 @@ func handlePlatformVideoRequest(platform, id string, w http.ResponseWriter, req 
 
 		if rangeHeader != "" {
 			f.UpdateReqRangeStart(parseRange(rangeHeader, contentLength))
-		}
-
-		if limitBandwidth {
-			rs = utils.NewPacingReader(rs, int64(maxBandwidth))
 		}
 
 		http.ServeContent(w, req, "video.mp4", f.ModTime(), rs)

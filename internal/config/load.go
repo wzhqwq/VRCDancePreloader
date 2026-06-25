@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/mixed_server"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -16,8 +17,9 @@ var em = utils.NewEventManager[string]()
 var config struct {
 	Version string `yaml:"version"`
 
-	Hijack HijackConfig `yaml:"hijack"`
-	Proxy  ProxyConfig  `yaml:"proxy"`
+	Hijack HijackConfig        `yaml:"hijack"`
+	Proxy  ProxyConfig         `yaml:"proxy"`
+	Server mixed_server.Config `yaml:"server"`
 
 	Keys       KeyConfig        `yaml:"keys"`
 	Youtube    YoutubeConfig    `yaml:"youtube"`
@@ -36,6 +38,7 @@ func FillDefaultSetting() {
 	config.Version = "2.2"
 	config.Hijack = defaultHijackConfig
 	config.Proxy = defaultProxyConfig
+	config.Server = mixed_server.DefaultConfig()
 	config.Keys = KeyConfig{}
 	config.Youtube = defaultYoutubeConfig
 	config.Executable = ExecutableConfig{

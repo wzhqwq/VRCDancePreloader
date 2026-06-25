@@ -1,10 +1,11 @@
-package hijack
+package mixed_server
 
 import (
-	"github.com/samber/lo"
 	"net/textproto"
 	"strconv"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 // simplified version from net/http/fs.go
