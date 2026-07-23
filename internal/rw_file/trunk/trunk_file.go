@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache/cache_fs"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/cache_fs"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -34,13 +34,13 @@ type File struct {
 	a        sync.Once
 }
 
-func NewTrunkFile(baseName string) *File {
+func NewTrunkFile(baseName string, cacheFs *cache_fs.CacheFS) *File {
 	name := baseName + ".vrcdp"
 
-	f, ok := cache_fs.Get(name)
+	f, ok := cacheFs.Get(name)
 	if !ok {
 		var err error
-		f, err = cache_fs.Create(name)
+		f, err = cacheFs.Create(name)
 		if err != nil {
 			logger.ErrorLn("Failed to open cache file:", err)
 			return nil

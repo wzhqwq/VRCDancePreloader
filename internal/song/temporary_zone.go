@@ -2,7 +2,6 @@ package song
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -10,7 +9,7 @@ import (
 
 type TemporarySong struct {
 	key    string
-	song   *PreloadedSong
+	song   *StatefulSong
 	inList bool
 
 	useCount atomic.Int32
@@ -28,9 +27,9 @@ func (t *TemporarySong) tryRemove() bool {
 			t.song.RemoveFromList()
 		}
 		return true
-	} else {
-		return false
 	}
+
+	return false
 }
 func (t *TemporarySong) removeAfterTimeout() bool {
 	for {
@@ -57,7 +56,7 @@ func (t *TemporarySong) WatchRemove() {
 	}
 }
 
-func NewTemporarySong(key string, song *PreloadedSong) *TemporarySong {
+func NewTemporarySong(key string, song *StatefulSong) *TemporarySong {
 	t := &TemporarySong{
 		key:      key,
 		song:     song,
@@ -70,28 +69,13 @@ func NewTemporarySong(key string, song *PreloadedSong) *TemporarySong {
 var temporaryMap = make(map[string]*TemporarySong)
 var mapMutex sync.Mutex
 
-func GetTemporaryPyPySong(id int, ctx context.Context) *PreloadedSong {
-	return findOrCreateTemporarySong(fmt.Sprintf("pypy_%d", id), ctx, func() *PreloadedSong {
-		return CreatePreloadedPyPySong(id)
-	})
-}
-func GetTemporaryWannaSong(id int, ctx context.Context) *PreloadedSong {
-	return findOrCreateTemporarySong(fmt.Sprintf("wanna_%d", id), ctx, func() *PreloadedSong {
-		return CreatePreloadedWannaSong(id)
-	})
-}
-func GetTemporaryDuDuSong(id int, ctx context.Context) *PreloadedSong {
-	return findOrCreateTemporarySong(fmt.Sprintf("dudu_%d", id), ctx, func() *PreloadedSong {
-		return CreatePreloadedDuDuSong(id)
-	})
-}
-func GetTemporaryCustomSong(url string, ctx context.Context) *PreloadedSong {
-	return findOrCreateTemporarySong(url, ctx, func() *PreloadedSong {
-		return CreatePreloadedCustomSong(url)
+func GetTemporarySongByInternalId(id string, ctx context.Context) *StatefulSong {
+	return findOrCreateTemporarySong(id, ctx, func() *StatefulSong {
+		return CreateStatefulSongByInternalId(id)
 	})
 }
 
-func findOrCreateTemporarySong(key string, ctx context.Context, create func() *PreloadedSong) *PreloadedSong {
+func findOrCreateTemporarySong(key string, ctx context.Context, create func() *StatefulSong) *StatefulSong {
 	mapMutex.Lock()
 	defer mapMutex.Unlock()
 
@@ -108,36 +92,15 @@ func findOrCreateTemporarySong(key string, ctx context.Context, create func() *P
 	return song.song
 }
 
-func GetPyPySongForList(id int) *PreloadedSong {
-	song := drawFromTemporary(fmt.Sprintf("pypy_%d", id))
+func MakePlaylistSongByInternalId(id string) *StatefulSong {
+	song := drawFromTemporary(id)
 	if song == nil {
-		song = CreatePreloadedPyPySong(id)
-	}
-	return song
-}
-func GetWannaSongForList(id int) *PreloadedSong {
-	song := drawFromTemporary(fmt.Sprintf("wanna_%d", id))
-	if song == nil {
-		song = CreatePreloadedWannaSong(id)
-	}
-	return song
-}
-func GetDuDuSongForList(id int) *PreloadedSong {
-	song := drawFromTemporary(fmt.Sprintf("dudu_%d", id))
-	if song == nil {
-		song = CreatePreloadedDuDuSong(id)
-	}
-	return song
-}
-func GetCustomSongForList(url string) *PreloadedSong {
-	song := drawFromTemporary(url)
-	if song == nil {
-		song = CreatePreloadedCustomSong(url)
+		song = CreateStatefulSongByInternalId(id)
 	}
 	return song
 }
 
-func drawFromTemporary(key string) *PreloadedSong {
+func drawFromTemporary(key string) *StatefulSong {
 	mapMutex.Lock()
 	defer mapMutex.Unlock()
 

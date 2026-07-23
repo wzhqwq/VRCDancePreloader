@@ -7,10 +7,12 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 )
 
 type PaddedIconBtn struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
+
 	fyne.Tappable
 	desktop.Hoverable
 
@@ -20,8 +22,7 @@ type PaddedIconBtn struct {
 	icon    fyne.Resource
 	hovered bool
 
-	OnClick   func()
-	OnDestroy func()
+	OnClick func()
 }
 
 func NewPaddedIconBtn(icon fyne.Resource) *PaddedIconBtn {
@@ -65,11 +66,14 @@ func (b *PaddedIconBtn) CreateRenderer() fyne.WidgetRenderer {
 	background := canvas.NewRectangle(theme.Color(theme.ColorNameButton))
 	background.CornerRadius = 5
 
-	return &paddedIconBtnRenderer{
+	r := &paddedIconBtnRenderer{
 		btn:        b,
 		Icon:       widget.NewIcon(b.icon),
 		Background: background,
 	}
+	r.Created(b)
+
+	return r
 }
 
 func (b *PaddedIconBtn) Tapped(_ *fyne.PointEvent) {
@@ -90,6 +94,8 @@ func (b *PaddedIconBtn) MouseMoved(_ *desktop.MouseEvent) {
 }
 
 type paddedIconBtnRenderer struct {
+	interactive_widgets.BaseLifeCycleRenderer
+
 	btn *PaddedIconBtn
 
 	Icon       *widget.Icon
@@ -117,9 +123,4 @@ func (r *paddedIconBtnRenderer) Refresh() {
 		r.Background.FillColor = theme.Color(theme.ColorNameButton)
 	}
 	r.Background.Refresh()
-}
-func (r *paddedIconBtnRenderer) Destroy() {
-	if r.btn.OnDestroy != nil {
-		r.btn.OnDestroy()
-	}
 }

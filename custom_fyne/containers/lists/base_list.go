@@ -12,6 +12,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/custom_fyne/containers/scroll"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -113,7 +114,8 @@ func (i *BaseListItem[T]) setRemoved() {
 }
 
 type BaseList[T DataWithID] struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
+
 	ReusableList[T]
 	fyne.Scrollable
 
@@ -154,7 +156,33 @@ var _ fyne.Scrollable = (*BaseList[DataWithID])(nil)
 func NewBaseList[T DataWithID]() *BaseList[T] {
 	l := &BaseList[T]{}
 	l.ExtendBaseList(l)
+	l.AddLifeCycleFn(l.loop)
 	return l
+}
+
+func (l *BaseList[T]) loop(stopCh <-chan struct{}) {
+	if l.SubscriberFn == nil {
+		return
+	}
+
+	sub := l.SubscriberFn()
+	defer sub.Close()
+
+	for {
+		select {
+		case e := <-sub.Channel:
+			switch e.Op {
+			case '+':
+				l.addItem(e.ID)
+			case '-':
+				l.removeItem(e.ID)
+			case '*':
+				l.updateItem(e.ID)
+			}
+		case <-stopCh:
+			return
+		}
+	}
 }
 
 func (l *BaseList[T]) ExtendBaseList(super fyne.Widget) {
@@ -342,17 +370,15 @@ func (l *BaseList[T]) CreateRenderer() fyne.WidgetRenderer {
 		container: &fyne.Container{Layout: &listLayout{}, Objects: l.items},
 		bar:       bar,
 		tip:       tip,
-
-		stopCh: make(chan struct{}),
 	}
-	if l.SubscriberFn != nil {
-		r.eventLoop(l.SubscriberFn())
-	}
+	r.Created(l)
 
 	return r
 }
 
 type listRenderer[T DataWithID] struct {
+	interactive_widgets.BaseLifeCycleRenderer
+
 	l *BaseList[T]
 
 	bar       *scroll.Bar
@@ -361,29 +387,6 @@ type listRenderer[T DataWithID] struct {
 
 	topPadding    float32
 	bottomPadding float32
-
-	stopCh chan struct{}
-}
-
-func (l *listRenderer[T]) eventLoop(sub *utils.EventSubscriber[ListItemChange]) {
-	go func() {
-		defer sub.Close()
-		for {
-			select {
-			case e := <-sub.Channel:
-				switch e.Op {
-				case '+':
-					l.l.addItem(e.ID)
-				case '-':
-					l.l.removeItem(e.ID)
-				case '*':
-					l.l.updateItem(e.ID)
-				}
-			case <-l.stopCh:
-				return
-			}
-		}
-	}()
 }
 
 func (l *listRenderer[T]) layout(size fyne.Size) {
@@ -415,10 +418,6 @@ func (l *listRenderer[T]) layout(size fyne.Size) {
 	} else {
 		l.tip.Hide()
 	}
-}
-
-func (l *listRenderer[T]) Destroy() {
-	close(l.stopCh)
 }
 
 func (l *listRenderer[T]) Layout(size fyne.Size) {

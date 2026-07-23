@@ -5,13 +5,13 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/progress"
 	"github.com/samber/lo"
-	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
+	playlist2 "github.com/wzhqwq/VRCDancePreloader/internal/tools/playlist"
 )
 
 type PlayListTui struct {
 	pw progress.Writer
-	pl *playlist.PlayList
+	pl *playlist2.PlayList
 	t  *SongTable
 
 	items   []*ItemTui
@@ -22,7 +22,7 @@ type PlayListTui struct {
 	mapMutex    sync.Mutex
 }
 
-func NewPlayListTui(pl *playlist.PlayList) *PlayListTui {
+func NewPlayListTui(pl *playlist2.PlayList) *PlayListTui {
 	return &PlayListTui{
 		pw: progress.NewWriter(),
 		pl: pl,
@@ -54,7 +54,7 @@ func (plt *PlayListTui) RenderLoop() {
 			return
 		case change := <-changeCh.Channel:
 			switch change {
-			case playlist.ItemsChange:
+			case playlist2.ItemsChange:
 				plt.refreshItems()
 			}
 		}
@@ -70,7 +70,7 @@ func (plt *PlayListTui) refreshItems() {
 
 	songs := plt.pl.GetItemsSnapshot()
 
-	plt.items = lo.Map(songs, func(ps *song.PreloadedSong, _ int) *ItemTui {
+	plt.items = lo.Map(songs, func(ps *song.StatefulSong, _ int) *ItemTui {
 		if item, ok := plt.itemMap[ps.ID]; ok {
 			return item
 		}

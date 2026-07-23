@@ -49,14 +49,14 @@
   Default: "Proxy server"
 - Key: label_keys
   Default: "API keys"
-- Key: label_youtube
-  Default: "YouTube features"
+- Key: label_third_parties
+  Default: "Third-party features"
 - Key: label_executable
   Default: "Third-party executables"
 - Key: label_preload
-  Default: "Preload settings"
+  Default: "Preloader settings"
 - Key: label_download
-  Default: "Download settings"
+  Default: "Video downloading"
 - Key: label_cache
   Default: "Cache settings"
 
@@ -83,9 +83,7 @@
 - Key: label_dudu_proxy
   Default: "Proxy server for DuDuFitDance API"
 - Key: label_bili_proxy
-  Default: "Proxy server for BiliBili API"
-- Key: label_bili_video_proxy
-  Default: "Proxy server for BiliBili video"
+  Default: "Proxy server for BiliBili"
 - Key: label_yt_video_proxy
   Default: "Proxy server for YouTube video"
 - Key: label_yt_api_proxy
@@ -99,12 +97,10 @@
 
 - Key: label_yt_api_key
   Default: "YouTube API key"
-- Key: label_yt_api_enable
-  Default: "Enable read YouTube video info using YouTube API"
-- Key: label_yt_thumbnail_enable
-  Default: "Enable display thumbnail for YouTube video"
-- Key: label_yt_video_enable
-  Default: "Enable preload and read info of YouTube video using ytdlp"
+- Key: label_yt_mode
+  Default: "Fetching method for YouTube contents"
+- Key: label_bili_mode
+  Default: "Fetching method for BiliBili contents"
 
 - Key: label_max_preload_count
   Default: "Maximal preload count (including current playing)"
@@ -219,23 +215,41 @@
 - Key: label_broadcast_port
   Default: "Server port for broadcast"
 
-- Key: message_title_song_list
-  Default: "Song Manifest Status"
 - Key: label_song_list_downloading
   Default: "Downloading song manifest of {{.Name}}"
 - Key: label_song_list_downloaded
   Default: "Downloaded manifest for {{.Name}}\nVersion{{.Time}}"
+- Key: message_title_song_catalog
+  Default: "Song Catalog Status"
+- Key: label_song_catalog
+  Default: "Catalog of {{.Name}}"
+- Key: label_song_catalog_version
+  Default: "Local version: {{.Time}}"
+- Key: label_song_catalog_na
+  Default: "Not available"
 
 - Key: message_download_throttled
   Default: "Throttled ({{.Time}}s)"
 
-- Key: message_title_db_migrated
-  Default: "Database Migrated"
+- Key: message_title_migrated
+  Default: "Migrated to new version"
 - Key: message_db_migration
   Default: >
     The database has been migrated to the user directory ({{.Dir}}).
     The new database no longer supports software versions prior to 2.5.0.
     The original database is still retained for use by older software versions.
+- Key: message_config_v2_migration
+  Default: >
+    The config file has been migrated to the user directory ({{.Dir}}).
+    The new config file no longer supports software versions prior to 2.5.0.
+    The original config file is still retained for use by older software versions.
+- Key: message_migration_failure
+  Default: >
+    Error occurred during config file migration, settings that failed to be migrated
+    will be set to default. Errors:
+    
+    
+    {{.Errors}}
 
 - Key: message_lazy_list_changed
   Default: "list changed, refresh needed"

@@ -22,3 +22,18 @@
   Default: "不支持预加载"
 - Key: status_disabled
   Default: "预加载已禁用"
+
+- Key: status_remote_0
+  Default: "空闲"
+- Key: status_remote_1
+  Default: "下载中"
+- Key: status_remote_2
+  Default: "完成"
+- Key: status_remote_3
+  Default: "刷新中"
+- Key: status_remote_4
+  Default: "下载失败"
+- Key: status_remote_5
+  Default: "正在重试{{.Attempts}}"
+- Key: status_remote_cooling
+  Default: "（冷却等待{{.Seconds}}秒）"

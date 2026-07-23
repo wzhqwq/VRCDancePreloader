@@ -1,6 +1,6 @@
 package continuous
 
-func (f *File) Append(bytes []byte) (int, error) {
+func (f *File) Write(bytes []byte) (int, error) {
 	err := f.File.AppendTo(f.fragment, bytes)
 	if err != nil {
 		return 0, err

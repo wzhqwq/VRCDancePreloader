@@ -13,6 +13,7 @@ var a fyne.App
 var mainWindow fyne.Window
 
 var AppDataRoot string
+var LowAppDataRoot string
 var AppConfigRoot string
 
 const AppName = "VRCDP"
@@ -24,11 +25,14 @@ func InitRoot() {
 	}
 
 	AppConfigRoot = filepath.Join(configDir, AppName)
+	LowAppDataRoot = AppConfigRoot
 	if strings.HasSuffix(configDir, "Roaming") {
-		// it's Windows, and we should store large data to LocalLow
-		AppDataRoot = filepath.Join(configDir, "..", "LocalLow", AppName)
+		// it's Windows, and we should store large data to Local
+		AppDataRoot = filepath.Join(configDir, "..", "Local", AppName)
+		LowAppDataRoot = filepath.Join(configDir, "..", "LocalLow", AppName)
 	} else {
 		AppDataRoot = filepath.Join(AppConfigRoot, "data")
+		LowAppDataRoot = AppConfigRoot
 	}
 }
 

@@ -11,13 +11,14 @@ import (
 	"github.com/eduardolat/goeasyi18n"
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type RecordGui struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
 
 	Record *persistence.DanceRecord
 
@@ -31,6 +32,7 @@ func NewRecordGui(record *persistence.DanceRecord) *RecordGui {
 	}
 
 	g.ExtendBaseWidget(g)
+	g.AddLifeCycleFn(g.loop)
 
 	return g
 }
@@ -43,7 +45,7 @@ func (g *RecordGui) UpdateOrders() {
 	})
 }
 
-func (g *RecordGui) RenderLoop(stopCh chan struct{}) {
+func (g *RecordGui) loop(stopCh <-chan struct{}) {
 	ch := g.Record.SubscribeEvent()
 	defer ch.Close()
 
@@ -90,8 +92,6 @@ func (g *RecordGui) CreateRenderer() fyne.WidgetRenderer {
 	r := &RecordGuiRenderer{
 		g: g,
 
-		stopCh: make(chan struct{}),
-
 		Title:   title,
 		Comment: comment,
 
@@ -107,16 +107,15 @@ func (g *RecordGui) CreateRenderer() fyne.WidgetRenderer {
 	}
 
 	r.pushOrders()
-
-	go g.RenderLoop(r.stopCh)
+	r.Created(g)
 
 	return r
 }
 
 type RecordGuiRenderer struct {
-	g *RecordGui
+	interactive_widgets.BaseLifeCycleRenderer
 
-	stopCh chan struct{}
+	g *RecordGui
 
 	Title   fyne.CanvasObject
 	Comment *widgets.EllipseText
@@ -215,8 +214,4 @@ func (r *RecordGuiRenderer) Objects() []fyne.CanvasObject {
 		r.CommentBtn,
 		r.Separator,
 	}
-}
-
-func (r *RecordGuiRenderer) Destroy() {
-	close(r.stopCh)
 }

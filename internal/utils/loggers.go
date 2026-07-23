@@ -148,5 +148,3 @@ func (l *UniqueLogger) Print(str string) {
 	l.lastLog = str
 	log.Print(str)
 }
-
-var parsingLogger = NewLogger("Parsing")

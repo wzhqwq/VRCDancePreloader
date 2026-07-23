@@ -5,62 +5,61 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
-
-type Runner interface {
-	Save(value string) error
-	Run()
-
-	GetStatus() Status
-	GetValue() string
-	GetMessage() string
-}
 
 type InputWithRunner struct {
 	InputWithSave
 
-	runner Runner
+	service interactive.StatefulService
 
 	StatusIcon *icons.IconWithMessage
 }
 
-func NewInputWithRunner(runner Runner, label string) *InputWithRunner {
-	t := &InputWithRunner{
+func NewInputWithRunner[T AcceptedValue](service interactive.StatefulService, setting interactive.StatefulSetting[T], label string) *InputWithRunner {
+	i := &InputWithRunner{
 		InputWithSave: InputWithSave{},
-		runner:        runner,
+		service:       service,
 
 		StatusIcon: icons.NewIconWithMessage(nil),
 	}
 
-	t.InputAppendItems = []fyne.CanvasObject{container.NewPadded(t.StatusIcon)}
+	i.InputAppendItems = []fyne.CanvasObject{container.NewPadded(i.StatusIcon)}
 
-	t.UpdateStatus()
+	i.Extend(NewAdapterSetting(setting), label)
+	i.AddLifeCycleFn(i.loop)
 
-	t.OnSave = func() error {
-		err := runner.Save(t.Value)
-		if err != nil {
-			return err
-		}
+	i.ExtendBaseWidget(i)
 
-		runner.Run()
-		return nil
-	}
-
-	t.Extend(runner.GetValue(), label)
-	t.ExtendBaseWidget(t)
-
-	return t
+	return i
 }
 
-func (i *InputWithRunner) UpdateStatus() {
-	switch i.runner.GetStatus() {
-	case StatusRunning:
+func (i *InputWithRunner) loop(stopCh <-chan struct{}) {
+	ch := i.service.SubscribeStatus()
+	defer ch.Close()
+	i.updateStatus(i.service.Status())
+
+	for {
+		select {
+		case <-stopCh:
+			return
+		case status := <-ch.Channel:
+			i.updateStatus(status)
+		}
+	}
+}
+
+func (i *InputWithRunner) updateStatus(status interactive.RunnerStatus) {
+	if status.Running {
 		i.StatusIcon.SetIcon(theme.NewColoredResource(theme.MediaPlayIcon(), theme.ColorNameSuccess))
-		i.StatusIcon.SetMessage(i.runner.GetMessage(), theme.Color(theme.ColorNameSuccess))
-	case StatusError:
+		i.StatusIcon.SetMessage("", theme.Color(theme.ColorNameSuccess))
+		return
+	}
+
+	if status.Error == nil {
 		i.StatusIcon.SetIcon(theme.NewColoredResource(theme.WarningIcon(), theme.ColorNameError))
-		i.StatusIcon.SetMessage(i.runner.GetMessage(), theme.Color(theme.ColorNameError))
-	default:
+		i.StatusIcon.SetMessage(status.Error.Error(), theme.Color(theme.ColorNameError))
+	} else {
 		i.StatusIcon.SetIcon(nil)
 		i.StatusIcon.SetMessage("", theme.Color(theme.ColorNameForeground))
 	}

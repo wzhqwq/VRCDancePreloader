@@ -127,7 +127,7 @@ func (f *File) tryRead() bool {
 	}
 
 	size := stat.Size()
-	if size <= bodyOffset {
+	if size < bodyOffset {
 		if size > 0 {
 			logger.ErrorLnf("Corrupted file: %s, re-initialize it", f.file.Name())
 		}

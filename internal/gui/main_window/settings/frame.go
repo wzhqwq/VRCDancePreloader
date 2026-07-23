@@ -8,21 +8,22 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/containers"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/host"
 )
 
 func CreateSettingsContainer() fyne.CanvasObject {
+	cfg := host.Config()
 	scroll := container.NewVScroll(
 		containers.NewResponsiveFrame(
 			2,
 			300,
-			widgets.NewCard(createHijackSettingsContent()),
-			widgets.NewCard(createProxySettingsContent()),
-			widgets.NewCard(createKeySettingsContent()),
-			widgets.NewCard(createYoutubeSettingsContent()),
-			widgets.NewCard(createExecutableSettingsContent()),
-			widgets.NewCard(createPreloadSettingsContent()),
-			widgets.NewCard(createDownloadSettingsContent()),
-			widgets.NewCard(createCacheSettingsContent()),
+			widgets.NewCard(createHijackSettingsContent(cfg)),
+			widgets.NewCard(createProxySettingsContent(cfg)),
+			widgets.NewCard(createThirdPartySettingsContent(cfg)),
+			widgets.NewCard(createExecutableSettingsContent(cfg)),
+			widgets.NewCard(createPreloadSettingsContent(cfg)),
+			widgets.NewCard(createDownloadSettingsContent(cfg)),
+			widgets.NewCard(createCacheSettingsContent(cfg)),
 		),
 	)
 	scroll.SetMinSize(fyne.NewSize(300, 300))

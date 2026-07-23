@@ -1,284 +1,154 @@
 package settings
 
 import (
-	"strconv"
-
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/cache_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/config_widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/host"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
-func createHijackSettingsContent() fyne.CanvasObject {
-	hijackConfig := config.GetHijackConfig()
-
-	wholeContent := container.NewVBox()
-	wholeContent.Add(container.NewHBox(
-		widget.NewLabel(i18n.T("label_hijack")),
-		container.NewCenter(button.NewTipButton("tip_on_hijack")),
-	))
-
-	wholeContent.Add(hijackConfig.HijackRunner.GetInput(i18n.T("label_hijack_proxy_port")))
-
-	enableHttpsCb := widget.NewCheck(i18n.T("label_hijack_enable_https"), func(b bool) {
-		if hijackConfig.EnableHttps == b {
-			return
-		}
-		hijackConfig.UpdateEnableHttps(b)
-	})
-	enableHttpsCb.Checked = hijackConfig.EnableHttps
-	wholeContent.Add(enableHttpsCb)
-
-	//limitBandwidthCb := widget.NewCheck(i18n.T("label_hijack_limit_bandwidth"), func(b bool) {
-	//	if hijackConfig.LimitBandwidth == b {
-	//		return
-	//	}
-	//	hijackConfig.UpdateLimitBandwidth(b)
-	//})
-	//limitBandwidthCb.Checked = hijackConfig.LimitBandwidth
-	//wholeContent.Add(limitBandwidthCb)
-
-	//maxBandwidthInput := input.NewInputWithSave(strconv.Itoa(hijackConfig.MaxBandwidth), i18n.T("label_hijack_max_bandwidth"))
-	//maxBandwidthInput.ForceDigits = true
-	//maxBandwidthInput.OnSave = func() error {
-	//	mbps, err := strconv.Atoi(maxBandwidthInput.Value)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	hijackConfig.UpdateMaxBandwidth(mbps)
-	//	return nil
-	//}
-	//wholeContent.Add(maxBandwidthInput)
-
-	wholeContent.Add(config_widgets.NewMultiSelectSites(hijackConfig.InterceptedSites))
-
-	return wholeContent
+func rangedInput(setting interactive.StatefulSetting[int], label string, minimum, maximum int64) *input.InputWithSave {
+	i := input.NewInputWithSave(setting, label)
+	i.Policy = input.NewPolicy(
+		input.IntegerFilter(false),
+		input.IntRangeValidator(minimum, maximum, false),
+	)
+	return i
 }
 
-func createProxySettingsContent() fyne.CanvasObject {
-	proxyConfig := config.GetProxyConfig()
-
-	wholeContent := container.NewVBox()
-	wholeContent.Add(container.NewHBox(
-		widget.NewLabel(i18n.T("label_proxy")),
-		container.NewCenter(button.NewTipButton("tip_on_proxy")),
-	))
-	wholeContent.Add(proxyConfig.ProxyControllers["pypydance-api"].GetInput(i18n.T("label_pypy_proxy")))
-	wholeContent.Add(proxyConfig.ProxyControllers["wannadance-api"].GetInput(i18n.T("label_wanna_proxy")))
-	wholeContent.Add(proxyConfig.ProxyControllers["dudu-fitdance-api"].GetInput(i18n.T("label_dudu_proxy")))
-	wholeContent.Add(proxyConfig.ProxyControllers["bilibili-api"].GetInput(i18n.T("label_bili_proxy")))
-	wholeContent.Add(proxyConfig.ProxyControllers["bilibili-video"].GetInput(i18n.T("label_bili_video_proxy")))
-	wholeContent.Add(proxyConfig.ProxyControllers["youtube-video"].GetInput(i18n.T("label_yt_video_proxy")))
-	wholeContent.Add(proxyConfig.ProxyControllers["youtube-api"].GetInput(i18n.T("label_yt_api_proxy")))
-	wholeContent.Add(proxyConfig.ProxyControllers["youtube-image"].GetInput(i18n.T("label_yt_image_proxy")))
-	wholeContent.Add(proxyConfig.ProxyControllers["github-api"].GetInput(i18n.T("label_github_proxy")))
-	wholeContent.Add(proxyConfig.ProxyControllers["github-assets"].GetInput(i18n.T("label_github_assets_proxy")))
-
-	return wholeContent
+func portInput(service interactive.StatefulService, setting interactive.StatefulSetting[int], label string) *input.InputWithRunner {
+	i := input.NewInputWithRunner(service, setting, label)
+	i.Policy = input.NewPolicy(
+		input.IntegerFilter(false),
+		input.IntRangeValidator(1024, 49151, false),
+	)
+	return i
 }
 
-func createKeySettingsContent() fyne.CanvasObject {
-	keyConfig := config.GetKeyConfig()
+func createHijackSettingsContent(cfg *config.Manager) fyne.CanvasObject {
+	return container.NewVBox(
+		container.NewHBox(
+			widget.NewLabel(i18n.T("label_hijack")),
+			container.NewCenter(button.NewTipButton("tip_on_hijack")),
+		),
+		portInput(host.MixedServer(), cfg.MixedServerPort(), i18n.T("label_hijack_proxy_port")),
+		input.NewCheck(i18n.T("label_hijack_enable_https"), cfg.MixedServerEnableHttps()),
+		config_widgets.NewMultiSelectSites(cfg.MixedServerInterceptedSites()),
+	)
+}
 
-	wholeContent := container.NewVBox()
-	wholeContent.Add(container.NewHBox(
-		widget.NewLabel(i18n.T("label_keys")),
-		container.NewCenter(button.NewTipButton("tip_on_keys")),
-	))
-
-	youtubeKeyInput := input.NewInputWithSave(keyConfig.Youtube, i18n.T("label_yt_api_key"))
-	youtubeKeyInput.OnSave = func() error {
-		keyConfig.UpdateYouTubeApiKey(youtubeKeyInput.Value)
+func newProxyInput(cfg *config.Manager, field string, label string) *input.InputWithTester {
+	tester := requesting.GetTester(field)
+	if tester == nil {
 		return nil
 	}
-
-	wholeContent.Add(youtubeKeyInput)
-	return wholeContent
+	return input.NewInputWithTester(tester, cfg.ProxyOfSite(field), label)
 }
 
-func createYoutubeSettingsContent() fyne.CanvasObject {
-	proxyConfig := config.GetProxyConfig()
-	youtubeConfig := config.GetYoutubeConfig()
-
-	wholeContent := container.NewVBox()
-	wholeContent.Add(widget.NewLabel(i18n.T("label_youtube")))
-
-	enableApiCheck := widget.NewCheck(i18n.T("label_yt_api_enable"), func(b bool) {
-		if youtubeConfig.EnableApi == b {
-			return
-		}
-		youtubeConfig.UpdateEnableApi(b)
-		if b {
-			proxyConfig.ProxyControllers["youtube-api"].TestIfNotOk()
-		}
-	})
-	enableApiCheck.Checked = youtubeConfig.EnableApi
-	wholeContent.Add(enableApiCheck)
-
-	enableThumbnailCheck := widget.NewCheck(i18n.T("label_yt_thumbnail_enable"), func(b bool) {
-		if youtubeConfig.EnableThumbnail == b {
-			return
-		}
-		youtubeConfig.UpdateEnableThumbnail(b)
-		if b {
-			proxyConfig.ProxyControllers["youtube-image"].TestIfNotOk()
-		}
-	})
-	enableThumbnailCheck.Checked = youtubeConfig.EnableThumbnail
-	wholeContent.Add(enableThumbnailCheck)
-
-	enableVideoCheck := widget.NewCheck(i18n.T("label_yt_video_enable"), func(b bool) {
-		if youtubeConfig.EnableYtDlp == b {
-			return
-		}
-		youtubeConfig.UpdateEnableYtDlp(b)
-		if b {
-			proxyConfig.ProxyControllers["youtube-video"].TestIfNotOk()
-		}
-	})
-	enableVideoCheck.Checked = youtubeConfig.EnableYtDlp
-	wholeContent.Add(enableVideoCheck)
-
-	return wholeContent
+func createProxySettingsContent(cfg *config.Manager) fyne.CanvasObject {
+	return container.NewVBox(
+		container.NewHBox(
+			widget.NewLabel(i18n.T("label_proxy")),
+			container.NewCenter(button.NewTipButton("tip_on_proxy")),
+		),
+		newProxyInput(cfg, "pypydance-api", i18n.T("label_pypy_proxy")),
+		newProxyInput(cfg, "wannadance-api", i18n.T("label_wanna_proxy")),
+		newProxyInput(cfg, "dudu-fitdance-api", i18n.T("label_dudu_proxy")),
+		newProxyInput(cfg, "bilibili", i18n.T("label_bili_proxy")),
+		newProxyInput(cfg, "youtube-video", i18n.T("label_yt_video_proxy")),
+		newProxyInput(cfg, "youtube-api", i18n.T("label_yt_api_proxy")),
+		newProxyInput(cfg, "youtube-image", i18n.T("label_yt_image_proxy")),
+		newProxyInput(cfg, "github-api", i18n.T("label_github_proxy")),
+		newProxyInput(cfg, "github-assets", i18n.T("label_github_assets_proxy")),
+	)
 }
 
-func createExecutableSettingsContent() fyne.CanvasObject {
-	executableConfig := config.GetExecutableConfig()
+type youtubeApiGetAndSub struct {
+	cfg *config.Manager
+}
 
-	wholeContent := container.NewVBox()
-	wholeContent.Add(container.NewHBox(
+func (y *youtubeApiGetAndSub) Get() bool {
+	return y.cfg.ThirdPartyBiliBiliMode().Get() == "api"
+}
+
+func (y *youtubeApiGetAndSub) Subscribe() *utils.EventSubscriber[bool] {
+	return y.cfg.ThirdPartyYoutubeMode().SubscribeWhether(func(mode string) bool {
+		return mode == "api"
+	})
+}
+
+func createThirdPartySettingsContent(cfg *config.Manager) fyne.CanvasObject {
+	modeOptions := []input.NamedOption[string]{
+		{"disabled", i18n.T("label_via_disabled")},
+		{"api", i18n.T("label_via_api")},
+		{"ytdlp", i18n.T("label_via_ytdlp")},
+	}
+
+	return container.NewVBox(
+		widget.NewLabel(i18n.T("label_third_parties")),
+		input.NewRadioGroup(i18n.T("label_yt_mode"), modeOptions, cfg.ThirdPartyYoutubeMode()),
+		interactive_widgets.NewAvailableWhen(
+			input.NewInputWithSave(cfg.SecretYoutubeAPIKey(), i18n.T("label_yt_api_key")),
+			&youtubeApiGetAndSub{cfg},
+		),
+		input.NewRadioGroup(i18n.T("label_bili_mode"), modeOptions, cfg.ThirdPartyBiliBiliMode()),
+	)
+}
+
+func createExecutableSettingsContent(cfg *config.Manager) fyne.CanvasObject {
+	return container.NewVBox(
 		widget.NewLabel(i18n.T("label_executable")),
-		container.NewCenter(button.NewTipButton("tip_on_executable")),
-	))
-
-	enableAutoCheckCb := widget.NewCheck(i18n.T("label_executable_auto_check"), func(b bool) {
-		if executableConfig.CheckUpdateOnStart == b {
-			return
-		}
-		executableConfig.UpdateCheckUpdateOnStart(b)
-	})
-	enableAutoCheckCb.Checked = executableConfig.CheckUpdateOnStart
-	wholeContent.Add(enableAutoCheckCb)
-
-	wholeContent.Add(config_widgets.NewDownloadableBinaryGui("ytdlp", executableConfig.YtDlpPath, executableConfig.UpdateYtDlpPath))
-	wholeContent.Add(config_widgets.NewDownloadableBinaryGui("deno", executableConfig.DenoPath, executableConfig.UpdateDenoPath))
-
-	return wholeContent
+		input.NewCheck(i18n.T("label_executable_auto_check"), cfg.ExecutableAutoCheck()),
+		config_widgets.NewDownloadableBinaryGui("ytdlp", cfg.ExecutableYtDlpPath()),
+		config_widgets.NewDownloadableBinaryGui("deno", cfg.ExecutableDenoPath()),
+	)
 }
 
-func createPreloadSettingsContent() fyne.CanvasObject {
-	preloadConfig := config.GetPreloadConfig()
-
-	wholeContent := container.NewVBox()
-	wholeContent.Add(widget.NewLabel(i18n.T("label_preload")))
-
-	maxPreloadInput := input.NewInputWithSave(strconv.Itoa(preloadConfig.MaxPreload), i18n.T("label_max_preload_count"))
-	maxPreloadInput.ForceDigits = true
-	maxPreloadInput.OnSave = func() error {
-		count, err := strconv.Atoi(maxPreloadInput.Value)
-		if err != nil {
-			return err
-		}
-		preloadConfig.UpdateMaxPreload(count)
-		return nil
-	}
-	wholeContent.Add(maxPreloadInput)
-
-	return wholeContent
+func createPreloadSettingsContent(cfg *config.Manager) fyne.CanvasObject {
+	return container.NewVBox(
+		widget.NewLabel(i18n.T("label_preload")),
+		rangedInput(cfg.PreloaderMaxCount(), i18n.T("label_max_preload_count"), 1, 10),
+	)
 }
 
-func createDownloadSettingsContent() fyne.CanvasObject {
-	downloadConfig := config.GetDownloadConfig()
-
-	wholeContent := container.NewVBox()
-	wholeContent.Add(widget.NewLabel(i18n.T("label_download")))
-
-	maxDownloadInput := input.NewInputWithSave(strconv.Itoa(downloadConfig.MaxDownload), i18n.T("label_max_parallel_download_count"))
-	maxDownloadInput.ForceDigits = true
-	maxDownloadInput.OnSave = func() error {
-		count, err := strconv.Atoi(maxDownloadInput.Value)
-		if err != nil {
-			return err
-		}
-		downloadConfig.UpdateMaxDownload(count)
-		return nil
-	}
-	wholeContent.Add(maxDownloadInput)
-
-	return wholeContent
+func createDownloadSettingsContent(cfg *config.Manager) fyne.CanvasObject {
+	return container.NewVBox(
+		widget.NewLabel(i18n.T("label_download")),
+		rangedInput(cfg.DownloaderMaxParallel(), i18n.T("label_max_parallel_download_count"), 1, 5),
+	)
 }
 
-func createCacheSettingsContent() fyne.CanvasObject {
-	cacheConfig := config.GetCacheConfig()
-
-	wholeContent := container.NewVBox()
-	wholeContent.Add(container.NewHBox(
-		widget.NewLabel(i18n.T("label_cache")),
-		container.NewCenter(button.NewTipButton("tip_on_cache")),
-	))
-
-	pathInput := input.NewInputWithSave(cacheConfig.Path, i18n.T("label_cache_path"))
-	pathInput.OnSave = func() error {
-		cacheConfig.UpdatePath(pathInput.Value)
-		return nil
-	}
-	wholeContent.Add(pathInput)
-
-	formatOptions := []string{
-		i18n.T("option_continuous"),
-		i18n.T("option_fragmented"),
+func createCacheSettingsContent(cfg *config.Manager) fyne.CanvasObject {
+	formatOptions := []input.NamedOption[int]{
+		{1, i18n.T("option_continuous")},
+		{2, i18n.T("option_fragmented")},
 	}
 
-	formatLabel := canvas.NewText(i18n.T("label_cache_format"), theme.Color(theme.ColorNamePlaceHolder))
-	formatLabel.TextSize = 12
-	formatSelect := widget.NewRadioGroup(formatOptions, func(option string) {
-		index := lo.IndexOf(formatOptions, option)
-		if index == -1 {
-			index = 0
-		}
-		cacheConfig.UpdateFileFormat(index + 1)
-	})
-	formatSelect.Selected = formatOptions[cacheConfig.FileFormat-1]
-	formatSelect.Horizontal = true
-	wholeContent.Add(container.NewVBox(formatLabel, formatSelect))
-
-	maxCacheInput := input.NewInputWithSave(strconv.Itoa(cacheConfig.MaxCacheSize), i18n.T("label_max_cache_size"))
-	maxCacheInput.ForceDigits = true
-	maxCacheInput.OnSave = func() error {
-		size, err := strconv.Atoi(maxCacheInput.Value)
-		if err != nil {
-			return err
-		}
-		cacheConfig.UpdateMaxSize(size)
-		return nil
-	}
+	maxCacheInput := rangedInput(cfg.MaxVideoCache(), i18n.T("label_max_cache_size"), 1, 1024*1024)
 	maxCacheInput.InputAppendItems = []fyne.CanvasObject{widget.NewLabel("MB")}
-	wholeContent.Add(maxCacheInput)
 
-	keepFavoriteCheck := widget.NewCheck(i18n.T("label_keep_favorites"), func(b bool) {
-		cacheConfig.UpdateKeepFavorites(b)
-	})
-	keepFavoriteCheck.Checked = cacheConfig.KeepFavorites
-	wholeContent.Add(keepFavoriteCheck)
-
-	forceExpirationCheckCb := widget.NewCheck(i18n.T("label_force_exp_check"), func(b bool) {
-		cacheConfig.UpdateForceExpirationCheck(b)
-	})
-	forceExpirationCheckCb.Checked = cacheConfig.ForceExpirationCheck
-	wholeContent.Add(forceExpirationCheckCb)
-
-	manageBtn := widget.NewButton(i18n.T("btn_manage_cache"), func() {
-		cache_window.OpenCacheWindow()
-	})
-	wholeContent.Add(manageBtn)
-
-	return wholeContent
+	return container.NewVBox(
+		container.NewHBox(
+			widget.NewLabel(i18n.T("label_cache")),
+			container.NewCenter(button.NewTipButton("tip_on_cache")),
+		),
+		input.NewInputWithSave(cfg.CachePath(), i18n.T("label_cache_path")),
+		input.NewRadioGroup(i18n.T("label_cache_format"), formatOptions, cfg.VideoFileFormat()),
+		maxCacheInput,
+		input.NewCheck(i18n.T("label_keep_favorites"), cfg.CacheKeepFavorites()),
+		input.NewCheck(i18n.T("label_force_exp_check"), cfg.CacheForceExpiration()),
+		widget.NewButton(i18n.T("btn_manage_cache"), func() {
+			cache_window.OpenCacheWindow()
+		}),
+	)
 }

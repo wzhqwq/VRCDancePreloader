@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/playlist"
 )
 
 var currentTui *PlayListTui

@@ -1,76 +1,31 @@
 package config
 
 import (
-	"github.com/wzhqwq/VRCDancePreloader/internal/global_state"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
-	"github.com/wzhqwq/VRCDancePreloader/internal/live"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
-type LiveConfig struct {
-	Enabled  bool   `yaml:"enabled"`
-	Port     int    `yaml:"port"`
-	Settings string `yaml:"settings"`
-
-	LiveRunner *input.ServerRunner `yaml:"-"`
+func (m *Manager) LiveServerPort() interactive.StatefulSetting[int] {
+	return m.cache.NewIntSetting(
+		"live_server.port",
+		func(cfg Config) int {
+			return cfg.Live.Port
+		},
+		func(cfg *Config, port int) error {
+			cfg.Live.Port = port
+			return nil
+		},
+	)
 }
 
-func GetLiveConfig() *LiveConfig {
-	return &config.Live
-}
-
-var defaultLiveConfig = LiveConfig{
-	Port:     7652,
-	Settings: "{}",
-}
-
-func (lc *LiveConfig) Init() {
-	live.OnSettingsChanged = func(settings string) {
-		lc.UpdateSettings(settings)
-	}
-	live.GetSettings = func() string {
-		return lc.Settings
-	}
-
-	runner := input.NewServerRunner(lc.Port)
-	runner.OnSave = lc.UpdatePort
-	runner.StartServer = func() error {
-		if err := live.StartLiveServer(lc.Port); err != nil {
-			if global_state.IsInGui() {
-				return err
-			}
-
-			logger.FatalLn("Failed to start live server:", err)
-		}
-		return nil
-	}
-	runner.StopServer = config.Hijack.Stop
-	lc.LiveRunner = runner
-
-	if lc.Enabled {
-		runner.Run()
-	}
-}
-
-func (lc *LiveConfig) UpdateEnable(b bool) {
-	lc.Enabled = b
-	if lc.Enabled {
-		lc.LiveRunner.Run()
-	} else {
-		live.StopLiveServer()
-	}
-	saveAndNotify("live")
-}
-
-func (lc *LiveConfig) UpdatePort(port int) {
-	lc.Port = port
-	saveAndNotify("live")
-}
-
-func (lc *LiveConfig) UpdateSettings(settings string) {
-	lc.Settings = settings
-	saveAndNotify("live")
-}
-
-func (lc *LiveConfig) Stop() {
-	live.StopLiveServer()
+func (m *Manager) LiveServerEnabled() interactive.StatefulSetting[bool] {
+	return m.cache.NewBoolSetting(
+		"live_server.enabled",
+		func(cfg Config) bool {
+			return cfg.Live.Enabled
+		},
+		func(cfg *Config, enabled bool) error {
+			cfg.Live.Enabled = enabled
+			return nil
+		},
+	)
 }

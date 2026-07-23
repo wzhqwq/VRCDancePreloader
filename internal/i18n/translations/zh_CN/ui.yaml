@@ -49,14 +49,14 @@
   Default: "代理服务器"
 - Key: label_keys
   Default: "API密钥"
-- Key: label_youtube
-  Default: "YouTube加载功能"
+- Key: label_third_parties
+  Default: "第三方加载功能"
 - Key: label_executable
   Default: "第三方程序"
 - Key: label_preload
   Default: "预加载设置"
 - Key: label_download
-  Default: "下载设置"
+  Default: "视频下载设置"
 - Key: label_cache
   Default: "缓存设置"
 
@@ -83,9 +83,7 @@
 - Key: label_dudu_proxy
   Default: "DuDuFitDance API代理服务器 (国内一般无需设置)"
 - Key: label_bili_proxy
-  Default: "BiliBili API代理服务器 (国内一般无需设置)"
-- Key: label_bili_video_proxy
-  Default: "BiliBili视频代理服务器 (国内一般无需设置)"
+  Default: "BiliBili代理服务器 (国内一般无需设置)"
 - Key: label_yt_video_proxy
   Default: "YouTube视频代理服务器"
 - Key: label_yt_api_proxy
@@ -99,12 +97,10 @@
 
 - Key: label_yt_api_key
   Default: "YouTube的API key"
-- Key: label_yt_api_enable
-  Default: "允许通过YouTube API读取视频信息"
-- Key: label_yt_thumbnail_enable
-  Default: "允许获取YouTube视频缩略图"
-- Key: label_yt_video_enable
-  Default: "允许通过ytdlp预载YouTube视频和读取信息"
+- Key: label_yt_mode
+  Default: "YouTube相关内容加载方案"
+- Key: label_bili_mode
+  Default: "BiliBili相关内容加载方案"
 
 - Key: label_max_preload_count
   Default: "预加载最大数量 (包括当前播放视频)"
@@ -219,23 +215,36 @@
 - Key: label_broadcast_port
   Default: "提供列表广播的服务器端口"
 
-- Key: message_title_song_list
+- Key: message_title_song_catalog
   Default: "歌曲清单状态"
-- Key: label_song_list_downloading
-  Default: "正在下载 {{.Name}} 歌曲清单"
-- Key: label_song_list_downloaded
-  Default: "{{.Name}} 歌曲清单已下载\n版本{{.Time}}"
+- Key: label_song_catalog
+  Default: "{{.Name}} 歌曲清单"
+- Key: label_song_catalog_version
+  Default: "本地版本: {{.Time}}"
+- Key: label_song_catalog_na
+  Default: "暂不可用"
 
 - Key: message_download_throttled
   Default: "下载限流（{{.Time}}秒）"
 
-- Key: message_title_db_migrated
-  Default: "数据库迁移完成"
+- Key: message_title_migrated
+  Default: "新版本迁移完成"
 - Key: message_db_migration
   Default: >
     数据库已迁移至用户目录（{{.Dir}}），
     新版数据库不再支持2.5.0版本前的软件，
     原数据库仍然保留以供老版本软件使用。
+- Key: message_config_v2_migration
+  Default: >
+    配置文件已迁移至用户目录（{{.Dir}}），
+    新版配置文件不再支持2.5.0版本前的软件，
+    原配置文件仍然保留在程序目录下，以供老版本软件使用。
+- Key: message_migration_failure
+  Default: >
+    配置迁移过程中发生错误，迁移失败的设置会变为默认值，错误如下：
+    
+    
+    {{.Errors}}
 
 - Key: message_lazy_list_changed
   Default: "列表发生变化，请重新加载"

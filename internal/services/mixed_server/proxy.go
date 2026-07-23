@@ -8,16 +8,11 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-
 	"github.com/elazarl/goproxy"
+	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
 )
 
-var runningServer *http.Server
 var proxy *goproxy.ProxyHttpServer
-
-var logger = utils.NewLogger("Hijacking")
 
 func orPanic(err error) {
 	if err != nil {
@@ -42,31 +37,30 @@ func connectDial(ctx context.Context, network, addr string) (c net.Conn, err err
 	return proxy.ConnectDial(network, addr)
 }
 
-func handleVideoRequest(w http.ResponseWriter, req *http.Request) (bool, *sync.WaitGroup) {
+func (s *mixedServer) handleVideoRequest(w http.ResponseWriter, req *http.Request) (bool, *sync.WaitGroup) {
 	defer func() {
 		if e := recover(); e != nil {
-			logger.ErrorLn("Error when processing request:", e)
-			logger.DebugLn(string(debug.Stack()))
-			logger.WarnLn("Fallback to direct access")
+			s.svc.L().ErrorLn("Error when processing request:", e)
+			s.svc.L().DebugLn(string(debug.Stack()))
+			s.svc.L().WarnLn("Fallback to direct access")
 		}
 	}()
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	//logger.InfoLn("We got:", req.Method, req.URL.String())
-	if handlePypyRequest(w, req, wg) ||
-		handleWannaRequest(w, req, wg) ||
-		handleDuDuRequest(w, req, wg) ||
-		handleBiliRequest(w, req, wg) ||
-		handleYouTubeRequest(w, req, wg) {
+	//s.svc.L().InfoLn("We got:", req.Method, req.URL.String())
+	if s.handlePypyRequest(w, req, wg) ||
+		s.handleWannaRequest(w, req, wg) ||
+		s.handleDuDuRequest(w, req, wg) ||
+		s.handleBiliRequest(w, req, wg) ||
+		s.handleYouTubeRequest(w, req, wg) {
 		return true, wg
 	}
 	return false, nil
 }
 
-func handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
+func (s *mixedServer) handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
 	defer func() {
 		if e := recover(); e != nil {
-			logger.ErrorLn("error connecting to remote:", e)
+			s.svc.L().ErrorLn("error connecting to remote:", e)
 			client.Write([]byte("HTTP/1.1 500 Cannot reach destination\r\n\r\n"))
 		}
 		client.Close()
@@ -80,7 +74,7 @@ func handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
 
 		if req.Method == http.MethodGet || req.Method == http.MethodPost {
 			rw := NewWriterGivenRespWriter(client)
-			if ok, wg := handleVideoRequest(rw, req); ok {
+			if ok, wg := s.handleVideoRequest(rw, req); ok {
 				wg.Wait()
 				continue
 			}
@@ -101,21 +95,21 @@ func handleConnect(_ *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
 }
 
 // for common request
-func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+func (s *mixedServer) handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	defer func() {
 		if e := recover(); e != nil {
-			logger.ErrorLn("Error when processing request:", e)
-			logger.DebugLn(string(debug.Stack()))
-			logger.WarnLn("Fallback to direct access")
+			s.svc.L().ErrorLn("Error when processing request:", e)
+			s.svc.L().DebugLn(string(debug.Stack()))
+			s.svc.L().WarnLn("Fallback to direct access")
 		}
 	}()
 
 	if req.Method == http.MethodGet || req.Method == http.MethodPost {
 		rw, respCh := NewDeferredRespWriter(req)
-		if ok, wg := handleVideoRequest(rw, req); ok {
+		if ok, wg := s.handleVideoRequest(rw, req); ok {
 			go func() {
-				defer rw.CloseWriter()
 				wg.Wait()
+				rw.CloseWriter()
 			}()
 			return req, <-respCh
 		}
@@ -123,12 +117,12 @@ func handleRequest(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http
 	return req, nil
 }
 
-func getProxyHandler(sites []string, enableHttps bool) http.Handler {
+func (s *mixedServer) getProxyHandler(sites []string, enableHttps bool) http.Handler {
 	proxy = goproxy.NewProxyHttpServer()
 
 	// for http proxy using CONNECT first
 	for _, site := range sites {
-		proxy.OnRequest(goproxy.ReqHostIs(site + ":80")).HijackConnect(handleConnect)
+		proxy.OnRequest(goproxy.ReqHostIs(site + ":80")).HijackConnect(s.handleConnect)
 	}
 
 	// for https proxy
@@ -136,14 +130,14 @@ func getProxyHandler(sites []string, enableHttps bool) http.Handler {
 		for _, site := range sites {
 			if constants.IsHttpsSite(site) {
 				proxy.OnRequest(goproxy.ReqHostIs(site + ":443")).HandleConnect(goproxy.AlwaysMitm)
-				proxy.OnRequest(goproxy.ReqHostIs(site + ":443")).DoFunc(handleRequest)
+				proxy.OnRequest(goproxy.ReqHostIs(site + ":443")).DoFunc(s.handleRequest)
 			}
 		}
 	}
 
 	// for Windows system proxy which won't start with CONNECT
 	for _, site := range sites {
-		proxy.OnRequest(goproxy.ReqHostIs(site)).DoFunc(handleRequest)
+		proxy.OnRequest(goproxy.ReqHostIs(site)).DoFunc(s.handleRequest)
 	}
 
 	return proxy

@@ -7,21 +7,22 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"github.com/eduardolat/goeasyi18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/internal_id"
 )
 
 // Info, immutable
 
 type PreloadedSongInfo struct {
-	ID          string
-	Title       string
-	Group       string
-	Adder       string
-	Size        string
-	OriginalURL string
+	ID    string
+	Title string
+	Group string
+	Adder string
+	Size  string
 }
 
-func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
+func (ps *StatefulSong) GetInfo() (basicInfo PreloadedSongInfo) {
 	adder := i18n.T("wrapper_adder", goeasyi18n.Options{
 		Data: map[string]any{"Adder": ps.Adder},
 	})
@@ -37,52 +38,31 @@ func (ps *PreloadedSong) GetInfo() PreloadedSongInfo {
 		size = utils.PrettyByteSize(ps.TotalSize)
 	}
 
-	basicInfo := PreloadedSongInfo{
-		ID: ps.GetSongId(),
+	basicInfo = PreloadedSongInfo{
+		ID: ps.SongId(),
 
-		Adder:       adder,
-		Size:        size,
-		OriginalURL: ps.GetOriginalUrl(),
+		Adder: adder,
+		Size:  size,
 	}
 
-	if ps.PyPySong != nil {
-		if ps.InfoNa {
-			basicInfo.Title = fmt.Sprintf("PyPyDance %d", ps.PyPySong.ID)
-			basicInfo.Group = ""
-		} else {
-			basicInfo.Title = ps.PyPySong.Name
-			basicInfo.Group = ps.PyPySong.GetGroupName()
-		}
-		return basicInfo
-	}
-	if ps.WannaSong != nil {
-		if ps.InfoNa {
-			basicInfo.Title = fmt.Sprintf("WannaDance %d", ps.WannaSong.DanceId)
-			basicInfo.Group = ""
-		} else {
-			basicInfo.Title = ps.WannaSong.FullTitle()
-			basicInfo.Group = ps.WannaSong.Group
-		}
-		return basicInfo
-	}
-	if ps.DuDuSong != nil {
-		if ps.InfoNa {
-			basicInfo.Title = fmt.Sprintf("DuDuFitDance %d", ps.DuDuSong.ID)
-			basicInfo.Group = ""
-		} else {
-			basicInfo.Title = ps.DuDuSong.FullTitle()
-			basicInfo.Group = ps.DuDuSong.Group
-		}
-		return basicInfo
-	}
-	if ps.CustomSong != nil {
-		basicInfo.Title = ps.CustomSong.Name
+	if ps.Unknown {
+		basicInfo.Title = i18n.T("placeholder_unknown_song")
 		basicInfo.Group = i18n.T("placeholder_custom_song")
-		return basicInfo
+		return
 	}
 
-	basicInfo.Title = i18n.T("placeholder_unknown_song")
+	if ps.info.Title != "" {
+		basicInfo.Title = ps.info.Title
+		basicInfo.Group = ps.info.GroupName
+		if basicInfo.Group == "" {
+			basicInfo.Group = internal_id.GetPlatformNameByInternalId(ps.songId)
+		}
+		return
+	}
+
+	basicInfo.Title = "URL: " + raw_song.GetUrlByInternalId(ps.songId)
 	basicInfo.Group = i18n.T("placeholder_custom_song")
+
 	return basicInfo
 }
 
@@ -94,7 +74,7 @@ type PreloadedSongProgressInfo struct {
 	IsDownloading bool
 }
 
-func (ps *PreloadedSong) GetProgressInfo() PreloadedSongProgressInfo {
+func (ps *StatefulSong) GetProgressInfo() PreloadedSongProgressInfo {
 	return PreloadedSongProgressInfo{
 		Total:      ps.TotalSize,
 		Downloaded: ps.DownloadedSize,
@@ -103,7 +83,7 @@ func (ps *PreloadedSong) GetProgressInfo() PreloadedSongProgressInfo {
 	}
 }
 
-func (ps *PreloadedSong) GetError() string {
+func (ps *StatefulSong) GetError() string {
 	if ps.PreloadError != nil {
 		return ps.PreloadError.Error()
 	}
@@ -120,7 +100,9 @@ type PreloadedSongTimeInfo struct {
 	IsCountdown bool
 }
 
-func (ps *PreloadedSong) GetTimeInfo() PreloadedSongTimeInfo {
+func (ps *StatefulSong) GetTimeInfo() PreloadedSongTimeInfo {
+	duration := ps.info.Duration
+
 	if ps.sm.PlayStatus == SyncPlaying {
 		if ps.TimePassed < 0 {
 			countdown := (-ps.TimePassed).Seconds()
@@ -132,15 +114,31 @@ func (ps *PreloadedSong) GetTimeInfo() PreloadedSongTimeInfo {
 				IsCountdown: true,
 			}
 		}
+		if duration > 0 {
+			return PreloadedSongTimeInfo{
+				Progress:  float64(ps.TimePassed.Milliseconds()) / float64(duration.Milliseconds()),
+				Text:      fmt.Sprintf("%s / %s", utils.PrettyTime(ps.TimePassed), utils.PrettyTime(duration)),
+				IsPlaying: true,
+			}
+		}
+
 		return PreloadedSongTimeInfo{
-			Progress:  float64(ps.TimePassed.Milliseconds()) / float64(ps.Duration.Milliseconds()),
-			Text:      fmt.Sprintf("%s / %s", utils.PrettyTime(ps.TimePassed), utils.PrettyTime(ps.Duration)),
+			Progress:  0,
+			Text:      fmt.Sprintf("%s / ?", utils.PrettyTime(ps.TimePassed)),
 			IsPlaying: true,
+		}
+	}
+
+	if duration > 0 {
+		return PreloadedSongTimeInfo{
+			Progress:  -1,
+			Text:      fmt.Sprintf("? / %s", utils.PrettyTime(duration)),
+			IsPlaying: ps.sm.IsPlaying(),
 		}
 	}
 	return PreloadedSongTimeInfo{
 		Progress:  -1,
-		Text:      utils.PrettyTime(ps.Duration),
+		Text:      "?",
 		IsPlaying: ps.sm.IsPlaying(),
 	}
 }
@@ -154,7 +152,7 @@ type PreloadedSongStatusInfo struct {
 	PreloadError error
 }
 
-func (ps *PreloadedSong) GetStatusInfo() PreloadedSongStatusInfo {
+func (ps *StatefulSong) GetStatusInfo() PreloadedSongStatusInfo {
 	var color fyne.ThemeColorName
 	switch ps.sm.DownloadStatus {
 	case Initial, Removed, NotAvailable, Disabled:

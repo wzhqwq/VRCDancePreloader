@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/trunk"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/cache_fs"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -47,9 +48,17 @@ func (f *File) Init(contentLength int64, lastModified time.Time) error {
 	return nil
 }
 
-func NewFile(baseName string) *File {
+func (f *File) SeekStart() error {
+	// TODO active guard
+	f.fragments = f.File.ToFragments()
+	f.activeFragment = f.fragments[0]
+
+	return nil
+}
+
+func NewFile(baseName string, cacheFs *cache_fs.CacheFS) *File {
 	f := &File{
-		BaseFile: rw_file.ConstructBaseFile(baseName),
+		BaseFile: rw_file.ConstructBaseFile(baseName, cacheFs),
 
 		em: utils.NewEventManager[*trunk.Fragment](),
 	}

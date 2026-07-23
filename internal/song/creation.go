@@ -1,19 +1,20 @@
 package song
 
 import (
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var idIncrement int64 = 0
 
-func constructBasicPreloadedSong() *PreloadedSong {
+func constructBasicStatefulSong() *StatefulSong {
 	idIncrement++
-	ret := &PreloadedSong{
+	ret := &StatefulSong{
 		sm: NewSongStateMachine(),
 
 		ID: idIncrement,
+
+		stopCh: make(chan struct{}),
 
 		em:     utils.NewEventManager[ChangeType](),
 		lazyEm: utils.NewEventManager[ChangeType](),
@@ -23,80 +24,24 @@ func constructBasicPreloadedSong() *PreloadedSong {
 	return ret
 }
 
-func CreatePreloadedPyPySong(id int) *PreloadedSong {
-	ret := constructBasicPreloadedSong()
+func CreateStatefulSongByInternalId(id string) *StatefulSong {
+	ret := constructBasicStatefulSong()
 
-	song, ok := raw_song.FindPyPySong(id)
-	if !ok {
-		// maybe caused by corrupted song list
-		cache.DownloadPyPySongs()
-		songLogger.WarnLn("Cannot find PyPyDance song", id, "in the manifest")
-		song = &raw_song.PyPyDanceSong{
-			ID: id,
-		}
-		ret.InfoNa = true
+	provider := third_parties.GetProviderById(id)
+	if provider != nil {
+		ready := make(chan struct{})
+		ret.sm.Go(func() {
+			ret.completionLoop(provider, ready)
+		})
+		<-ready
 	}
 
-	ret.PyPySong = song
-	ret.UpdateDuration()
-
 	return ret
 }
 
-func CreatePreloadedWannaSong(id int) *PreloadedSong {
-	ret := constructBasicPreloadedSong()
+func CreateUnknownSong() *StatefulSong {
+	ret := constructBasicStatefulSong()
 
-	song, ok := raw_song.FindWannaSong(id)
-	if !ok {
-		// maybe caused by corrupted song list
-		cache.DownloadWannaSongs()
-		songLogger.WarnLn("Cannot find WannaDance song", id, "in the manifest")
-		song = &raw_song.WannaDanceSong{
-			DanceId: id,
-		}
-		ret.InfoNa = true
-	}
-
-	ret.WannaSong = song
-	ret.UpdateDuration()
-
-	return ret
-}
-
-func CreatePreloadedDuDuSong(id int) *PreloadedSong {
-	ret := constructBasicPreloadedSong()
-
-	song, ok := raw_song.FindDuDuSong(id)
-	if !ok {
-		// maybe caused by corrupted song list
-		cache.DownloadDuDuSongs()
-		songLogger.WarnLn("Cannot find DuDuFitDance song", id, "in the manifest")
-		song = &raw_song.DuDuFitDanceSong{
-			ID: id,
-		}
-		ret.InfoNa = true
-	}
-
-	ret.DuDuSong = song
-	ret.UpdateDuration()
-
-	return ret
-}
-
-func CreatePreloadedCustomSong(url string) *PreloadedSong {
-	ret := constructBasicPreloadedSong()
-
-	ret.CustomSong = raw_song.FindOrCreateCustomSong(url)
-	ret.UpdateDuration()
-	ret.completeTitle()
-
-	return ret
-}
-
-func CreateUnknownSong() *PreloadedSong {
-	ret := constructBasicPreloadedSong()
-
-	ret.InfoNa = true
 	ret.Unknown = true
 	ret.sm.DownloadStatus = NotAvailable
 

@@ -45,8 +45,8 @@ func (sm *StateMachine) IsDownloadLoopStarted() bool {
 func (sm *StateMachine) IsDownloadNeeded() bool {
 	return sm.DownloadStatus != Downloaded && sm.DownloadStatus != Removed && sm.DownloadStatus != NotAvailable
 }
-func (sm *StateMachine) CanPreload() bool {
-	return sm.DownloadStatus != NotAvailable && (sm.DownloadStatus == Initial || sm.DownloadStatus == Failed)
+func (sm *StateMachine) CanStartDownload() bool {
+	return sm.DownloadStatus == Initial || sm.DownloadStatus == Failed
 }
 func (sm *StateMachine) IsPlaying() bool {
 	return sm.PlayStatus == Playing || sm.PlayStatus == SyncPlaying

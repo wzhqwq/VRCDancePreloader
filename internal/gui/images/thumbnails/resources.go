@@ -2,17 +2,18 @@ package thumbnails
 
 import (
 	"bytes"
+	"context"
 	"embed"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"io"
-	"strings"
 	"sync"
 
 	"github.com/nfnt/resize"
-	"github.com/stephennancekivell/go-future/future"
-	"github.com/wzhqwq/VRCDancePreloader/internal/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"golang.org/x/sync/semaphore"
 )
 
 //go:embed *.jpg
@@ -99,70 +100,35 @@ func GetGroupThumbnail(groupName string) image.Image {
 	return getThumbnail(defaultThumbnail)
 }
 
-type AsyncImage struct {
-	i      future.Future[image.Image]
-	loaded bool
-}
+var thumbnailRequestSem = semaphore.NewWeighted(6)
 
-var cache = utils.NewWeakCache[AsyncImage](100)
+func GetThumbnailImage(client *requesting.ClientProvider, url string, ctx context.Context) (image.Image, error) {
+	err := thumbnailRequestSem.Acquire(context.Background(), 1)
+	if err != nil {
+		return nil, err
+	}
+	defer thumbnailRequestSem.Release(1)
 
-func GetThumbnailImage(id, url string) image.Image {
-	if group, ok := strings.CutPrefix(url, "group:"); ok {
-		i := GetGroupThumbnail(group)
-		return i
+	logger.InfoLn("Downloading thumbnail from ", url)
+	req, err := client.NewGetRequest(url, ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download thumbnail from %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download thumbnail from %s: %w", url, err)
 	}
 
-	key := url
-	if id != "" {
-		key = id
-	}
-	if i, ok := cache.Get(key); ok {
-		return i.i.Get()
+	img, err := jpeg.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode thumbnail from %s: %w", url, err)
 	}
 
-	if url == "" {
-		return getThumbnail(defaultThumbnail)
-	}
-
-	i := future.New(func() image.Image {
-		defer func() {
-			if i, ok := cache.Get(key); ok {
-				i.loaded = true
-			}
-		}()
-
-		logger.InfoLn("Downloading thumbnail from ", url)
-		resp, err := requesting.RequestThumbnail(url)
-		if err != nil {
-			logger.ErrorLn("Failed to get thumbnail:", err)
-			return getThumbnail(defaultThumbnail)
-		}
-		defer resp.Body.Close()
-
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			logger.ErrorLn("Unable to read image data", err)
-			return getThumbnail(defaultThumbnail)
-		}
-
-		img, err := jpeg.Decode(bytes.NewReader(data))
-		if err != nil {
-			logger.ErrorLn("Failed to decode image:", err)
-			return getThumbnail(defaultThumbnail)
-		}
-
-		return resize.Resize(320, 0, img, resize.Bilinear)
-	})
-
-	cache.Set(key, AsyncImage{i: i, loaded: false})
-
-	return i.Get()
-}
-
-func HasThumbnailCachedAndLoaded(key string) bool {
-	f, ok := cache.Get(key)
-	if ok {
-		return f.loaded
-	}
-	return false
+	return resize.Resize(320, 0, img, resize.Bilinear), nil
 }

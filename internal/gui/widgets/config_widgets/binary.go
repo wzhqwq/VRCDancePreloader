@@ -8,31 +8,57 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api/local_executables"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/local_executables"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
 type DownloadableBinaryGui struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
 
 	downloadable *local_executables.DownloadableBinary
 
-	Path         string
-	OnUpdatePath func(string)
+	setting      interactive.StatefulSetting[string]
+	inputSetting interactive.StatefulSetting[string]
+	checkSetting interactive.StatefulSetting[bool]
 
 	progressChanged bool
 	stateChanged    bool
 	versionChanged  bool
-	customChanged   bool
 }
 
-func NewDownloadableBinaryGui(name string, path string, onUpdatePath func(string)) *DownloadableBinaryGui {
+func NewDownloadableBinaryGui(name string, setting interactive.StatefulSetting[string]) *DownloadableBinaryGui {
 	d := &DownloadableBinaryGui{
 		downloadable: local_executables.Get(name),
-		Path:         path,
-		OnUpdatePath: onUpdatePath,
+		setting:      setting,
+		inputSetting: interactive.NewDerivedSetting(
+			setting,
+			func(mixed string) string {
+				if mixed == "<vrcdp>" {
+					return ""
+				}
+				return mixed
+			},
+			func(p string) string {
+				return p
+			},
+		),
+		checkSetting: interactive.NewDerivedSetting(
+			setting,
+			func(mixed string) bool {
+				return mixed != "<vrcdp>"
+			},
+			func(custom bool) string {
+				if custom {
+					return ""
+				}
+				return "<vrcdp>"
+			},
+		),
 	}
+	d.AddLifeCycleFn(d.loop)
 	d.ExtendBaseWidget(d)
 
 	return d
@@ -106,41 +132,13 @@ func (d *DownloadableBinaryGui) CreateRenderer() fyne.WidgetRenderer {
 		container.NewHBox(removeButton, upgradeButton, cancelButton),
 	)
 
-	p := d.Path
-	if p == "<vrcdp>" {
-		p = ""
-	}
-	customInput := input.NewInputWithSave(p, i18n.T("label_executable_path"))
-	customInput.OnSave = func() error {
-		d.Path = customInput.Value
-		go d.OnUpdatePath(customInput.Value)
-		return nil
-	}
-
-	customCb := widget.NewCheck(i18n.T("label_executable_use_custom"), func(b bool) {
-		if b {
-			d.Path = customInput.Value
-		} else {
-			d.Path = "<vrcdp>"
-		}
-		go d.OnUpdatePath(d.Path)
-
-		d.customChanged = true
-		fyne.Do(func() {
-			d.Refresh()
-		})
-	})
-	customCb.Checked = d.Path != "<vrcdp>"
-	if customCb.Checked {
-		operations.Hide()
-	} else {
-		customInput.Hide()
-	}
+	customInput := input.NewInputWithSave(d.inputSetting, i18n.T("label_executable_path"))
+	customCb := input.NewCheck(i18n.T("label_executable_use_custom"), d.checkSetting)
 
 	box := container.NewVBox(
 		container.NewHBox(name, customCb),
-		customInput,
-		operations,
+		interactive_widgets.NewAvailableWhen(customInput, d.checkSetting),
+		interactive_widgets.NewAvailableWhenNot(operations, d.checkSetting),
 	)
 
 	r := &downloadableBinaryRenderer{
@@ -162,20 +160,17 @@ func (d *DownloadableBinaryGui) CreateRenderer() fyne.WidgetRenderer {
 
 		box:        box,
 		operations: operations,
-
-		stopCh: make(chan struct{}),
 	}
 
 	r.updateState()
 	r.updateProgress()
 	r.updateVersion()
-
-	go d.Loop(r.stopCh)
+	r.Created(d)
 
 	return r
 }
 
-func (d *DownloadableBinaryGui) Loop(stopCh chan struct{}) {
+func (d *DownloadableBinaryGui) loop(stopCh <-chan struct{}) {
 	ch := d.downloadable.Subscribe()
 	defer ch.Close()
 
@@ -200,6 +195,8 @@ func (d *DownloadableBinaryGui) Loop(stopCh chan struct{}) {
 }
 
 type downloadableBinaryRenderer struct {
+	interactive_widgets.BaseLifeCycleRenderer
+
 	d *DownloadableBinaryGui
 
 	nameText           *canvas.Text
@@ -218,8 +215,6 @@ type downloadableBinaryRenderer struct {
 
 	box        *fyne.Container
 	operations *fyne.Container
-
-	stopCh chan struct{}
 }
 
 func (r *downloadableBinaryRenderer) MinSize() fyne.Size {
@@ -237,18 +232,6 @@ func (r *downloadableBinaryRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *downloadableBinaryRenderer) Refresh() {
-	if r.d.customChanged {
-		if r.d.Path == "<vrcdp>" {
-			r.operations.Show()
-			r.customPathInput.Hide()
-		} else {
-			r.operations.Hide()
-			r.customPathInput.Show()
-			r.box.Refresh()
-			return
-		}
-	}
-
 	if r.d.stateChanged {
 		r.d.stateChanged = false
 		r.updateState()
@@ -327,8 +310,4 @@ func (r *downloadableBinaryRenderer) updateProgress() {
 
 func (r *downloadableBinaryRenderer) updateVersion() {
 	r.localVersionText.Text = r.d.downloadable.Info.Version
-}
-
-func (r *downloadableBinaryRenderer) Destroy() {
-	close(r.stopCh)
 }

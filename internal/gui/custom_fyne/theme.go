@@ -50,6 +50,8 @@ func (m cTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color
 			return colorLightPrimary
 		case ColorNameOuterBackground:
 			return colorLightOuterBackground
+		case theme.ColorNameOverlayBackground:
+			return colorLightOuterBackground
 		case ColorNamePrimaryBackground:
 			return colorLightPrimaryBackground
 		case ColorNamePrimaryGrayscale:
@@ -69,6 +71,8 @@ func (m cTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color
 		case theme.ColorNamePrimary:
 			return colorDarkPrimary
 		case ColorNameOuterBackground:
+			return colorDarkOuterBackground
+		case theme.ColorNameOverlayBackground:
 			return colorDarkOuterBackground
 		case ColorNamePrimaryBackground:
 			return colorDarkPrimaryBackground

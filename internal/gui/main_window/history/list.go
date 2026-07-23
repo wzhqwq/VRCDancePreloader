@@ -12,12 +12,13 @@ import (
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/persistence"
 )
 
 type Gui struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
 
 	activeId int
 
@@ -40,6 +41,7 @@ func NewGui() *Gui {
 	}
 
 	g.ExtendBaseWidget(g)
+	g.AddLifeCycleFn(g.loop)
 
 	return g
 }
@@ -71,7 +73,7 @@ func (g *Gui) SetActive(id int) {
 	})
 }
 
-func (g *Gui) RenderLoop(stopCh chan struct{}) {
+func (g *Gui) loop(stopCh <-chan struct{}) {
 	ch := persistence.GetLocalRecords().SubscribeEvent()
 	defer ch.Close()
 
@@ -94,8 +96,6 @@ func (g *Gui) CreateRenderer() fyne.WidgetRenderer {
 	r := &GuiRenderer{
 		g: g,
 
-		stopCh: make(chan struct{}),
-
 		Left:       left,
 		LeftScroll: leftScroll,
 
@@ -106,17 +106,16 @@ func (g *Gui) CreateRenderer() fyne.WidgetRenderer {
 		buttonMap: make(map[int]weak.Pointer[button.RecordButton]),
 	}
 
-	go g.RenderLoop(r.stopCh)
-
 	r.PushRecordButtons()
+	r.Created(g)
 
 	return r
 }
 
 type GuiRenderer struct {
-	g *Gui
+	interactive_widgets.BaseLifeCycleRenderer
 
-	stopCh chan struct{}
+	g *Gui
 
 	Left       *fyne.Container
 	LeftScroll fyne.CanvasObject
@@ -224,8 +223,4 @@ func (r *GuiRenderer) Objects() []fyne.CanvasObject {
 		r.LeftScroll,
 		r.Right,
 	}
-}
-
-func (r *GuiRenderer) Destroy() {
-	close(r.stopCh)
 }

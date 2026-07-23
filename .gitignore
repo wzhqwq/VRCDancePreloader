@@ -33,6 +33,6 @@ config.yaml
 *.key
 *.db
 
-/internal/live/web/*
+/internal/services/live/web/*
 
 !.gitkeep

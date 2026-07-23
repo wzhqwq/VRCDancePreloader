@@ -9,7 +9,7 @@ import (
 	"github.com/eduardolat/goeasyi18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/persistence"
 )
 
 func CheckRecordContinuity(parent fyne.Window) {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/trunk"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/cache_fs"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -24,6 +25,10 @@ func (f *File) Init(contentLength int64, lastModified time.Time) error {
 		return err
 	}
 
+	return f.SeekStart()
+}
+
+func (f *File) SeekStart() error {
 	f.fragment.Length = 0
 
 	return nil
@@ -53,9 +58,9 @@ func (f *File) RequestRs(ctx context.Context) io.ReadSeeker {
 	return rw_file.NewRSWithContext(f, f.File.FullSize, ctx)
 }
 
-func NewFile(baseName string) *File {
+func NewFile(baseName string, cacheFs *cache_fs.CacheFS) *File {
 	f := &File{
-		BaseFile: rw_file.ConstructBaseFile(baseName),
+		BaseFile: rw_file.ConstructBaseFile(baseName, cacheFs),
 
 		em: utils.NewEventManager[int64](),
 	}

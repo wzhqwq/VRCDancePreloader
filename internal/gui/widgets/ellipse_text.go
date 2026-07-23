@@ -6,12 +6,13 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 )
 
 type EllipseText struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
+
 	Text      string
 	TextSize  float32
 	TextStyle fyne.TextStyle
@@ -19,6 +20,8 @@ type EllipseText struct {
 }
 
 type ellipseTextRenderer struct {
+	interactive_widgets.BaseLifeCycleRenderer
+
 	text *canvas.Text
 
 	width float32
@@ -46,9 +49,6 @@ func (r *ellipseTextRenderer) Refresh() {
 	r.text.TextStyle = r.e.TextStyle
 	r.text.Color = r.e.Color
 	canvas.Refresh(r.text)
-}
-
-func (r *ellipseTextRenderer) Destroy() {
 }
 
 func (r *ellipseTextRenderer) findProperSlice() string {
@@ -92,11 +92,14 @@ func (e *EllipseText) CreateRenderer() fyne.WidgetRenderer {
 	text := canvas.NewText(e.Text, e.Color)
 	text.TextSize = e.TextSize
 	text.TextStyle = e.TextStyle
-	return &ellipseTextRenderer{
+	r := &ellipseTextRenderer{
 		text:  text,
 		width: text.MinSize().Width,
 		e:     e,
 	}
+	r.Created(e)
+
+	return r
 }
 
 func NewEllipseText(text string, color color.Color) *EllipseText {

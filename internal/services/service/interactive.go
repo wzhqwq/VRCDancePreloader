@@ -4,45 +4,35 @@ import (
 	"errors"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
-type Status struct {
-	Running bool
-	Error   error
-}
-
-type InteractiveService interface {
-	SubscribeStatus() *utils.EventSubscriber[Status]
-	Status() Status
-	Restart()
-}
-
-func (s *BaseService) SubscribeStatus() *utils.EventSubscriber[Status] {
+func (s *BaseService[T]) SubscribeStatus() *utils.EventSubscriber[interactive.RunnerStatus] {
 	if s.em == nil {
-		panic(errors.New("not a interactive service"))
+		panic(errors.New("SetControl not called yet"))
 	}
 	return s.em.SubscribeEvent()
 }
 
-func (s *BaseService) Status() Status {
+func (s *BaseService[T]) Status() interactive.RunnerStatus {
 	if s.running {
-		return Status{
+		return interactive.RunnerStatus{
 			Running: true,
 		}
 	}
 
-	return Status{
+	return interactive.RunnerStatus{
 		Running: false,
 		Error:   s.lastError,
 	}
 }
 
-func (s *BaseService) Restart() {
+func (s *BaseService[T]) Restart() {
 	s.Stop()
 	s.Start()
 }
 
-func (s *BaseService) notify() {
+func (s *BaseService[T]) notify() {
 	if s.em != nil {
 		s.em.NotifySubscribers(s.Status())
 	}

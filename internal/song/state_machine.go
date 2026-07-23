@@ -2,13 +2,12 @@ package song
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
-	"github.com/wzhqwq/VRCDancePreloader/internal/download"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/downloader"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/downloader/task"
+	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -17,8 +16,10 @@ type StateMachine struct {
 	DownloadStatus DownloadStatus
 	PlayStatus     PlayStatus
 
-	ps *PreloadedSong
-	ce entry.Entry
+	ps *StatefulSong
+
+	session types.CDNFileSession
+	task    *downloader.ManagedTask
 
 	// waiter
 	completeSongWg sync.WaitGroup
@@ -27,72 +28,66 @@ type StateMachine struct {
 	syncTimeCh chan time.Duration
 
 	// locks
-	timeMutex          sync.Mutex
-	startDownloadMutex sync.Mutex
+	timeMutex sync.Mutex
+	taskMutex sync.Mutex
+
+	wg sync.WaitGroup
 }
 
 func NewSongStateMachine() *StateMachine {
 	sm := &StateMachine{
 		DownloadStatus: Initial,
 		PlayStatus:     Queued,
-		syncTimeCh:     make(chan time.Duration, 1),
+
+		syncTimeCh: make(chan time.Duration, 1),
 	}
 
 	return sm
 }
 
-func (sm *StateMachine) DownloadInstantly(waitComplete bool) error {
-	sm.StartDownload()
-	sm.Prioritize()
-	if waitComplete {
-		sm.completeSongWg.Wait()
+func (sm *StateMachine) Go(fn func()) {
+	sm.wg.Go(fn)
+}
+
+func (sm *StateMachine) BindCache(createFn func() (types.CDNFileSession, error)) bool {
+	if sm.session != nil {
+		return true
 	}
 
-	switch sm.DownloadStatus {
-	case Removed:
-		return fmt.Errorf("download removed")
-	case Failed:
-		return sm.ps.PreloadError
-	default:
-		return nil
+	session, err := createFn()
+	if err != nil {
+		return false
 	}
+
+	sm.session = session
+	err = session.Open(sm.ps.SongId(), activeSongLogger)
+	if err != nil {
+		sm.DownloadStatus = NotAvailable
+		sm.ps.notifyStatusChange()
+		return false
+	}
+
+	return true
 }
-func (sm *StateMachine) StartDownload() {
-	sm.startDownloadMutex.Lock()
-	defer sm.startDownloadMutex.Unlock()
+
+func (sm *StateMachine) BindTask(createFn func(session types.CDNFileSession) *downloader.ManagedTask) {
+	sm.taskMutex.Lock()
+	defer sm.taskMutex.Unlock()
 
 	if !sm.IsDownloadNeeded() {
 		return
 	}
 
-	if sm.DownloadStatus == Initial {
-		// Call OpenCacheEntry to increase the reference count
-		// We will release it in RemoveFromList
-		entry, err := cache.OpenCacheEntry(sm.ps.GetSongId(), activeSongLogger)
-		if err != nil {
-			sm.DownloadStatus = NotAvailable
-			sm.ps.notifyStatusChange()
-			return
-		}
-		sm.ce = entry
-	}
-
 	if !sm.IsDownloadLoopStarted() {
-		sm.DownloadStatus = Pending
-		sm.ps.notifyStatusChange()
-
-		task := download.Download(sm.ps.GetSongId())
-		if task == nil {
-			sm.DownloadStatus = NotAvailable
-			sm.ps.notifyStatusChange()
+		t := createFn(sm.session)
+		if t == nil {
 			return
 		}
-		go sm.StartDownloadLoop(task)
-	}
-}
-func (sm *StateMachine) Prioritize() {
-	if sm.IsDownloadLoopStarted() {
-		download.Prioritize(sm.ps.GetSongId())
+		sm.task = t
+
+		sm.SwitchDownloadStatus(Pending)
+
+		sm.Go(sm.StartDownloadLoop)
 	}
 }
 
@@ -104,7 +99,7 @@ func (sm *StateMachine) SwitchDownloadStatus(s DownloadStatus) {
 	sm.ps.notifyStatusChange()
 }
 
-func (sm *StateMachine) StartDownloadLoop(task *download.Task) {
+func (sm *StateMachine) StartDownloadLoop() {
 	sm.completeSongWg.Add(1)
 	defer sm.completeSongWg.Done()
 
@@ -114,53 +109,45 @@ func (sm *StateMachine) StartDownloadLoop(task *download.Task) {
 		sm.ps.notifyLazySubscribers(ProgressChange)
 	})
 
-	ch := task.SubscribeChanges()
+	ch := sm.task.SubscribeChanges()
 	defer ch.Close()
 
 	for {
 		select {
 		case change := <-ch.Channel:
 			switch change {
-			case download.State:
-				if task.Done {
-					sm.DownloadStatus = Downloaded
-					sm.ps.TotalSize = task.TotalSize
-					sm.ps.DownloadedSize = task.DownloadedSize
-					sm.ps.notifySubscribers(ProgressChange)
-					sm.ps.notifyStatusChange()
-					return
-				}
-				if task.Error != nil {
-					if errors.Is(task.Error, entry.ErrNotSupported) {
-						sm.SwitchDownloadStatus(NotAvailable)
-						download.CancelDownload(sm.ps.GetSongId())
-						return
-					}
-					if errors.Is(task.Error, download.ErrCanceled) {
+			case task.State:
+				if sm.task.Error != nil {
+					if errors.Is(sm.task.Error, task.ErrCanceled) {
 						return
 					}
 
 					sm.DownloadStatus = Failed
-					sm.ps.PreloadError = task.Error
+					sm.ps.PreloadError = sm.task.Error
 					sm.ps.notifyStatusChange()
-					download.Retry(task)
+					sm.task.Retry()
 				} else {
 					sm.ps.PreloadError = nil
 
-					if task.Pending {
+					switch sm.task.State {
+					case task.TaskCompleted:
+						sm.ps.TotalSize = sm.task.TotalSize
+						sm.ps.DownloadedSize = sm.task.DownloadedSize
+						sm.SwitchDownloadStatus(Downloaded)
+						sm.ps.notifySubscribers(ProgressChange)
+					case task.TaskPending:
 						sm.SwitchDownloadStatus(Pending)
-					} else if task.Cooling {
+					case task.TaskWaitScheduled:
 						sm.SwitchDownloadStatus(CoolingDown)
-					} else if task.Requesting {
+					case task.TaskRequested:
 						sm.SwitchDownloadStatus(Requesting)
-					} else {
-						// Otherwise, it's downloading
-						sm.ps.TotalSize = task.TotalSize
+					case task.TaskDownloading:
+						sm.ps.TotalSize = sm.task.TotalSize
 						sm.SwitchDownloadStatus(Downloading)
 					}
 				}
-			case download.Progress:
-				sm.ps.DownloadedSize = task.DownloadedSize
+			case task.Progress:
+				sm.ps.DownloadedSize = sm.task.DownloadedSize
 				sm.ps.notifySubscribers(ProgressChange)
 				lazy.Change()
 			}
@@ -180,7 +167,7 @@ func (sm *StateMachine) PlaySongAndSync(offset time.Duration) {
 	queued := sm.PlayStatus == Queued
 	sm.PlayStatus = SyncPlaying
 	if queued {
-		go sm.StartPlayingLoop()
+		sm.Go(sm.StartPlayingLoop)
 	}
 }
 
@@ -192,7 +179,7 @@ func (sm *StateMachine) PlaySong() {
 	queued := sm.PlayStatus == Queued
 	sm.PlayStatus = Playing
 	if queued {
-		go sm.StartPlayingLoop()
+		sm.Go(sm.StartPlayingLoop)
 	}
 }
 
@@ -226,7 +213,7 @@ func (sm *StateMachine) StartPlayingLoop() {
 			routine = true
 		}
 
-		if nextTime >= sm.ps.Duration {
+		if sm.ps.info.Duration > 0 && nextTime >= sm.ps.info.Duration {
 			sm.PlayStatus = Ended
 			sm.ps.AddToHistory()
 			break
@@ -246,9 +233,17 @@ func (sm *StateMachine) RemoveFromList() {
 		}
 	}
 	sm.ps.notifyStatusChange()
-	download.CancelDownload(sm.ps.GetSongId())
-	if sm.ce != nil {
-		cache.ReleaseCacheEntry(sm.ps.GetSongId(), removedSongLogger)
-		sm.ce = nil
+	sm.CancelTask()
+	if sm.session != nil {
+		sm.session.Close(removedSongLogger)
+		sm.session = nil
+	}
+	sm.wg.Wait()
+}
+
+func (sm *StateMachine) CancelTask() {
+	if sm.task != nil {
+		sm.task.Cancel()
+		sm.task = nil
 	}
 }

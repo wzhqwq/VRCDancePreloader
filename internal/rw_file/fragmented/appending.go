@@ -47,7 +47,7 @@ func (f *File) checkAppend(bytes []byte) (int, error) {
 	return len(bytes), nil
 }
 
-func (f *File) Append(bytes []byte) (int, error) {
+func (f *File) Write(bytes []byte) (int, error) {
 	if f.downloadingFragment != f.activeFragment {
 		// force re-downloading active fragment
 		return 0, ErrEndOfFragment

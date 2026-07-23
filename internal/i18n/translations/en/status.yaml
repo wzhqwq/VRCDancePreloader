@@ -22,3 +22,18 @@
   Default: "Not Supported"
 - Key: status_disabled
   Default: "Preload Disabled"
+
+- Key: status_remote_0
+  Default: "Idle"
+- Key: status_remote_1
+  Default: "Downloading"
+- Key: status_remote_2
+  Default: "Completed"
+- Key: status_remote_3
+  Default: "Refreshing"
+- Key: status_remote_4
+  Default: "Fetching failed"
+- Key: status_remote_5
+  Default: "Retrying {{.Attempts}}"
+- Key: status_remote_cooling
+  Default: " (Cooling down for {{.Seconds}}s)"

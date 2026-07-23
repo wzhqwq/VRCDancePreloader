@@ -1,0 +1,114 @@
+package requesting
+
+import (
+	"errors"
+	"fmt"
+	"net/http"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+)
+
+var logger = utils.NewLogger("Network")
+
+type testCase struct {
+	url    string
+	useGet bool
+
+	expectedStatus   int
+	minContentLength int64
+}
+
+func requestClient(client *http.Client, tc testCase) (*http.Response, error) {
+	method := "HEAD"
+	if tc.useGet {
+		method = "GET"
+	}
+
+	req, err := http.NewRequest(method, tc.url, nil)
+	if err != nil {
+		return nil, err
+	}
+	SetupHeader(req, tc.url)
+
+	return client.Do(req)
+}
+
+func accessClient(client *http.Client, tc testCase) error {
+	resp, err := requestClient(client, tc)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if tc.expectedStatus != 0 && resp.StatusCode != tc.expectedStatus {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+	if tc.minContentLength != 0 && resp.ContentLength < tc.minContentLength {
+		return fmt.Errorf("unexpected content length: %s (too short)", utils.PrettyByteSize(resp.ContentLength))
+	}
+	return nil
+}
+
+func testClient(client *http.Client, serviceName string, tc testCase) error {
+	if tc.url == "" {
+		return errors.New("empty test case")
+	}
+	logger.InfoLnf("Testing %s client", serviceName)
+
+	err := accessClient(client, tc)
+	if err != nil {
+		if client.Transport == nil {
+			logger.WarnLnf("Cannot connect to %s service, maybe you should configure proxy: %v", serviceName, err)
+		} else {
+			logger.WarnLnf("Cannot connect to %s service through provided proxy: %v", serviceName, err)
+		}
+		return err
+	}
+
+	return nil
+}
+
+func videoTestCase(url string) testCase {
+	return testCase{
+		url:    url,
+		useGet: true,
+
+		expectedStatus:   http.StatusOK,
+		minContentLength: 1024 * 1024,
+	}
+}
+
+func anonymousTestCase(url string) testCase {
+	return testCase{
+		url: url,
+
+		expectedStatus: http.StatusOK,
+	}
+}
+
+func anonymousTestCaseGet(url string) testCase {
+	return testCase{
+		url:    url,
+		useGet: true,
+
+		expectedStatus: http.StatusOK,
+	}
+}
+
+func storageServerTestCase(url string) testCase {
+	return testCase{
+		url:    url,
+		useGet: true,
+
+		expectedStatus: http.StatusNotFound,
+	}
+}
+
+func authenticatedTestCase(url string) testCase {
+	return testCase{
+		url:    url,
+		useGet: true,
+
+		expectedStatus: http.StatusForbidden,
+	}
+}

@@ -3,10 +3,12 @@ package rw_file
 import (
 	"context"
 	"io"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 )
 
 type RSWithContext struct {
-	file DeferredReader
+	file types.DeferredReader
 
 	totalLength int64
 	cursor      int64
@@ -14,7 +16,7 @@ type RSWithContext struct {
 	ctx context.Context
 }
 
-func NewRSWithContext(file DeferredReader, total int64, ctx context.Context) *RSWithContext {
+func NewRSWithContext(file types.DeferredReader, total int64, ctx context.Context) *RSWithContext {
 	return &RSWithContext{
 		file: file,
 

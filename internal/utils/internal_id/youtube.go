@@ -1,0 +1,48 @@
+package internal_id
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+)
+
+const YtInternalPrefix = "yt_"
+
+func GetStandardYoutubeURL(videoID string) string {
+	return fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
+}
+func GetYoutubeMQThumbnailURL(videoID string) string {
+	return fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", videoID)
+}
+func GetYoutubeHQThumbnailURL(videoID string) string {
+	return fmt.Sprintf("https://i.ytimg.com/vi/%s/hqdefault.jpg", videoID)
+}
+
+func CheckYoutubeURL(url string) (string, bool) {
+	// youtube.com/watch?v=VIDEO_ID
+	// youtube.com/v/VIDEO_ID
+	// youtu.be/VIDEO_ID
+
+	if len(url) < 11 {
+		return "", false
+	}
+
+	matched := regexp.MustCompile(`(?:youtube\.com/watch\?v=|youtube\.com/v/|youtu\.be/)([a-zA-Z0-9_-]{11})`).FindStringSubmatch(url)
+	if len(matched) > 1 {
+		return matched[1], true
+	}
+
+	return "", false
+}
+
+func CheckYoutubeThumbnailURL(url string) bool {
+	return strings.Contains(url, "i.ytimg.com")
+}
+
+func CheckIdIsYoutube(id string) (string, bool) {
+	cut, ok := strings.CutPrefix(id, YtInternalPrefix)
+	if !ok {
+		return "", false
+	}
+	return cut, true
+}

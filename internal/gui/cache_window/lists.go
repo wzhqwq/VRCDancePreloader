@@ -6,34 +6,34 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/custom_fyne/containers/lists"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache/video_cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/cache_manager"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/host"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/persistence"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-func configure(list lists.ReusableList[video_cache.LocalVideoInfo], isInPreserved bool) func() {
-	subFn := persistence.SubscribeMetaTableChange
-	if isInPreserved {
-		subFn = persistence.SubscribePreservedListChange
-	}
-
+func configure(list lists.ReusableList[cache_manager.LocalVideoInfo], isInPreserved bool) func() {
 	SubscriberFn := func() *utils.EventSubscriber[lists.ListItemChange] {
-		return utils.PipeEvent(subFn(), func(payload persistence.MetaChange) (lists.ListItemChange, bool) {
-			if payload.Type == "video" {
-				return lists.ListItemChange{Op: payload.Op, ID: payload.ID}, true
-			}
-			return lists.ListItemChange{}, false
-		})
+		return persistence.PipeMetaTableChange(
+			func(payload persistence.MetaChange) (lists.ListItemChange, bool) {
+				if payload.Type == "video" {
+					return lists.ListItemChange{Op: payload.Op, ID: payload.ID}, true
+				}
+				return lists.ListItemChange{}, false
+			},
+			isInPreserved,
+		)
 	}
-	RendererFn := func(item lists.ListItem[video_cache.LocalVideoInfo]) fyne.WidgetRenderer {
+	RendererFn := func(item lists.ListItem[cache_manager.LocalVideoInfo]) fyne.WidgetRenderer {
 		return newLocalFileRenderer(item, isInPreserved)
 	}
-	GetDataFn := cache.GetVideoCache().GetLocalVideoInfo
-	ListDataFn := func(offset int) []video_cache.LocalVideoInfo {
-		return cache.GetVideoCache().ListLocalVideos(offset, "size", isInPreserved)
+	GetDataFn := func(id string) cache_manager.LocalVideoInfo {
+		return host.CacheManager().GetLocalVideoInfo(id)
+	}
+	ListDataFn := func(offset int) []cache_manager.LocalVideoInfo {
+		return host.CacheManager().ListLocalVideos(offset, "size", isInPreserved)
 	}
 
 	list.ConfigureAllStubs(SubscriberFn, RendererFn, GetDataFn, ListDataFn)
@@ -67,12 +67,12 @@ func (g *FileListGui) CreateRenderer() fyne.WidgetRenderer {
 
 	if g.IsInPreserved {
 		labelText = i18n.T("label_cache_allow_list")
-		l := lists.NewBaseList[video_cache.LocalVideoInfo]()
+		l := lists.NewBaseList[cache_manager.LocalVideoInfo]()
 		refreshBtn.OnClick = configure(l, true)
 		list = l
 	} else {
 		labelText = i18n.T("label_cache_local")
-		l := lists.NewInfiniteList[video_cache.LocalVideoInfo]()
+		l := lists.NewInfiniteList[cache_manager.LocalVideoInfo]()
 		refreshBtn.OnClick = configure(l, false)
 		list = l
 	}

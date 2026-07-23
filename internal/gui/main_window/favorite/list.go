@@ -6,12 +6,13 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/persistence"
 )
 
 type FavoritesGui struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
 
 	Favorites *persistence.LocalSongs
 
@@ -54,6 +55,7 @@ func NewFavoritesGui() *FavoritesGui {
 	}
 
 	g.ExtendBaseWidget(g)
+	g.AddLifeCycleFn(g.loop)
 
 	return g
 }
@@ -64,7 +66,7 @@ func (fg *FavoritesGui) refreshItems() {
 	fg.Refresh()
 }
 
-func (fg *FavoritesGui) RenderLoop(stopCh chan struct{}) {
+func (fg *FavoritesGui) loop(stopCh <-chan struct{}) {
 	ch := fg.Favorites.SubscribeEvent()
 	defer ch.Close()
 
@@ -134,11 +136,8 @@ func (fg *FavoritesGui) CreateRenderer() fyne.WidgetRenderer {
 		RefreshBtn:   refreshBtn,
 
 		g: fg,
-
-		stopCh: make(chan struct{}),
 	}
-
-	go fg.RenderLoop(r.stopCh)
+	r.Created(fg)
 
 	return r
 }
@@ -152,6 +151,8 @@ func (fg *FavoritesGui) Activate() {
 }
 
 type favoritesGuiRenderer struct {
+	interactive_widgets.BaseLifeCycleRenderer
+
 	TopBar     *fyne.Container
 	List       *fyne.Container
 	Scroll     *container.Scroll
@@ -162,8 +163,6 @@ type favoritesGuiRenderer struct {
 	RefreshBtn   *widget.Button
 
 	g *FavoritesGui
-
-	stopCh chan struct{}
 }
 
 func (r *favoritesGuiRenderer) MinSize() fyne.Size {
@@ -214,8 +213,4 @@ func (r *favoritesGuiRenderer) updateItems() {
 func (r *favoritesGuiRenderer) Refresh() {
 	r.updateItems()
 	r.Pagination.SetTotalPage(r.g.totalPages)
-}
-
-func (r *favoritesGuiRenderer) Destroy() {
-	close(r.stopCh)
 }

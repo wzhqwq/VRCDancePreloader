@@ -2,7 +2,6 @@ package mixed_server
 
 import (
 	"net/http"
-	"strconv"
 )
 
 type mixedServer struct {
@@ -10,27 +9,21 @@ type mixedServer struct {
 
 	proxy http.Handler
 	http  http.Handler
+
+	svc *Service
 }
 
-func newMixedServer(cfg Config) *mixedServer {
-	s := &mixedServer{
-		Server: http.Server{
-			Addr: "127.0.0.1:" + strconv.Itoa(cfg.Port),
-		},
-		proxy: getProxyHandler(cfg.InterceptedSites, cfg.EnableHttpsProxy),
-		http:  getHttpHandler(),
-	}
+func newMixedServer(cfg Config, svc *Service) *mixedServer {
+	s := &mixedServer{svc: svc}
+	s.proxy = s.getProxyHandler(cfg.InterceptedSites, cfg.EnableHttpsProxy)
+	s.http = s.getHttpHandler()
 
-	s.registerHandler()
+	s.Server.Handler = s
 
 	return s
 }
 
-func (s *mixedServer) registerHandler() {
-	s.Server.Handler = http.HandlerFunc(s.serveHTTP)
-}
-
-func (s *mixedServer) serveHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *mixedServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if isProxyRequest(r) {
 		s.proxy.ServeHTTP(w, r)
 	} else {
@@ -38,12 +31,8 @@ func (s *mixedServer) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *mixedServer) UpdatePort(cfg Config) {
-	s.Server.Addr = "127.0.0.1:" + strconv.Itoa(cfg.Port)
-}
-
 func (s *mixedServer) UpdateProxy(cfg Config) {
-	s.proxy = getProxyHandler(cfg.InterceptedSites, cfg.EnableHttpsProxy)
+	s.proxy = s.getProxyHandler(cfg.InterceptedSites, cfg.EnableHttpsProxy)
 }
 
 func isProxyRequest(r *http.Request) bool {

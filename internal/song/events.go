@@ -13,7 +13,7 @@ const (
 	BasicInfoChange ChangeType = "basic"
 )
 
-func (ps *PreloadedSong) SubscribeEvent(lazy bool) *utils.EventSubscriber[ChangeType] {
+func (ps *StatefulSong) SubscribeEvent(lazy bool) *utils.EventSubscriber[ChangeType] {
 	if lazy {
 		return ps.lazyEm.SubscribeEvent()
 	} else {
@@ -21,24 +21,24 @@ func (ps *PreloadedSong) SubscribeEvent(lazy bool) *utils.EventSubscriber[Change
 	}
 }
 
-func (ps *PreloadedSong) notifySubscribers(changeType ChangeType) {
+func (ps *StatefulSong) notifySubscribers(changeType ChangeType) {
 	ps.em.NotifySubscribers(changeType)
 }
-func (ps *PreloadedSong) notifyLazySubscribers(changeType ChangeType) {
+func (ps *StatefulSong) notifyLazySubscribers(changeType ChangeType) {
 	ps.lazyEm.NotifySubscribers(changeType)
 }
 
-func (ps *PreloadedSong) notifyStatusChange() {
+func (ps *StatefulSong) notifyStatusChange() {
 	ps.notifySubscribers(StatusChange)
 	ps.notifyLazySubscribers(StatusChange)
 }
 
-func (ps *PreloadedSong) notifyInfoChange() {
+func (ps *StatefulSong) notifyInfoChange() {
 	ps.notifySubscribers(BasicInfoChange)
 	ps.notifyLazySubscribers(BasicInfoChange)
 }
 
-func (ps *PreloadedSong) notifyTimeChange(routine bool) {
+func (ps *StatefulSong) notifyTimeChange(routine bool) {
 	ps.notifySubscribers(TimeChange)
 	if !routine {
 		ps.notifyLazySubscribers(TimeChange)

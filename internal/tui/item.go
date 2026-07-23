@@ -9,13 +9,13 @@ import (
 
 type ItemTui struct {
 	pt        *progress.Tracker
-	ps        *song.PreloadedSong
+	ps        *song.StatefulSong
 	plt       *PlayListTui
 	IsPlaying bool
 	StopCh    chan struct{}
 }
 
-func NewSongTui(ps *song.PreloadedSong, plt *PlayListTui) *ItemTui {
+func NewSongTui(ps *song.StatefulSong, plt *PlayListTui) *ItemTui {
 	return &ItemTui{
 		ps:     ps,
 		plt:    plt,
@@ -40,7 +40,7 @@ func (it *ItemTui) RenderLoop() {
 				}
 				it.plt.stdoutMutex.Unlock()
 			case song.StatusChange:
-				switch it.ps.GetPreloadStatus() {
+				switch it.ps.PreloadStatus() {
 				case song.Downloading:
 					if it.pt == nil {
 						it.pt = &progress.Tracker{
@@ -58,7 +58,7 @@ func (it *ItemTui) RenderLoop() {
 				case song.Failed:
 					if it.pt != nil {
 						it.pt.MarkAsErrored()
-						fmt.Printf("Preload %s error: %s\n", it.ps.GetSongId(), it.ps.PreloadError.Error())
+						fmt.Printf("Preload %s error: %s\n", it.ps.SongId(), it.ps.PreloadError.Error())
 						it.pt = nil
 					}
 				case song.Removed:

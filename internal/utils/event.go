@@ -2,43 +2,39 @@ package utils
 
 import (
 	"sync"
-	"weak"
 
 	"github.com/samber/lo"
 )
 
+type eventSink[T any] interface {
+	send(T) bool
+}
+
 type EventManager[T any] struct {
 	sync.Mutex
-	weakSubscribers []weak.Pointer[EventSubscriber[T]]
+	subscribers []eventSink[T]
 }
 
 func NewEventManager[T any]() *EventManager[T] {
-	return &EventManager[T]{
-		weakSubscribers: []weak.Pointer[EventSubscriber[T]]{},
-	}
+	return &EventManager[T]{}
 }
 
 func (em *EventManager[T]) SubscribeEvent() *EventSubscriber[T] {
 	em.Lock()
 	defer em.Unlock()
 
-	channel := make(chan T, 10)
 	sub := &EventSubscriber[T]{
-		Channel: channel,
+		Channel: make(chan T, 10),
 	}
-	em.weakSubscribers = append(em.weakSubscribers, weak.Make(sub))
+	em.subscribers = append(em.subscribers, sub)
 	return sub
 }
 
 func (em *EventManager[T]) NotifySubscribers(payload T) {
 	em.Lock()
 	defer em.Unlock()
-	em.weakSubscribers = lo.Filter(em.weakSubscribers, func(p weak.Pointer[EventSubscriber[T]], _ int) bool {
-		if s := p.Value(); s != nil {
-			return s.send(payload)
-		}
-
-		return false
+	em.subscribers = lo.Filter(em.subscribers, func(p eventSink[T], _ int) bool {
+		return p.send(payload)
 	})
 }
 
@@ -72,7 +68,37 @@ func (es *EventSubscriber[T]) send(payload T) bool {
 	return true
 }
 
-func PipeEvent[In any, Out any](sub *EventSubscriber[In], mapFilter func(payload In) (Out, bool)) *EventSubscriber[Out] {
+type mappedEventSink[In, Out any] struct {
+	target    *EventSubscriber[Out]
+	mapFilter func(In) (Out, bool)
+}
+
+func (s *mappedEventSink[In, Out]) send(payload In) bool {
+	data, ok := s.mapFilter(payload)
+	if !ok {
+		return false
+	}
+	return s.target.send(data)
+}
+
+func PipeEvent[In, Out any](
+	em *EventManager[In],
+	mapFilter func(In) (Out, bool),
+) *EventSubscriber[Out] {
+	target := &EventSubscriber[Out]{
+		Channel: make(chan Out, 10),
+	}
+
+	pipe := &mappedEventSink[In, Out]{
+		target:    target,
+		mapFilter: mapFilter,
+	}
+	em.subscribers = append(em.subscribers, pipe)
+
+	return target
+}
+
+func PipeSubEvent[In any, Out any](sub *EventSubscriber[In], mapFilter func(payload In) (Out, bool)) *EventSubscriber[Out] {
 	channel := make(chan Out, 10)
 	newSub := &EventSubscriber[Out]{
 		Channel: channel,
@@ -84,6 +110,48 @@ func PipeEvent[In any, Out any](sub *EventSubscriber[In], mapFilter func(payload
 			if newPayload, ok := mapFilter(payload); ok {
 				if !newSub.send(newPayload) {
 					break
+				}
+			}
+		}
+	}()
+
+	return newSub
+}
+
+func Pipe2Event[In1 any, In2 any, Out any](
+	sub1 *EventSubscriber[In1],
+	sub2 *EventSubscriber[In2],
+	mapFilter1 func(payload In1) (Out, bool),
+	mapFilter2 func(payload In2) (Out, bool),
+) *EventSubscriber[Out] {
+	channel := make(chan Out, 10)
+	newSub := &EventSubscriber[Out]{
+		Channel: channel,
+	}
+
+	go func() {
+		defer sub1.Close()
+		defer sub2.Close()
+
+		for {
+			select {
+			case payload, ok := <-sub1.Channel:
+				if !ok {
+					return
+				}
+				if newPayload, ok := mapFilter1(payload); ok {
+					if !newSub.send(newPayload) {
+						break
+					}
+				}
+			case payload, ok := <-sub2.Channel:
+				if !ok {
+					return
+				}
+				if newPayload, ok := mapFilter2(payload); ok {
+					if !newSub.send(newPayload) {
+						break
+					}
 				}
 			}
 		}

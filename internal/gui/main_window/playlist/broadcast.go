@@ -11,7 +11,11 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/icons"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/host"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
 type BroadcastButton struct {
@@ -19,30 +23,40 @@ type BroadcastButton struct {
 
 	rich *widget.RichText
 
-	stopCh chan struct{}
+	cfg *config.Manager
+	svc interactive.StatefulService
 }
 
 func NewBroadcastButton() *BroadcastButton {
-	liveConfig := config.GetLiveConfig()
-
-	wholeContent := container.NewVBox()
-
-	scroll := container.NewVScroll(container.NewPadded(wholeContent))
-	scroll.SetMinSize(fyne.NewSize(250, 300))
-
-	input := liveConfig.LiveRunner.GetInput(i18n.T("label_broadcast_port"))
+	cfg := host.Config()
+	svc := host.LiveServer()
 
 	rich := widget.NewRichTextFromMarkdown(i18n.T("tip_on_live", goeasyi18n.Options{
 		Data: map[string]interface{}{
-			"Port": liveConfig.Port,
+			"Port": cfg.LiveServerPort(),
 		},
 	}))
 	rich.Wrapping = i18n.GetLangWrapping()
 
+	wholeContent := container.NewVBox(
+		input.NewCheck(i18n.T("label_enable_broadcast"), cfg.LiveServerEnabled()),
+		interactive_widgets.NewAvailableWhen(
+			container.NewVBox(
+				input.NewInputWithRunner(svc, cfg.LiveServerPort(), i18n.T("label_broadcast_port")),
+				rich,
+			),
+			cfg.LiveServerEnabled(),
+		),
+	)
+
+	scroll := container.NewVScroll(container.NewPadded(wholeContent))
+	scroll.SetMinSize(fyne.NewSize(250, 300))
+
 	btn := &BroadcastButton{
 		rich: rich,
 
-		stopCh: make(chan struct{}),
+		cfg: cfg,
+		svc: svc,
 	}
 	btn.Extend(nil)
 
@@ -50,60 +64,47 @@ func NewBroadcastButton() *BroadcastButton {
 		openBroadcastModal(scroll)
 	}
 
-	btn.OnDestroy = func() {
-		close(btn.stopCh)
-	}
-
-	enableCb := widget.NewCheck(i18n.T("label_enable_broadcast"), func(b bool) {
-		if liveConfig.Enabled == b {
-			return
-		}
-		liveConfig.UpdateEnable(b)
-		btn.SetLive(b)
-		if b {
-			input.Show()
-			rich.Show()
-		} else {
-			input.Hide()
-			rich.Hide()
-		}
-	})
-	enableCb.Checked = liveConfig.Enabled
-
-	wholeContent.Add(enableCb)
-	wholeContent.Add(input)
-	wholeContent.Add(rich)
-
-	go btn.renderLoop()
+	btn.AddLifeCycleFn(btn.loop)
 
 	btn.ExtendBaseWidget(btn)
-
-	btn.SetLive(liveConfig.Enabled)
 
 	return btn
 }
 
-func (b *BroadcastButton) renderLoop() {
-	ch := config.GetLiveConfig().LiveRunner.SubscribePort()
-	defer ch.Close()
+func (b *BroadcastButton) loop(stopCh <-chan struct{}) {
+	portCh := b.cfg.LiveServerPort().Subscribe()
+	defer portCh.Close()
+	statusCh := b.svc.SubscribeStatus()
+	defer statusCh.Close()
+
+	b.SetRich(b.cfg.LiveServerPort().Get())
+	b.SetStatus(b.svc.Status())
 
 	for {
 		select {
-		case <-b.stopCh:
+		case <-stopCh:
 			return
-		case port := <-ch.Channel:
-			b.rich.ParseMarkdown(i18n.T("tip_on_live", goeasyi18n.Options{
-				Data: map[string]interface{}{
-					"Port": port,
-				},
-			}))
+		case port := <-portCh.Channel:
+			b.SetRich(port)
+		case status := <-statusCh.Channel:
+			b.SetStatus(status)
 		}
 	}
 }
 
-func (b *BroadcastButton) SetLive(live bool) {
-	if live {
+func (b *BroadcastButton) SetRich(port int) {
+	b.rich.ParseMarkdown(i18n.T("tip_on_live", goeasyi18n.Options{
+		Data: map[string]interface{}{
+			"Port": port,
+		},
+	}))
+}
+
+func (b *BroadcastButton) SetStatus(status interactive.RunnerStatus) {
+	if status.Running {
 		b.SetIcon(theme.NewColoredResource(icons.GetIcon("broadcast"), theme.ColorNamePrimary))
+	} else if status.Error != nil {
+		b.SetIcon(theme.NewColoredResource(icons.GetIcon("broadcast"), theme.ColorNameError))
 	} else {
 		b.SetIcon(theme.NewColoredResource(icons.GetIcon("broadcast"), theme.ColorNamePlaceHolder))
 	}

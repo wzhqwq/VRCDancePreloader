@@ -4,18 +4,22 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/samber/lo"
-	config2 "github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
 type MultiSelectSites struct {
 	widget.BaseWidget
+
+	setting interactive.StatefulSetting[[]string]
 
 	PyPySelected    []string
 	WannaSelected   []string
@@ -24,7 +28,9 @@ type MultiSelectSites struct {
 	YouTubeSelected []string
 }
 
-func NewMultiSelectSites(selected []string) *MultiSelectSites {
+func NewMultiSelectSites(setting interactive.StatefulSetting[[]string]) *MultiSelectSites {
+	selected := setting.Get()
+
 	pypySelected := lo.Filter(selected, func(site string, _ int) bool {
 		return constants.IsPyPySite(site)
 	})
@@ -42,6 +48,8 @@ func NewMultiSelectSites(selected []string) *MultiSelectSites {
 	})
 
 	m := &MultiSelectSites{
+		setting: setting,
+
 		PyPySelected:    pypySelected,
 		WannaSelected:   wannaSelected,
 		DuDuSelected:    duduSelected,
@@ -105,7 +113,13 @@ func (m *MultiSelectSites) update() {
 	allSites = append(allSites, m.BiliSelected...)
 	allSites = append(allSites, m.YouTubeSelected...)
 
-	config2.GetHijackConfig().UpdateSites(allSites)
+	// TODO prevent or revert changes if error occurs
+	err := m.setting.Save(allSites)
+	if err != nil {
+		// pop up
+		dialog.NewError(err, custom_fyne.GetParent()).Show()
+		return
+	}
 }
 
 type MultiSelectSitesRenderer struct {

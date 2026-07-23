@@ -2,60 +2,58 @@ package mixed_server
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/preloader"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/service"
 )
 
 type Service struct {
-	service.BaseService
-
-	cfg Config
+	service.BaseService[Config]
 
 	server *mixedServer
+
+	preloaderSvc *preloader.Service
 }
 
-func New(cfg Config) (*Service, error) {
+func New(cfg Config, preloaderSvc *preloader.Service) *Service {
 	s := &Service{
-		cfg: cfg,
+		BaseService: service.ConstructBaseService(cfg),
 
-		server: newMixedServer(cfg),
+		preloaderSvc: preloaderSvc,
 	}
 
 	s.SetControl("Mixed Server", s)
 
-	return s, nil
+	return s
 }
 
 func (s *Service) ServiceStart() error {
-	logger.InfoLn("Starting server on port", s.cfg.Port)
-
-	if err := s.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
-
-	return nil
+	s.server = newMixedServer(s.Cfg, s)
+	return s.ServeAndTest(s.Cfg.Port, s.server)
 }
 
 func (s *Service) ServiceStop() error {
-	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 3*time.Second)
 	defer shutdownRelease()
 
-	if err := runningServer.Shutdown(shutdownCtx); err != nil {
+	if err := s.server.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("failed to shutdown mixed server: %v", err)
 	}
 	return nil
 }
 
-func (s *Service) UpdateConfig(cfg Config) {
+func (s *Service) Enabled() bool {
+	return true
+}
+
+func (s *Service) UpdateConfig(cfg Config) error {
 	sitesChanged := false
-	if len(cfg.InterceptedSites) != len(s.cfg.InterceptedSites) {
+	if len(cfg.InterceptedSites) != len(s.Cfg.InterceptedSites) {
 		sitesChanged = true
 	} else {
-		for i, site := range s.cfg.InterceptedSites {
+		for i, site := range s.Cfg.InterceptedSites {
 			if cfg.InterceptedSites[i] != site {
 				sitesChanged = true
 				break
@@ -63,29 +61,14 @@ func (s *Service) UpdateConfig(cfg Config) {
 		}
 	}
 
-	if cfg.EnableHttpsProxy != s.cfg.EnableHttpsProxy || sitesChanged {
+	if cfg.EnableHttpsProxy != s.Cfg.EnableHttpsProxy || sitesChanged {
 		s.server.UpdateProxy(cfg)
 	}
-	if cfg.Port != s.cfg.Port {
+	if cfg.Port != s.Cfg.Port {
 		s.Stop()
-		s.server.UpdatePort(cfg)
 		s.Start()
 	}
-	s.cfg = cfg
-}
+	s.Cfg = cfg
 
-func (s *Service) UpdatePort(port int) {
-	newCfg := s.cfg
-	newCfg.Port = port
-	s.UpdateConfig(newCfg)
-}
-
-func (s *Service) UpdateEnableHttpsProxy(enableHttpsProxy bool) {
-	newCfg := s.cfg
-	newCfg.EnableHttpsProxy = enableHttpsProxy
-	s.UpdateConfig(newCfg)
-}
-
-func (s *Service) GetConfig() Config {
-	return s.cfg
+	return nil
 }

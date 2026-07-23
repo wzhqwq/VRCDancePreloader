@@ -6,21 +6,21 @@ import (
 	"fyne.io/fyne/v2/container"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/containers"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 )
 
 type ItemGui struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
 
-	ps *song.PreloadedSong
+	ps *song.StatefulSong
 	dl *containers.DynamicList
 
 	listItem *containers.DynamicListItem
@@ -33,7 +33,7 @@ type ItemGui struct {
 	infoChanged     bool
 }
 
-func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
+func NewItemGui(ps *song.StatefulSong, dl *containers.DynamicList) *ItemGui {
 	ig := &ItemGui{
 		ps: ps,
 		dl: dl,
@@ -45,11 +45,12 @@ func NewItemGui(ps *song.PreloadedSong, dl *containers.DynamicList) *ItemGui {
 	ig.listItem = containers.NewDynamicListItem(ps.ID, dl, ig)
 
 	ig.ExtendBaseWidget(ig)
+	ig.AddLifeCycleFn(ig.loop)
 
 	return ig
 }
 
-func (ig *ItemGui) RenderLoop(stopCh chan struct{}) {
+func (ig *ItemGui) loop(stopCh <-chan struct{}) {
 	ch := ig.ps.SubscribeEvent(false)
 	defer ch.Close()
 
@@ -61,7 +62,7 @@ func (ig *ItemGui) RenderLoop(stopCh chan struct{}) {
 			switch event {
 			case song.StatusChange:
 				ig.statusChanged = true
-				switch ig.ps.GetPreloadStatus() {
+				switch ig.ps.PreloadStatus() {
 				case song.Removed:
 					ig.dl.RemoveItem(ig.ps.ID, true)
 					return
@@ -83,7 +84,6 @@ func (ig *ItemGui) RenderLoop(stopCh chan struct{}) {
 func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	info := ig.ps.GetInfo()
 	// Title
-	//title := widgets.NewSongTitle(info.ID, info.Title, theme.Color(theme.ColorNameForeground))
 	title := widgets.NewEllipseText(info.Title, theme.Color(theme.ColorNameForeground))
 	title.TextSize = 16
 	title.TextStyle = fyne.TextStyle{Bold: true}
@@ -159,8 +159,6 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	r := &ItemRenderer{
 		ig: ig,
 
-		stopCh: make(chan struct{}),
-
 		TitleWidget:   title,
 		Background:    cardBackground,
 		ThumbnailMask: thumbnailMask,
@@ -178,7 +176,7 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 		FavoriteBtn: button.NewFavoriteBtn(info.ID, info.Title),
 	}
 
-	go ig.RenderLoop(r.stopCh)
+	r.Created(ig)
 
 	return r
 }
@@ -190,9 +188,9 @@ var playItemThumbnailMaxWidth float32 = 120
 var topHeight float32 = 30
 
 type ItemRenderer struct {
-	ig *ItemGui
+	interactive_widgets.BaseLifeCycleRenderer
 
-	stopCh chan struct{}
+	ig *ItemGui
 
 	Background    *canvas.Rectangle
 	ThumbnailMask *canvas.Rectangle
@@ -207,7 +205,6 @@ type ItemRenderer struct {
 	GroupText   *canvas.Text
 	PlayBar     *widgets.PlayBar
 	FavoriteBtn *button.FavoriteBtn
-	//TitleWidget *widgets.SongTitle
 	TitleWidget *widgets.EllipseText
 	Thumbnail   *widgets.Thumbnail
 }
@@ -383,8 +380,6 @@ func (r *ItemRenderer) refreshInfo() {
 	r.TitleWidget.Refresh()
 
 	r.GroupText.Text = info.Group
-
-	r.Thumbnail.LoadImageFromID(r.Thumbnail.ID)
 }
 
 func (r *ItemRenderer) Objects() []fyne.CanvasObject {
@@ -401,8 +396,4 @@ func (r *ItemRenderer) Objects() []fyne.CanvasObject {
 		r.InfoLeft,
 		r.InfoRight,
 	}
-}
-
-func (r *ItemRenderer) Destroy() {
-	close(r.stopCh)
 }

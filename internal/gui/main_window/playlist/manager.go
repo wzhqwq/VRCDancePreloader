@@ -5,30 +5,31 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
-	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
+	playlist2 "github.com/wzhqwq/VRCDancePreloader/internal/tools/playlist"
 )
 
 type Manager struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
 
-	currentList *playlist.PlayList
+	currentList *playlist2.PlayList
 
 	listChanged bool
 }
 
 func NewPlaylistManager() *Manager {
 	m := &Manager{
-		currentList: playlist.GetCurrentPlaylist(),
+		currentList: playlist2.GetCurrentPlaylist(),
 	}
 
 	m.ExtendBaseWidget(m)
+	m.AddLifeCycleFn(m.loop)
 
 	return m
 }
 
-func (m *Manager) RenderLoop(stopCh chan struct{}) {
-	ch := playlist.SubscribeNewListEvent()
+func (m *Manager) loop(stopCh <-chan struct{}) {
+	ch := playlist2.SubscribeNewListEvent()
 	defer ch.Close()
 
 	for {
@@ -59,20 +60,19 @@ func (m *Manager) CreateRenderer() fyne.WidgetRenderer {
 
 	r := &managerRender{
 		manager: m,
-		stopCh:  make(chan struct{}),
 		list:    list,
 
 		statusBar: statusBar,
 	}
-	go m.RenderLoop(r.stopCh)
+	r.Created(m)
 
 	return r
 }
 
 type managerRender struct {
-	manager *Manager
+	interactive_widgets.BaseLifeCycleRenderer
 
-	stopCh chan struct{}
+	manager *Manager
 
 	list *ListGui
 
@@ -120,8 +120,4 @@ func (r *managerRender) Objects() []fyne.CanvasObject {
 		r.list,
 		r.statusBar,
 	}
-}
-
-func (r *managerRender) Destroy() {
-	close(r.stopCh)
 }

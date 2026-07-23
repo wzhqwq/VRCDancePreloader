@@ -19,7 +19,7 @@ type LiveFullInfo struct {
 	Error string `json:"error"`
 }
 
-func (ps *PreloadedSong) LiveFullInfo() LiveFullInfo {
+func (ps *StatefulSong) LiveFullInfo() LiveFullInfo {
 	basic := ps.GetInfo()
 	var err string
 	if ps.PreloadError != nil {
@@ -40,7 +40,7 @@ func (ps *PreloadedSong) LiveFullInfo() LiveFullInfo {
 		PlayStatus:     string(ps.sm.PlayStatus),
 		DownloadStatus: string(ps.sm.DownloadStatus),
 
-		Duration:   int(ps.Duration.Milliseconds()),
+		Duration:   int(ps.info.Duration),
 		TimePassed: max(0, int(ps.TimePassed.Milliseconds())),
 
 		DownloadProgress: progress,
@@ -57,7 +57,7 @@ type LiveStatusChange struct {
 	Error string `json:"error"`
 }
 
-func (ps *PreloadedSong) LiveStatusChange() LiveStatusChange {
+func (ps *StatefulSong) LiveStatusChange() LiveStatusChange {
 	var err string
 	if ps.PreloadError != nil {
 		err = ps.PreloadError.Error()
@@ -77,7 +77,7 @@ type LiveProgressChange struct {
 	DownloadProgress float64 `json:"downloadProgress"`
 }
 
-func (ps *PreloadedSong) LiveProgressChange() LiveProgressChange {
+func (ps *StatefulSong) LiveProgressChange() LiveProgressChange {
 	if ps.TotalSize == 0 {
 		return LiveProgressChange{
 			ID: ps.ID,
@@ -99,7 +99,7 @@ type LivePlayStatusChange struct {
 	PlayStatus string `json:"playStatus"`
 }
 
-func (ps *PreloadedSong) LivePlayStatusChange() LivePlayStatusChange {
+func (ps *StatefulSong) LivePlayStatusChange() LivePlayStatusChange {
 	return LivePlayStatusChange{
 		ID: ps.ID,
 
@@ -116,12 +116,12 @@ type LiveBasicInfoChange struct {
 	Duration int    `json:"duration"`
 }
 
-func (ps *PreloadedSong) LiveBasicInfoChange() LiveBasicInfoChange {
+func (ps *StatefulSong) LiveBasicInfoChange() LiveBasicInfoChange {
 	basic := ps.GetInfo()
 	return LiveBasicInfoChange{
 		ID:       ps.ID,
 		Title:    basic.Title,
 		Group:    basic.Group,
-		Duration: int(ps.Duration.Milliseconds()),
+		Duration: int(ps.info.Duration.Milliseconds()),
 	}
 }

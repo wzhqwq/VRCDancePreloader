@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache/cache_fs"
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/cache_fs"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -31,6 +31,12 @@ type File struct {
 }
 
 func (f *File) Init(_ int64, _ time.Time) error {
+	logger.ErrorLn("We no longer support writing/creating legacy cache file")
+
+	return ErrLegacyDeprecated
+}
+
+func (f *File) SeekStart() error {
 	logger.ErrorLn("We no longer support writing/creating legacy cache file")
 
 	return ErrLegacyDeprecated
@@ -90,16 +96,16 @@ func (f *File) RequestRs(ctx context.Context) io.ReadSeeker {
 	return rw_file.NewRSWithContext(f, f.totalLen, ctx)
 }
 
-func NewFile(baseName string) *File {
+func NewFile(baseName string, cacheFs *cache_fs.CacheFS) *File {
 	totalLen := int64(0)
 	downloaded := int64(0)
 
-	f, ok := cache_fs.Get(baseName + ".mp4")
+	f, ok := cacheFs.Get(baseName + ".mp4")
 	if ok {
 		totalLen = getFileSize(f)
 		downloaded = totalLen
 	} else {
-		f, ok = cache_fs.Get(baseName + ".mp4.dl")
+		f, ok = cacheFs.Get(baseName + ".mp4.dl")
 		if ok {
 			downloaded = getFileSize(f)
 		}

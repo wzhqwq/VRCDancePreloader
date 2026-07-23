@@ -1,73 +1,70 @@
 package config
 
 import (
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache/entry"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache/video_cache"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
-type CacheConfig struct {
-	Path          string `yaml:"path"`
-	MaxCacheSize  int    `yaml:"max-cache-size"`
-	KeepFavorites bool   `yaml:"keep-favorites"`
-	//RWBufferSize  int    `yaml:"rw-buffer-size"`
-	// 0: legacy, 1: continuous, 2: fragmented
-	FileFormat int `yaml:"file-format"`
-
-	ForceExpirationCheck bool `yaml:"force-expiration-check"`
+func (m *Manager) CachePath() interactive.StatefulSetting[string] {
+	return m.cache.NewStringSetting(
+		"cache_manager.path",
+		func(cfg Config) string {
+			return cfg.Cache.Path
+		},
+		func(cfg *Config, p string) error {
+			cfg.Cache.Path = p
+			return nil
+		},
+	)
 }
 
-func GetCacheConfig() *CacheConfig {
-	return &config.Cache
+func (m *Manager) MaxVideoCache() interactive.StatefulSetting[int] {
+	return m.cache.NewIntSetting(
+		"cache_manager.max-video-cache",
+		func(cfg Config) int {
+			return cfg.Cache.MaxVideoCache
+		},
+		func(cfg *Config, sizeInMb int) error {
+			cfg.Cache.MaxVideoCache = sizeInMb
+			return nil
+		},
+	)
 }
 
-var defaultCacheConfig = CacheConfig{
-	Path:         "./cache",
-	MaxCacheSize: 300,
-	//RWBufferSize:  1,
-	FileFormat: 1,
+func (m *Manager) VideoFileFormat() interactive.StatefulSetting[int] {
+	return m.cache.NewIntSetting(
+		"cache_manager.video-file-format",
+		func(cfg Config) int {
+			return cfg.Cache.VideoFileFormat
+		},
+		func(cfg *Config, f int) error {
+			cfg.Cache.VideoFileFormat = f
+			return nil
+		},
+	)
 }
 
-func (cc *CacheConfig) Init() {
-	if cc.FileFormat <= 0 {
-		logger.WarnLn("We no longer support writing legacy cache files. `cache.file-format` will be replaced with default value")
-		cc.FileFormat = 1
-		saveAndNotify("cache")
-	}
-
-	cache.SetupCache(cc.Path)
-	video_cache.SetMaxSize(int64(cc.MaxCacheSize) * 1024 * 1024)
-	video_cache.SetKeepFavorites(cc.KeepFavorites)
-	entry.SetFileFormat(cc.FileFormat)
-	entry.SetForceExpirationCheck(cc.ForceExpirationCheck)
+func (m *Manager) CacheForceExpiration() interactive.StatefulSetting[bool] {
+	return m.cache.NewBoolSetting(
+		"cache_manager.force-expiration",
+		func(cfg Config) bool {
+			return cfg.Cache.ForceExpiration
+		},
+		func(cfg *Config, f bool) error {
+			cfg.Cache.ForceExpiration = f
+			return nil
+		},
+	)
 }
 
-func (cc *CacheConfig) UpdateMaxSize(sizeInMb int) {
-	cc.MaxCacheSize = sizeInMb
-	video_cache.SetMaxSize(int64(sizeInMb) * 1024 * 1024)
-	cache.CleanUpCache()
-	saveAndNotify("cache")
-}
-
-func (cc *CacheConfig) UpdateKeepFavorites(b bool) {
-	cc.KeepFavorites = b
-	video_cache.SetKeepFavorites(b)
-	saveAndNotify("cache")
-}
-
-func (cc *CacheConfig) UpdateForceExpirationCheck(b bool) {
-	cc.ForceExpirationCheck = b
-	entry.SetForceExpirationCheck(b)
-	saveAndNotify("cache")
-}
-
-func (cc *CacheConfig) UpdateFileFormat(fileFormat int) {
-	cc.FileFormat = fileFormat
-	entry.SetFileFormat(fileFormat)
-	saveAndNotify("cache")
-}
-
-func (cc *CacheConfig) UpdatePath(path string) {
-	cc.Path = path
-	saveAndNotify("cache")
+func (m *Manager) CacheKeepFavorites() interactive.StatefulSetting[bool] {
+	return m.cache.NewBoolSetting(
+		"cache_manager.keep-favorites",
+		func(cfg Config) bool {
+			return cfg.Cache.KeepFavorites
+		},
+		func(cfg *Config, keep bool) error {
+			cfg.Cache.KeepFavorites = keep
+			return nil
+		},
+	)
 }

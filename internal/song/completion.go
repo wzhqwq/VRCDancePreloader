@@ -1,100 +1,50 @@
 package song
 
 import (
-	"time"
-
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
-	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
-	"github.com/wzhqwq/VRCDancePreloader/internal/third_party_api"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties"
+	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 )
 
-func (ps *PreloadedSong) UpdateDuration() {
-	if ps.Duration > 1 {
-		return
-	}
-	if ps.PyPySong != nil {
-		ps.Duration = time.Duration(ps.PyPySong.End) * time.Second
-		return
-	}
-	if ps.WannaSong != nil {
-		ps.Duration = time.Duration(ps.WannaSong.End) * time.Second
-		return
-	}
-	if ps.DuDuSong != nil {
-		ps.Duration = time.Duration(ps.DuDuSong.End) * time.Second
-		return
-	}
-	if ps.CustomSong != nil {
-		go func() {
-			ps.Duration = third_party_api.GetDurationByInternalID(ps.CustomSong.UniqueId).Get()
-		}()
+func (ps *StatefulSong) CompleteInfoIfEmpty(title, group string, duration int) {
+	provider := third_parties.GetProviderById(ps.songId)
+	if provider != nil {
+		provider.ModifyInfoPlaceholder(ps.songId, func(i types.GeneralVideoInfo) types.GeneralVideoInfo {
+			return i.CompleteIfEmpty(title, group, duration)
+		})
 	}
 }
 
-func (ps *PreloadedSong) completeTitle() {
-	if ps.CustomSong != nil {
-		go func() {
-			id := ps.GetSongId()
-			title := ps.CustomSong.Name
+func (ps *StatefulSong) completionLoop(provider third_parties.ResourceProvider, infoReady chan<- struct{}) {
+	handle := provider.Info(ps.songId)
+	defer handle.Release()
 
-			// Try complete title using local database
-			entry, err := persistence.GetEntry(id)
-			if err == nil && entry.Title != title {
-				ps.CustomSong.Name = entry.Title
-				ps.notifyInfoChange()
-			}
+	snap := handle.Snapshot()
+	ps.info = snap.Data
+	close(infoReady)
 
-			// Try complete title using third party api
-			completedTitle := third_party_api.CompleteTitleByInternalID(id, title).Get()
-			if completedTitle != "" && completedTitle != title {
-				ps.CustomSong.Name = completedTitle
-				persistence.UpdateSavedTitle(id, completedTitle)
-				ps.notifyInfoChange()
-			}
-		}()
+	if snap.Status.Valid() {
+		return
 	}
-}
 
-func (ps *PreloadedSong) UpdateSong() bool {
-	var completedTitle string
+	ch := handle.Subscribe()
+	defer ch.Close()
 
-	if ps.PyPySong != nil {
-		song, ok := raw_song.FindPyPySong(ps.PyPySong.ID)
-		if ok {
-			ps.PyPySong = song
-			completedTitle = song.Name
-			goto complete
+	snap = handle.Snapshot()
+
+	for {
+		ps.info = snap.Data
+		ps.notifyInfoChange()
+		if snap.Status.Valid() {
+			persistence.UpdateSavedTitle(ps.songId, snap.Data.Title)
+			return
+		}
+
+		select {
+		case snap = <-ch.Channel:
+			continue
+		case <-ps.stopCh:
+			return
 		}
 	}
-	if ps.WannaSong != nil {
-		song, ok := raw_song.FindWannaSong(ps.WannaSong.DanceId)
-		if ok {
-			ps.WannaSong = song
-			completedTitle = song.Name
-			goto complete
-		}
-	}
-	if ps.DuDuSong != nil {
-		song, ok := raw_song.FindDuDuSong(ps.DuDuSong.ID)
-		if ok {
-			ps.DuDuSong = song
-			completedTitle = song.Name
-			goto complete
-		}
-	}
-	if ps.CustomSong != nil {
-		ps.UpdateDuration()
-		ps.completeTitle()
-
-		return true
-	}
-	return false
-
-complete:
-	ps.InfoNa = false
-	persistence.UpdateSavedTitle(ps.GetSongId(), completedTitle)
-	ps.UpdateDuration()
-	ps.notifyInfoChange()
-
-	return true
 }

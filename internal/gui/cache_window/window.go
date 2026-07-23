@@ -4,11 +4,11 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
-	"github.com/wzhqwq/VRCDancePreloader/internal/cache/video_cache"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"github.com/wzhqwq/VRCDancePreloader/internal/persistence"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/host"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/persistence"
 )
 
 var openedWindow fyne.Window
@@ -20,10 +20,9 @@ func OpenCacheWindow() {
 
 	openedWindow = fyne.CurrentApp().NewWindow(i18n.T("label_cache_local"))
 
-	cacheWindow := &CacheWindow{
-		loadedCh: make(chan struct{}),
-	}
+	cacheWindow := &CacheWindow{}
 	cacheWindow.ExtendBaseWidget(cacheWindow)
+	cacheWindow.AddLifeCycleFn(cacheWindow.loop)
 
 	openedWindow.SetContent(cacheWindow)
 	openedWindow.SetPadded(false)
@@ -34,13 +33,29 @@ func OpenCacheWindow() {
 }
 
 type CacheWindow struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
 
 	space int64
 
 	spaceChanged bool
+}
 
-	loadedCh chan struct{}
+func (c *CacheWindow) loop(stopCh <-chan struct{}) {
+	ch := persistence.SubscribeTotalSizeChange()
+	defer ch.Close()
+
+	c.updateTotalSize()
+
+	for {
+		select {
+		case e := <-ch.Channel:
+			if e.Type == "video" {
+				c.totalSizeDelta(e.Delta)
+			}
+		case <-stopCh:
+			return
+		}
+	}
 }
 
 func (c *CacheWindow) updateTotalSize() {
@@ -73,7 +88,7 @@ func (c *CacheWindow) CreateRenderer() fyne.WidgetRenderer {
 	localFiles := NewFileListGui(false)
 	preserved := NewFileListGui(true)
 	divider := canvas.NewRectangle(theme.Color(theme.ColorNameSeparator))
-	progressBar := widgets.NewSizeProgressBar(video_cache.GetMaxSize(), 0)
+	progressBar := widgets.NewSizeProgressBar(host.CacheManager().CacheSize(), 0)
 
 	r := &cacheWindowRenderer{
 		c: c,
@@ -82,46 +97,21 @@ func (c *CacheWindow) CreateRenderer() fyne.WidgetRenderer {
 		preserved:   preserved,
 		divider:     divider,
 		progressBar: progressBar,
-
-		stopCh: make(chan struct{}, 1),
 	}
-
-	go func() {
-		c.updateTotalSize()
-		r.Loop()
-	}()
+	r.Created(c)
 
 	return r
 }
 
 type cacheWindowRenderer struct {
+	interactive_widgets.BaseLifeCycleRenderer
+
 	c *CacheWindow
 
 	localFiles  *FileListGui
 	preserved   *FileListGui
 	progressBar *widgets.SizeProgressBar
 	divider     *canvas.Rectangle
-
-	stopCh chan struct{}
-}
-
-func (r *cacheWindowRenderer) Loop() {
-	ch := persistence.SubscribeTotalSizeChange()
-	defer ch.Close()
-	for {
-		select {
-		case e := <-ch.Channel:
-			if e.Type == "video" {
-				r.c.totalSizeDelta(e.Delta)
-			}
-		case <-r.stopCh:
-			return
-		}
-	}
-}
-
-func (r *cacheWindowRenderer) Destroy() {
-	close(r.stopCh)
 }
 
 func (r *cacheWindowRenderer) Layout(size fyne.Size) {

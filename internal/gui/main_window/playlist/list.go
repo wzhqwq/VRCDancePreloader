@@ -7,17 +7,17 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/containers"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
-	"github.com/wzhqwq/VRCDancePreloader/internal/playlist"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/playlist"
 )
 
 type ListGui struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
 
 	pl *playlist.PlayList
 
@@ -31,11 +31,12 @@ func NewListGui(pl *playlist.PlayList) *ListGui {
 	}
 
 	g.ExtendBaseWidget(g)
+	g.AddLifeCycleFn(g.loop)
 
 	return g
 }
 
-func (l *ListGui) RenderLoop(stopCh chan struct{}) {
+func (l *ListGui) loop(stopCh <-chan struct{}) {
 	ch := l.pl.SubscribeChangeEvent()
 	defer ch.Close()
 
@@ -75,8 +76,6 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 	r := &listGuiRenderer{
 		list: l,
 
-		stopCh: make(chan struct{}),
-
 		Container:  scroll,
 		Background: canvas.NewRectangle(theme.Color(custom_fyne.ColorNameOuterBackground)),
 
@@ -89,8 +88,7 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 	}
 
 	r.updateItems()
-
-	go l.RenderLoop(r.stopCh)
+	r.Created(l)
 
 	return r
 }
@@ -98,9 +96,9 @@ func (l *ListGui) CreateRenderer() fyne.WidgetRenderer {
 var playlistTopHeight = float32(30)
 
 type listGuiRenderer struct {
-	list *ListGui
+	interactive_widgets.BaseLifeCycleRenderer
 
-	stopCh chan struct{}
+	list *ListGui
 
 	Container  *container.Scroll
 	Background *canvas.Rectangle
@@ -141,7 +139,7 @@ func (r *listGuiRenderer) Layout(size fyne.Size) {
 func (r *listGuiRenderer) updateItems() {
 	songs := r.list.pl.GetItemsSnapshot()
 
-	r.items = lo.Map(songs, func(ps *song.PreloadedSong, _ int) *ItemGui {
+	r.items = lo.Map(songs, func(ps *song.StatefulSong, _ int) *ItemGui {
 		if item, ok := r.itemMap[ps.ID]; ok {
 			if v := item.Value(); v != nil {
 				if v.ps == ps {
@@ -191,8 +189,4 @@ func (r *listGuiRenderer) Objects() []fyne.CanvasObject {
 		r.RoomName,
 		r.EmptyTip,
 	}
-}
-
-func (r *listGuiRenderer) Destroy() {
-	close(r.stopCh)
 }

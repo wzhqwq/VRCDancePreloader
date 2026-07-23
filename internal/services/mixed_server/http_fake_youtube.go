@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/internal_id"
 )
 
 var youTubePathRegex = regexp.MustCompile(`/([a-zA-Z0-9_-]{11})$`)
@@ -95,7 +97,7 @@ func CheckYouTubeLocalRequest(req *http.Request) (string, bool) {
 	if req.URL.Path == "/local" {
 		id := req.URL.Query().Get("id")
 		if id != "" {
-			return id, true
+			return internal_id.YtInternalPrefix + id, true
 		}
 	}
 	return "", false
