@@ -775,7 +775,13 @@ func (m *RemoteManager[T]) Invalidate(id string) {
 //
 //}
 
-func (m *RemoteManager[T]) ModifyPlaceholder(id string, modify func(current T) T) bool {
+func (m *RemoteManager[T]) ModifyPlaceholder(id string, data T) bool {
+	return m.ModifyPlaceholderFn(id, func(_ T) T {
+		return data
+	})
+}
+
+func (m *RemoteManager[T]) ModifyPlaceholderFn(id string, modify func(current T) T) bool {
 	if id == "" || modify == nil {
 		return false
 	}
@@ -800,10 +806,15 @@ func (m *RemoteManager[T]) ModifyPlaceholder(id string, modify func(current T) T
 
 	entry.mu.Lock()
 
-	if !entry.hasData || !entry.placeholder {
-		entry.mu.Unlock()
-		m.mu.RUnlock()
-		return false
+	if entry.hasData {
+		if !entry.placeholder {
+			entry.mu.Unlock()
+			m.mu.RUnlock()
+			return false
+		}
+	} else {
+		entry.hasData = true
+		entry.placeholder = true
 	}
 
 	entry.data = modify(entry.data)

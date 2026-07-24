@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/samber/lo"
-	"github.com/wzhqwq/VRCDancePreloader/internal/services/cache_manager"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 )
 
@@ -13,10 +12,22 @@ var pypyCatalogManager = baseManager[raw_song.PyPyDanceSong, PyPyDanceCatalogRes
 var wannaCatalogManager = baseManager[raw_song.WannaDanceSong, WannaDanceCatalogResponse]{}
 var duduCatalogManager = baseManager[raw_song.DuDuFitDanceSong, DuDuFitDanceCatalogResponse]{}
 
-func setupManagers(cacheSvc *cache_manager.Service) {
-	pypyCatalogManager.setup("pypy_catalog", "PyPyDance Catalog", cacheSvc, processPyPyResponse)
-	wannaCatalogManager.setup("wanna_catalog", "WannaDance Catalog", cacheSvc, processWannaResponse)
-	duduCatalogManager.setup("dudu_catalog", "DuDuFitDance Catalog", cacheSvc, processDuDuResponse)
+func setupManagers() {
+	pypyCatalogManager.setup("pypy_catalog", "PyPyDance Catalog", processPyPyResponse)
+	wannaCatalogManager.setup("wanna_catalog", "WannaDance Catalog", processWannaResponse)
+	duduCatalogManager.setup("dudu_catalog", "DuDuFitDance Catalog", processDuDuResponse)
+}
+
+func updateAll() {
+	wg.Go(pypyCatalogManager.Update)
+	wg.Go(wannaCatalogManager.Update)
+	wg.Go(duduCatalogManager.Update)
+}
+
+func readFromCache() {
+	wg.Go(pypyCatalogManager.readFromCache)
+	wg.Go(wannaCatalogManager.readFromCache)
+	wg.Go(duduCatalogManager.readFromCache)
 }
 
 // PyPyDance

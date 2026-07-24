@@ -1,7 +1,8 @@
 package catalog
 
 import (
-	"github.com/wzhqwq/VRCDancePreloader/internal/services/cache_manager"
+	"sync"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/service"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 )
@@ -9,6 +10,8 @@ import (
 type Tool struct {
 	service.ConfigurableTool
 }
+
+var wg sync.WaitGroup
 
 func GetPyPyDanceCatalogManager() Manager[raw_song.PyPyDanceSong] {
 	return &pypyCatalogManager
@@ -22,21 +25,22 @@ func GetDuDuFitDanceCatalogManager() Manager[raw_song.DuDuFitDanceSong] {
 	return &duduCatalogManager
 }
 
+func initialize() error {
+	setupManagers()
+	//updateAll()
+	return nil
+}
+
 func destroy() error {
 	pypyCatalogManager.shutdown()
 	wannaCatalogManager.shutdown()
 	duduCatalogManager.shutdown()
+	wg.Wait()
 	return nil
 }
 
-func New(cacheSvc *cache_manager.Service) *Tool {
+func New() *Tool {
 	return &Tool{
-		ConfigurableTool: service.ConstructConfigurableTool(func() error {
-			setupManagers(cacheSvc)
-			pypyCatalogManager.Update()
-			wannaCatalogManager.Update()
-			duduCatalogManager.Update()
-			return nil
-		}, destroy),
+		ConfigurableTool: service.ConstructConfigurableTool(initialize, destroy),
 	}
 }

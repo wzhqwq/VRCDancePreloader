@@ -52,6 +52,11 @@ func main() {
 	migrated := host.StartHost()
 	defer host.Shutdown()
 
+	hostStatus := host.Status()
+	if !hostStatus.Running {
+		logger.FatalLn("Service host failed to start:", hostStatus.Error)
+	}
+
 	if args.TuiEnabled {
 		select {
 		case <-osSignalCh:

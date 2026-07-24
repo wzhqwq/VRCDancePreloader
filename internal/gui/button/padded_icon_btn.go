@@ -43,23 +43,17 @@ func (b *PaddedIconBtn) Extend(icon fyne.Resource) {
 
 func (b *PaddedIconBtn) SetIcon(icon fyne.Resource) {
 	b.icon = icon
-	fyne.Do(func() {
-		b.Refresh()
-	})
+	fyne.Do(b.Refresh)
 }
 
 func (b *PaddedIconBtn) SetPadding(padding float32) {
 	b.padding = padding
-	fyne.Do(func() {
-		b.Refresh()
-	})
+	fyne.Do(b.Refresh)
 }
 
 func (b *PaddedIconBtn) SetMinSquareSize(size float32) {
 	b.minSquareSize = size
-	fyne.Do(func() {
-		b.Refresh()
-	})
+	fyne.Do(b.Refresh)
 }
 
 func (b *PaddedIconBtn) CreateRenderer() fyne.WidgetRenderer {

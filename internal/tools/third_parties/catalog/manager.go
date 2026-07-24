@@ -12,9 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/services/cache_manager"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
-	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/internal_id"
@@ -58,9 +56,6 @@ type baseManager[T any, R any] struct {
 	url    string
 	client *requesting.ClientProvider
 
-	cacheSession   types.CDNFileSession
-	cacheAvailable bool
-
 	statefulCatalog *interactive.RemoteManager[*Catalog[T]]
 
 	availableEm *utils.EventManager[bool]
@@ -88,7 +83,7 @@ func (m *baseManager[T, R]) shutdown() {
 	m.statefulCatalog.Close()
 }
 
-func (m *baseManager[T, R]) setup(id, name string, cacheSvc *cache_manager.Service, processFn func(*R) *Catalog[T]) {
+func (m *baseManager[T, R]) setup(id, name string, processFn func(*R) *Catalog[T]) {
 	m.availableEm = utils.NewEventManager[bool]()
 	m.logger = utils.NewLogger(name)
 	m.processFn = processFn
@@ -106,24 +101,7 @@ func (m *baseManager[T, R]) setup(id, name string, cacheSvc *cache_manager.Servi
 		m.client = requesting.GetClient(requesting.DuDuFitDance)
 	}
 
-	var err error
-	m.cacheSession, err = cacheSvc.CreateSession("catalog")
-	if err == nil {
-		err = m.cacheSession.Open(id)
-	}
-	if err != nil {
-		m.logger.WarnLn("Failed to open catalog cache session, we will fetch and save it in memory")
-	} else {
-		m.cacheAvailable = true
-	}
-
-	if r := m.getCached(); r != nil {
-		m.statefulCatalog = interactive.NewRemoteManager(m.request, func(_ string) *Catalog[T] {
-			return m.processFn(r)
-		}, 1, 1)
-	} else {
-		m.statefulCatalog = interactive.NewRemoteManager(m.request, nil, 1, 1)
-	}
+	m.statefulCatalog = interactive.NewRemoteManager(m.request, nil, 1, 1)
 	scheduler := utils.NewBasicScheduler()
 	if id == "pypy_catalog" {
 		scheduler = utils.PyPyVideoScheduler()
@@ -134,42 +112,57 @@ func (m *baseManager[T, R]) setup(id, name string, cacheSvc *cache_manager.Servi
 	m.statefulCatalog.BindLogger(m.logger)
 }
 
-func (m *baseManager[T, R]) getCached() *R {
-	if !m.cacheAvailable {
-		return nil
-	}
-	file, err := m.cacheSession.AcquireFile()
-	if err != nil {
-		return nil
-	}
-	defer m.cacheSession.ReleaseFile()
+func (m *baseManager[T, R]) readFromCache() {
+	sessionMu.RLock()
+	defer sessionMu.RUnlock()
 
-	if !file.IsComplete() {
-		return nil
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-	defer cancel()
-	var cached R
-	err = json.NewDecoder(file.RequestRs(ctx)).Decode(&cached)
-	if err != nil {
-		return nil
-	}
-
-	return &cached
-}
-
-func (m *baseManager[T, R]) saveToCache(bytes []byte) {
-	if !m.cacheAvailable {
+	session, ok := cacheSessions[m.catalogId]
+	if !ok {
+		m.logger.WarnLn("Failed to open catalog cache session, we will fetch and save it in memory")
 		return
 	}
 
-	file, err := m.cacheSession.AcquireFile()
+	file, err := session.AcquireFile()
+	if err != nil {
+		m.logger.WarnLn("Failed to open catalog cache file, we will fetch and save it in memory")
+		return
+	}
+	defer session.ReleaseFile()
+
+	if !file.IsComplete() {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3000000)
+	defer cancel()
+	var cached R
+
+	err = json.NewDecoder(file.RequestRs(ctx)).Decode(&cached)
+	if err != nil {
+		m.logger.WarnLn("Failed to decode catalog cache file:", err)
+		return
+	}
+
+	c := m.processFn(&cached)
+
+	m.statefulCatalog.ModifyPlaceholder(m.catalogId, c)
+}
+
+func (m *baseManager[T, R]) saveToCache(bytes []byte) {
+	sessionMu.RLock()
+	defer sessionMu.RUnlock()
+
+	session, ok := cacheSessions[m.catalogId]
+	if !ok {
+		return
+	}
+
+	file, err := session.AcquireFile()
 	if err != nil {
 		m.logger.WarnLn("Failed to open catalog cache file")
 		return
 	}
-	defer m.cacheSession.ReleaseFile()
+	defer session.ReleaseFile()
 
 	err = file.Init(int64(len(bytes)), time.Time{})
 	if err != nil {
@@ -180,6 +173,8 @@ func (m *baseManager[T, R]) saveToCache(bytes []byte) {
 	_, err = file.Write(bytes)
 	if err != nil {
 		m.logger.ErrorLn("Failed to copy through cache file:", err)
+	} else {
+		m.logger.InfoLn("Saved to cache")
 	}
 }
 

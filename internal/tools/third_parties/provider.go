@@ -94,7 +94,7 @@ func (p *BaseProvider) Info(id string) *interactive.RemoteHandle[types.GeneralVi
 }
 
 func (p *BaseProvider) ModifyInfoPlaceholder(id string, modify func(current types.GeneralVideoInfo) types.GeneralVideoInfo) {
-	p.infoManager.ModifyPlaceholder(id, modify)
+	p.infoManager.ModifyPlaceholderFn(id, modify)
 }
 
 func (p *BaseProvider) Thumbnail(id string) *interactive.RemoteHandle[image.Image] {

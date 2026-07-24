@@ -69,13 +69,10 @@ func (b *SongListButton) loop(stopCh <-chan struct{}) {
 			return
 		case pypyComplete = <-pypyCh.Channel:
 			b.SetComplete(pypyComplete && wannaComplete && duduComplete)
-			fyne.Do(b.Refresh)
 		case wannaComplete = <-wannaCh.Channel:
 			b.SetComplete(pypyComplete && wannaComplete && duduComplete)
-			fyne.Do(b.Refresh)
 		case duduComplete = <-duduCh.Channel:
 			b.SetComplete(pypyComplete && wannaComplete && duduComplete)
-			fyne.Do(b.Refresh)
 		}
 	}
 }

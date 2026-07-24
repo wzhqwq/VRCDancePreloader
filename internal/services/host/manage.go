@@ -8,6 +8,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/live"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/mixed_server"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/preloader"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
 var currentManager *Manager
@@ -20,6 +21,7 @@ func StartHost() bool {
 	if err != nil {
 		logger.FatalLn("Failed to register services:", err)
 	}
+	currentManager.Init()
 	currentManager.Start()
 
 	return migrated
@@ -33,8 +35,12 @@ func Config() *config.Manager {
 	return currentManager.Config()
 }
 
+func Status() interactive.RunnerStatus {
+	return currentManager.Status()
+}
+
 func MixedServer() *mixed_server.Service {
-	svc, ok := currentManager.GetService("main_server").(*mixed_server.Service)
+	svc, ok := currentManager.getService("main_server").(*mixed_server.Service)
 	if !ok {
 		return nil
 	}
@@ -42,7 +48,7 @@ func MixedServer() *mixed_server.Service {
 }
 
 func LiveServer() *live.Service {
-	svc, ok := currentManager.GetService("live_server").(*live.Service)
+	svc, ok := currentManager.getService("live_server").(*live.Service)
 	if !ok {
 		return nil
 	}
@@ -50,7 +56,7 @@ func LiveServer() *live.Service {
 }
 
 func Downloader() *downloader.Service {
-	svc, ok := currentManager.GetService("downloader").(*downloader.Service)
+	svc, ok := currentManager.getService("downloader").(*downloader.Service)
 	if !ok {
 		return nil
 	}
@@ -58,7 +64,7 @@ func Downloader() *downloader.Service {
 }
 
 func Preloader() *preloader.Service {
-	svc, ok := currentManager.GetService("preloader").(*preloader.Service)
+	svc, ok := currentManager.getService("preloader").(*preloader.Service)
 	if !ok {
 		return nil
 	}
@@ -66,7 +72,7 @@ func Preloader() *preloader.Service {
 }
 
 func CacheManager() *cache_manager.Service {
-	svc, ok := currentManager.GetService("cache_manager").(*cache_manager.Service)
+	svc, ok := currentManager.getService("cache_manager").(*cache_manager.Service)
 	if !ok {
 		return nil
 	}

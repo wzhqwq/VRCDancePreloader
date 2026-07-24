@@ -20,7 +20,7 @@ import (
 func Register(m *Manager) error {
 	// Basic long-term services
 
-	m.RegisterService(
+	m.RegisterConfiguredService(
 		"proxy",
 		requesting.New(m.cfg.Proxy),
 		OneFieldCfgApplier[requesting.Config]{
@@ -31,7 +31,7 @@ func Register(m *Manager) error {
 		},
 	)
 
-	m.RegisterService(
+	m.RegisterConfiguredService(
 		"secrets",
 		secrets.New(m.cfg.Secrets),
 		OneFieldCfgApplier[secrets.Config]{
@@ -42,14 +42,12 @@ func Register(m *Manager) error {
 		},
 	)
 
-	m.RegisterServiceWithoutConfig("db", persistence.New())
-	m.RegisterServiceWithoutConfig("playlist", playlist.New(), "db")
-	m.RegisterServiceWithoutConfig("watcher", watcher.New(), "playlist", "db")
+	m.RegisterService("db", persistence.New())
 
 	// CDN-related services
 
 	cacheManagerSvc := cache_manager.New(m.cfg.Cache)
-	m.RegisterService(
+	m.RegisterConfiguredService(
 		"cache_manager",
 		cacheManagerSvc,
 		OneFieldCfgApplier[cache_manager.Config]{
@@ -62,9 +60,16 @@ func Register(m *Manager) error {
 		"db",
 	)
 
+	m.RegisterService(
+		"catalog_service",
+		catalog.NewService(cacheManagerSvc),
+		// "cache_manager" for caching catalog, "catalog" for binding sessions
+		"cache_manager", "catalog",
+	)
+
 	// Third-party tools
 
-	m.RegisterService(
+	m.RegisterConfiguredService(
 		"executable",
 		local_executables.New(m.cfg.Executable),
 		OneFieldCfgApplier[local_executables.Config]{
@@ -77,14 +82,14 @@ func Register(m *Manager) error {
 		"proxy",
 	)
 
-	m.RegisterServiceWithoutConfig(
+	m.RegisterService(
 		"catalog",
-		catalog.New(cacheManagerSvc),
-		// "proxy" for downloading catalog, "cache_manager" for caching catalog
-		"proxy", "cache_manager",
+		catalog.New(),
+		// "proxy" for downloading catalog
+		"proxy",
 	)
 
-	m.RegisterService(
+	m.RegisterConfiguredService(
 		"third_parties",
 		third_parties.New(m.cfg.ThirdParties),
 		OneFieldCfgApplier[third_parties.Config]{
@@ -99,8 +104,11 @@ func Register(m *Manager) error {
 
 	// Playlist-related services
 
+	m.RegisterService("playlist", playlist.New(), "db")
+	m.RegisterService("watcher", watcher.New(), "playlist", "db")
+
 	downloaderSvc := downloader.New(m.cfg.Downloader)
-	m.RegisterService(
+	m.RegisterConfiguredService(
 		"downloader",
 		downloaderSvc,
 		OneFieldCfgApplier[downloader.Config]{
@@ -112,7 +120,7 @@ func Register(m *Manager) error {
 	)
 
 	preloaderSvc := preloader.New(m.cfg.Preloader, cacheManagerSvc, downloaderSvc)
-	m.RegisterService(
+	m.RegisterConfiguredService(
 		"preloader",
 		preloaderSvc,
 		OneFieldCfgApplier[preloader.Config]{
@@ -129,7 +137,7 @@ func Register(m *Manager) error {
 	// File, hijacking, h5 UI services
 
 	serverSvc := mixed_server.New(m.cfg.Server, preloaderSvc)
-	m.RegisterService(
+	m.RegisterConfiguredService(
 		"main_server",
 		serverSvc,
 		NoFieldCfgApplier[mixed_server.Config]{
@@ -143,7 +151,7 @@ func Register(m *Manager) error {
 	)
 
 	liveSvc := live.New(m.cfg.Live)
-	m.RegisterService(
+	m.RegisterConfiguredService(
 		"live_server",
 		liveSvc,
 		NoFieldCfgApplier[live.Config]{

@@ -1,12 +1,17 @@
 package host
 
 import (
+	"context"
 	"errors"
-	"slices"
+	"fmt"
+	"reflect"
+	"strings"
+	"sync"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/service"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
 var logger = utils.NewLogger("VRCDP Host")
@@ -17,148 +22,186 @@ type serviceDependency struct {
 	deps []string
 }
 
-type CfgApplier interface {
-	Validate(cfg config.Config, fields []string) error
-	Update(cfg config.Config, fields []string) error
-}
-
-type FieldsFunc func(fields []string) error
-
-type BaseCfgApplier struct {
-	v FieldsFunc
-	u FieldsFunc
-}
-
-func (a BaseCfgApplier) Validate(fields []string) error {
-	return a.v(fields)
-}
-
-func (a BaseCfgApplier) Update(fields []string) error {
-	return a.u(fields)
-}
-
-type NoFieldValidationCfg interface {
-	Validate() error
-}
-
-type NoFieldCfgApplier[T NoFieldValidationCfg] struct {
-	getter func(cfg config.Config) T
-	u      func(cfg T) error
-}
-
-func (a NoFieldCfgApplier[T]) Validate(cfg config.Config, _ []string) error {
-	return a.getter(cfg).Validate()
-}
-
-func (a NoFieldCfgApplier[T]) Update(cfg config.Config, _ []string) error {
-	return a.u(a.getter(cfg))
-}
-
-type OneFieldValidationCfg interface {
-	Validate(field string) error
-}
-
-type OneFieldCfgApplier[T OneFieldValidationCfg] struct {
-	getter func(cfg config.Config) T
-	u      func(cfg T, field string) error
-}
-
-func (a OneFieldCfgApplier[T]) Validate(cfg config.Config, fields []string) error {
-	if len(fields) == 0 {
-		return a.getter(cfg).Validate("")
-	}
-	return a.getter(cfg).Validate(fields[0])
-}
-
-func (a OneFieldCfgApplier[T]) Update(cfg config.Config, fields []string) error {
-	if len(fields) == 0 {
-		return a.u(a.getter(cfg), "")
-	}
-	return a.u(a.getter(cfg), fields[0])
-}
-
 type Manager struct {
-	services     map[string]service.Service
-	dependencies []serviceDependency
+	operationMu sync.Mutex
+	mu          sync.RWMutex
 
+	cfg         config.Config
+	cfgMgr      *config.Manager
 	cfgUpdaters map[string]CfgApplier
 
-	cfg    config.Config
-	cfgMgr *config.Manager
+	state managerState
+	nodes map[string]*serviceNode
+	order []*serviceNode
+
+	registrationErrors []error
+	validationErr      error
+	shutdownErr        error
+	startLayers        [][]*serviceNode
+	stopLayers         [][]*serviceNode
+
+	listenerCtx    context.Context
+	listenerCancel context.CancelFunc
+	listenerWG     sync.WaitGroup
+
+	pendingMu     sync.Mutex
+	pendingRoots  map[string]struct{}
+	reconcileWake chan struct{}
 }
 
 func NewManager(cfg config.Config) *Manager {
 	return &Manager{
 		cfg:         cfg,
-		services:    make(map[string]service.Service),
 		cfgUpdaters: make(map[string]CfgApplier),
+
+		state:         managerCreated,
+		nodes:         make(map[string]*serviceNode),
+		pendingRoots:  make(map[string]struct{}),
+		reconcileWake: make(chan struct{}, 1),
 	}
 }
 
-func (m *Manager) RegisterService(name string, s service.Service, updater CfgApplier, deps ...string) {
-	m.dependencies = append(m.dependencies, serviceDependency{name, s, deps})
-	m.services[name] = s
-	m.cfgUpdaters[name] = updater
-}
-
-func (m *Manager) RegisterServiceWithoutConfig(name string, s service.Service, deps ...string) {
-	m.dependencies = append(m.dependencies, serviceDependency{name, s, deps})
-	m.services[name] = s
-}
-
-func (m *Manager) Start() {
-	m.cfgMgr = config.NewManager(m.cfg, func(c config.Config, fields []string) error {
-		if len(fields) == 0 {
-			for _, updater := range m.cfgUpdaters {
-				if err := updater.Validate(c, nil); err != nil {
-					return err
-				}
-			}
-			for _, updater := range m.cfgUpdaters {
-				if err := updater.Update(c, nil); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-
-		updater, ok := m.cfgUpdaters[fields[0]]
-		if !ok {
-			return errors.New("no updater for " + fields[0])
-		}
-
-		if err := updater.Validate(c, fields[1:]); err != nil {
-			return err
-		}
-
-		return updater.Update(c, fields[1:])
-	})
-
-	for _, item := range m.dependencies {
-		for _, dep := range item.deps {
-			if _, ok := m.services[dep]; !ok {
-				logger.FatalLn("Failed to start", item.name+", broken dependency:", dep)
-			}
-		}
-		item.s.Start()
+func (m *Manager) ensureInitializedLocked() {
+	if m.nodes == nil {
+		m.nodes = make(map[string]*serviceNode)
+	}
+	if m.pendingRoots == nil {
+		m.pendingRoots = make(map[string]struct{})
+	}
+	if m.reconcileWake == nil {
+		m.reconcileWake = make(chan struct{}, 1)
 	}
 }
 
-func (m *Manager) GracefulShutdown() {
-	reversed := slices.Clone(m.dependencies)
-	slices.Reverse(reversed)
-	for _, item := range reversed {
-		logger.InfoLn("Shutting down", item.name)
-		err := item.s.Shutdown()
-		if err != nil {
-			logger.FatalLn("Failed to gracefully shutdown", item.name, err)
-		}
+func isNilInterface(value any) bool {
+	if value == nil {
+		return true
 	}
-	logger.InfoLn("Graceful shutdown complete")
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return v.IsNil()
+	default:
+		return false
+	}
 }
 
-func (m *Manager) GetService(name string) service.Service {
-	return m.services[name]
+func (m *Manager) RegisterService(name string, s service.Service, deps ...string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ensureInitializedLocked()
+
+	if m.state != managerCreated {
+		m.registrationErrors = append(m.registrationErrors,
+			fmt.Errorf("register service %q: %w", name, ErrRegistrationClosed))
+		return
+	}
+	if strings.TrimSpace(name) == "" {
+		m.registrationErrors = append(m.registrationErrors, errors.New("service name cannot be empty"))
+		return
+	}
+	if isNilInterface(s) {
+		m.registrationErrors = append(m.registrationErrors,
+			fmt.Errorf("service %q is nil", name))
+		return
+	}
+	if _, exists := m.nodes[name]; exists {
+		m.registrationErrors = append(m.registrationErrors,
+			fmt.Errorf("service %q is registered more than once", name))
+		return
+	}
+
+	seenDeps := make(map[string]struct{}, len(deps))
+	cleanDeps := make([]string, 0, len(deps))
+	for _, dep := range deps {
+		if dep == name {
+			m.registrationErrors = append(m.registrationErrors,
+				fmt.Errorf("service %q cannot depend on itself", name))
+			continue
+		}
+		if _, exists := seenDeps[dep]; exists {
+			m.registrationErrors = append(m.registrationErrors,
+				fmt.Errorf("service %q declares dependency %q more than once", name, dep))
+			continue
+		}
+		seenDeps[dep] = struct{}{}
+		cleanDeps = append(cleanDeps, dep)
+	}
+
+	node := &serviceNode{
+		name:     name,
+		order:    len(m.order),
+		service:  s,
+		depNames: cleanDeps,
+		phase:    phaseStopped,
+		intent:   intentAuto,
+	}
+	if stateful, ok := s.(interactive.StatefulService); ok && !isNilInterface(stateful) {
+		node.stateful = stateful
+		node.wrapper = newWrappedService(m, node)
+	}
+	m.nodes[name] = node
+	m.order = append(m.order, node)
+}
+
+func (m *Manager) WrappedService(name string) interactive.StatefulService {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if node := m.nodes[name]; node != nil && node.wrapper != nil {
+		return node.wrapper
+	}
+	return nil
+}
+
+func (m *Manager) Status() interactive.RunnerStatus {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	switch m.state {
+	case managerCreated:
+		return interactive.RunnerStatus{Error: ErrHostNotStarted}
+	case managerStarting:
+		return interactive.RunnerStatus{Error: ErrHostStarting}
+	case managerRunning:
+		return interactive.RunnerStatus{
+			Running: true,
+			Error:   m.aggregateNodeErrorsLocked(),
+		}
+	case managerStopping:
+		return interactive.RunnerStatus{Error: errors.Join(ErrHostStopping, m.shutdownErr)}
+	case managerStopped:
+		return interactive.RunnerStatus{Error: errors.Join(ErrHostStopped, m.shutdownErr)}
+	case managerInvalid:
+		return interactive.RunnerStatus{Error: m.validationErr}
+	default:
+		return interactive.RunnerStatus{Error: ErrHostStopped}
+	}
+}
+
+func (m *Manager) ServiceStatuses() map[string]interactive.RunnerStatus {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make(map[string]interactive.RunnerStatus, len(m.nodes))
+	for name, node := range m.nodes {
+		if node.wrapper != nil {
+			result[name] = m.wrappedStatusLocked(node)
+		} else {
+			result[name] = node.lastStatus
+			if node.phase == phaseFailed {
+				result[name] = interactive.RunnerStatus{Running: node.lastStatus.Running, Error: node.lastError}
+			}
+		}
+	}
+	return result
+}
+
+func (m *Manager) getService(name string) service.Service {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if node := m.nodes[name]; node != nil && node.wrapper != nil {
+		return node.service
+	}
+	return nil
 }
 
 func (m *Manager) Config() *config.Manager {
