@@ -46,6 +46,9 @@ func (rs *RSWithContext) Read(p []byte) (int, error) {
 
 	n, err := rs.file.ReadAt(p, rs.cursor)
 	if err != nil {
+		if err == io.EOF && n > 0 {
+			return n, nil
+		}
 		return 0, err
 	}
 	rs.cursor += int64(n)
