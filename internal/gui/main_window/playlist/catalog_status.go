@@ -14,30 +14,31 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
+	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/catalog"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
-var pypyLoadedEm = utils.NewEventManager[bool]()
-var wannaLoadedEm = utils.NewEventManager[bool]()
-var duduLoadedEm = utils.NewEventManager[bool]()
-
 type SongListButton struct {
 	button.PaddedIconBtn
+
+	PyPyDanceState    *CatalogState[raw_song.PyPyDanceSong]
+	WannaDanceState   *CatalogState[raw_song.WannaDanceSong]
+	DuDuFitDanceState *CatalogState[raw_song.DuDuFitDanceSong]
 }
 
 func NewSongListButton() *SongListButton {
-	wholeContent := container.NewVBox(
-		NewCatalogState("PyPyDance", catalog.GetPyPyDanceCatalogManager(), pypyLoadedEm),
-		NewCatalogState("WannaDance", catalog.GetWannaDanceCatalogManager(), wannaLoadedEm),
-		NewCatalogState("DuDuFitDance", catalog.GetDuDuFitDanceCatalogManager(), duduLoadedEm),
-	)
+	btn := &SongListButton{
+		PyPyDanceState:    NewCatalogState("PyPyDance", catalog.GetPyPyDanceCatalogManager()),
+		WannaDanceState:   NewCatalogState("WannaDance", catalog.GetWannaDanceCatalogManager()),
+		DuDuFitDanceState: NewCatalogState("DuDuFitDance", catalog.GetDuDuFitDanceCatalogManager()),
+	}
+
+	wholeContent := container.NewVBox(btn.PyPyDanceState, btn.WannaDanceState, btn.DuDuFitDanceState)
 
 	scroll := container.NewVScroll(container.NewPadded(wholeContent))
 	scroll.SetMinSize(fyne.NewSize(250, 300))
 
-	btn := &SongListButton{}
 	btn.Extend(nil)
 	btn.SetComplete(false)
 
@@ -52,26 +53,38 @@ func NewSongListButton() *SongListButton {
 }
 
 func (b *SongListButton) loop(stopCh <-chan struct{}) {
-	pypyCh := pypyLoadedEm.SubscribeEvent()
+	pypyHandle := catalog.GetPyPyDanceCatalogManager().Handle()
+	defer pypyHandle.Release()
+	pypyCh := pypyHandle.Subscribe()
 	defer pypyCh.Close()
-	wannaCh := wannaLoadedEm.SubscribeEvent()
-	defer wannaCh.Close()
-	duduCh := duduLoadedEm.SubscribeEvent()
-	defer duduCh.Close()
+	pypyComplete := pypyHandle.Snapshot().Status.Valid()
 
-	pypyComplete := false
-	wannaComplete := false
-	duduComplete := false
+	wannaHandle := catalog.GetWannaDanceCatalogManager().Handle()
+	defer wannaHandle.Release()
+	wannaCh := wannaHandle.Subscribe()
+	defer wannaCh.Close()
+	wannaComplete := wannaHandle.Snapshot().Status.Valid()
+
+	duduHandle := catalog.GetDuDuFitDanceCatalogManager().Handle()
+	defer duduHandle.Release()
+	duduCh := duduHandle.Subscribe()
+	defer duduCh.Close()
+	duduComplete := duduHandle.Snapshot().Status.Valid()
+
+	b.SetComplete(pypyComplete && wannaComplete && duduComplete)
 
 	for {
 		select {
 		case <-stopCh:
 			return
-		case pypyComplete = <-pypyCh.Channel:
+		case pypySnap := <-pypyCh.Channel:
+			pypyComplete = pypySnap.Status.Valid()
 			b.SetComplete(pypyComplete && wannaComplete && duduComplete)
-		case wannaComplete = <-wannaCh.Channel:
+		case wannaSnap := <-wannaCh.Channel:
+			wannaComplete = wannaSnap.Status.Valid()
 			b.SetComplete(pypyComplete && wannaComplete && duduComplete)
-		case duduComplete = <-duduCh.Channel:
+		case duduSnap := <-duduCh.Channel:
+			duduComplete = duduSnap.Status.Valid()
 			b.SetComplete(pypyComplete && wannaComplete && duduComplete)
 		}
 	}
@@ -100,21 +113,15 @@ type CatalogState[T any] struct {
 	name string
 
 	manager catalog.Manager[T]
-	em      *utils.EventManager[bool]
-
-	refreshCh chan struct{}
 
 	updateTime string
 	status     interactive.RemoteStatus
 }
 
-func NewCatalogState[T any](name string, manager catalog.Manager[T], em *utils.EventManager[bool]) *CatalogState[T] {
+func NewCatalogState[T any](name string, manager catalog.Manager[T]) *CatalogState[T] {
 	s := &CatalogState[T]{
 		name:    name,
 		manager: manager,
-		em:      em,
-
-		refreshCh: make(chan struct{}),
 	}
 
 	s.ExtendBaseWidget(s)
@@ -137,8 +144,6 @@ func (s *CatalogState[T]) loop(stopCh <-chan struct{}) {
 			return
 		case snap := <-ch.Channel:
 			s.processSnap(snap)
-		case <-s.refreshCh:
-			handle.Refresh()
 		}
 	}
 }
@@ -154,7 +159,6 @@ func (s *CatalogState[T]) processSnap(snap interactive.RemoteSnapshot[*catalog.C
 	} else {
 		s.updateTime = i18n.T("label_song_catalog_na")
 	}
-	s.em.NotifySubscribers(snap.Status.Valid())
 	fyne.Do(s.Refresh)
 }
 
@@ -177,7 +181,7 @@ func (s *CatalogState[T]) CreateRenderer() fyne.WidgetRenderer {
 	}
 
 	refreshBtn := widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), func() {
-		s.refreshCh <- struct{}{}
+		s.manager.Refresh()
 	})
 
 	box := widgets.NewCard(

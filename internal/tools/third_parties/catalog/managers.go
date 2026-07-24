@@ -19,9 +19,9 @@ func setupManagers() {
 }
 
 func updateAll() {
-	wg.Go(pypyCatalogManager.Update)
-	wg.Go(wannaCatalogManager.Update)
-	wg.Go(duduCatalogManager.Update)
+	wg.Go(pypyCatalogManager.Refresh)
+	wg.Go(wannaCatalogManager.Refresh)
+	wg.Go(duduCatalogManager.Refresh)
 }
 
 func readFromCache() {

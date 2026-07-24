@@ -19,7 +19,7 @@ import (
 )
 
 type Manager[T any] interface {
-	Update()
+	Refresh()
 	OnAvailable()
 	Handle() *interactive.RemoteHandle[*Catalog[T]]
 }
@@ -67,7 +67,7 @@ type baseManager[T any, R any] struct {
 	mu sync.RWMutex
 }
 
-func (m *baseManager[T, R]) Update() {
+func (m *baseManager[T, R]) Refresh() {
 	m.statefulCatalog.RefreshActive()
 }
 
