@@ -101,6 +101,12 @@
   Default: "Fetching method for YouTube contents"
 - Key: label_bili_mode
   Default: "Fetching method for BiliBili contents"
+- Key: option_via_disabled
+  Default: "Disabled"
+- Key: option_via_api
+  Default: "via API"
+- Key: option_via_ytdlp
+  Default: "via yt-dlp"
 
 - Key: label_max_preload_count
   Default: "Maximal preload count (including current playing)"
@@ -121,8 +127,6 @@
   Default: "Continuous"
 - Key: option_fragmented
   Default: "Fragmented"
-- Key: option_legacy
-  Default: "Legacy"
 
 - Key: label_cache_local
   Default: "Local Cache"

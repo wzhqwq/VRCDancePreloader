@@ -36,6 +36,12 @@ type RadioGroup[T AcceptedValue] struct {
 
 var _ fyne.Widget = (*RadioGroup[string])(nil)
 
+func NewHRadioGroup[T AcceptedValue](label string, options []NamedOption[T], setting interactive.StatefulSetting[T]) *RadioGroup[T] {
+	r := NewRadioGroup(label, options, setting)
+	r.Horizontal = true
+	return r
+}
+
 func NewRadioGroup[T AcceptedValue](label string, options []NamedOption[T], setting interactive.StatefulSetting[T]) *RadioGroup[T] {
 	selected := setting.Get()
 
@@ -96,9 +102,10 @@ func (r *RadioGroup[T]) SetSelected(index int) {
 		return
 	}
 
+	r.LastSelected = r.SelectedIndex
 	r.SelectedIndex = index
 
-	r.Refresh()
+	fyne.Do(r.Refresh)
 }
 
 func (r *RadioGroup[T]) itemTapped(idx int) {
@@ -106,7 +113,7 @@ func (r *RadioGroup[T]) itemTapped(idx int) {
 		return
 	}
 
-	r.SetSelected(idx)
+	go r.SetSelected(idx)
 }
 
 func (r *RadioGroup[T]) loop(stopCh <-chan struct{}) {
@@ -120,6 +127,7 @@ func (r *RadioGroup[T]) loop(stopCh <-chan struct{}) {
 			return
 		case value := <-ch.Channel:
 			r.updateValue(value, true)
+			fyne.Do(r.Refresh)
 		}
 	}
 }
@@ -150,6 +158,8 @@ type radioGroupRenderer[T AcceptedValue] struct {
 
 // Layout the components of the radio widget
 func (r *radioGroupRenderer[T]) Layout(_ fyne.Size) {
+	topHeight := r.label.MinSize().Height + theme.Padding()
+
 	count := 1
 	if len(r.items) > 0 {
 		count = len(r.items)
@@ -157,15 +167,15 @@ func (r *radioGroupRenderer[T]) Layout(_ fyne.Size) {
 	var itemHeight, itemWidth float32
 	minSize := r.radio.MinSize()
 	if r.radio.Horizontal {
-		itemHeight = minSize.Height
+		itemHeight = minSize.Height - topHeight
 		itemWidth = minSize.Width / float32(count)
 	} else {
-		itemHeight = minSize.Height / float32(count)
+		itemHeight = (minSize.Height - topHeight) / float32(count)
 		itemWidth = minSize.Width
 	}
 
 	itemSize := fyne.NewSize(itemWidth, itemHeight)
-	x, y := float32(0), r.label.MinSize().Height+theme.Padding()
+	x, y := float32(0), topHeight
 	for _, item := range r.items {
 		item.Resize(itemSize)
 		item.Move(fyne.NewPos(x, y))

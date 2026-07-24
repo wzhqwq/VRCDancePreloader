@@ -101,6 +101,12 @@
   Default: "YouTube相关内容加载方案"
 - Key: label_bili_mode
   Default: "BiliBili相关内容加载方案"
+- Key: option_via_disabled
+  Default: "禁用"
+- Key: option_via_api
+  Default: "通过API"
+- Key: option_via_ytdlp
+  Default: "通过yt-dlp"
 
 - Key: label_max_preload_count
   Default: "预加载最大数量 (包括当前播放视频)"
@@ -123,8 +129,6 @@
   Default: "连续型"
 - Key: option_fragmented
   Default: "片段型"
-- Key: option_legacy
-  Default: "旧版"
 
 - Key: label_cache_local
   Default: "本地缓存"

@@ -40,7 +40,7 @@ func (i *radioItem) CreateRenderer() fyne.WidgetRenderer {
 	r := &radioItemRenderer{item: i}
 	r.label.Alignment = fyne.TextAlignLeading
 	r.label.TextSize = i.Theme().Size(theme.SizeNameText)
-	r.radioOut.StrokeWidth = 2.5
+	r.radioOut.StrokeWidth = 2
 
 	r.objects = []fyne.CanvasObject{&r.focusIndicator, &r.radioOut, &r.radioIn, &r.label}
 	r.update()
@@ -133,11 +133,12 @@ type radioItemRenderer struct {
 	label canvas.Text
 }
 
+var iconInlineSize = float32(18)
+
 func (r *radioItemRenderer) Layout(size fyne.Size) {
 	th := r.item.Theme()
 	innerPadding := th.Size(theme.SizeNameInnerPadding)
 	borderSize := th.Size(theme.SizeNameInputBorder)
-	iconInlineSize := th.Size(theme.SizeNameInlineIcon)
 
 	focusIndicatorSize := fyne.NewSquareSize(iconInlineSize + innerPadding)
 	r.focusIndicator.Resize(focusIndicatorSize)
@@ -152,8 +153,8 @@ func (r *radioItemRenderer) Layout(size fyne.Size) {
 
 	r.radioOut.Move(iconPos)
 	r.radioOut.Resize(iconSize)
-	r.radioOut.Move(iconPos.AddXY(5, 5))
-	r.radioOut.Resize(iconSize.AddWidthHeight(-10, -10))
+	r.radioIn.Move(iconPos.AddXY(4, 4))
+	r.radioIn.Resize(iconSize.AddWidthHeight(-8, -8))
 }
 
 func (r *radioItemRenderer) Destroy() {
@@ -168,7 +169,7 @@ func (r *radioItemRenderer) MinSize() fyne.Size {
 	inPad := th.Size(theme.SizeNameInnerPadding) * 2
 
 	return r.label.MinSize().
-		AddWidthHeight(inPad+th.Size(theme.SizeNameInlineIcon)+th.Size(theme.SizeNamePadding), inPad)
+		AddWidthHeight(inPad+iconInlineSize+th.Size(theme.SizeNamePadding), inPad)
 }
 
 func (r *radioItemRenderer) Refresh() {

@@ -89,19 +89,19 @@ func (y *youtubeApiGetAndSub) Subscribe() *utils.EventSubscriber[bool] {
 
 func createThirdPartySettingsContent(cfg *config.Manager) fyne.CanvasObject {
 	modeOptions := []input.NamedOption[string]{
-		{"disabled", i18n.T("label_via_disabled")},
-		{"api", i18n.T("label_via_api")},
-		{"ytdlp", i18n.T("label_via_ytdlp")},
+		{"disabled", i18n.T("option_via_disabled")},
+		{"api", i18n.T("option_via_api")},
+		{"ytdlp", i18n.T("option_via_ytdlp")},
 	}
 
 	return container.NewVBox(
 		widget.NewLabel(i18n.T("label_third_parties")),
-		input.NewRadioGroup(i18n.T("label_yt_mode"), modeOptions, cfg.ThirdPartyYoutubeMode()),
+		input.NewHRadioGroup(i18n.T("label_yt_mode"), modeOptions, cfg.ThirdPartyYoutubeMode()),
 		interactive_widgets.NewAvailableWhen(
 			input.NewInputWithSave(cfg.SecretYoutubeAPIKey(), i18n.T("label_yt_api_key")),
 			&youtubeApiGetAndSub{cfg},
 		),
-		input.NewRadioGroup(i18n.T("label_bili_mode"), modeOptions, cfg.ThirdPartyBiliBiliMode()),
+		input.NewHRadioGroup(i18n.T("label_bili_mode"), modeOptions, cfg.ThirdPartyBiliBiliMode()),
 	)
 }
 
@@ -143,7 +143,7 @@ func createCacheSettingsContent(cfg *config.Manager) fyne.CanvasObject {
 			container.NewCenter(button.NewTipButton("tip_on_cache")),
 		),
 		input.NewInputWithSave(cfg.CachePath(), i18n.T("label_cache_path")),
-		input.NewRadioGroup(i18n.T("label_cache_format"), formatOptions, cfg.VideoFileFormat()),
+		input.NewHRadioGroup(i18n.T("label_cache_format"), formatOptions, cfg.VideoFileFormat()),
 		maxCacheInput,
 		input.NewCheck(i18n.T("label_keep_favorites"), cfg.CacheKeepFavorites()),
 		input.NewCheck(i18n.T("label_force_exp_check"), cfg.CacheForceExpiration()),
