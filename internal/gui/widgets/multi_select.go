@@ -6,58 +6,117 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/samber/lo"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
 type MultiSelect struct {
-	widget.BaseWidget
+	interactive_widgets.LifeCycleWidget
 
 	Options []string
-	Values  []string
+
+	setting interactive.StatefulSetting[[]string]
 
 	OptionSelected []bool
 
-	OnChange func([]string)
+	columnCount, rowCount int
 }
 
-func NewMultiSelect(options, values []string) *MultiSelect {
+func NewMultiSelect(options []string, setting interactive.StatefulSetting[[]string]) *MultiSelect {
 	m := &MultiSelect{
 		Options: options,
-		Values:  values,
+		setting: setting,
 	}
 	m.ExtendBaseWidget(m)
+	m.AddLifeCycleFn(m.loop)
 	return m
+}
+
+var _ fyne.Tappable = (*MultiSelect)(nil)
+
+func (m *MultiSelect) loop(stopCh <-chan struct{}) {
+	ch := m.setting.Subscribe()
+	defer ch.Close()
+
+	m.update(m.setting.Get())
+
+	for {
+		select {
+		case <-stopCh:
+			return
+		case value := <-ch.Channel:
+			m.update(value)
+		}
+	}
 }
 
 func (m *MultiSelect) CreateRenderer() fyne.WidgetRenderer {
 	m.OptionSelected = make([]bool, len(m.Options))
+	selectedOptions := m.setting.Get()
 	options := lo.Map(m.Options, func(value string, index int) *Option {
-		selected := lo.IndexOf(m.Values, value) >= 0
+		selected := lo.Contains(selectedOptions, value)
 		m.OptionSelected[index] = selected
-		return NewOption(value, selected, func(s bool) {
-			m.OptionSelected[index] = s
-			m.update()
-		})
+		return NewOption(value, selected)
 	})
 
-	return &MultiSelectRenderer{
+	r := &MultiSelectRenderer{
 		m:       m,
 		options: options,
 	}
+	r.Created(m)
+
+	return r
 }
 
-func (m *MultiSelect) update() {
-	m.Values = lo.Filter(m.Options, func(_ string, index int) bool {
-		return m.OptionSelected[index]
-	})
-	if m.OnChange != nil {
-		m.OnChange(m.Values)
+func (m *MultiSelect) Tapped(e *fyne.PointEvent) {
+	go func() {
+		size := m.Size()
+		p := theme.Padding()
+
+		itemWidth := (size.Width + p) / float32(m.columnCount)
+		itemHeight := (size.Height + p) / float32(m.rowCount)
+		column := int(e.Position.X / itemWidth)
+		row := int(e.Position.Y / itemHeight)
+		if float32(column+1)*itemWidth-e.Position.X < p || float32(row+1)*itemHeight-e.Position.Y < p {
+			return
+		}
+
+		index := row*m.columnCount + column
+		if index >= len(m.Options) {
+			return
+		}
+		m.OptionSelected[index] = !m.OptionSelected[index]
+
+		values := lo.Filter(m.Options, func(_ string, i int) bool {
+			return m.OptionSelected[i]
+		})
+
+		if err := m.setting.Save(values); err != nil {
+			// pop up
+			dialog.NewError(err, custom_fyne.GetParent()).Show()
+			m.OptionSelected[index] = !m.OptionSelected[index]
+			return
+		}
+
+		fyne.Do(m.Refresh)
+	}()
+}
+
+func (m *MultiSelect) update(value []string) {
+	for i, option := range m.Options {
+		m.OptionSelected[i] = lo.Contains(value, option)
 	}
+	fyne.Do(m.Refresh)
 }
 
 type MultiSelectRenderer struct {
+	interactive_widgets.BaseLifeCycleRenderer
+
 	m       *MultiSelect
 	options []*Option
 
@@ -84,6 +143,9 @@ func (r *MultiSelectRenderer) Layout(size fyne.Size) {
 
 	columns := min(len(r.options), int((size.Width+p)/(r.getMaxOptionWidth()+p)))
 	rows := (len(r.options) + columns - 1) / columns
+
+	r.m.columnCount = columns
+	r.m.rowCount = rows
 
 	itemWidth := (size.Width+p)/float32(columns) - p
 
@@ -117,26 +179,22 @@ func (r *MultiSelectRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *MultiSelectRenderer) Refresh() {
-	canvas.Refresh(r.m)
+	for i, item := range r.options {
+		item.SetSelected(r.m.OptionSelected[i])
+	}
 }
-
-func (r *MultiSelectRenderer) Destroy() {}
 
 type Option struct {
 	widget.BaseWidget
-	fyne.Tappable
 
 	Label    string
 	Selected bool
-
-	OnChange func(bool)
 }
 
-func NewOption(label string, selected bool, onChange func(bool)) *Option {
+func NewOption(label string, selected bool) *Option {
 	o := &Option{
 		Label:    label,
 		Selected: selected,
-		OnChange: onChange,
 	}
 	o.ExtendBaseWidget(o)
 	return o
@@ -164,12 +222,12 @@ func (o *Option) CreateRenderer() fyne.WidgetRenderer {
 	}
 }
 
-func (o *Option) Tapped(e *fyne.PointEvent) {
-	o.Selected = !o.Selected
-	if o.OnChange != nil {
-		o.OnChange(o.Selected)
+func (o *Option) SetSelected(selected bool) {
+	if selected == o.Selected {
+		return
 	}
-	o.Refresh()
+	o.Selected = selected
+	fyne.Do(o.Refresh)
 }
 
 type OptionRenderer struct {
@@ -212,6 +270,7 @@ func (o *OptionRenderer) Refresh() {
 		o.rect.FillColor = theme.Color(theme.ColorNameInputBackground)
 		o.check.Hide()
 	}
+	canvas.Refresh(o.o)
 }
 
 func (o *OptionRenderer) Destroy() {}

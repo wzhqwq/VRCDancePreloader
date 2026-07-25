@@ -7,7 +7,6 @@ import (
 	"image"
 	"sync"
 
-	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/images/thumbnails"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -71,22 +70,10 @@ func (p *BaseProvider) setup(name string) {
 }
 
 func (p *BaseProvider) SetAllowResources(resources []string) {
-	if p.allowResources != nil {
-		changed := false
-		for _, resource := range resources {
-			if !lo.Contains(p.allowResources, resource) {
-				changed = true
-				break
-			}
-		}
-		if len(p.allowResources) == len(resources) && !changed {
-			return
-		}
+	if utils.IsArrayChanged(p.allowResources, resources) {
+		p.allowResources = resources
+		p.allowedResourcesEm.NotifySubscribers(resources)
 	}
-
-	p.allowResources = resources
-
-	p.allowedResourcesEm.NotifySubscribers(resources)
 }
 
 func (p *BaseProvider) Info(id string) *interactive.RemoteHandle[types.GeneralVideoInfo] {
