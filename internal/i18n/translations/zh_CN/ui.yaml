@@ -110,6 +110,17 @@
 
 - Key: label_max_preload_count
   Default: "预加载最大数量 (包括当前播放视频)"
+- Key: label_allowed_resources
+  Default: "允许获取的资源"
+- Key: option_videos
+  Default: "视频"
+- Key: option_thumbnails
+  Default: "视频缩略图"
+- Key: option_catalog
+  Default: "歌曲清单"
+- Key: option_info
+  Default: "视频信息"
+
 - Key: label_max_parallel_download_count
   Default: "最大并行下载数量"
 - Key: label_cache_path

@@ -102,6 +102,7 @@ func createThirdPartySettingsContent(cfg *config.Manager) fyne.CanvasObject {
 			&youtubeApiGetAndSub{cfg},
 		),
 		input.NewHRadioGroup(i18n.T("label_bili_mode"), modeOptions, cfg.ThirdPartyBiliBiliMode()),
+		config_widgets.NewAllowedResources(cfg),
 	)
 }
 

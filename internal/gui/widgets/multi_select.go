@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
@@ -18,7 +19,9 @@ import (
 type MultiSelect struct {
 	interactive_widgets.LifeCycleWidget
 
-	Options []string
+	Options []input.NamedOption[string]
+
+	full []string
 
 	setting interactive.StatefulSetting[[]string]
 
@@ -27,10 +30,13 @@ type MultiSelect struct {
 	columnCount, rowCount int
 }
 
-func NewMultiSelect(options []string, setting interactive.StatefulSetting[[]string]) *MultiSelect {
+func NewMultiSelect(options []input.NamedOption[string], setting interactive.StatefulSetting[[]string]) *MultiSelect {
 	m := &MultiSelect{
 		Options: options,
 		setting: setting,
+		full: lo.Map(options, func(o input.NamedOption[string], _ int) string {
+			return o.Value
+		}),
 	}
 	m.ExtendBaseWidget(m)
 	m.AddLifeCycleFn(m.loop)
@@ -58,10 +64,10 @@ func (m *MultiSelect) loop(stopCh <-chan struct{}) {
 func (m *MultiSelect) CreateRenderer() fyne.WidgetRenderer {
 	m.OptionSelected = make([]bool, len(m.Options))
 	selectedOptions := m.setting.Get()
-	options := lo.Map(m.Options, func(value string, index int) *Option {
-		selected := lo.Contains(selectedOptions, value)
+	options := lo.Map(m.Options, func(o input.NamedOption[string], index int) *Option {
+		selected := lo.Contains(selectedOptions, o.Value)
 		m.OptionSelected[index] = selected
-		return NewOption(value, selected)
+		return NewOption(o.Label, selected)
 	})
 
 	r := &MultiSelectRenderer{
@@ -92,7 +98,7 @@ func (m *MultiSelect) Tapped(e *fyne.PointEvent) {
 		}
 		m.OptionSelected[index] = !m.OptionSelected[index]
 
-		values := lo.Filter(m.Options, func(_ string, i int) bool {
+		values := lo.Filter(m.full, func(_ string, i int) bool {
 			return m.OptionSelected[i]
 		})
 
@@ -108,7 +114,7 @@ func (m *MultiSelect) Tapped(e *fyne.PointEvent) {
 }
 
 func (m *MultiSelect) update(value []string) {
-	for i, option := range m.Options {
+	for i, option := range m.full {
 		m.OptionSelected[i] = lo.Contains(value, option)
 	}
 	fyne.Do(m.Refresh)

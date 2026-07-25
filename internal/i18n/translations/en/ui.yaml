@@ -110,6 +110,17 @@
 
 - Key: label_max_preload_count
   Default: "Maximal preload count (including current playing)"
+- Key: label_allowed_resources
+  Default: "Resources allowed to be fetched"
+- Key: option_videos
+  Default: "Videos"
+- Key: option_thumbnails
+  Default: "Thumbnails"
+- Key: option_catalog
+  Default: "Song Catalog"
+- Key: option_info
+  Default: "Video Info"
+
 - Key: label_max_parallel_download_count
   Default: "Maximal concurrent download tasks"
 - Key: label_cache_path

@@ -15,13 +15,13 @@ func CreateSettingsContainer() fyne.CanvasObject {
 	cfg := host.Config()
 	scroll := container.NewVScroll(
 		containers.NewResponsiveFrame(
-			2,
+			3,
 			300,
 			widgets.NewCard(createHijackSettingsContent(cfg)),
 			widgets.NewCard(createProxySettingsContent(cfg)),
+			widgets.NewCard(createPreloadSettingsContent(cfg)),
 			widgets.NewCard(createThirdPartySettingsContent(cfg)),
 			widgets.NewCard(createExecutableSettingsContent(cfg)),
-			widgets.NewCard(createPreloadSettingsContent(cfg)),
 			widgets.NewCard(createDownloadSettingsContent(cfg)),
 			widgets.NewCard(createCacheSettingsContent(cfg)),
 		),

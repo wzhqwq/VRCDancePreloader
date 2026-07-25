@@ -18,6 +18,12 @@ type NamedOption[T AcceptedValue] struct {
 	Label string
 }
 
+func NamedOptionFromString(values []string) []NamedOption[string] {
+	return lo.Map(values, func(v string, _ int) NamedOption[string] {
+		return NamedOption[string]{v, v}
+	})
+}
+
 type RadioGroup[T AcceptedValue] struct {
 	interactive_widgets.DisableableLifeCycleWidget
 

@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
@@ -41,8 +42,10 @@ func (s *settingSubset) Subscribe() *utils.EventSubscriber[[]string] {
 	return s.em.SubscribeEvent()
 }
 
-func (s *settingSubset) SubscribeWhether(_ func([]string) bool) *utils.EventSubscriber[bool] {
-	panic("implement me")
+func (s *settingSubset) SubscribeWhether(whether func([]string) bool) *utils.EventSubscriber[bool] {
+	return utils.PipeEvent(s.em, func(in []string) (bool, bool) {
+		return whether(in), true
+	})
 }
 
 func (s *settingSubset) setFullSet(full []string) {
@@ -132,15 +135,15 @@ func (m *MultiSelectSites) CreateRenderer() fyne.WidgetRenderer {
 	form := container.New(
 		layout.NewFormLayout(),
 		container.NewCenter(widget.NewLabel("PyPyDance")),
-		widgets.NewMultiSelect(constants.AllPyPySites(), m.pypySetting),
+		widgets.NewMultiSelect(input.NamedOptionFromString(constants.AllPyPySites()), m.pypySetting),
 		container.NewCenter(widget.NewLabel("WannaDance")),
-		widgets.NewMultiSelect(constants.AllWannaSites(), m.wannaSetting),
+		widgets.NewMultiSelect(input.NamedOptionFromString(constants.AllWannaSites()), m.wannaSetting),
 		container.NewCenter(widget.NewLabel("DuDuFitDance")),
-		widgets.NewMultiSelect(constants.AllDuDuSites(), m.duduSetting),
+		widgets.NewMultiSelect(input.NamedOptionFromString(constants.AllDuDuSites()), m.duduSetting),
 		container.NewCenter(widget.NewLabel("BiliBili")),
-		widgets.NewMultiSelect(constants.AllBiliSites(), m.biliSetting),
+		widgets.NewMultiSelect(input.NamedOptionFromString(constants.AllBiliSites()), m.biliSetting),
 		container.NewCenter(widget.NewLabel("YouTube")),
-		widgets.NewMultiSelect(constants.AllYouTubeSites(), m.ytSetting),
+		widgets.NewMultiSelect(input.NamedOptionFromString(constants.AllYouTubeSites()), m.ytSetting),
 	)
 
 	r := &multiSelectSitesRenderer{
