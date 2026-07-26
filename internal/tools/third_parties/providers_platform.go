@@ -231,6 +231,10 @@ func (p *YouTubeProvider) loop() {
 	}
 }
 
+func (p *YouTubeProvider) Start() {
+	p.wg.Go(p.loop)
+}
+
 func newYouTubeProvider() ResourceProvider {
 	p := &YouTubeProvider{}
 	p.PlatformProvider = constructPlatformProvider(p)
@@ -404,6 +408,10 @@ func (p *BiliBiliProvider) loop() {
 			p.videoAvailable.SetAvailable(available)
 		}
 	}
+}
+
+func (p *BiliBiliProvider) Start() {
+	p.wg.Go(p.loop)
 }
 
 func newBiliBiliProvider() ResourceProvider {

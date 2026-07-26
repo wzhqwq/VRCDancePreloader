@@ -19,6 +19,7 @@ import (
 var (
 	ErrTemporarilyUnavailable = errors.New("")
 	ErrUnrecoverable          = errors.New("")
+	ErrUnrecoverableDisabled  = fmt.Errorf("%w", ErrUnrecoverable)
 )
 
 type RemotePhase int
@@ -286,14 +287,14 @@ func (m *RemoteManager[T]) execute(req fetchRequest[T]) {
 			switch {
 			case errors.Is(err, context.Canceled):
 				if m.logger != nil {
-					m.logger.InfoLn("Canceled", entry.id)
+					m.logger.DebugLn("Canceled", entry.id)
 				}
 				canRetry = false
 				return
 			case errors.Is(err, ErrTemporarilyUnavailable):
 				if m.scheduler != nil {
 					if m.logger != nil {
-						m.logger.WarnLn("Failed to fetch", entry.id, "and will retry after 30 seconds:", err)
+						m.logger.ErrorLn("Failed to fetch", entry.id, "and will retry after 30 seconds:", err)
 					}
 					m.scheduler.Pause(time.Second * 30)
 				} else {
@@ -302,7 +303,7 @@ func (m *RemoteManager[T]) execute(req fetchRequest[T]) {
 			case errors.As(err, &throttleErr):
 				if m.scheduler != nil {
 					if m.logger != nil {
-						m.logger.WarnLn("Fetching", entry.id, "fails and triggers a throttle control")
+						m.logger.ErrorLn("Fetching", entry.id, "fails and triggers a throttle control")
 					}
 					m.scheduler.Throttle(throttleErr.RetryAfter)
 				} else {
@@ -313,7 +314,7 @@ func (m *RemoteManager[T]) execute(req fetchRequest[T]) {
 			}
 
 			if !canRetry {
-				if m.logger != nil {
+				if !errors.Is(err, ErrUnrecoverableDisabled) && m.logger != nil {
 					m.logger.ErrorLn("Failed to fetch", entry.id, "and will retry when it becomes available:", err)
 				}
 				return

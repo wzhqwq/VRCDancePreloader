@@ -43,14 +43,14 @@ func (b *BothTrue) BothSatisfied() bool {
 func (b *BothTrue) SetAvailable(available bool) {
 	b.available = available
 
-	b.satisfied = b.available && b.satisfied
+	b.satisfied = b.available && b.allowed
 	b.NotifyIfSatisfied()
 }
 
 func (b *BothTrue) SetAllowed(allowed bool) {
 	b.allowed = allowed
 
-	satisfied := b.available && b.satisfied
+	satisfied := b.available && b.allowed
 	if b.satisfied != satisfied {
 		b.satisfied = satisfied
 		b.em.NotifySubscribers(satisfied)

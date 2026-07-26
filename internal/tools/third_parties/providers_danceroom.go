@@ -45,6 +45,13 @@ func ValidRoomResources(resources []string) bool {
 func (p *RoomProvider[T]) SetMode(_ string) {
 }
 
+func (p *RoomProvider[T]) Start() {
+	p.catalogManager.SetAllowed(lo.Contains(p.allowResources, ResourceCatalog))
+	p.catalogHandle = p.catalogManager.Handle()
+
+	p.wg.Go(p.loop)
+}
+
 func (p *RoomProvider[T]) Close() {
 	p.BaseProvider.Close()
 	p.catalogHandle.Release()
@@ -80,8 +87,8 @@ func (p *RoomProvider[T]) loop() {
 			thumbnailAllowed = lo.Contains(allowed, ResourceThumbnail)
 			videoAllowed = lo.Contains(allowed, ResourceVideo)
 
-			if catalogAllowed && !p.catalogAvailable.allowed {
-				p.catalogManager.OnAvailable()
+			if catalogAllowed != p.catalogAvailable.allowed {
+				p.catalogManager.SetAllowed(catalogAllowed)
 			}
 			p.catalogAvailable.SetAllowed(catalogAllowed)
 			p.thumbnailAvailable.SetAllowed(thumbnailAllowed)
@@ -95,7 +102,7 @@ func (p *RoomProvider[T]) loop() {
 			p.videoAvailable.NotifyIfAllowed()
 
 			if catalogAllowed {
-				p.catalogManager.OnAvailable()
+				p.catalogManager.SetAllowed(true)
 			}
 		}
 	}
@@ -123,7 +130,6 @@ func constructRoomProvider[T any, P resourceGetters](p P, catalogManager catalog
 		catalogAvailableEm: utils.NewEventManager[bool](),
 
 		catalogManager: catalogManager,
-		catalogHandle:  catalogManager.Handle(),
 	}
 }
 
@@ -206,7 +212,6 @@ func newPyPyDanceProvider() ResourceProvider {
 	p.setup("PyPyDance", requesting.GetClient(requesting.PyPyDance))
 	p.resolvedVideoManager.BindScheduler(utils.PyPyVideoScheduler())
 
-	p.wg.Go(p.loop)
 	return p
 }
 
@@ -282,7 +287,6 @@ func newWannaDanceProvider() ResourceProvider {
 	p.RoomProvider = constructRoomProvider(p, catalog.GetWannaDanceCatalogManager())
 	p.setup("WannaDance", requesting.GetClient(requesting.WannaDance))
 
-	p.wg.Go(p.loop)
 	return p
 }
 
@@ -358,6 +362,5 @@ func newDuDuFitDanceProvider() ResourceProvider {
 	p.RoomProvider = constructRoomProvider(p, catalog.GetDuDuFitDanceCatalogManager())
 	p.setup("DuDuFitDance", requesting.GetClient(requesting.DuDuFitDance))
 
-	p.wg.Go(p.loop)
 	return p
 }

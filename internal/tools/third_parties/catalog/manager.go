@@ -18,9 +18,11 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/internal_id"
 )
 
+var ErrCatalogDisabled = fmt.Errorf("%wyou've disabled fetching catalog", interactive.ErrUnrecoverableDisabled)
+
 type Manager[T any] interface {
 	Refresh()
-	OnAvailable()
+	SetAllowed(bool)
 	Handle() *interactive.RemoteHandle[*Catalog[T]]
 }
 
@@ -59,6 +61,7 @@ type baseManager[T any, R any] struct {
 	statefulCatalog *interactive.RemoteManager[*Catalog[T]]
 
 	availableEm *utils.EventManager[bool]
+	allowed     bool
 
 	processFn func(*R) *Catalog[T]
 
@@ -75,8 +78,9 @@ func (m *baseManager[T, R]) Handle() *interactive.RemoteHandle[*Catalog[T]] {
 	return m.statefulCatalog.Acquire(m.catalogId)
 }
 
-func (m *baseManager[T, R]) OnAvailable() {
-	m.availableEm.NotifySubscribers(true)
+func (m *baseManager[T, R]) SetAllowed(allowed bool) {
+	m.allowed = allowed
+	m.availableEm.NotifySubscribers(allowed)
 }
 
 func (m *baseManager[T, R]) shutdown() {
@@ -179,9 +183,14 @@ func (m *baseManager[T, R]) saveToCache(bytes []byte) {
 }
 
 func (m *baseManager[T, R]) request(_ string, ctx context.Context) (*Catalog[T], error) {
+	if !m.allowed {
+		m.logger.WarnLn("Catalog cache manager is not allowed", m.catalogId)
+		return nil, ErrCatalogDisabled
+	}
+
 	m.logger.InfoLn("Downloading", m.url)
 
-	return nil, interactive.ErrUnrecoverable
+	//return nil, interactive.ErrUnrecoverable
 
 	req, err := m.client.NewGetRequest(m.url, ctx)
 	if err != nil {

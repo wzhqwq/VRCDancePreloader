@@ -37,6 +37,9 @@ func initialize() error {
 		"dudu":  newDuDuFitDanceProvider(),
 	}
 	setAll(cfg)
+	for _, provider := range providers {
+		provider.Start()
+	}
 
 	return nil
 }

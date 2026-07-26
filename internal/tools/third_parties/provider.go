@@ -12,7 +12,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
-var ErrFeatureDisabled = fmt.Errorf("%wyou've disabled the feature", interactive.ErrUnrecoverable)
+var ErrFeatureDisabled = fmt.Errorf("%wyou've disabled the feature", interactive.ErrUnrecoverableDisabled)
 var ErrUnexpectedParam = fmt.Errorf("%wunexpected param", interactive.ErrUnrecoverable)
 var ErrRefused = fmt.Errorf("%wthe remote server refuse to provide a video", interactive.ErrTemporarilyUnavailable)
 var ErrYtDlpNotAvailable = errors.New("YtDlp not available")
@@ -37,6 +37,7 @@ type ResourceProvider interface {
 	Thumbnail(id string) *interactive.RemoteHandle[image.Image]
 	ResolvedVideo(id string) *interactive.RemoteHandle[*types.RemoteHttpResourceInfo]
 
+	Start()
 	Close()
 }
 
