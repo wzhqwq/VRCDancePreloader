@@ -37,3 +37,5 @@
   Default: "正在重试{{.Attempts}}"
 - Key: status_remote_cooling
   Default: "（冷却等待{{.Seconds}}秒）"
+- Key: status_remote_disabled
+  Default: "被用户禁用"

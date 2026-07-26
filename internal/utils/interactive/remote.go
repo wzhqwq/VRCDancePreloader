@@ -51,6 +51,10 @@ func (s RemoteStatus) Valid() bool {
 }
 
 func (s RemoteStatus) String() string {
+	if errors.Is(s.Err, ErrUnrecoverableDisabled) {
+		return i18n.T("status_remote_disabled")
+	}
+
 	var result string
 	if s.Phase == RemoteErrorRetrying {
 		result = i18n.T("status_remote_"+strconv.Itoa(int(s.Phase)), goeasyi18n.Options{
@@ -61,7 +65,7 @@ func (s RemoteStatus) String() string {
 	} else {
 		result = i18n.T("status_remote_" + strconv.Itoa(int(s.Phase)))
 	}
-	if !s.CooldownUntil.IsZero() {
+	if !s.CooldownUntil.Before(time.Now()) {
 		result = result + i18n.T("status_remote_cooling", goeasyi18n.Options{
 			Data: map[string]interface{}{
 				"Seconds": int(s.CooldownUntil.Sub(time.Now()).Seconds()),

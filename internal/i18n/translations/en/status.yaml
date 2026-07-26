@@ -37,3 +37,5 @@
   Default: "Retrying {{.Attempts}}"
 - Key: status_remote_cooling
   Default: " (Cooling down for {{.Seconds}}s)"
+- Key: status_remote_disabled
+  Default: "Disabled by user"

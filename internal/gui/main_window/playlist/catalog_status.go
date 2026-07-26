@@ -1,6 +1,9 @@
 package playlist
 
 import (
+	"errors"
+	"time"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -116,6 +119,10 @@ type CatalogState[T any] struct {
 
 	updateTime string
 	status     interactive.RemoteStatus
+
+	timerUntil time.Time
+
+	timerUpdate bool
 }
 
 func NewCatalogState[T any](name string, manager catalog.Manager[T]) *CatalogState[T] {
@@ -138,18 +145,36 @@ func (s *CatalogState[T]) loop(stopCh <-chan struct{}) {
 
 	s.processSnap(handle.Snapshot())
 
+	var timer *time.Timer
+	var timerCh <-chan time.Time
+
 	for {
+		if !s.timerUntil.Before(time.Now()) {
+			if timer == nil {
+				timer = time.NewTimer(min(time.Second, time.Until(s.timerUntil)))
+				timerCh = timer.C
+			} else {
+				timer.Reset(min(time.Second, time.Until(s.timerUntil)))
+			}
+		} else if timer != nil {
+			timer.Stop()
+		}
 		select {
 		case <-stopCh:
 			return
 		case snap := <-ch.Channel:
 			s.processSnap(snap)
+		case <-timerCh:
+			s.timerUpdate = true
+			fyne.Do(s.Refresh)
 		}
 	}
 }
 
 func (s *CatalogState[T]) processSnap(snap interactive.RemoteSnapshot[*catalog.Catalog[T]]) {
 	s.status = snap.Status
+	s.timerUntil = snap.Status.CooldownUntil
+	s.timerUpdate = false
 	if snap.HasData {
 		s.updateTime = i18n.T("label_song_catalog_version", goeasyi18n.Options{
 			Data: map[string]interface{}{
@@ -249,19 +274,27 @@ func (r *catalogStateRenderer[T]) Objects() []fyne.CanvasObject {
 }
 
 func (r *catalogStateRenderer[T]) Refresh() {
-	r.name.Text = r.s.name
 	r.status.Text = r.s.status.String()
 	r.status.Color = theme.Color(r.s.status.Color())
+
+	if r.s.timerUpdate {
+		r.status.Refresh()
+		r.s.timerUpdate = false
+		return
+	}
+
 	r.version.Text = r.s.updateTime
 
-	if r.s.status.Err != nil {
+	disabled := errors.Is(r.s.status.Err, interactive.ErrUnrecoverableDisabled)
+
+	if r.s.status.Err != nil && !disabled {
 		r.err.Text = r.s.status.Err.Error()
 		r.err.Show()
 	} else {
 		r.err.Hide()
 	}
 
-	if r.s.status.Fetching() {
+	if r.s.status.Fetching() || disabled {
 		r.refreshBtn.Disable()
 	} else {
 		r.refreshBtn.Enable()
