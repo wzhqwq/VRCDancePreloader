@@ -7,7 +7,6 @@ import (
 	"image"
 	"sync"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/images/thumbnails"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
@@ -58,7 +57,6 @@ type BaseProvider struct {
 
 func (p *BaseProvider) setup(name string) {
 	p.infoManager.BindLogger(utils.NewLogger(name + " Video Info"))
-	p.infoManager.BindScheduler(utils.SharedVideoScheduler())
 
 	p.thumbnailManager.BindAvailability(p.thumbnailAvailableEm.SubscribeEvent)
 	p.thumbnailManager.BindLogger(utils.NewLogger(name + " Thumbnail"))
@@ -96,10 +94,6 @@ func (p *BaseProvider) Close() {
 	p.wg.Wait()
 }
 
-func getDefaultThumbnail(_ string) image.Image {
-	return thumbnails.GetGroupThumbnail("")
-}
-
 type resourceGetters interface {
 	getInfoPlaceholder(id string) types.GeneralVideoInfo
 	getInfo(id string, _ context.Context) (types.GeneralVideoInfo, error)
@@ -114,7 +108,7 @@ func constructBaseProvider[P resourceGetters](p P, infoParallel int) BaseProvide
 		allowedResourcesEm:   utils.NewEventManager[[]string](),
 
 		infoManager:          interactive.NewRemoteManager(p.getInfo, p.getInfoPlaceholder, 100, infoParallel),
-		thumbnailManager:     interactive.NewRemoteManager(p.getThumbnail, getDefaultThumbnail, 100, 3),
+		thumbnailManager:     interactive.NewRemoteManager(p.getThumbnail, nil, 100, 3),
 		resolvedVideoManager: interactive.NewRemoteManager(p.resolveVideoUrl, nil, 100, 1),
 
 		stopCh: make(chan struct{}),

@@ -44,6 +44,7 @@ func (p *PlatformProvider) SetMode(mode string) {
 
 func (p *PlatformProvider) setup(name string) {
 	p.BaseProvider.setup(name)
+	p.infoManager.BindScheduler(utils.SharedVideoScheduler())
 	p.infoManager.BindAvailability(p.infoAvailableEm.SubscribeEvent)
 }
 

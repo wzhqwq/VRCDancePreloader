@@ -46,19 +46,21 @@ func (t *Thumbnail) setImage(image image.Image) {
 
 func (t *Thumbnail) loop(stopCh <-chan struct{}) {
 	for {
-		select {
-		case <-stopCh:
-			return
-		default:
-			t.loopForId(stopCh)
+		interrupted := t.loopForId(stopCh)
+		if !interrupted {
+			select {
+			case <-stopCh:
+				return
+			case <-t.idArrived:
+			}
 		}
 	}
 }
 
-func (t *Thumbnail) loopForId(stopCh <-chan struct{}) {
+func (t *Thumbnail) loopForId(stopCh <-chan struct{}) bool {
 	provider := third_parties.GetProviderById(t.id)
 	if provider == nil {
-		return
+		return false
 	}
 
 	thumbnailHandle := provider.Thumbnail(t.id)
@@ -66,37 +68,40 @@ func (t *Thumbnail) loopForId(stopCh <-chan struct{}) {
 	infoHandle := provider.Info(t.id)
 	defer infoHandle.Release()
 
-	var infoChannel chan interactive.RemoteSnapshot[types.GeneralVideoInfo]
+	thumbnailCh := thumbnailHandle.Subscribe()
+	defer thumbnailCh.Close()
 
 	thumbnailSnap := thumbnailHandle.Snapshot()
-	if thumbnailSnap.HasData {
+	if thumbnailSnap.Status.Valid() {
 		t.setImage(thumbnailSnap.Data)
-		return
+		return false
 	}
 
 	infoSnap := infoHandle.Snapshot()
 	group := infoSnap.Data.GroupName
-	t.setImage(thumbnails.GetGroupThumbnail(group))
+
+	var infoChannel chan interactive.RemoteSnapshot[types.GeneralVideoInfo]
 
 	if group == "" || strings.HasPrefix(group, "default") {
 		infoCh := infoHandle.Subscribe()
 		infoChannel = infoCh.Channel
 		defer infoCh.Close()
+
+		group = infoHandle.Snapshot().Data.GroupName
 	}
 
-	thumbnailCh := thumbnailHandle.Subscribe()
-	defer thumbnailCh.Close()
+	t.setImage(thumbnails.GetGroupThumbnail(group))
 
 	for {
 		select {
 		case <-stopCh:
-			return
+			return false
 		case <-t.idArrived:
-			return
+			return true
 		case thumbnailSnap = <-thumbnailCh.Channel:
-			if thumbnailSnap.HasData {
+			if thumbnailSnap.Status.Valid() {
 				t.setImage(thumbnailSnap.Data)
-				return
+				return false
 			}
 		case infoSnap = <-infoChannel:
 			if infoSnap.Data.GroupName != group {
