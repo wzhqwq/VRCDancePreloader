@@ -65,20 +65,20 @@ func UpdateConfig(c Config, field string) error {
 		setAll(c)
 	} else {
 		switch field {
-		case "youtube-mode":
+		case keyYtMode:
 			providers["yt"].SetMode(c.YoutubeMode)
-		case "bilibili-mode":
+		case keyBiliMode:
 			providers["bili"].SetMode(c.BiliBiliMode)
 
-		case "youtube-resources":
+		case keyYtAllowedResources:
 			providers["yt"].SetAllowResources(c.YoutubeResources)
-		case "bilibili-resources":
+		case keyBiliAllowedResources:
 			providers["bili"].SetAllowResources(c.BiliBiliResources)
-		case "pypydance-resources":
+		case keyPypyAllowedResources:
 			providers["pypy"].SetAllowResources(c.PyPyDanceResources)
-		case "wannadance-resources":
+		case keyWannaAllowedResources:
 			providers["wanna"].SetAllowResources(c.WannaDanceResources)
-		case "dudu-fitdance-resources":
+		case keyDuduAllowedResources:
 			providers["dudu"].SetAllowResources(c.DuDuFitDanceResources)
 		}
 	}

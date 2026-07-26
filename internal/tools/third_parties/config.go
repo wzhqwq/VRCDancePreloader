@@ -19,6 +19,14 @@ type Config struct {
 	DuDuFitDanceResources []string `yaml:"dudu-fitdance-allow-resources"`
 }
 
+const keyYtMode = "youtube-mode"
+const keyBiliMode = "bilibili-mode"
+const keyYtAllowedResources = "youtube-allow-resources"
+const keyBiliAllowedResources = "bilibili-allow-resources"
+const keyPypyAllowedResources = "pypydance-allow-resources"
+const keyWannaAllowedResources = "wannadance-allow-resources"
+const keyDuduAllowedResources = "dudu-fitdance-allow-resources"
+
 func DefaultConfig() Config {
 	return Config{
 		YoutubeMode:  "disabled",
@@ -60,31 +68,31 @@ func (c Config) Validate(field string) error {
 	}
 
 	switch field {
-	case "youtube-mode":
+	case keyYtMode:
 		if !ValidMode(c.YoutubeMode) {
 			return fmt.Errorf("invalid mode: %s", c.YoutubeMode)
 		}
-	case "bilibili-mode":
+	case keyBiliMode:
 		if !ValidMode(c.BiliBiliMode) {
 			return fmt.Errorf("invalid mode: %s", c.BiliBiliMode)
 		}
-	case "youtube-resources":
+	case keyYtAllowedResources:
 		if !ValidPlatformResources(c.YoutubeResources) {
 			return fmt.Errorf("invalid resources: %s", c.YoutubeResources)
 		}
-	case "bilibili-resources":
+	case keyBiliAllowedResources:
 		if !ValidPlatformResources(c.BiliBiliResources) {
 			return fmt.Errorf("invalid resources: %s", c.BiliBiliResources)
 		}
-	case "pypydance-resources":
+	case keyPypyAllowedResources:
 		if !ValidRoomResources(c.PyPyDanceResources) {
 			return fmt.Errorf("invalid resources: %s", c.PyPyDanceResources)
 		}
-	case "wannadance-resources":
+	case keyWannaAllowedResources:
 		if !ValidRoomResources(c.WannaDanceResources) {
 			return fmt.Errorf("invalid resources: %s", c.WannaDanceResources)
 		}
-	case "dudu-fitdance-resources":
+	case keyDuduAllowedResources:
 		if !ValidRoomResources(c.DuDuFitDanceResources) {
 			return fmt.Errorf("invalid resources: %s", c.DuDuFitDanceResources)
 		}
