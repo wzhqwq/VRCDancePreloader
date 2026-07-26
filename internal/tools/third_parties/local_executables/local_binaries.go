@@ -80,27 +80,26 @@ func (d *DownloadableBinary) downloadFile(release *api.BriefRelease) error {
 	}
 }
 
-func (d *DownloadableBinary) raiseIntegrityLevel(ctx context.Context) error {
-	// icacls path /setintegritylevel medium
-	if d.lowLevel.CompareAndSwap(true, false) {
-		cmd := exec.CommandContext(ctx, "icacls", d.Path, "/setintegritylevel", "M")
-		return cmd.Run()
-	}
-	return nil
-}
+//func (d *DownloadableBinary) raiseIntegrityLevel(ctx context.Context) error {
+//	// icacls path /setintegritylevel medium
+//	if d.lowLevel.CompareAndSwap(true, false) {
+//		cmd := exec.CommandContext(ctx, "icacls", d.Path, "/setintegritylevel", "M")
+//		return cmd.Run()
+//	}
+//	return nil
+//}
 
-func (d *DownloadableBinary) resumeIntegrityLevel() error {
-	if d.lowLevel.CompareAndSwap(false, true) {
-		cmd := exec.Command("icacls", d.Path, "/setintegritylevel", "L")
-		return cmd.Run()
-	}
-	return nil
-}
-
+//	func (d *DownloadableBinary) resumeIntegrityLevel() error {
+//		if d.lowLevel.CompareAndSwap(false, true) {
+//			cmd := exec.Command("icacls", d.Path, "/setintegritylevel", "L")
+//			return cmd.Run()
+//		}
+//		return nil
+//	}
 var integrityLevelRegex = regexp.MustCompile(`([^\\]+) Mandatory Level`)
 
 func (d *DownloadableBinary) checkIntegrityLevel() {
-	d.lowLevel.Store(false)
+	//d.lowLevel.Store(false)
 
 	ctx, cancel := d.generateContext(3 * time.Second)
 	defer cancel()
@@ -118,11 +117,18 @@ func (d *DownloadableBinary) checkIntegrityLevel() {
 	}
 
 	matches := integrityLevelRegex.FindStringSubmatch(string(output))
-	if len(matches) != 2 {
-		d.lowLevel.Store(false)
-	} else {
-		d.lowLevel.Store(matches[1] == "Low")
+	if len(matches) == 2 && matches[1] == "Low" {
+		logger.InfoLn("The integrity level of", d.Path, "is Low, we should raise that to `Medium` to allow it to access filesystem")
+		cmd = exec.CommandContext(ctx, "icacls", d.Path, "/setintegritylevel", "M")
+		if cmd.Run() != nil {
+			logger.WarnLn("Failed to raise the integrity level of", d.Path, ", the executable may encounter problems while running")
+		}
 	}
+	//if len(matches) != 2 {
+	//	d.lowLevel.Store(false)
+	//} else {
+	//	d.lowLevel.Store(matches[1] == "Low")
+	//}
 }
 
 func (d *DownloadableBinary) SetPathAndCheck(path string) {
@@ -146,16 +152,16 @@ func (d *DownloadableBinary) Execute(ctx context.Context, arg ...string) (string
 		return "", ErrExecutableNotFound
 	}
 
-	err := d.raiseIntegrityLevel(ctx)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		err := d.resumeIntegrityLevel()
-		if err != nil {
-			logger.ErrorLn("Failed to resume integrity level of ", d.Path, ":", err)
-		}
-	}()
+	//err := d.raiseIntegrityLevel(ctx)
+	//if err != nil {
+	//	return "", err
+	//}
+	//defer func() {
+	//	err := d.resumeIntegrityLevel()
+	//	if err != nil {
+	//		logger.ErrorLn("Failed to resume integrity level of ", d.Path, ":", err)
+	//	}
+	//}()
 
 	cmd := exec.CommandContext(ctx, d.Path, arg...)
 	output, err := cmd.Output()
@@ -171,25 +177,36 @@ func (d *DownloadableBinary) Execute(ctx context.Context, arg ...string) (string
 	return string(output), nil
 }
 
-func (d *DownloadableBinary) RequestRunnableIntegrity(ctx context.Context) error {
+//	func (d *DownloadableBinary) RequestRunnableIntegrity(ctx context.Context) error {
+//		d.mutex.RLock()
+//		if !d.Valid() {
+//			return ErrExecutableNotFound
+//		}
+//
+//		return d.raiseIntegrityLevel(ctx)
+//	}
+//
+//	func (d *DownloadableBinary) ReleaseRunnableIntegrity() {
+//		d.mutex.RUnlock()
+//		if !d.Valid() {
+//			return
+//		}
+//
+//		err := d.resumeIntegrityLevel()
+//		if err != nil {
+//			logger.ErrorLn("Failed to resume integrity level of ", d.Path, ":", err)
+//		}
+//	}
+func (d *DownloadableBinary) RequestRunnable() error {
 	d.mutex.RLock()
 	if !d.Valid() {
 		return ErrExecutableNotFound
 	}
-
-	return d.raiseIntegrityLevel(ctx)
+	return nil
 }
 
-func (d *DownloadableBinary) ReleaseRunnableIntegrity() {
+func (d *DownloadableBinary) ReleaseRunnable() {
 	d.mutex.RUnlock()
-	if !d.Valid() {
-		return
-	}
-
-	err := d.resumeIntegrityLevel()
-	if err != nil {
-		logger.ErrorLn("Failed to resume integrity level of ", d.Path, ":", err)
-	}
 }
 
 func (d *DownloadableBinary) DownloadAndReplace() error {

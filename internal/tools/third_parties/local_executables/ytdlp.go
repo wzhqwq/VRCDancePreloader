@@ -3,7 +3,6 @@ package local_executables
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -152,6 +151,9 @@ func printVideoInfoWithYtDlp(url, metaKey string, ctx context.Context) (string, 
 		return "", err
 	}
 
+	ytdlpExecutable := Get("ytdlp")
+	denoExecutable := Get("deno")
+
 	var args = []string{
 		"-v",
 		"--print", metaKey,
@@ -165,18 +167,20 @@ func printVideoInfoWithYtDlp(url, metaKey string, ctx context.Context) (string, 
 		args = append(args, "--proxy", proxy)
 	}
 
-	err = Get("deno").RequestRunnableIntegrity(ctx)
-	defer Get("deno").ReleaseRunnableIntegrity()
+	//err = denoExecutable.RequestRunnableIntegrity(ctx)
+	//defer denoExecutable.ReleaseRunnableIntegrity()
+	err = denoExecutable.RequestRunnable()
+	defer denoExecutable.ReleaseRunnable()
 	if err != nil && !errors.Is(err, ErrExecutableNotFound) {
 		return "", err
 	}
 	if err == nil {
-		args = append(args, "--js-runtimes", "deno:"+Get("deno").Path)
+		args = append(args, "--js-runtimes", "deno:"+denoExecutable.Path)
 	}
 
 	args = append(args, url)
 
-	output, err := Get("ytdlp").Execute(ctx, args...)
+	output, err := ytdlpExecutable.Execute(ctx, args...)
 	if err != nil {
 		return "", err
 	}
@@ -186,10 +190,6 @@ func printVideoInfoWithYtDlp(url, metaKey string, ctx context.Context) (string, 
 
 func ResolveVideoUrlWithYtDlp(url string, ctx context.Context) (string, error) {
 	return printVideoInfoWithYtDlp(url, "urls", ctx)
-}
-
-func GetVideoTitleWithYtDlp(url string, ctx context.Context) (string, error) {
-	return printVideoInfoWithYtDlp(url, "title", ctx)
 }
 
 func GetVideoThumbnailWithYtDlp(url string, ctx context.Context) (string, error) {
@@ -216,41 +216,4 @@ func GetVideoBasicInfoWithYtDlp(url string, ctx context.Context) (*types.General
 		Duration:  time.Duration(duration),
 		GroupName: lines[2],
 	}, nil
-}
-
-func parseDuration(h, m, s string) (time.Duration, error) {
-	hours, err := strconv.ParseInt(h, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	minutes, err := strconv.ParseInt(m, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	seconds, err := strconv.ParseInt(s, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second, nil
-}
-
-func GetDurationWithYtDlp(url string, ctx context.Context) (time.Duration, error) {
-	str, err := printVideoInfoWithYtDlp(url, "duration_string", ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	// in [H:][mm:]SS
-	segments := strings.Split(str, ":")
-
-	switch len(segments) {
-	case 1:
-		return parseDuration("0", "0", segments[0])
-	case 2:
-		return parseDuration("0", segments[0], segments[1])
-	case 3:
-		return parseDuration(segments[0], segments[1], segments[2])
-	default:
-		return 0, fmt.Errorf("invalid duration string: %s", str)
-	}
 }
