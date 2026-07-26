@@ -47,9 +47,9 @@ func processPyPyResponse(data *PyPyDanceCatalogResponse) *Catalog[raw_song.PyPyD
 
 	for i, song := range c.songs {
 		if song.Group >= 0 && song.Group < len(data.Groups) {
-			song.GroupName = data.Groups[song.Group]
+			c.songs[i].GroupName = data.Groups[song.Group]
 		} else {
-			song.GroupName = "Unknown"
+			c.songs[i].GroupName = "Unknown"
 		}
 		c.indexMap[song.ID] = i
 	}
@@ -78,8 +78,8 @@ func processWannaResponse(data *WannaDanceCatalogResponse) *Catalog[raw_song.Wan
 	groups := data.Groups.Contents
 	for _, group := range groups {
 		name := group.Name
-		for _, song := range group.Songs {
-			song.Group = name
+		for j := range group.Songs {
+			group.Songs[j].Group = name
 		}
 	}
 
@@ -120,7 +120,7 @@ func processDuDuResponse(data *DuDuFitDanceCatalogResponse) *Catalog[raw_song.Du
 	}
 
 	for i, song := range c.songs {
-		song.Group = "Unknown"
+		c.songs[i].Group = "Unknown"
 		c.indexMap[song.ID] = i
 	}
 
