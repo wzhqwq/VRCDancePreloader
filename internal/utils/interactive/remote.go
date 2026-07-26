@@ -108,7 +108,7 @@ type RemoteManager[T any] struct {
 	placeholderFn func(id string) T
 
 	scheduler   *utils.Scheduler
-	retryPolicy *utils.RetryPolicy
+	retryPolicy utils.RetryPolicy
 	logger      utils.LoggerImpl
 
 	queue chan fetchRequest[T]
@@ -156,7 +156,7 @@ func (m *RemoteManager[T]) BindScheduler(scheduler *utils.Scheduler) {
 	m.scheduler = scheduler
 }
 
-func (m *RemoteManager[T]) BindRetry(retryPolicy *utils.RetryPolicy) {
+func (m *RemoteManager[T]) BindRetry(retryPolicy utils.RetryPolicy) {
 	m.retryPolicy = retryPolicy
 }
 
@@ -319,12 +319,14 @@ func (m *RemoteManager[T]) execute(req fetchRequest[T]) {
 				return
 			}
 
-			entry.mu.Lock()
-			entry.status.Phase = RemoteErrorRetrying
-			entry.status.Err = err
-			entry.status.RetryAttempts = fmt.Sprintf("%d / %d", attempt+1, m.retryPolicy.MaxRetries)
-			snapshot = entry.snapshotLocked()
-			entry.mu.Unlock()
+			if attempt < m.retryPolicy.MaxRetries {
+				entry.mu.Lock()
+				entry.status.Phase = RemoteErrorRetrying
+				entry.status.Err = err
+				entry.status.RetryAttempts = fmt.Sprintf("%d / %d", attempt+1, m.retryPolicy.MaxRetries)
+				snapshot = entry.snapshotLocked()
+				entry.mu.Unlock()
+			}
 
 			entry.em.NotifySubscribers(snapshot)
 

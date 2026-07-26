@@ -108,7 +108,7 @@ func (m *baseManager[T, R]) setup(id, name string, processFn func(*R) *Catalog[T
 	}
 	m.statefulCatalog.BindScheduler(scheduler)
 	m.statefulCatalog.BindAvailability(m.availableEm.SubscribeEvent)
-	m.statefulCatalog.BindRetry(&retryPolicy)
+	m.statefulCatalog.BindRetry(retryPolicy)
 	m.statefulCatalog.BindLogger(m.logger)
 }
 
@@ -181,7 +181,7 @@ func (m *baseManager[T, R]) saveToCache(bytes []byte) {
 func (m *baseManager[T, R]) request(_ string, ctx context.Context) (*Catalog[T], error) {
 	m.logger.InfoLn("Downloading", m.url)
 
-	//return nil, interactive.ErrUnrecoverable
+	return nil, interactive.ErrUnrecoverable
 
 	req, err := m.client.NewGetRequest(m.url, ctx)
 	if err != nil {

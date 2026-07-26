@@ -14,17 +14,12 @@ type RetryPolicy struct {
 	Jitter bool
 }
 
-func Retry[T any](ctx context.Context, policy *RetryPolicy, fn func(context.Context, int) (T, bool, error)) (T, error) {
+func Retry[T any](ctx context.Context, policy RetryPolicy, fn func(context.Context, int) (T, bool, error)) (T, error) {
 	var (
 		result   T
 		canRetry bool
 		err      error
 	)
-
-	if policy == nil {
-		result, canRetry, err = fn(ctx, 1)
-		return result, err
-	}
 
 	for attempt := 0; ; attempt++ {
 		result, canRetry, err = fn(ctx, attempt)
