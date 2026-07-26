@@ -48,7 +48,7 @@ func ReadNewLines(file *os.File, seekStart int64) (int64, error) {
 }
 
 func read(wc int, file *os.File) int64 {
-	lineChan := make(chan Line, 10000)
+	lineChan := make(chan Line, 100)
 	readBytes := int64(0)
 
 	var workerWg sync.WaitGroup
@@ -105,7 +105,7 @@ func readReverse(wc int, file *os.File, offset int64) error {
 	rest := make([]byte, 0, bufSize)
 
 	for {
-		lineChan := make(chan Line, 10000)
+		lineChan := make(chan Line, 100)
 
 		var wg sync.WaitGroup
 		for i := 0; i < wc; i++ {
