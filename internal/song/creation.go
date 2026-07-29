@@ -26,6 +26,7 @@ func constructBasicStatefulSong() *StatefulSong {
 
 func CreateStatefulSongByInternalId(id string) *StatefulSong {
 	ret := constructBasicStatefulSong()
+	ret.songId = id
 
 	provider := third_parties.GetProviderById(id)
 	if provider != nil {

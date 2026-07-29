@@ -12,7 +12,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var supportedVideoIdRegex = regexp.MustCompile("^(?:pypy|wanna|dudu|yt|bili)]")
+var supportedVideoIdRegex = regexp.MustCompile("^(?:pypy|wanna|dudu|yt|bili)_")
 
 type VideoEntry struct {
 	BaseCDNEntry

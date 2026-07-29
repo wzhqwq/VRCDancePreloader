@@ -19,13 +19,13 @@ func GetIdByUrl(url string) (string, bool) {
 	if id, isBiliBili := CheckBiliURL(url); isBiliBili {
 		return BiliInternalPrefix + id, true
 	}
-	if id, isPyPy := CheckIdIsPyPy(url); isPyPy {
+	if id, isPyPy := CheckPyPyUrl(url); isPyPy {
 		return PyPyInternalPrefix + strconv.Itoa(id), true
 	}
-	if id, isWanna := CheckIdIsWanna(url); isWanna {
+	if id, isWanna := CheckWannaUrl(url); isWanna {
 		return WannaInternalPrefix + strconv.Itoa(id), true
 	}
-	if id, isDuDu := CheckIdIsDuDu(url); isDuDu {
+	if id, isDuDu := CheckDuDuUrl(url); isDuDu {
 		return DuDuInternalPrefix + strconv.Itoa(id), true
 	}
 	return "", false

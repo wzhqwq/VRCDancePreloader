@@ -87,9 +87,12 @@ func (p *traffic) sendPriority(priority int) {
 
 func newTraffic(manager *downloadManager, id string) *traffic {
 	return &traffic{
-		ID:         id,
-		manager:    manager,
+		ID: id,
+
+		manager: manager,
+
 		PriorityCh: make(chan int, 1),
+		CancelCh:   make(chan struct{}),
 	}
 }
 
