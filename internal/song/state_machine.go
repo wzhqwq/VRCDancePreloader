@@ -21,8 +21,9 @@ type StateMachine struct {
 	session types.CDNFileSession
 	task    *downloader.ManagedTask
 
-	// waiter
-	completeSongWg sync.WaitGroup
+	currentSongId string
+
+	retryUntil time.Time
 
 	// channels
 	syncTimeCh chan time.Duration
@@ -100,9 +101,6 @@ func (sm *StateMachine) SwitchDownloadStatus(s DownloadStatus) {
 }
 
 func (sm *StateMachine) StartDownloadLoop() {
-	sm.completeSongWg.Add(1)
-	defer sm.completeSongWg.Done()
-
 	sm.ps.PreloadError = nil
 
 	lazy := utils.NewLazy(func() {
@@ -112,42 +110,57 @@ func (sm *StateMachine) StartDownloadLoop() {
 	ch := sm.task.SubscribeChanges()
 	defer ch.Close()
 
+	var refused *third_parties.ErrRefused
+
 	for {
 		select {
 		case change := <-ch.Channel:
+			t := sm.task
+			if t == nil {
+				return
+			}
 			switch change {
 			case task.State:
-				if sm.task.Error != nil {
-					if errors.Is(sm.task.Error, task.ErrCanceled) {
+				if t.Error != nil {
+					switch {
+					case errors.Is(t.Error, task.ErrCanceled):
 						return
+					case errors.Is(t.Error, third_parties.ErrFeatureDisabled):
+						sm.SwitchDownloadStatus(Disabled)
+						return
+					case errors.As(t.Error, &refused):
+						sm.SwitchDownloadStatus(Refused)
+						return
+					default:
+						sm.ps.PreloadError = t.Error
+						sm.SwitchDownloadStatus(Failed)
+						sm.retryUntil = t.Retry()
 					}
-
-					sm.DownloadStatus = Failed
-					sm.ps.PreloadError = sm.task.Error
-					sm.ps.notifyStatusChange()
-					sm.task.Retry()
 				} else {
 					sm.ps.PreloadError = nil
 
-					switch sm.task.State {
+					switch t.State {
+					case task.TaskInitial:
 					case task.TaskCompleted:
-						sm.ps.TotalSize = sm.task.TotalSize
-						sm.ps.DownloadedSize = sm.task.DownloadedSize
+						sm.ps.TotalSize = t.TotalSize
+						sm.ps.DownloadedSize = t.DownloadedSize
 						sm.SwitchDownloadStatus(Downloaded)
 						sm.ps.notifySubscribers(ProgressChange)
 					case task.TaskPending:
 						sm.SwitchDownloadStatus(Pending)
 					case task.TaskWaitScheduled:
 						sm.SwitchDownloadStatus(CoolingDown)
+					case task.TaskResolving:
+						sm.SwitchDownloadStatus(Resolving)
 					case task.TaskRequested:
 						sm.SwitchDownloadStatus(Requesting)
 					case task.TaskDownloading:
-						sm.ps.TotalSize = sm.task.TotalSize
+						sm.ps.TotalSize = t.TotalSize
 						sm.SwitchDownloadStatus(Downloading)
 					}
 				}
 			case task.Progress:
-				sm.ps.DownloadedSize = sm.task.DownloadedSize
+				sm.ps.DownloadedSize = t.DownloadedSize
 				sm.ps.notifySubscribers(ProgressChange)
 				lazy.Change()
 			}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"sync"
+	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -14,7 +15,6 @@ import (
 
 var ErrFeatureDisabled = fmt.Errorf("%wyou've disabled the feature", interactive.ErrUnrecoverableDisabled)
 var ErrUnexpectedParam = fmt.Errorf("%wunexpected param", interactive.ErrUnrecoverable)
-var ErrRefused = fmt.Errorf("%wthe remote server refuse to provide a video", interactive.ErrTemporarilyUnavailable)
 var ErrYtDlpNotAvailable = errors.New("YtDlp not available")
 
 var ErrCatalogUnavailable = errors.New("catalog unavailable")
@@ -27,6 +27,12 @@ const ResourceVideo = "video"
 const ResourceInfo = "info"
 const ResourceThumbnail = "thumbnail"
 const ResourceCatalog = "catalog"
+
+var thumbnailRetryPolicy = utils.RetryPolicy{
+	MaxRetries: 3,
+	Delay:      time.Second * 3,
+	Jitter:     true,
+}
 
 type ResourceProvider interface {
 	SetAllowResources([]string)
@@ -62,6 +68,7 @@ func (p *BaseProvider) setup(name string) {
 	p.thumbnailManager.BindAvailability(p.thumbnailAvailableEm.SubscribeEvent)
 	p.thumbnailManager.BindLogger(utils.NewLogger(name + " Thumbnail"))
 	p.thumbnailManager.BindScheduler(utils.SharedThumbnailScheduler())
+	p.thumbnailManager.BindRetry(thumbnailRetryPolicy)
 
 	p.resolvedVideoManager.BindAvailability(p.videoAvailableEm.SubscribeEvent)
 	p.resolvedVideoManager.BindLogger(utils.NewLogger(name + " Resolver"))

@@ -13,6 +13,14 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
+type ErrRefused struct {
+	Redirection string
+}
+
+func (e *ErrRefused) Error() string {
+	return "the remote server refuse to provide a video"
+}
+
 var urlResolverLogger = utils.NewLogger("URL Resolver")
 
 func directResolve(url string, client *requesting.ClientProvider, ctx context.Context) (*types.RemoteHttpResourceInfo, error) {
@@ -41,9 +49,7 @@ func directResolve(url string, client *requesting.ClientProvider, ctx context.Co
 	if res.StatusCode != http.StatusOK {
 		if res.StatusCode == http.StatusFound || res.StatusCode == http.StatusMovedPermanently {
 			// it's intercepted YouTube request
-			return &types.RemoteHttpResourceInfo{
-				FinalUrl: res.Header.Get("Location"),
-			}, ErrRefused
+			return nil, &ErrRefused{Redirection: res.Header.Get("Location")}
 		}
 		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
 	}

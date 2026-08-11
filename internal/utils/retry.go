@@ -14,7 +14,9 @@ type RetryPolicy struct {
 	Jitter bool
 }
 
-func Retry[T any](ctx context.Context, policy RetryPolicy, fn func(context.Context, int) (T, bool, error)) (T, error) {
+type RetryFetchFn[T any] func(context.Context, int, time.Duration) (T, bool, error)
+
+func Retry[T any](ctx context.Context, policy RetryPolicy, fn RetryFetchFn[T]) (T, error) {
 	var (
 		result   T
 		canRetry bool
@@ -22,19 +24,19 @@ func Retry[T any](ctx context.Context, policy RetryPolicy, fn func(context.Conte
 	)
 
 	for attempt := 0; ; attempt++ {
-		result, canRetry, err = fn(ctx, attempt)
+		wait := policy.Delay
+
+		if policy.Jitter {
+			wait = jitter(wait)
+		}
+
+		result, canRetry, err = fn(ctx, attempt, wait)
 		if err == nil {
 			return result, nil
 		}
 
 		if attempt >= policy.MaxRetries || !canRetry {
 			return result, err
-		}
-
-		wait := policy.Delay
-
-		if policy.Jitter {
-			wait = jitter(wait)
 		}
 
 		timer := time.NewTimer(wait)

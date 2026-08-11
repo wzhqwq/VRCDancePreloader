@@ -1,27 +1,31 @@
-- Key: status_initial
-  Default: "Waiting For Preload"
-- Key: status_pending
-  Default: "Request Pending"
-- Key: status_cooling_down
-  Default: "Network Cooling Down"
-- Key: status_requesting
-  Default: "Requesting Video"
-- Key: status_downloading
-  Default: "Downloading Video"
-- Key: status_downloaded
-  Default: "Video Downloaded"
-- Key: status_failed
-  Default: "Preload Failed (retry in 3s)"
-- Key: status_removed
-  Default: "Video Ended"
+- Key: status_download_0
+  Default: "Waiting for being preloaded"
+- Key: status_download_1
+  Default: "Request pending"
+- Key: status_download_2
+  Default: "Network cooling Down for {{.Seconds}}s"
+- Key: status_download_3
+  Default: "Resolving video"
+- Key: status_download_4
+  Default: "Requesting video"
+- Key: status_download_5
+  Default: "Downloading video"
+- Key: status_download_6
+  Default: "Video downloaded"
+- Key: status_download_7
+  Default: "Preload failed, retry in {{.Seconds}}s"
+- Key: status_download_8
+  Default: "Video ended"
 - Key: status_playing
-  Default: "Video Playing"
+  Default: "Video playing"
 - Key: status_ended
-  Default: "Video Ended"
-- Key: status_na
-  Default: "Not Supported"
-- Key: status_disabled
-  Default: "Preload Disabled"
+  Default: "Video ended"
+- Key: status_download_9
+  Default: "Not supported"
+- Key: status_download_10
+  Default: "Downloading is disabled"
+- Key: status_download_11
+  Default: "Refused by the server"
 
 - Key: status_remote_0
   Default: "Idle"
@@ -34,6 +38,8 @@
 - Key: status_remote_4
   Default: "Fetching failed"
 - Key: status_remote_5
+  Default: "Fetching failed, retry after {{.Seconds}}s {{.Attempts}}"
+- Key: status_remote_6
   Default: "Retrying {{.Attempts}}"
 - Key: status_remote_cooling
   Default: " (Cooling down for {{.Seconds}}s)"

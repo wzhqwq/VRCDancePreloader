@@ -14,7 +14,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-var ErrThrottle = errors.New("too many requests, slow down")
 var ErrNotSupported = errors.New("video is not currently supported")
 
 type CDNEntry interface {

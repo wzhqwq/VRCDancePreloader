@@ -143,27 +143,30 @@ func (s *CatalogState[T]) loop(stopCh <-chan struct{}) {
 	ch := handle.Subscribe()
 	defer ch.Close()
 
-	s.processSnap(handle.Snapshot())
+	snap := handle.Snapshot()
+	s.processSnap(snap)
 
-	var timer *time.Timer
+	timer, err := custom_fyne.CountdownSession(snap.Status.CountdownUntil())
 	var timerCh <-chan time.Time
+	if err == nil {
+		timerCh = timer.C
+		defer timer.Close()
+	}
 
 	for {
-		if !s.timerUntil.Before(time.Now()) {
-			if timer == nil {
-				timer = time.NewTimer(min(time.Second, time.Until(s.timerUntil)))
-				timerCh = timer.C
-			} else {
-				timer.Reset(min(time.Second, time.Until(s.timerUntil)))
-			}
-		} else if timer != nil {
-			timer.Stop()
-		}
 		select {
 		case <-stopCh:
 			return
-		case snap := <-ch.Channel:
+		case snap = <-ch.Channel:
 			s.processSnap(snap)
+			if timer != nil {
+				err = timer.SetUntil(snap.Status.CountdownUntil())
+				if err != nil {
+					timer.Close()
+					timer = nil
+					timerCh = nil
+				}
+			}
 		case <-timerCh:
 			s.timerUpdate = true
 			fyne.Do(s.Refresh)

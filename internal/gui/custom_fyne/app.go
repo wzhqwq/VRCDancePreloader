@@ -4,13 +4,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var a fyne.App
 var mainWindow fyne.Window
+var countdown *utils.CountdownManager
 
 var AppDataRoot string
 var LowAppDataRoot string
@@ -46,6 +49,15 @@ func MainLoop() {
 }
 func Quit() {
 	fyne.Do(a.Quit)
+}
+
+func StartCountdown() func() {
+	countdown = utils.NewCountdownManager()
+	return countdown.Close
+}
+
+func CountdownSession(until time.Time) (*utils.CountdownSession, error) {
+	return countdown.NewSession(until)
 }
 
 func NewMainWindow(title string) fyne.Window {

@@ -2,10 +2,12 @@ package playlist
 
 import (
 	"image/color"
+	"time"
 
 	"fyne.io/fyne/v2/container"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/containers"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -25,7 +27,10 @@ type ItemGui struct {
 
 	listItem *containers.DynamicListItem
 
-	// static UI
+	status   song.PreloadedSongStatusInfo
+	timeInfo song.PreloadedSongTimeInfo
+	progress song.PreloadedSongProgressInfo
+	info     song.PreloadedSongInfo
 
 	statusChanged   bool
 	timeChanged     bool
@@ -54,6 +59,28 @@ func (ig *ItemGui) loop(stopCh <-chan struct{}) {
 	ch := ig.ps.SubscribeEvent(false)
 	defer ch.Close()
 
+	ig.status = ig.ps.GetStatusInfo()
+	ig.statusChanged = true
+
+	ig.progress = ig.ps.GetProgressInfo()
+	ig.progressChanged = true
+
+	ig.timeInfo = ig.ps.GetTimeInfo()
+	ig.timeChanged = true
+
+	info := ig.ps.GetInfo()
+	if info.Title != ig.info.Title {
+		ig.info = info
+		ig.infoChanged = true
+	}
+	fyne.Do(ig.Refresh)
+
+	timer, err := custom_fyne.CountdownSession(ig.status.DynamicUntil)
+	var timerCh <-chan time.Time
+	if err == nil {
+		defer timer.Close()
+	}
+
 	for {
 		select {
 		case <-stopCh:
@@ -61,28 +88,47 @@ func (ig *ItemGui) loop(stopCh <-chan struct{}) {
 		case event := <-ch.Channel:
 			switch event {
 			case song.StatusChange:
+				ig.status = ig.ps.GetStatusInfo()
 				ig.statusChanged = true
 				switch ig.ps.PreloadStatus() {
 				case song.Removed:
 					ig.dl.RemoveItem(ig.ps.ID, true)
 					return
+				case song.CoolingDown, song.Failed:
+					if timer != nil {
+						err = timer.SetUntil(ig.status.DynamicUntil)
+						timerCh = timer.C
+						if err != nil {
+							timer.Close()
+							timer = nil
+							timerCh = nil
+						}
+					}
+				default:
+					timerCh = nil
 				}
 			case song.ProgressChange:
+				ig.progress = ig.ps.GetProgressInfo()
 				ig.progressChanged = true
 			case song.TimeChange:
+				ig.timeInfo = ig.ps.GetTimeInfo()
 				ig.timeChanged = true
 			case song.BasicInfoChange:
+				ig.info = ig.ps.GetInfo()
 				ig.infoChanged = true
 			}
-			fyne.Do(func() {
-				ig.Refresh()
-			})
+			fyne.Do(ig.Refresh)
+		case <-timerCh:
+			ig.status = ig.ps.GetStatusInfo()
+			ig.statusChanged = true
+			fyne.Do(ig.Refresh)
 		}
 	}
 }
 
 func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	info := ig.ps.GetInfo()
+	ig.info = info
 	// Title
 	title := widgets.NewEllipseText(info.Title, theme.Color(theme.ColorNameForeground))
 	title.TextSize = 16
@@ -101,45 +147,22 @@ func (ig *ItemGui) CreateRenderer() fyne.WidgetRenderer {
 	id.Alignment = fyne.TextAlignTrailing
 	id.TextSize = 12
 
-	progress := ig.ps.GetProgressInfo()
-
 	// Progress
 	progressBar := widgets.NewSizeProgressBar(0, 0)
 	progressBar.Text.TextSize = 10
-	progressBar.SetTotalSize(progress.Total)
-	progressBar.SetCurrentSize(progress.Downloaded)
 
 	// Size
-	size := i18n.T("placeholder_unknown_size")
-	if progress.Total > 0 {
-		size = utils.PrettyByteSize(progress.Total)
-	}
-	sizeText := canvas.NewText(size, theme.Color(theme.ColorNameForeground))
+	sizeText := canvas.NewText("", theme.Color(theme.ColorNameForeground))
 	sizeText.Alignment = fyne.TextAlignTrailing
 	sizeText.TextSize = 12
 
-	if progress.IsDownloading {
-		progressBar.Show()
-		sizeText.Hide()
-	} else {
-		progressBar.Hide()
-		sizeText.Show()
-	}
-
-	status := ig.ps.GetStatusInfo()
 	// Status
-	statusText := canvas.NewText(status.Status, theme.Color(status.Color))
+	statusText := canvas.NewText("", theme.Color(theme.ColorNameForeground))
 	statusText.TextSize = 16
 
 	// Error message
 	errorText := canvas.NewText("", theme.Color(theme.ColorNameError))
 	errorText.TextSize = 12
-	if status.PreloadError != nil {
-		errorText.Text = status.PreloadError.Error()
-		errorText.Show()
-	} else {
-		errorText.Hide()
-	}
 
 	// Play bar
 	playBar := widgets.NewPlayBar()

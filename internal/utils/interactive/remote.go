@@ -30,6 +30,7 @@ const (
 	RemoteReady
 	RemoteRefreshing
 	RemoteError
+	RemoteErrorRetryPending
 	RemoteErrorRetrying
 )
 
@@ -39,6 +40,7 @@ type RemoteStatus struct {
 	Err         error
 
 	CooldownUntil time.Time
+	RetryAfter    time.Time
 	RetryAttempts string
 }
 
@@ -56,10 +58,11 @@ func (s RemoteStatus) String() string {
 	}
 
 	var result string
-	if s.Phase == RemoteErrorRetrying {
+	if s.Phase == RemoteErrorRetrying || s.Phase == RemoteErrorRetryPending {
 		result = i18n.T("status_remote_"+strconv.Itoa(int(s.Phase)), goeasyi18n.Options{
 			Data: map[string]interface{}{
 				"Attempts": s.RetryAttempts,
+				"Seconds":  int(s.RetryAfter.Sub(time.Now()).Seconds()),
 			},
 		})
 	} else {
@@ -73,6 +76,13 @@ func (s RemoteStatus) String() string {
 		})
 	}
 	return result
+}
+
+func (s RemoteStatus) CountdownUntil() time.Time {
+	if s.Phase == RemoteErrorRetryPending {
+		return s.RetryAfter
+	}
+	return s.CooldownUntil
 }
 
 func (s RemoteStatus) Color() fyne.ThemeColorName {
@@ -264,7 +274,7 @@ func (m *RemoteManager[T]) execute(req fetchRequest[T]) {
 	data, err := utils.Retry[T](
 		ctx,
 		m.retryPolicy,
-		func(ctx context.Context, attempt int) (data T, canRetry bool, err error) {
+		func(ctx context.Context, attempt int, nextDelay time.Duration) (data T, canRetry bool, err error) {
 			var delay time.Duration
 			entry.mu.Lock()
 			if m.scheduler != nil {
@@ -274,6 +284,9 @@ func (m *RemoteManager[T]) execute(req fetchRequest[T]) {
 				entry.status.CooldownUntil = time.Now().Add(delay)
 			} else {
 				entry.status.CooldownUntil = time.Time{}
+			}
+			if entry.status.Phase == RemoteErrorRetryPending {
+				entry.status.Phase = RemoteErrorRetrying
 			}
 			snapshot := entry.snapshotLocked()
 			entry.mu.Unlock()
@@ -298,7 +311,7 @@ func (m *RemoteManager[T]) execute(req fetchRequest[T]) {
 			case errors.Is(err, ErrTemporarilyUnavailable):
 				if m.scheduler != nil {
 					if m.logger != nil {
-						m.logger.ErrorLn("Failed to fetch", entry.id, "and will retry after 30 seconds:", err)
+						m.logger.ErrorLn("Failed to fetch", entry.id, "and will retry after at least 30 seconds:", err)
 					}
 					m.scheduler.Pause(time.Second * 30)
 				} else {
@@ -326,9 +339,10 @@ func (m *RemoteManager[T]) execute(req fetchRequest[T]) {
 
 			if attempt < m.retryPolicy.MaxRetries {
 				entry.mu.Lock()
-				entry.status.Phase = RemoteErrorRetrying
+				entry.status.Phase = RemoteErrorRetryPending
 				entry.status.Err = err
 				entry.status.RetryAttempts = fmt.Sprintf("%d / %d", attempt+1, m.retryPolicy.MaxRetries)
+				entry.status.RetryAfter = time.Now().Add(nextDelay)
 				snapshot = entry.snapshotLocked()
 				entry.mu.Unlock()
 			}

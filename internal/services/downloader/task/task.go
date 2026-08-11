@@ -17,16 +17,16 @@ const (
 	State    TaskChangeType = "state"
 )
 
-type TaskState string
+type TaskState int
 
 const (
-	TaskInitial       TaskState = "initial"
-	TaskPending       TaskState = "pending"
-	TaskWaitScheduled TaskState = "wait_scheduled"
-	TaskResolving     TaskState = "resolving"
-	TaskRequested     TaskState = "requested"
-	TaskDownloading   TaskState = "downloading"
-	TaskCompleted     TaskState = "completed"
+	TaskInitial = iota
+	TaskPending
+	TaskWaitScheduled
+	TaskResolving
+	TaskRequested
+	TaskDownloading
+	TaskCompleted
 )
 
 type Task struct {

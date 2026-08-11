@@ -1,27 +1,31 @@
-- Key: status_initial
+- Key: status_download_0
   Default: "等待处理"
-- Key: status_pending
+- Key: status_download_1
   Default: "视频排队中"
-- Key: status_cooling_down
-  Default: "网络请求冷却中"
-- Key: status_requesting
+- Key: status_download_2
+  Default: "网络请求冷却{{.Seconds}}秒"
+- Key: status_download_3
+  Default: "解析视频中"
+- Key: status_download_4
   Default: "请求视频中"
-- Key: status_downloading
+- Key: status_download_5
   Default: "下载视频中"
-- Key: status_downloaded
+- Key: status_download_6
   Default: "视频已下载"
-- Key: status_failed
-  Default: "预加载失败（3s后重试）"
-- Key: status_removed
+- Key: status_download_7
+  Default: "预加载失败，{{.Seconds}}秒后重试"
+- Key: status_download_8
   Default: "视频已结束"
 - Key: status_playing
   Default: "视频播放中"
 - Key: status_ended
   Default: "视频已结束"
-- Key: status_na
+- Key: status_download_9
   Default: "不支持预加载"
-- Key: status_disabled
-  Default: "预加载已禁用"
+- Key: status_download_10
+  Default: "已禁用视频下载"
+- Key: status_download_11
+  Default: "被服务器拒绝"
 
 - Key: status_remote_0
   Default: "空闲"
@@ -34,7 +38,9 @@
 - Key: status_remote_4
   Default: "下载失败"
 - Key: status_remote_5
-  Default: "正在重试{{.Attempts}}"
+  Default: "下载失败，{{.Seconds}}秒后重试 {{.Attempts}}"
+- Key: status_remote_6
+  Default: "正在重试 {{.Attempts}}"
 - Key: status_remote_cooling
   Default: "（冷却等待{{.Seconds}}秒）"
 - Key: status_remote_disabled

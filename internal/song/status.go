@@ -1,33 +1,37 @@
 package song
 
-type DownloadStatus string
+type DownloadStatus int
 
 const (
 	// Initial is the initial state of every song
-	Initial DownloadStatus = "initial"
+	Initial DownloadStatus = iota
 	// Pending is when the song is waiting for the download to start,
 	// either because previous songs are still downloading
 	// or it's queue-jumped by a higher priority song
-	Pending DownloadStatus = "pending"
+	Pending
 	// CoolingDown is when the song is waiting for the scheduler but not the retry delay
-	CoolingDown DownloadStatus = "cooling_down"
+	CoolingDown
 
-	// Requesting is when the song is requesting the download
-	Requesting DownloadStatus = "requesting"
+	// Resolving is when the final video url is being resolved
+	Resolving
+	// Requesting is when the final video url is being requested
+	Requesting
 	// Downloading is when the song is downloading
-	Downloading DownloadStatus = "downloading"
+	Downloading
 	// Downloaded is when the song is downloaded to the disk
-	Downloaded DownloadStatus = "downloaded"
+	Downloaded
 
 	// Failed is when the song failed to download, will be retried
-	Failed DownloadStatus = "failed"
+	Failed
 	// Removed is when the song is removed from the playlist
-	Removed DownloadStatus = "removed"
+	Removed
 
 	// NotAvailable means the song cannot be cached by now
-	NotAvailable DownloadStatus = "na"
+	NotAvailable
 	// Disabled means the song is disabled by the user
-	Disabled DownloadStatus = "disabled"
+	Disabled
+	// Refused means the request is refused by the server
+	Refused
 )
 
 type PlayStatus string

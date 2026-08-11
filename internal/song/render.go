@@ -2,6 +2,7 @@ package song
 
 import (
 	"fmt"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
@@ -149,6 +150,7 @@ type PreloadedSongStatusInfo struct {
 	Status string
 	Color  fyne.ThemeColorName
 
+	DynamicUntil time.Time
 	PreloadError error
 }
 
@@ -159,17 +161,37 @@ func (ps *StatefulSong) GetStatusInfo() PreloadedSongStatusInfo {
 		color = theme.ColorNamePlaceHolder
 	case Pending, CoolingDown:
 		color = theme.ColorNameWarning
-	case Requesting, Downloading:
+	case Resolving, Requesting, Downloading:
 		color = theme.ColorNamePrimary
 	case Downloaded:
 		color = theme.ColorNameSuccess
-	case Failed:
+	case Failed, Refused:
 		color = theme.ColorNameError
 	}
+
+	var until time.Time
+	switch ps.sm.DownloadStatus {
+	case CoolingDown:
+		until = ps.sm.task.Traffic.ScheduledTime()
+	case Failed:
+		until = ps.sm.retryUntil
+	default:
+	}
+
+	var status string
+	if until.IsZero() {
+		status = i18n.T(fmt.Sprintf("status_download_%d", ps.sm.DownloadStatus))
+	} else {
+		status = i18n.T(fmt.Sprintf("status_download_%d", ps.sm.DownloadStatus), goeasyi18n.Options{
+			Data: map[string]any{"Seconds": int(time.Until(until).Seconds())},
+		})
+	}
+
 	return PreloadedSongStatusInfo{
-		Status: i18n.T(fmt.Sprintf("status_%s", ps.sm.DownloadStatus)),
+		Status: status,
 		Color:  color,
 
+		DynamicUntil: until,
 		PreloadError: ps.PreloadError,
 	}
 }
