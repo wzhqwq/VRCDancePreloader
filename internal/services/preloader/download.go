@@ -11,56 +11,61 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
+func (s *Service) cacheBinder() (types.CDNFileSession, error) {
+	return s.cacheSvc.CreateSession("video")
+}
+
+func (s *Service) taskBinder(songSession types.CDNFileSession, id string) *downloader.ManagedTask {
+	return s.downloaderSvc.Download(
+		id,
+		func() task.RemoteProvider {
+			return task.NewRWFileRemoteProvider(id, third_parties.GetProviderById(id).ResolvedVideo, songSession)
+		},
+		func(logger utils.LoggerImpl) task.LocalProvider {
+			fileSession, err := s.cacheSvc.CreateSession("video")
+			if err != nil {
+				logger.ErrorLn("Failed to create session", err)
+				return nil
+			}
+			return task.NewRWFileProvider(id, fileSession, logger)
+		},
+	)
+}
+
 func (s *Service) makeSureDownloading(item *song.StatefulSong) {
-	if !item.StateMachine().CanStartDownload() {
-		return
-	}
-
-	id := item.SongId()
 	sm := item.StateMachine()
-	// check whether it have bound session
-	if !sm.BindCache(func() (types.CDNFileSession, error) {
-		return s.cacheSvc.CreateSession("video")
-	}) {
-		return
+	if sm.BindCache(s.cacheBinder) {
+		sm.BindTask(s.taskBinder)
 	}
-
-	sm.BindTask(func(songSession types.CDNFileSession) *downloader.ManagedTask {
-		return s.downloaderSvc.Download(
-			id,
-			func() task.RemoteProvider {
-				return task.NewRWFileRemoteProvider(id, third_parties.GetProviderById(id).ResolvedVideo, songSession)
-			},
-			func(logger utils.LoggerImpl) task.LocalProvider {
-				fileSession, err := s.cacheSvc.CreateSession("video")
-				if err != nil {
-					logger.ErrorLn("Failed to create session", err)
-					return nil
-				}
-				return task.NewRWFileProvider(id, fileSession, logger)
-			},
-		)
-	})
 }
 
 func (s *Service) getResource(item *song.StatefulSong, ctx context.Context) (types.CDNResource, error) {
 	// get logger from item
 	logger := item.ValidLogger(ctx)
+	id := item.SongId()
 
+	// access the cache
 	session, err := s.cacheSvc.CreateSession("video")
 	if err != nil {
 		return nil, err
 	}
 
-	err = session.Open(item.SongId(), logger)
+	err = session.Open(id, logger)
 	if err != nil {
 		return nil, err
 	}
 
+	// close when context closes
 	go func() {
 		<-ctx.Done()
 		session.Close(logger)
 	}()
+
+	// wait for video info
+	err = third_parties.GetProviderById(id).ResolvedVideo(id).WaitValid(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	// finally, return the resource
 	return session, nil

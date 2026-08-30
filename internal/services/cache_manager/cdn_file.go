@@ -37,7 +37,8 @@ func (m *cdnFileSession) Open(id string, loggers ...utils.LoggerImpl) (err error
 		return
 	}
 	m.entry, err = m.cacheMap.Open(id)
-	if err != nil {
+	if err == nil {
+		m.id = id
 		for _, l := range loggers {
 			l.InfoLn("Open cache entry:", id)
 		}
@@ -48,8 +49,11 @@ func (m *cdnFileSession) Open(id string, loggers ...utils.LoggerImpl) (err error
 func (m *cdnFileSession) Close(loggers ...utils.LoggerImpl) {
 	m.cacheMap.Release(m.id)
 	m.entry = nil
-	for _, l := range loggers {
-		l.InfoLn("Release cache entry:", m.id)
+	if m.id != "" {
+		for _, l := range loggers {
+			l.InfoLn("Release cache entry:", m.id)
+		}
+		m.id = ""
 	}
 }
 

@@ -44,13 +44,11 @@ const (
 )
 
 func (sm *StateMachine) IsDownloadLoopStarted() bool {
-	return sm.DownloadStatus == Pending || sm.DownloadStatus == CoolingDown || sm.DownloadStatus == Requesting || sm.DownloadStatus == Downloading
+	return sm.IsDownloadNeeded() && sm.DownloadStatus != Initial
 }
 func (sm *StateMachine) IsDownloadNeeded() bool {
-	return sm.DownloadStatus != Downloaded && sm.DownloadStatus != Removed && sm.DownloadStatus != NotAvailable
-}
-func (sm *StateMachine) CanStartDownload() bool {
-	return sm.DownloadStatus == Initial || sm.DownloadStatus == Failed
+	return sm.DownloadStatus != Downloaded && sm.DownloadStatus != Removed &&
+		sm.DownloadStatus != NotAvailable && sm.DownloadStatus != Disabled && sm.DownloadStatus != Refused
 }
 func (sm *StateMachine) IsPlaying() bool {
 	return sm.PlayStatus == Playing || sm.PlayStatus == SyncPlaying

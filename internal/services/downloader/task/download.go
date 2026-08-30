@@ -132,6 +132,10 @@ func (t *Task) Download() {
 
 	t.cancelFn = cancel
 
+	if errors.Is(t.waitPending(), ErrCanceled) {
+		goto canceled
+	}
+
 	if errors.Is(t.waitSchedule(), ErrCanceled) {
 		goto canceled
 	}
@@ -152,7 +156,8 @@ func (t *Task) Download() {
 				goto canceled
 			}
 			t.setError(err)
-			logger.ErrorLn("Failed to resolve download task", t.ID)
+			logger.ErrorLn("Failed to resolve download task", t.ID, err.Error())
+			continue
 		}
 		break
 	}

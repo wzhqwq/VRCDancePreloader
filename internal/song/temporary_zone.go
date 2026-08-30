@@ -24,7 +24,7 @@ func (t *TemporarySong) tryRemove() bool {
 	if t.useCount.Load() <= 0 {
 		if !t.inList {
 			delete(temporaryMap, t.key)
-			t.song.RemoveFromList()
+			t.song.Destroy()
 		}
 		return true
 	}

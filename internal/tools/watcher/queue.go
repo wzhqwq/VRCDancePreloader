@@ -117,7 +117,7 @@ func diffQueues(old []*song.StatefulSong, new []queue.Item) {
 			reused[dst] = old[index]
 		} else {
 			// otherwise terminate the lifecycle of this song
-			old[index].RemoveFromList()
+			old[index].Destroy()
 		}
 	}
 

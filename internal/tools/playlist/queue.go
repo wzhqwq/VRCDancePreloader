@@ -79,7 +79,7 @@ func ClearAndSetQueue(items []queue.Item) {
 
 	if len(currentPlaylist.Items) == 1 && len(items) == 1 {
 		// better experience for random play
-		currentPlaylist.Items[0].RemoveFromList()
+		currentPlaylist.Items[0].Destroy()
 		currentPlaylist.Update([]*song.StatefulSong{CreateFromQueueItem(items[0])})
 		return
 	}

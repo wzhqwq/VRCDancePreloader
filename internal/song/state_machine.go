@@ -7,6 +7,7 @@ import (
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/downloader"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/downloader/task"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -35,10 +36,14 @@ type StateMachine struct {
 	wg sync.WaitGroup
 }
 
-func NewSongStateMachine() *StateMachine {
+func NewSongStateMachine(ps *StatefulSong, songId string) *StateMachine {
 	sm := &StateMachine{
 		DownloadStatus: Initial,
 		PlayStatus:     Queued,
+
+		ps: ps,
+
+		currentSongId: songId,
 
 		syncTimeCh: make(chan time.Duration, 1),
 	}
@@ -61,8 +66,11 @@ func (sm *StateMachine) BindCache(createFn func() (types.CDNFileSession, error))
 	}
 
 	sm.session = session
-	err = session.Open(sm.ps.SongId(), activeSongLogger)
-	if err != nil {
+	return sm.openSession()
+}
+
+func (sm *StateMachine) openSession() bool {
+	if sm.session.Open(sm.currentSongId, activeSongLogger) != nil {
 		sm.DownloadStatus = NotAvailable
 		sm.ps.notifyStatusChange()
 		return false
@@ -71,16 +79,12 @@ func (sm *StateMachine) BindCache(createFn func() (types.CDNFileSession, error))
 	return true
 }
 
-func (sm *StateMachine) BindTask(createFn func(session types.CDNFileSession) *downloader.ManagedTask) {
+func (sm *StateMachine) BindTask(createFn func(session types.CDNFileSession, id string) *downloader.ManagedTask) {
 	sm.taskMutex.Lock()
 	defer sm.taskMutex.Unlock()
 
-	if !sm.IsDownloadNeeded() {
-		return
-	}
-
-	if !sm.IsDownloadLoopStarted() {
-		t := createFn(sm.session)
+	if sm.DownloadStatus == Initial {
+		t := createFn(sm.session, sm.currentSongId)
 		if t == nil {
 			return
 		}
@@ -90,6 +94,18 @@ func (sm *StateMachine) BindTask(createFn func(session types.CDNFileSession) *do
 
 		sm.Go(sm.StartDownloadLoop)
 	}
+}
+
+func (sm *StateMachine) Reset(newSongId string) bool {
+	sm.currentSongId = newSongId
+	if sm.session == nil {
+		return true
+	}
+
+	sm.CancelTask()
+	sm.session.Close(resetSongLogger)
+
+	return sm.openSession()
 }
 
 func (sm *StateMachine) SwitchDownloadStatus(s DownloadStatus) {
@@ -237,7 +253,7 @@ func (sm *StateMachine) StartPlayingLoop() {
 	sm.ps.notifyTimeChange(false)
 }
 
-func (sm *StateMachine) RemoveFromList() {
+func (sm *StateMachine) Destroy() {
 	sm.DownloadStatus = Removed
 	if sm.IsPlaying() {
 		sm.PlayStatus = Ended

@@ -44,9 +44,9 @@ func (s *mixedServer) handlePlatformVideoRequest(platform, id string, w http.Res
 		// TODO consider using req.Context?
 		defer cancel()
 
-		f, err := s.svc.preloaderSvc.Request(platform, id, ctx)
+		f, err := s.svc.preloaderSvc.Request(id, ctx)
 		if err != nil {
-			requestLogger.ErrorLnf("Failed to load %s video, reason: %v", platform, err)
+			requestLogger.ErrorLnf("Failed to request %s video, reason: %v", platform, err)
 			handledCh <- false
 			return
 		}

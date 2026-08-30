@@ -32,7 +32,6 @@ func (s *Service) loop(stopCh <-chan struct{}) {
 			}
 		case <-s.cfgCh:
 			s.preload()
-			s.healthCheck()
 		case pl = <-playlistCh.Channel:
 			s.plMu.Lock()
 			s.pl = pl

@@ -49,7 +49,7 @@ func (pl *PlayList) StopAll() {
 
 	items := pl.GetItemsSnapshot()
 	for _, item := range items {
-		item.RemoveFromList()
+		item.Destroy()
 	}
 
 	pl.notifyChange(Stopped)

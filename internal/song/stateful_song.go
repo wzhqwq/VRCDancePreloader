@@ -13,6 +13,7 @@ import (
 var songLogger = utils.NewLogger("Song")
 var activeSongLogger = utils.NewLogger("Song (Active)")
 var removedSongLogger = utils.NewLogger("Song (Removed)")
+var resetSongLogger = utils.NewLogger("Song (Reset)")
 
 type StatefulSong struct {
 	sm *StateMachine
@@ -87,8 +88,9 @@ func (ps *StatefulSong) Match(another *StatefulSong) bool {
 
 // actions
 
-func (ps *StatefulSong) RemoveFromList() {
-	ps.sm.RemoveFromList()
+func (ps *StatefulSong) Destroy() {
+	close(ps.stopCh)
+	ps.sm.Destroy()
 }
 func (ps *StatefulSong) AddToHistory() {
 	info := ps.GetInfo()

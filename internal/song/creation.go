@@ -7,11 +7,9 @@ import (
 
 var idIncrement int64 = 0
 
-func constructBasicStatefulSong() *StatefulSong {
+func constructBasicStatefulSong(id string) *StatefulSong {
 	idIncrement++
 	ret := &StatefulSong{
-		sm: NewSongStateMachine(),
-
 		ID: idIncrement,
 
 		stopCh: make(chan struct{}),
@@ -19,13 +17,13 @@ func constructBasicStatefulSong() *StatefulSong {
 		em:     utils.NewEventManager[ChangeType](),
 		lazyEm: utils.NewEventManager[ChangeType](),
 	}
-	ret.sm.ps = ret
+	ret.sm = NewSongStateMachine(ret, id)
 
 	return ret
 }
 
 func CreateStatefulSongByInternalId(id string) *StatefulSong {
-	ret := constructBasicStatefulSong()
+	ret := constructBasicStatefulSong(id)
 	ret.songId = id
 
 	provider := third_parties.GetProviderById(id)
@@ -41,7 +39,7 @@ func CreateStatefulSongByInternalId(id string) *StatefulSong {
 }
 
 func CreateUnknownSong() *StatefulSong {
-	ret := constructBasicStatefulSong()
+	ret := constructBasicStatefulSong("unknown")
 
 	ret.Unknown = true
 	ret.sm.DownloadStatus = NotAvailable

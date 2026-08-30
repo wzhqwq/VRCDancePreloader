@@ -198,7 +198,7 @@ func (e *BaseCDNEntry) GetResource(ctx context.Context) (io.ReadSeeker, int64, t
 	e.workingFileMutex.RLock()
 	defer e.workingFileMutex.RUnlock()
 
-	if e.workingFile != nil {
+	if e.workingFile == nil {
 		return nil, 0, time.Time{}, io.ErrClosedPipe
 	}
 
