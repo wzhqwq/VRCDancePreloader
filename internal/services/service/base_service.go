@@ -102,6 +102,8 @@ func (s *BaseService[T]) Shutdown() error {
 	cancel := stability.PanicIfTimeout(s.name + "_ShuttingDown")
 	defer cancel()
 
+	s.logger.InfoLn("Shutting down...")
+	defer s.logger.InfoLn("Shut down")
 	close(s.stopCh)
 	return s.control.ServiceStop()
 }

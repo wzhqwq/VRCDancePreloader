@@ -8,6 +8,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/live"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/mixed_server"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/preloader"
+	"github.com/wzhqwq/VRCDancePreloader/internal/stability"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
@@ -28,6 +29,8 @@ func StartHost() bool {
 }
 
 func Shutdown() {
+	cancel := stability.PanicIfTimeout("Host_ShuttingDown")
+	defer cancel()
 	currentManager.GracefulShutdown()
 }
 

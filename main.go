@@ -5,6 +5,7 @@ import (
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/main_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/host"
+	"github.com/wzhqwq/VRCDancePreloader/internal/stability"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tui"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 
@@ -27,6 +28,9 @@ var args struct {
 }
 
 func main() {
+	defer func() {
+		stability.PanicIfTimeout("Hanging Goroutine")
+	}()
 	defer func() {
 		if err := recover(); err != nil {
 			logger.ErrorLn("panicked:", err)
@@ -74,6 +78,10 @@ func main() {
 			return
 		default:
 		}
+
+		closeCountdown := custom_fyne.StartCountdown()
+		defer closeCountdown()
+
 		main_window.Start(migrated)
 		defer func() {
 			logger.InfoLn("Stopping GUI")
