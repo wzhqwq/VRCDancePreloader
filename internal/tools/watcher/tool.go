@@ -59,6 +59,6 @@ type Tool struct {
 
 func New() *Tool {
 	return &Tool{
-		ConfigurableTool: service.ConstructConfigurableTool(initialize, destroy),
+		ConfigurableTool: service.ConstructConfigurableTool("watcher", initialize, destroy, logger),
 	}
 }

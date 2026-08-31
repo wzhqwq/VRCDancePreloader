@@ -1,9 +1,16 @@
 package service
 
-import "github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
+import (
+	"github.com/wzhqwq/VRCDancePreloader/internal/stability"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
+)
 
 type ConfigurableTool struct {
 	Service
+
+	name   string
+	logger utils.LoggerImpl
 
 	status interactive.RunnerStatus
 
@@ -11,15 +18,17 @@ type ConfigurableTool struct {
 	destroyer   func() error
 }
 
-func ConstructConfigurableTool(initializer func() error, destroyer func() error) ConfigurableTool {
+func ConstructStatelessTool() ConfigurableTool {
 	return ConfigurableTool{
-		initializer: initializer,
-		destroyer:   destroyer,
+		name: "stateless",
 	}
 }
 
-func NewConfigurableTool(initializer func() error, destroyer func() error) *ConfigurableTool {
-	return &ConfigurableTool{
+func ConstructConfigurableTool(name string, initializer func() error, destroyer func() error, logger utils.LoggerImpl) ConfigurableTool {
+	return ConfigurableTool{
+		name:   name,
+		logger: logger,
+
 		initializer: initializer,
 		destroyer:   destroyer,
 	}
@@ -46,6 +55,12 @@ func (t *ConfigurableTool) Start() {
 
 func (t *ConfigurableTool) Shutdown() error {
 	if t.destroyer != nil {
+		cancel := stability.PanicIfTimeout(t.name + "_ShuttingDown")
+		defer cancel()
+
+		t.logger.InfoLn("Shutting down...")
+		defer t.logger.InfoLn("Shut down")
+
 		return t.destroyer()
 	}
 	return nil

@@ -5,6 +5,7 @@ import (
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/service"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 type Tool struct {
@@ -12,6 +13,8 @@ type Tool struct {
 }
 
 var wg sync.WaitGroup
+
+var logger = utils.NewLogger("Catalog")
 
 func GetPyPyDanceCatalogManager() Manager[raw_song.PyPyDanceSong] {
 	return &pypyCatalogManager
@@ -41,6 +44,6 @@ func destroy() error {
 
 func New() *Tool {
 	return &Tool{
-		ConfigurableTool: service.ConstructConfigurableTool(initialize, destroy),
+		ConfigurableTool: service.ConstructConfigurableTool("catalog", initialize, destroy, logger),
 	}
 }

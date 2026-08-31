@@ -35,7 +35,7 @@ func New(c Config) *Tool {
 	cfg = c
 
 	return &Tool{
-		ConfigurableTool: service.ConstructConfigurableTool(initialize, destroy),
+		ConfigurableTool: service.ConstructConfigurableTool("network", initialize, destroy, logger),
 	}
 }
 

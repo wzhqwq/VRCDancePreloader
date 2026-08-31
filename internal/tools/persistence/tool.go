@@ -8,6 +8,6 @@ type Tool struct {
 
 func New() *Tool {
 	return &Tool{
-		ConfigurableTool: service.ConstructConfigurableTool(InitMainDB, CloseMainDB),
+		ConfigurableTool: service.ConstructConfigurableTool("db", InitMainDB, CloseMainDB, logger),
 	}
 }

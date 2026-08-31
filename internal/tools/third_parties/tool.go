@@ -4,11 +4,14 @@ import (
 	"strings"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/service"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var cfg Config
 
 var providers map[string]ResourceProvider
+
+var logger = utils.NewLogger("Third Parties")
 
 func GetProviderById(id string) ResourceProvider {
 	split := strings.Split(id, "_")
@@ -59,7 +62,7 @@ func New(c Config) *Tool {
 	cfg = c
 
 	return &Tool{
-		ConfigurableTool: service.ConstructConfigurableTool(initialize, destroy),
+		ConfigurableTool: service.ConstructConfigurableTool("third_parties", initialize, destroy, logger),
 	}
 }
 

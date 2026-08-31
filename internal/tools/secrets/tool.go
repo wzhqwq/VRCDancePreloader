@@ -25,7 +25,7 @@ func New(c Config) *Tool {
 	youtubeApiKeyEm = utils.NewEventManager[string]()
 
 	return &Tool{
-		ConfigurableTool: service.ConstructConfigurableTool(nil, nil),
+		ConfigurableTool: service.ConstructStatelessTool(),
 	}
 }
 
