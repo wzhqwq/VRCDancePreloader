@@ -172,7 +172,7 @@ func (ps *StatefulSong) GetStatusInfo() PreloadedSongStatusInfo {
 	var until time.Time
 	switch ps.sm.DownloadStatus {
 	case CoolingDown:
-		until = ps.sm.task.Traffic.ScheduledTime()
+		until = ps.sm.cooldownUntil
 	case Failed:
 		until = ps.sm.retryUntil
 	default:

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
 type TaskChangeType string
@@ -24,6 +25,7 @@ const (
 	TaskPending
 	TaskWaitScheduled
 	TaskResolving
+	TaskResolvingFailed
 	TaskRequested
 	TaskDownloading
 	TaskCompleted
@@ -44,6 +46,8 @@ type Task struct {
 
 	State TaskState
 	Error error
+
+	ResolverStatus interactive.RemoteStatus
 
 	Eta     *etaCalculator
 	Traffic TrafficControl

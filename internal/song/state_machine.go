@@ -24,7 +24,8 @@ type StateMachine struct {
 
 	currentSongId string
 
-	retryUntil time.Time
+	cooldownUntil time.Time
+	retryUntil    time.Time
 
 	// channels
 	syncTimeCh chan time.Duration
@@ -151,8 +152,8 @@ func (sm *StateMachine) StartDownloadLoop() {
 						return
 					default:
 						sm.ps.PreloadError = t.Error
-						sm.SwitchDownloadStatus(Failed)
 						sm.retryUntil = t.Retry()
+						sm.SwitchDownloadStatus(Failed)
 					}
 				} else {
 					sm.ps.PreloadError = nil
@@ -168,9 +169,15 @@ func (sm *StateMachine) StartDownloadLoop() {
 					case task.TaskPending:
 						sm.SwitchDownloadStatus(Pending)
 					case task.TaskWaitScheduled:
+						sm.cooldownUntil = t.Traffic.ScheduledTime()
 						sm.SwitchDownloadStatus(CoolingDown)
 					case task.TaskResolving:
+						sm.cooldownUntil = t.ResolverStatus.CooldownUntil
 						sm.SwitchDownloadStatus(Resolving)
+					case task.TaskResolvingFailed:
+						sm.ps.PreloadError = t.ResolverStatus.Err
+						sm.retryUntil = t.ResolverStatus.RetryAfter
+						sm.SwitchDownloadStatus(Failed)
 					case task.TaskRequested:
 						sm.SwitchDownloadStatus(Requesting)
 					case task.TaskDownloading:

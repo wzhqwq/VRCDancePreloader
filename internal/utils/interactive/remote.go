@@ -45,7 +45,7 @@ type RemoteStatus struct {
 }
 
 func (s RemoteStatus) Fetching() bool {
-	return s.Phase == RemoteLoading || s.Phase == RemoteRefreshing
+	return s.Phase == RemoteLoading || s.Phase == RemoteRefreshing || s.Phase == RemoteErrorRetrying
 }
 
 func (s RemoteStatus) Valid() bool {

@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"io"
+	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/rw_file/fragmented"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
 var logger = utils.NewLogger("Download Task")
@@ -86,9 +88,35 @@ func (t *Task) singleDownload(ctx context.Context) error {
 	return t.progressiveDownload(stream.Rc)
 }
 
+func wait(ctx context.Context, until time.Time) error {
+	d := time.Until(until)
+	if d > 0 {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(d):
+			return nil
+		}
+	}
+
+	return nil
+}
+
 func (t *Task) singleResolve(ctx context.Context) error {
-	totalLen, err := t.Remote.WaitResolving(ctx, func() {
-		t.setState(TaskResolving)
+	if err := wait(ctx, t.ResolverStatus.RetryAfter); err != nil {
+		return err
+	}
+	if err := wait(ctx, t.ResolverStatus.CooldownUntil); err != nil {
+		return err
+	}
+
+	totalLen, err := t.Remote.WaitResolving(ctx, func(status interactive.RemoteStatus) {
+		t.ResolverStatus = status
+		if status.Fetching() {
+			t.setState(TaskResolving)
+		} else {
+			t.setState(TaskResolvingFailed)
+		}
 	})
 	if err != nil {
 		return err
@@ -149,13 +177,9 @@ func (t *Task) Download() {
 	for {
 		err = unwrapError(t.singleResolve(ctx), ctx)
 		if err != nil {
-			if errors.Is(err, requesting.ErrClientChanged) {
-				continue
-			}
 			if errors.Is(err, ErrCanceled) {
 				goto canceled
 			}
-			t.setError(err)
 			logger.ErrorLn("Failed to resolve download task", t.ID, err.Error())
 			continue
 		}

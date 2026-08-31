@@ -19,7 +19,7 @@ type rangedRemoteProvider struct {
 	client  *requesting.ClientProvider
 }
 
-func (p *rangedRemoteProvider) WaitResolving(_ context.Context, _ func()) (int64, error) {
+func (p *rangedRemoteProvider) WaitResolving(_ context.Context, _ func(status interactive.RemoteStatus)) (int64, error) {
 	return 0, nil
 }
 
@@ -93,22 +93,41 @@ func (p *rwFileRemoteProvider) tryResolveFromCache() (int64, bool) {
 	return 0, false
 }
 
-func (p *rwFileRemoteProvider) WaitResolving(ctx context.Context, beforeWait func()) (int64, error) {
+func (p *rwFileRemoteProvider) WaitResolving(ctx context.Context, beforeWait func(status interactive.RemoteStatus)) (int64, error) {
 	if l, ok := p.tryResolveFromCache(); ok {
 		return l, nil
 	}
 
+	p.session.Logger().InfoLn("Resolving", p.id)
+
 	handle := p.handleFn(p.id)
 	defer handle.Release()
 
-	if !handle.Snapshot().Status.Valid() {
-		beforeWait()
-	}
-	info, err := handle.BlockedGet(ctx)
-	if err != nil {
-		return 0, err
+	ch := handle.Subscribe()
+	defer ch.Close()
+
+	snapshot := handle.Snapshot()
+	for {
+		if snapshot.Status.Err != nil {
+			beforeWait(snapshot.Status)
+			return 0, snapshot.Status.Err
+		}
+		if snapshot.Status.Fetching() {
+			// error to fetching
+			beforeWait(snapshot.Status)
+		}
+		if snapshot.Status.Valid() {
+			break
+		}
+
+		select {
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		case snapshot = <-ch.Channel:
+		}
 	}
 
+	info := snapshot.Data
 	p.session.ReconcileRemoteInfo(info)
 
 	p.url = info.FinalUrl
