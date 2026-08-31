@@ -28,6 +28,7 @@ type StateMachine struct {
 
 	// channels
 	syncTimeCh chan time.Duration
+	stopCh     chan struct{}
 
 	// locks
 	timeMutex sync.Mutex
@@ -46,6 +47,7 @@ func NewSongStateMachine(ps *StatefulSong, songId string) *StateMachine {
 		currentSongId: songId,
 
 		syncTimeCh: make(chan time.Duration, 1),
+		stopCh:     make(chan struct{}),
 	}
 
 	return sm
@@ -162,6 +164,7 @@ func (sm *StateMachine) StartDownloadLoop() {
 						sm.ps.DownloadedSize = t.DownloadedSize
 						sm.SwitchDownloadStatus(Downloaded)
 						sm.ps.notifySubscribers(ProgressChange)
+						return
 					case task.TaskPending:
 						sm.SwitchDownloadStatus(Pending)
 					case task.TaskWaitScheduled:
@@ -182,6 +185,8 @@ func (sm *StateMachine) StartDownloadLoop() {
 			}
 		case <-lazy.WaitUpdate():
 			lazy.Update()
+		case <-sm.stopCh:
+			return
 		}
 	}
 }
@@ -240,6 +245,8 @@ func (sm *StateMachine) StartPlayingLoop() {
 		case <-time.After(delta):
 			sm.ps.TimePassed = nextTime
 			routine = true
+		case <-sm.stopCh:
+			return
 		}
 
 		if sm.ps.info.Duration > 0 && nextTime >= sm.ps.info.Duration {
@@ -267,6 +274,7 @@ func (sm *StateMachine) Destroy() {
 		sm.session.Close(removedSongLogger)
 		sm.session = nil
 	}
+	close(sm.stopCh)
 	sm.wg.Wait()
 }
 
