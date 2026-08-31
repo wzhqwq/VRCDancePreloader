@@ -96,7 +96,7 @@ func GetBiliBiliInfo(bvID string, ctx context.Context) (*types.GeneralVideoInfo,
 	}
 	return &types.GeneralVideoInfo{
 		Title:     info.Title,
-		Duration:  time.Duration(info.Pages[0].Duration),
+		Duration:  time.Duration(info.Pages[0].Duration) * time.Second,
 		GroupName: info.Owner.Name,
 	}, nil
 }

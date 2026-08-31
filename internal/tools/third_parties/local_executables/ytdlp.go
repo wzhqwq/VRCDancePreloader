@@ -213,7 +213,7 @@ func GetVideoBasicInfoWithYtDlp(url string, ctx context.Context) (*types.General
 
 	return &types.GeneralVideoInfo{
 		Title:     lines[0],
-		Duration:  time.Duration(duration),
+		Duration:  time.Duration(duration) * time.Second,
 		GroupName: lines[2],
 	}, nil
 }

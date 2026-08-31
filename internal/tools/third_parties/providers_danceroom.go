@@ -167,7 +167,7 @@ func (p *PyPyDanceProvider) getInfo(id string, _ context.Context) (types.General
 		}
 		return types.GeneralVideoInfo{
 			Title:     song.Name,
-			Duration:  time.Duration(song.End),
+			Duration:  time.Duration(song.End) * time.Second,
 			GroupName: song.GroupName,
 
 			FallbackUrl: fallback,
@@ -245,7 +245,7 @@ func (p *WannaDanceProvider) getInfo(id string, _ context.Context) (types.Genera
 		}
 		return types.GeneralVideoInfo{
 			Title:     song.FullTitle(),
-			Duration:  time.Duration(song.End),
+			Duration:  time.Duration(song.End) * time.Second,
 			GroupName: song.Group,
 		}, nil
 	}
@@ -320,7 +320,7 @@ func (p *DuDuFitDanceProvider) getInfo(id string, _ context.Context) (types.Gene
 		}
 		return types.GeneralVideoInfo{
 			Title:     song.FullTitle(),
-			Duration:  time.Duration(song.End),
+			Duration:  time.Duration(song.End) * time.Second,
 			GroupName: song.Group,
 		}, nil
 	}
