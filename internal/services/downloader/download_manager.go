@@ -72,7 +72,7 @@ func (dm *downloadManager) CancelDownload(ids ...string) {
 
 	for _, id := range ids {
 		if t, ok := dm.tasks[id]; ok {
-			t.Cancel()
+			t.Task.Cancel()
 			delete(dm.tasks, id)
 		}
 	}
@@ -89,7 +89,7 @@ func (dm *downloadManager) Destroy() {
 	dm.Lock()
 	defer dm.Unlock()
 	for _, t := range dm.tasks {
-		t.Cancel()
+		t.Task.Cancel()
 	}
 	dm.em.NotifySubscribers(Stopped)
 }

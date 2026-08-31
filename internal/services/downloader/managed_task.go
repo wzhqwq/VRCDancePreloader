@@ -121,6 +121,7 @@ func newManagedTask(manager *downloadManager, id string, remote task.RemoteProvi
 	}
 }
 
+// Download is wrapped with throttle handling
 func (t *ManagedTask) Download() {
 	t.Task.Download()
 
@@ -128,6 +129,11 @@ func (t *ManagedTask) Download() {
 	if errors.As(t.Error, &throttleErr) {
 		t.manager.scheduler.Throttle(throttleErr.RetryAfter)
 	}
+}
+
+// Cancel is redirected to manager canceling
+func (t *ManagedTask) Cancel() {
+	t.manager.CancelDownload(t.ID)
 }
 
 var tempDelay = time.Second * 3
