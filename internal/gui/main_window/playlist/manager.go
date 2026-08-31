@@ -53,7 +53,6 @@ func (m *Manager) CreateRenderer() fyne.WidgetRenderer {
 	}
 
 	statusBar := container.NewHBox(
-		NewDownloaderStatus(),
 		NewSongListButton(),
 		NewBroadcastButton(),
 	)

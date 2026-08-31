@@ -114,11 +114,3 @@ func (s *Service) findManager(id string) *downloadManager {
 	}
 	return s.managers["default"]
 }
-
-func (s *Service) SubscribeCoolDownInterval(name string) *utils.EventSubscriber[time.Duration] {
-	dm, ok := s.managers[name]
-	if !ok {
-		return nil
-	}
-	return dm.scheduler.SubscribeIntervalEvent()
-}
