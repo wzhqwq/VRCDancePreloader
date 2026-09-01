@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/images/thumbnails"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/secrets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/api"
@@ -131,7 +130,7 @@ func (p *YouTubeProvider) getThumbnail(id string, ctx context.Context) (image.Im
 	}
 
 	if videoID, isYoutube := internal_id.CheckIdIsYoutube(id); isYoutube {
-		i, err := thumbnails.GetThumbnailImage(requesting.GetClient(requesting.YouTubeImage), internal_id.GetYoutubeMQThumbnailURL(videoID), ctx)
+		i, err := GetThumbnailImage(requesting.GetClient(requesting.YouTubeImage), internal_id.GetYoutubeMQThumbnailURL(videoID), ctx)
 		if err != nil {
 			return nil, fmt.Errorf("get YouTube thumbnail: %w", err)
 		}
@@ -309,7 +308,7 @@ func (p *BiliBiliProvider) getThumbnail(id string, ctx context.Context) (image.I
 				return nil, fmt.Errorf("get BiliBili thumbnail from api: %w", err)
 			}
 
-			return thumbnails.GetThumbnailImage(requesting.GetClient(requesting.BiliBili), info.Pic, ctx)
+			return GetThumbnailImage(requesting.GetClient(requesting.BiliBili), info.Pic, ctx)
 		}
 
 		if p.mode == ModeYtDlp {
@@ -318,7 +317,7 @@ func (p *BiliBiliProvider) getThumbnail(id string, ctx context.Context) (image.I
 				return nil, fmt.Errorf("get BiliBili thumbnail by yt-dlp: %w", err)
 			}
 
-			return thumbnails.GetThumbnailImage(requesting.GetClient(requesting.BiliBili), url, ctx)
+			return GetThumbnailImage(requesting.GetClient(requesting.BiliBili), url, ctx)
 		}
 	}
 

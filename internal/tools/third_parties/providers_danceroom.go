@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/samber/lo"
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/images/thumbnails"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/catalog"
@@ -183,7 +182,7 @@ func (p *PyPyDanceProvider) getThumbnail(id string, ctx context.Context) (image.
 	}
 
 	if pypyId, isPypy := internal_id.CheckIdIsPyPy(id); isPypy {
-		i, err := thumbnails.GetThumbnailImage(requesting.GetClient(requesting.PyPyDance), internal_id.GetPyPyThumbnailUrl(pypyId), ctx)
+		i, err := GetThumbnailImage(requesting.GetClient(requesting.PyPyDance), internal_id.GetPyPyThumbnailUrl(pypyId), ctx)
 		if err != nil {
 			return nil, fmt.Errorf("get PyPyDance thumbnail: %w", err)
 		}
@@ -259,7 +258,7 @@ func (p *WannaDanceProvider) getThumbnail(id string, ctx context.Context) (image
 	}
 
 	if wannaId, isWanna := internal_id.CheckIdIsWanna(id); isWanna {
-		i, err := thumbnails.GetThumbnailImage(requesting.GetClient(requesting.WannaDance), internal_id.GetWannaThumbnailUrl(wannaId), ctx)
+		i, err := GetThumbnailImage(requesting.GetClient(requesting.WannaDance), internal_id.GetWannaThumbnailUrl(wannaId), ctx)
 		if err != nil {
 			return nil, fmt.Errorf("get WannaDance thumbnail: %w", err)
 		}
@@ -296,6 +295,8 @@ var (
 	errDuDuFitDanceCatalogDisabled   = fmt.Errorf("%w: fetching DuDuFitDance catalog", ErrFeatureDisabled)
 	errDuDuFitDanceThumbnailDisabled = fmt.Errorf("%w: fetching DuDuFitDance thumbnail", ErrFeatureDisabled)
 	errDuDuFitDanceVideoDisabled     = fmt.Errorf("%w: fetching DuDuFitDance video", ErrFeatureDisabled)
+
+	errDuDuFitDanceOriginalVideoDisabled = fmt.Errorf("%w: fetching DuDuFitDance original video info", ErrFeatureDisabled)
 )
 
 type DuDuFitDanceProvider struct {
@@ -334,7 +335,7 @@ func (p *DuDuFitDanceProvider) getThumbnail(id string, ctx context.Context) (ima
 	}
 
 	if duduId, isDuDu := internal_id.CheckIdIsDuDu(id); isDuDu {
-		i, err := thumbnails.GetThumbnailImage(requesting.GetClient(requesting.DuDuFitDance), internal_id.GetDuDuThumbnailUrl(duduId), ctx)
+		i, err := GetThumbnailImage(requesting.GetClient(requesting.DuDuFitDance), internal_id.GetDuDuThumbnailUrl(duduId), ctx)
 		if err != nil {
 			return nil, fmt.Errorf("get DuDuFitDance thumbnail: %w", err)
 		}

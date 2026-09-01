@@ -331,8 +331,12 @@ func (m *RemoteManager[T]) execute(req fetchRequest[T]) {
 			}
 
 			if !canRetry {
-				if !errors.Is(err, ErrUnrecoverableDisabled) && m.logger != nil {
-					m.logger.ErrorLn("Failed to fetch", entry.id, "and will retry when it becomes available:", err)
+				if m.logger != nil {
+					if errors.Is(err, ErrUnrecoverableDisabled) {
+						m.logger.ErrorLn("Failed to fetch", entry.id, "and will retry when it becomes available:", err)
+					} else {
+						m.logger.ErrorLn("Failed to fetch", entry.id, "and we will not retry automatically:", err)
+					}
 				}
 				return
 			}

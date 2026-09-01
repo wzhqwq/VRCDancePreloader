@@ -1,19 +1,12 @@
 package thumbnails
 
 import (
-	"bytes"
-	"context"
 	"embed"
-	"fmt"
 	"image"
 	"image/jpeg"
-	"io"
 	"sync"
 
-	"github.com/nfnt/resize"
-	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
-	"golang.org/x/sync/semaphore"
 )
 
 //go:embed *.jpg
@@ -98,37 +91,4 @@ func GetGroupThumbnail(groupName string) image.Image {
 		return getThumbnail(thumbnail)
 	}
 	return getThumbnail(defaultThumbnail)
-}
-
-var thumbnailRequestSem = semaphore.NewWeighted(6)
-
-func GetThumbnailImage(client *requesting.ClientProvider, url string, ctx context.Context) (image.Image, error) {
-	err := thumbnailRequestSem.Acquire(context.Background(), 1)
-	if err != nil {
-		return nil, err
-	}
-	defer thumbnailRequestSem.Release(1)
-
-	logger.InfoLn("Downloading thumbnail from ", url)
-	req, err := client.NewGetRequest(url, ctx)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to download thumbnail from %s: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to download thumbnail from %s: %w", url, err)
-	}
-
-	img, err := jpeg.Decode(bytes.NewReader(data))
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode thumbnail from %s: %w", url, err)
-	}
-
-	return resize.Resize(320, 0, img, resize.Bilinear), nil
 }

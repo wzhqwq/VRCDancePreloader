@@ -208,12 +208,12 @@ func (m *baseManager[T, R]) request(_ string, ctx context.Context) (*Catalog[T],
 	if resp.StatusCode >= 500 {
 		return nil, fmt.Errorf("%wcatalog is temporarily unavailable: %s", interactive.ErrTemporarilyUnavailable, resp.Status)
 	}
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("%wcatalog is not available: %s", interactive.ErrUnrecoverable, resp.Status)
-	}
 	if resp.StatusCode == http.StatusTooManyRequests {
 		retryAfter, _ := strconv.ParseInt(resp.Header.Get("Retry-After"), 10, 32)
 		return nil, utils.NewThrottledError(time.Duration(retryAfter) * time.Second)
+	}
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("%wcatalog is not available: %s", interactive.ErrUnrecoverable, resp.Status)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("failed to download, status: " + resp.Status)
