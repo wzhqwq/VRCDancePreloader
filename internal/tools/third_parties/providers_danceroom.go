@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song/raw_song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/catalog"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/local_executables"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
@@ -362,6 +363,50 @@ func newDuDuFitDanceProvider() ResourceProvider {
 	p := &DuDuFitDanceProvider{}
 	p.RoomProvider = constructRoomProvider(p, catalog.GetDuDuFitDanceCatalogManager())
 	p.setup("DuDuFitDance", requesting.GetClient(requesting.DuDuFitDance))
+
+	return p
+}
+
+type DDFDOriginalVideoInfoProvider struct {
+	enabled bool
+
+	availableEm *utils.EventManager[bool]
+	manager     *interactive.RemoteManager[api.DuDuOriginalVideoInfo]
+}
+
+func (p *DDFDOriginalVideoInfoProvider) getInfo(id string, ctx context.Context) (api.DuDuOriginalVideoInfo, error) {
+	if !p.enabled {
+		return api.DuDuOriginalVideoInfo{}, errDuDuFitDanceOriginalVideoDisabled
+	}
+
+	if duduId, isDuDu := internal_id.CheckIdIsDuDu(id); isDuDu {
+		return api.GetDuDuOriginalVideoInfo(duduId, ctx)
+	}
+
+	return api.DuDuOriginalVideoInfo{}, ErrUnexpectedParam
+}
+
+func (p *DDFDOriginalVideoInfoProvider) Info(id string) *interactive.RemoteHandle[api.DuDuOriginalVideoInfo] {
+	return p.manager.Acquire(id)
+}
+
+func (p *DDFDOriginalVideoInfoProvider) SetEnabled(enabled bool) {
+	p.enabled = enabled
+	p.availableEm.NotifySubscribers(enabled)
+}
+
+func (p *DDFDOriginalVideoInfoProvider) Close() {
+	p.manager.Close()
+}
+
+func NewDDFOriginalVideoInfoProvider() *DDFDOriginalVideoInfoProvider {
+	p := &DDFDOriginalVideoInfoProvider{
+		availableEm: utils.NewEventManager[bool](),
+	}
+	p.manager = interactive.NewRemoteManager(p.getInfo, nil, 100, 1)
+	p.manager.BindAvailability(p.availableEm.SubscribeEvent)
+	p.manager.BindScheduler(utils.DuDuAssetScheduler())
+	p.manager.BindLogger(utils.NewLogger("DuDuFitDance Original Video Info"))
 
 	return p
 }

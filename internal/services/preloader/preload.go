@@ -26,9 +26,12 @@ func (s *Service) loop(stopCh <-chan struct{}) {
 		case <-stopCh:
 			return
 		case change := <-itemsChangeCh.Channel:
-			if change == playlist.ItemsChange {
+			switch change {
+			case playlist.ItemsChange:
 				s.preload()
 				s.healthCheck()
+			case playlist.RoomChange:
+				s.preload()
 			}
 		case <-s.cfgCh:
 			s.preload()
@@ -47,6 +50,10 @@ func (s *Service) loop(stopCh <-chan struct{}) {
 }
 
 func (s *Service) preload() {
+	if !lo.Contains(s.Cfg.EnabledRooms, s.pl.RoomBrand) {
+		return
+	}
+
 	done := s.downloaderSvc.QueueTransaction()
 	defer done()
 

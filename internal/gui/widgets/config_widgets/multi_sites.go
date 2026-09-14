@@ -4,10 +4,8 @@ import (
 	"slices"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/constants"
@@ -129,9 +127,6 @@ func (m *MultiSelectSites) loop(stopCh <-chan struct{}) {
 }
 
 func (m *MultiSelectSites) CreateRenderer() fyne.WidgetRenderer {
-	label := canvas.NewText(i18n.T("label_hijack_intercepted_sites"), theme.Color(theme.ColorNamePlaceHolder))
-	label.TextSize = 12
-
 	form := container.New(
 		layout.NewFormLayout(),
 		container.NewCenter(widget.NewLabel("PyPyDance")),
@@ -147,7 +142,7 @@ func (m *MultiSelectSites) CreateRenderer() fyne.WidgetRenderer {
 	)
 
 	r := &multiSelectSitesRenderer{
-		c: container.NewVBox(label, form),
+		c: input.WrapLabel(form, i18n.T("label_hijack_intercepted_sites")),
 	}
 	r.objects = []fyne.CanvasObject{r.c}
 	r.Created(m)

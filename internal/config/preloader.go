@@ -30,6 +30,58 @@ func (m *Manager) PreloaderEnabledRooms() interactive.StatefulSetting[[]string] 
 	)
 }
 
+func (m *Manager) PreloaderYouTubeFallback() interactive.StatefulSetting[[]string] {
+	return m.cache.NewStringListSetting(
+		"preloader.use-youtube-fallback",
+		func(cfg Config) []string {
+			return cfg.Preloader.UseYoutubeFallback
+		},
+		func(cfg *Config, rooms []string) error {
+			cfg.Preloader.UseYoutubeFallback = rooms
+			return nil
+		},
+	)
+}
+
+func (m *Manager) PreloaderThrottledFallback() interactive.StatefulSetting[bool] {
+	return m.cache.NewBoolSetting(
+		"preloader.throttled-fallback",
+		func(cfg Config) bool {
+			return cfg.Preloader.ThrottledFallback
+		},
+		func(cfg *Config, use bool) error {
+			cfg.Preloader.ThrottledFallback = use
+			return nil
+		},
+	)
+}
+
+func (m *Manager) PreloaderLowSpeedFallback() interactive.StatefulSetting[bool] {
+	return m.cache.NewBoolSetting(
+		"preloader.low-speed-fallback",
+		func(cfg Config) bool {
+			return cfg.Preloader.LowSpeedFallback
+		},
+		func(cfg *Config, use bool) error {
+			cfg.Preloader.LowSpeedFallback = use
+			return nil
+		},
+	)
+}
+
+func (m *Manager) PreloaderHighFramerateFallback() interactive.StatefulSetting[bool] {
+	return m.cache.NewBoolSetting(
+		"preloader.high-framerate-fallback",
+		func(cfg Config) bool {
+			return cfg.Preloader.HighFramerateFallback
+		},
+		func(cfg *Config, use bool) error {
+			cfg.Preloader.HighFramerateFallback = use
+			return nil
+		},
+	)
+}
+
 //var pypySupportedPlatforms = []string{
 //	"PyPyDance",
 //	"BiliBili",

@@ -99,7 +99,15 @@ func (sm *StateMachine) BindTask(createFn func(session types.CDNFileSession, id 
 	}
 }
 
+func (sm *StateMachine) CurrentSongId() string {
+	return sm.currentSongId
+}
+
 func (sm *StateMachine) Reset(newSongId string) bool {
+	if sm.currentSongId == newSongId {
+		return false
+	}
+
 	sm.currentSongId = newSongId
 	if sm.session == nil {
 		return true

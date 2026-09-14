@@ -4,14 +4,17 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/config"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/button"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/cache_window"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/input"
+	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/config_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/gui/widgets/interactive_widgets"
 	"github.com/wzhqwq/VRCDancePreloader/internal/i18n"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/host"
+	"github.com/wzhqwq/VRCDancePreloader/internal/services/preloader"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
@@ -116,9 +119,56 @@ func createExecutableSettingsContent(cfg *config.Manager) fyne.CanvasObject {
 }
 
 func createPreloadSettingsContent(cfg *config.Manager) fyne.CanvasObject {
+	roomOptions := []input.NamedOption[string]{
+		{"PyPyDance", "PyPyDance"},
+		{"WannaDance", "WannaDance"},
+		{"DuDuFitDance", "DuDuFitDance"},
+	}
+	roomOptionsWithFallback := []input.NamedOption[string]{
+		{"PyPyDance", "PyPyDance"},
+		{"DuDuFitDance", "DuDuFitDance"},
+	}
+
+	immutableCheck := widget.NewCheck(i18n.T("label_rejected_fallback"), nil)
+	immutableCheck.Checked = true
+	immutableCheck.Disable()
+
 	return container.NewVBox(
 		widget.NewLabel(i18n.T("label_preload")),
-		rangedInput(cfg.PreloaderMaxCount(), i18n.T("label_max_preload_count"), 1, 10),
+		rangedInput(cfg.PreloaderMaxCount(), i18n.T("label_max_preload_count"), 0, 10),
+		input.WrapLabel(
+			widgets.NewMultiSelect(roomOptions, cfg.PreloaderEnabledRooms()),
+			i18n.T("label_preload_enabled_rooms"),
+		),
+		input.WrapLabel(
+			widgets.NewMultiSelect(roomOptionsWithFallback, cfg.PreloaderYouTubeFallback()),
+			i18n.T("label_preload_youtube_fallback"),
+		),
+		interactive_widgets.NewAvailableWhen(
+			input.WrapLabel(
+				container.NewVBox(
+					immutableCheck,
+					input.NewCheck(i18n.T("label_throttled_fallback"), cfg.PreloaderThrottledFallback()),
+					input.NewCheck(i18n.T("label_low_speed_fallback"), cfg.PreloaderLowSpeedFallback()),
+					interactive_widgets.NewAvailableWhen(
+						input.NewCheck(i18n.T("label_high_fps_fallback"), cfg.PreloaderHighFramerateFallback()),
+						interactive.NewReadonlyDerivedSetting(
+							cfg.PreloaderYouTubeFallback(),
+							func(rooms []string) bool {
+								return lo.Contains(rooms, preloader.DuDuFitDanceRoomName)
+							},
+						),
+					),
+				),
+				i18n.T("label_when_fallback"),
+			),
+			interactive.NewReadonlyDerivedSetting(
+				cfg.PreloaderYouTubeFallback(),
+				func(rooms []string) bool {
+					return len(rooms) > 0
+				},
+			),
+		),
 	)
 }
 

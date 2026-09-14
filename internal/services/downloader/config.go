@@ -1,17 +1,15 @@
 package downloader
 
+import "fmt"
+
 type Config struct {
 	MaxDownload int `yaml:"max-parallel"`
-
-	// pypydance, wannadance, dudu-fitdance
-	UseYoutubeFallback []string `yaml:"use-youtube-fallback"`
-
-	ThrottledFallback     bool `yaml:"throttled-fallback"`
-	LowSpeedFallback      bool `yaml:"low-speed-fallback"`
-	HighFramerateFallback bool `yaml:"high-framerate-fallback"`
 }
 
 func (c Config) Validate(_ string) error {
+	if c.MaxDownload < 0 {
+		return fmt.Errorf("invalid count: %d", c.MaxDownload)
+	}
 	return nil
 }
 

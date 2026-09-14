@@ -109,7 +109,22 @@
   Default: "via yt-dlp"
 
 - Key: label_max_preload_count
-  Default: "Maximal preload count (including current playing)"
+  Default: "Maximal preload count"
+- Key: label_preload_enabled_rooms
+  Default: "Enable preloading in rooms below"
+- Key: label_preload_youtube_fallback
+  Default: "Allow switch to YouTube in rooms below"
+- Key: label_when_fallback
+  Default: "Switch to YouTube when"
+- Key: label_rejected_fallback
+  Default: "Official server rejects our request"
+- Key: label_throttled_fallback
+  Default: "Official server throttles the requests"
+- Key: label_low_speed_fallback
+  Default: "Low download speed on official server"
+- Key: label_high_fps_fallback
+  Default: "The framerate of the video is more than 30"
+
 - Key: label_allowed_resources
   Default: "Resources allowed to be fetched"
 - Key: option_videos

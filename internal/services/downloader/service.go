@@ -10,17 +10,6 @@ import (
 
 var logger = utils.NewLogger("Downloader")
 
-var fallbackNames []string
-var fallbackNamesEm = utils.NewEventManager[[]string]()
-
-func SubscribeFallbackNames() *utils.EventSubscriber[[]string] {
-	return fallbackNamesEm.SubscribeEvent()
-}
-
-func FallbackNames() []string {
-	return fallbackNames
-}
-
 type Service struct {
 	service.BaseService[Config]
 
@@ -33,8 +22,6 @@ func New(cfg Config) *Service {
 
 		managers: make(map[string]*downloadManager),
 	}
-
-	fallbackNames = cfg.UseYoutubeFallback
 
 	s.SetControl("Downloader", s)
 

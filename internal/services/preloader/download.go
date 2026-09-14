@@ -2,13 +2,17 @@ package preloader
 
 import (
 	"context"
+	"strings"
 
+	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/downloader"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/downloader/task"
 	"github.com/wzhqwq/VRCDancePreloader/internal/song"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties"
+	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/internal_id"
 )
 
 func (s *Service) cacheBinder() (types.CDNFileSession, error) {
@@ -32,10 +36,70 @@ func (s *Service) taskBinder(songSession types.CDNFileSession, id string) *downl
 	)
 }
 
-func (s *Service) makeSureDownloading(item *song.StatefulSong) {
-	sm := item.StateMachine()
+func (s *Service) youtubeFallbackAvailable(id string) bool {
+	if strings.HasPrefix(id, internal_id.PyPyInternalPrefix) {
+		return lo.Contains(s.Cfg.UseYoutubeFallback, PyPyDanceRoomName)
+	}
+	if strings.HasPrefix(id, internal_id.DuDuInternalPrefix) {
+		return lo.Contains(s.Cfg.UseYoutubeFallback, DuDuFitDanceRoomName)
+	}
+	return false
+}
+
+func (s *Service) duduFramerateFallbackAvailable() bool {
+	return lo.Contains(s.Cfg.UseYoutubeFallback, DuDuFitDanceRoomName) && s.Cfg.HighFramerateFallback
+}
+
+func (s *Service) getDuDuOriginalInfo(id string, stopCh <-chan struct{}) (api.DuDuOriginalVideoInfo, bool) {
+	handle := s.duduOriginalVideoInfoProvider.Info(id)
+	defer handle.Release()
+
+	snap := handle.Snapshot()
+
+	ch := handle.Subscribe()
+	defer ch.Close()
+
+	for {
+		if snap.Status.Valid() {
+			break
+		}
+
+		select {
+		case <-stopCh:
+			return api.DuDuOriginalVideoInfo{}, false
+		case snap = <-ch.Channel:
+		}
+	}
+
+	return snap.Data, true
+}
+
+func (s *Service) bind(sm *song.StateMachine) {
 	if sm.BindCache(s.cacheBinder) {
 		sm.BindTask(s.taskBinder)
+	}
+}
+
+func (s *Service) makeSureDownloading(item *song.StatefulSong) {
+	sm := item.StateMachine()
+	s.bind(sm)
+
+	currentId := sm.CurrentSongId()
+
+	if s.youtubeFallbackAvailable(currentId) {
+		if strings.HasPrefix(currentId, internal_id.DuDuInternalPrefix) && s.duduFramerateFallbackAvailable() {
+			s.Go(func(stopCh <-chan struct{}) {
+				if info, ok := s.getDuDuOriginalInfo(currentId, stopCh); ok && info.Framerate > 40 {
+					s.L().InfoLn("The framerate of", currentId, "is", info.Framerate, ", which is too high")
+					if ytId, ok := internal_id.CheckYoutubeURL(info.OriginalURL); ok {
+						s.L().InfoLn("Use YouTube fallback", ytId)
+						if sm.Reset(internal_id.YtInternalPrefix + ytId) {
+							s.bind(sm)
+						}
+					}
+				}
+			})
+		}
 	}
 }
 

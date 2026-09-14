@@ -109,7 +109,22 @@
   Default: "通过yt-dlp"
 
 - Key: label_max_preload_count
-  Default: "预加载最大数量 (包括当前播放视频)"
+  Default: "预加载最大数量"
+- Key: label_preload_enabled_rooms
+  Default: "在以下房间中启用预加载"
+- Key: label_preload_youtube_fallback
+  Default: "在以下房间中允许切换YouTube下载"
+- Key: label_when_fallback
+  Default: "以下情况时切换从YouTube下载视频"
+- Key: label_rejected_fallback
+  Default: "官方服务器拒绝下载时"
+- Key: label_throttled_fallback
+  Default: "官方服务器限流时"
+- Key: label_low_speed_fallback
+  Default: "官方下载慢时"
+- Key: label_high_fps_fallback
+  Default: "官方视频帧率高于30帧时"
+
 - Key: label_allowed_resources
   Default: "允许获取的资源"
 - Key: option_videos

@@ -100,6 +100,9 @@ func (p *BaseProvider) ResolvedVideo(id string) *interactive.RemoteHandle[*types
 func (p *BaseProvider) Close() {
 	close(p.stopCh)
 	p.wg.Wait()
+	p.infoManager.Close()
+	p.thumbnailManager.Close()
+	p.resolvedVideoManager.Close()
 }
 
 type resourceGetters interface {

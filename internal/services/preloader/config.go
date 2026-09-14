@@ -9,6 +9,13 @@ const DuDuFitDanceRoomName = "DuDuFitDance"
 type Config struct {
 	MaxPreload   int      `yaml:"max-preload"`
 	EnabledRooms []string `yaml:"enabled-rooms"`
+
+	// PyPyDance, DuDuFitDance
+	UseYoutubeFallback []string `yaml:"use-youtube-fallback"`
+
+	ThrottledFallback     bool `yaml:"throttled-fallback"`
+	LowSpeedFallback      bool `yaml:"low-speed-fallback"`
+	HighFramerateFallback bool `yaml:"high-framerate-fallback"`
 }
 
 func (c Config) Validate(field string) error {
@@ -19,6 +26,9 @@ func (c Config) Validate(field string) error {
 		if err := validateCount(c.MaxPreload); err != nil {
 			return err
 		}
+		if err := validateRoomsWithYouTubeFallback(c.UseYoutubeFallback); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -27,6 +37,8 @@ func (c Config) Validate(field string) error {
 		return validateRooms(c.EnabledRooms)
 	case "max-preload-count":
 		return validateCount(c.MaxPreload)
+	case "use-youtube-fallback":
+		return validateRoomsWithYouTubeFallback(c.UseYoutubeFallback)
 	}
 
 	return nil
@@ -42,6 +54,15 @@ func DefaultConfig() Config {
 func validateRooms(rooms []string) error {
 	for _, room := range rooms {
 		if room != PyPyDanceRoomName && room != WannaDanceRoomName && room != DuDuFitDanceRoomName {
+			return fmt.Errorf("invalid room: %s", room)
+		}
+	}
+	return nil
+}
+
+func validateRoomsWithYouTubeFallback(rooms []string) error {
+	for _, room := range rooms {
+		if room != PyPyDanceRoomName && room != DuDuFitDanceRoomName {
 			return fmt.Errorf("invalid room: %s", room)
 		}
 	}

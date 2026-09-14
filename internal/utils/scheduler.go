@@ -9,6 +9,7 @@ import (
 var pypyScheduler = NewScheduler(5*time.Second, time.Minute, time.Minute*3)
 var videoScheduler = NewScheduler(3*time.Second, time.Minute, time.Minute*3)
 var thumbnailScheduler = NewScheduler(500*time.Millisecond, 10*time.Second, time.Minute)
+var duduAssetScheduler = NewScheduler(3*time.Second, time.Minute, time.Minute*3)
 
 func PyPyVideoScheduler() *Scheduler {
 	return pypyScheduler
@@ -18,6 +19,9 @@ func SharedVideoScheduler() *Scheduler {
 }
 func SharedThumbnailScheduler() *Scheduler {
 	return thumbnailScheduler
+}
+func DuDuAssetScheduler() *Scheduler {
+	return duduAssetScheduler
 }
 
 func NewBasicScheduler() *Scheduler {

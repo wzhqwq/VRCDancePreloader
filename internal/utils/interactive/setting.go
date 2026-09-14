@@ -129,37 +129,55 @@ func (c *SettingCache[C]) NewStringListSetting(
 	return c.stringListCache.NewSetting(field, get, set)
 }
 
-type derivedSetting[In any, Out any] struct {
+type readonlyDerivedSetting[In any, Out any] struct {
 	get func(In) Out
-	set func(Out) In
 
 	s StatefulSetting[In]
 }
 
-func (d *derivedSetting[In, Out]) SubscribeWhether(whether func(Out) bool) *utils.EventSubscriber[bool] {
+func NewReadonlyDerivedSetting[In any, Out any](s StatefulSetting[In], get func(In) Out) StatefulSetting[Out] {
+	return &readonlyDerivedSetting[In, Out]{
+		get: get,
+		s:   s,
+	}
+}
+
+func (d *readonlyDerivedSetting[In, Out]) SubscribeWhether(whether func(Out) bool) *utils.EventSubscriber[bool] {
 	return d.s.SubscribeWhether(func(in In) bool {
 		return whether(d.get(in))
 	})
 }
 
-func (d *derivedSetting[In, Out]) Get() Out {
+func (d *readonlyDerivedSetting[In, Out]) Get() Out {
 	return d.get(d.s.Get())
+}
+
+func (d *readonlyDerivedSetting[In, Out]) Save(_ Out) error {
+	panic("you are saving a readonly setting")
+}
+
+func (d *readonlyDerivedSetting[In, Out]) Subscribe() *utils.EventSubscriber[Out] {
+	return utils.PipeSubEvent(d.s.Subscribe(), func(in In) (Out, bool) {
+		return d.get(in), true
+	})
+}
+
+type derivedSetting[In any, Out any] struct {
+	readonlyDerivedSetting[In, Out]
+
+	set func(Out) In
 }
 
 func (d *derivedSetting[In, Out]) Save(t Out) error {
 	return d.s.Save(d.set(t))
 }
 
-func (d *derivedSetting[In, Out]) Subscribe() *utils.EventSubscriber[Out] {
-	return utils.PipeSubEvent(d.s.Subscribe(), func(in In) (Out, bool) {
-		return d.get(in), true
-	})
-}
-
 func NewDerivedSetting[In any, Out any](s StatefulSetting[In], get func(In) Out, set func(Out) In) StatefulSetting[Out] {
 	return &derivedSetting[In, Out]{
-		get: get,
+		readonlyDerivedSetting: readonlyDerivedSetting[In, Out]{
+			get: get,
+			s:   s,
+		},
 		set: set,
-		s:   s,
 	}
 }
