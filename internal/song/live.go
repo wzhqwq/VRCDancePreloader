@@ -19,6 +19,21 @@ type LiveFullInfo struct {
 	Error string `json:"error"`
 }
 
+var downloadStatusValues = []string{
+	"initial",
+	"pending",
+	"cooling_down",
+	"resolving",
+	"requesting",
+	"downloading",
+	"downloaded",
+	"failed",
+	"removed",
+	"not_available",
+	"disabled",
+	"refused",
+}
+
 func (ps *StatefulSong) LiveFullInfo() LiveFullInfo {
 	basic := ps.GetInfo()
 	var err string
@@ -38,7 +53,7 @@ func (ps *StatefulSong) LiveFullInfo() LiveFullInfo {
 		Group:  basic.Group,
 
 		PlayStatus:     string(ps.sm.PlayStatus),
-		DownloadStatus: string(ps.sm.DownloadStatus),
+		DownloadStatus: downloadStatusValues[ps.sm.DownloadStatus],
 
 		Duration:   int(ps.info.Duration),
 		TimePassed: max(0, int(ps.TimePassed.Milliseconds())),
@@ -65,7 +80,7 @@ func (ps *StatefulSong) LiveStatusChange() LiveStatusChange {
 	return LiveStatusChange{
 		ID: ps.ID,
 
-		DownloadStatus: string(ps.sm.DownloadStatus),
+		DownloadStatus: downloadStatusValues[ps.sm.DownloadStatus],
 
 		Error: err,
 	}
