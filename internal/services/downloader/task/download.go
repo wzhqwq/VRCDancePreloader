@@ -18,6 +18,12 @@ var ErrCanceled = errors.New("task canceled")
 var ErrRestarted = errors.New("task restarted")
 var ErrConnectionTimeoutClosed = errors.New("connection timed out")
 
+// minBodyRequestInterval is the minimum interval between two body requests of
+// the same task. It keeps a restart loop (for example a connection that is
+// closed right after the response headers) from re-issuing requests at full
+// speed.
+const minBodyRequestInterval = time.Millisecond * 100
+
 // unwrapError restores the cancellation cause of a
 // context.WithCancelCause-based context.
 //
@@ -38,6 +44,28 @@ func unwrapError(err error, ctx context.Context) error {
 		}
 	}
 	return err
+}
+
+// waitBodyRequestInterval paces consecutive body requests of this task and
+// returns early when ctx is done, so that Cancel stays responsive.
+//
+// lastBodyRequest is only ever touched by the download goroutine (Download is
+// serialized by the downloading flag), so it needs no lock.
+func (t *Task) waitBodyRequestInterval(ctx context.Context) error {
+	elapsed := time.Since(t.lastBodyRequest)
+	if elapsed >= minBodyRequestInterval {
+		return nil
+	}
+
+	delay := minBodyRequestInterval - elapsed
+	logger.DebugLn(t.ID, "delays", delay, "before the next body request")
+
+	select {
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	case <-time.After(delay):
+		return nil
+	}
 }
 
 func (t *Task) Write(p []byte) (int, error) {
@@ -62,8 +90,8 @@ func (t *Task) singleDownload(ctx context.Context) error {
 		return err
 	}
 
-	if time.Now().Sub(t.lastBodyRequest) < time.Millisecond*10 {
-		logger.WarnLn("Unexpected short request interval")
+	if err := t.waitBodyRequestInterval(ctx); err != nil {
+		return err
 	}
 	t.lastBodyRequest = time.Now()
 
@@ -109,6 +137,12 @@ func (t *Task) singleDownload(ctx context.Context) error {
 }
 
 func wait(ctx context.Context, until time.Time) error {
+	// Check the context first: an already canceled task must not proceed, even
+	// when the requested deadline is already in the past.
+	if ctx.Err() != nil {
+		return context.Cause(ctx)
+	}
+
 	d := time.Until(until)
 	if d > 0 {
 		select {
@@ -177,15 +211,20 @@ func (t *Task) Download() {
 		return
 	}
 
-	ctx, cancel := context.WithCancelCause(context.Background())
-	defer cancel(nil)
-
-	t.cancelFn = cancel
-
 	t.setState(TaskInitial)
 
+	// Every attempt installs its own cancellation scope, so that a Restart or a
+	// connection timeout only aborts the current attempt instead of poisoning
+	// the task permanently. See the comment on beginAttempt in task.go.
 	for {
+		if t.canceled.Load() {
+			goto canceled
+		}
+
+		ctx, cancel := t.beginAttempt()
 		err := unwrapError(t.singleResolve(ctx), ctx)
+		t.endAttempt(cancel)
+
 		if err == nil {
 			break
 		}
@@ -205,7 +244,14 @@ func (t *Task) Download() {
 	}
 
 	for {
+		if t.canceled.Load() {
+			goto canceled
+		}
+
+		ctx, cancel := t.beginAttempt()
 		err := unwrapError(t.singleDownload(ctx), ctx)
+		t.endAttempt(cancel)
+
 		if err == nil || t.Local.IsComplete() {
 			logger.InfoLn("Downloaded", t.ID)
 			t.markAsDone()
