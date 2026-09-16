@@ -122,7 +122,10 @@ func (p *rwFileRemoteProvider) WaitResolving(ctx context.Context, beforeWait fun
 
 		select {
 		case <-ctx.Done():
-			return 0, ctx.Err()
+			// Return the cause instead of ctx.Err(): the caller distinguishes
+			// cancellation from restart by comparing against ErrCanceled,
+			// ErrRestarted and ErrConnectionTimeoutClosed.
+			return 0, context.Cause(ctx)
 		case snapshot = <-ch.Channel:
 		}
 	}

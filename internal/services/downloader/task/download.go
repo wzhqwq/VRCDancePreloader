@@ -18,9 +18,24 @@ var ErrCanceled = errors.New("task canceled")
 var ErrRestarted = errors.New("task restarted")
 var ErrConnectionTimeoutClosed = errors.New("connection timed out")
 
+// unwrapError restores the cancellation cause of a
+// context.WithCancelCause-based context.
+//
+// ctx.Err() deliberately collapses every cancellation into
+// context.Canceled, which makes the callers' errors.Is(err, ErrCanceled)
+// checks fail: Cancel, Restart and CloseConnection all pass a specific cause.
+// context.Cause(ctx) keeps that reason.
+//
+// When the task context itself is not canceled the cancellation comes from
+// another context (the remote manager cancelling a fetch, the HTTP client
+// being reconfigured, ...). In that case the original error must be preserved
+// instead of being replaced by a nil ctx.Err(), which the resolve loop would
+// mistake for a successful resolution.
 func unwrapError(err error, ctx context.Context) error {
 	if errors.Is(err, context.Canceled) {
-		return ctx.Err()
+		if cause := context.Cause(ctx); cause != nil {
+			return cause
+		}
 	}
 	return err
 }
@@ -98,7 +113,7 @@ func wait(ctx context.Context, until time.Time) error {
 	if d > 0 {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return context.Cause(ctx)
 		case <-time.After(d):
 			return nil
 		}
