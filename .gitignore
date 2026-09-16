@@ -35,4 +35,7 @@ config.yaml
 
 /internal/services/live/web/*
 
+.agent-docs/
+AGENTS.md
+
 !.gitkeep
