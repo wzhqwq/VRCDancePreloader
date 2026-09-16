@@ -15,6 +15,12 @@ type CDNFile interface {
 	Etag() string
 	ReconcileRemoteInfo(info *RemoteHttpResourceInfo)
 
+	// WaitInitialized blocks until the cache file has been initialized with the
+	// resolved remote info, so that GetResource can return a usable reader
+	// instead of reporting a bogus download failure. It returns as soon as ctx
+	// is done.
+	WaitInitialized(ctx context.Context) error
+
 	MarkComplete()
 
 	Logger() utils.LoggerImpl

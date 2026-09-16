@@ -109,6 +109,20 @@ func (m *cdnFileSession) ReconcileRemoteInfo(info *types.RemoteHttpResourceInfo)
 	m.entry.ReconcileRemoteInfo(info)
 }
 
+// WaitInitialized forwards to the underlying entry. Note that the entry
+// reference is released before waiting: Close takes the write side of entryEm,
+// and this call is expected to block.
+func (m *cdnFileSession) WaitInitialized(ctx context.Context) error {
+	m.entryEm.RLock()
+	entry := m.entry
+	m.entryEm.RUnlock()
+
+	if entry == nil {
+		return errors.New("cache entry might be closed")
+	}
+	return entry.WaitInitialized(ctx)
+}
+
 func (m *cdnFileSession) MarkComplete() {
 	m.entryEm.RLock()
 	defer m.entryEm.RUnlock()

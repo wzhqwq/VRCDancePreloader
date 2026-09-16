@@ -2,7 +2,9 @@ package preloader
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/downloader"
@@ -14,6 +16,13 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/internal_id"
 )
+
+// entryInitWaitTimeout bounds how long a video request waits for its cache
+// entry to consume the resolved remote info. The download task normally does
+// that within a few seconds; if it has not happened by then something is wrong,
+// and failing the request is preferable to holding the proxy connection open
+// indefinitely.
+const entryInitWaitTimeout = 30 * time.Second
 
 func (s *Service) cacheBinder() (types.CDNFileSession, error) {
 	return s.cacheSvc.CreateSession("video")
@@ -129,6 +138,19 @@ func (s *Service) getResource(item *song.StatefulSong, ctx context.Context) (typ
 	err = third_parties.GetProviderById(id).ResolvedVideo(id).WaitValid(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	// Having the resolved info available is not enough: the cache entry must
+	// also have consumed it, because entry.GetResource reports a download
+	// failure as long as the file has no total length. Only the download task
+	// calls ReconcileRemoteInfo, so without this wait the request routinely
+	// loses the race and the video is reported as broken.
+	waitCtx, waitCancel := context.WithTimeout(ctx, entryInitWaitTimeout)
+	defer waitCancel()
+
+	err = session.WaitInitialized(waitCtx)
+	if err != nil {
+		return nil, fmt.Errorf("cache entry of %s is not initialized yet: %w", id, err)
 	}
 
 	// finally, return the resource

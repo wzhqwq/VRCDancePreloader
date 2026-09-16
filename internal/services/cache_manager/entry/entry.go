@@ -42,6 +42,76 @@ type BaseCDNEntry struct {
 	etag *Etag
 
 	upgradeFn func()
+
+	// initialized is closed as soon as workingFile became usable, i.e. as soon
+	// as it carries a non-zero total length. That happens either right after
+	// opening an existing cache file with a valid header, or after Init() has
+	// consumed the resolved remote info.
+	//
+	// It exists because "the resolve info is available in the RemoteManager"
+	// and "this cache file has consumed it" are two different moments, and
+	// GetResource in between would report a bogus download failure.
+	//
+	// Guarded by workingFileMutex, and rebuilt on every open generation (see
+	// resetInitializedLocked) so that a stale "ready" can never be observed
+	// after the entry has been closed.
+	initialized chan struct{}
+}
+
+// resetInitializedLocked rebuilds the readiness signal for the current open
+// generation. Caller must hold workingFileMutex.
+func (e *BaseCDNEntry) resetInitializedLocked() {
+	ch := make(chan struct{})
+
+	if e.workingFile != nil && e.workingFile.TotalLen() > 0 {
+		// A cache file that already carries a valid header is usable without
+		// resolving the remote info again.
+		close(ch)
+	}
+
+	e.initialized = ch
+}
+
+// markInitializedLocked closes the readiness signal. It is idempotent and safe
+// to call on an entry that was never opened. Caller must hold workingFileMutex.
+func (e *BaseCDNEntry) markInitializedLocked() {
+	if e.initialized == nil {
+		e.initialized = make(chan struct{})
+	}
+
+	select {
+	case <-e.initialized:
+		// already closed
+	default:
+		close(e.initialized)
+	}
+}
+
+// WaitInitialized blocks until this entry is ready to serve GetResource, i.e.
+// until its working file has a non-zero total length, and returns as soon as
+// ctx is done. Callers must pass a cancellable context.
+func (e *BaseCDNEntry) WaitInitialized(ctx context.Context) error {
+	e.workingFileMutex.Lock()
+
+	if e.workingFile != nil && e.workingFile.TotalLen() > 0 {
+		e.workingFileMutex.Unlock()
+		return nil
+	}
+
+	ch := e.initialized
+	if ch == nil {
+		ch = make(chan struct{})
+		e.initialized = ch
+	}
+
+	e.workingFileMutex.Unlock()
+
+	select {
+	case <-ch:
+		return nil
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
 }
 
 func (e *BaseCDNEntry) Logger() utils.LoggerImpl {
@@ -86,6 +156,10 @@ func (e *BaseCDNEntry) Init(size int64, lastModified time.Time, etag string) err
 		e.etag.Set(etag)
 	}
 
+	// The working file is usable from this point on, so release any waiter that
+	// is blocked in WaitInitialized.
+	e.markInitializedLocked()
+
 	return e.updateMeta()
 }
 
@@ -94,6 +168,9 @@ func (e *BaseCDNEntry) ReconcileRemoteInfo(info *types.RemoteHttpResourceInfo) {
 
 	e.workingFileMutex.RLock()
 	if e.workingFile == nil {
+		// Dropping the info silently would leave the entry permanently
+		// uninitialized, so at least make the condition visible.
+		e.logger.WarnLn("Dropped the resolved info of", e.id, "because the cache entry is closed")
 		return
 	}
 	defer func() {
@@ -155,6 +232,9 @@ func (e *BaseCDNEntry) EnsureOpen() {
 
 	e.workingFile = e.openFileFn()
 	e.syncWithFS()
+
+	// A new open generation invalidates any previous readiness state.
+	e.resetInitializedLocked()
 }
 
 func (e *BaseCDNEntry) Close() error {
@@ -170,6 +250,10 @@ func (e *BaseCDNEntry) Close() error {
 	// From this point on, the file object must not be reused, even if the
 	// underlying Close operation reported a flush or filesystem error.
 	e.workingFile = nil
+
+	// The entry is no longer usable. Rebuild the signal so that a concurrent
+	// WaitInitialized cannot observe the stale "ready" of the closed file.
+	e.resetInitializedLocked()
 
 	return err
 }
