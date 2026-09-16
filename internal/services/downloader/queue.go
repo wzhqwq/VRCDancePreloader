@@ -63,7 +63,7 @@ func (dm *downloadManager) CanDownload(priority int) bool {
 
 func (dm *downloadManager) allDownloadingEta() []int64 {
 	return lo.FilterMap(dm.queue, func(id string, _ int) (int64, bool) {
-		if t, ok := dm.tasks[id]; ok && t.Eta != nil {
+		if t, ok := dm.tasks[id]; ok {
 			eta, valid := t.Eta.QueryEta()
 			if valid {
 				return eta.Unix(), true

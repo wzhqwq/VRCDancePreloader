@@ -87,10 +87,6 @@ func (s *Service) Download(id string, remoteFn RemoteProviderFn, localFn LocalPr
 	return t
 }
 
-func (s *Service) GetScheduler(id string) *utils.Scheduler {
-	return s.findManager(id).scheduler
-}
-
 func (s *Service) UpdateRequestEta(id string, eta time.Time, duration time.Duration) {
 	s.findManager(id).UpdateRequestEta(id, eta, duration)
 }

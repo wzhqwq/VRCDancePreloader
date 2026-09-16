@@ -13,8 +13,6 @@ type traffic struct {
 
 	manager *downloadManager
 
-	scheduledTime time.Time
-
 	PriorityCh chan int
 	CancelCh   chan struct{}
 }
@@ -61,30 +59,6 @@ func (p *traffic) WaitPending(beforeWait func(eta time.Time)) error {
 			// continue checking
 		}
 	}
-}
-
-func (p *traffic) WaitScheduled(beforeWait func()) error {
-	delay := p.manager.scheduler.Reserve()
-	if delay > 0 {
-		beforeWait()
-
-		p.scheduledTime = time.Now().Add(delay)
-		defer func() {
-			p.scheduledTime = time.Time{}
-		}()
-
-		select {
-		case <-p.CancelCh:
-			return task.ErrCanceled
-		case <-time.After(delay):
-		}
-	}
-
-	return nil
-}
-
-func (p *traffic) ScheduledTime() time.Time {
-	return p.scheduledTime
 }
 
 func (p *traffic) sendPriority(priority int) {

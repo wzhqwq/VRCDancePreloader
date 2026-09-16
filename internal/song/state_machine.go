@@ -177,9 +177,6 @@ func (sm *StateMachine) StartDownloadLoop() {
 						return
 					case task.TaskPending:
 						sm.SwitchDownloadStatus(Pending)
-					case task.TaskWaitScheduled:
-						sm.cooldownUntil = t.Traffic.ScheduledTime()
-						sm.SwitchDownloadStatus(CoolingDown)
 					case task.TaskResolving:
 						sm.cooldownUntil = t.ResolverStatus.CooldownUntil
 						if sm.cooldownUntil.IsZero() {

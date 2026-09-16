@@ -23,7 +23,6 @@ type TaskState int
 const (
 	TaskInitial = iota
 	TaskPending
-	TaskWaitScheduled
 	TaskResolving
 	TaskResolvingFailed
 	TaskRequested
@@ -71,6 +70,8 @@ func NewTask(id string, remote RemoteProvider, local LocalProvider) *Task {
 		Local:   local,
 
 		em: utils.NewEventManager[TaskChangeType](),
+
+		Eta: newEtaCalculator(0),
 	}
 }
 
@@ -83,12 +84,14 @@ func ConstructTask(id string, traffic TrafficControl, remote RemoteProvider, loc
 		Local:   local,
 
 		em: utils.NewEventManager[TaskChangeType](),
+
+		Eta: newEtaCalculator(0),
 	}
 }
 
 func (t *Task) setState(state TaskState) {
 	t.State = state
-	if state == TaskInitial || state == TaskCompleted || state == TaskWaitScheduled {
+	if state == TaskInitial || state == TaskCompleted {
 		t.Error = nil
 	}
 	t.em.NotifySubscribers(State)
@@ -182,6 +185,13 @@ func (t *Task) CloseConnection() {
 
 // ETA
 
+// resetEta restarts the measurement window for the current attempt.
+//
+// Eta is allocated by the constructors so that it is never nil (Passed() used
+// to panic when a resolving task was throttled before the first reset). The
+// calculator itself is replaced rather than mutated in place: Eta is read from
+// other goroutines (downloadManager.allDownloadingEta, restartIfNeeded), and a
+// fresh value keeps those readers from observing a half-reset window.
 func (t *Task) resetEta() {
 	t.Eta = newEtaCalculator(t.TotalSize - t.DownloadedSize)
 }
@@ -193,16 +203,10 @@ func (t *Task) addBytes(size int64) {
 }
 
 func (t *Task) Speed() float64 {
-	if t.Eta == nil {
-		return 0
-	}
 	return t.Eta.QuerySpeed()
 }
 
 func (t *Task) RemainTime() time.Duration {
-	if t.Eta == nil {
-		return -1
-	}
 	return t.Eta.QueryRemainTime()
 }
 

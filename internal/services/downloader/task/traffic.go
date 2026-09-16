@@ -11,8 +11,6 @@ const hangingConnectionTimeout = time.Second * 30
 
 type TrafficControl interface {
 	WaitPending(beforeWait func(eta time.Time)) error
-	WaitScheduled(beforeWait func()) error
-	ScheduledTime() time.Time
 	Cancel()
 }
 
@@ -31,17 +29,6 @@ func (n *nopTrafficControl) WaitPending(_ func(eta time.Time)) error {
 		return ErrCanceled
 	}
 	return nil
-}
-
-func (n *nopTrafficControl) WaitScheduled(_ func()) error {
-	if n.canceled {
-		return ErrCanceled
-	}
-	return nil
-}
-
-func (n *nopTrafficControl) ScheduledTime() time.Time {
-	return time.Time{}
 }
 
 func (t *Task) waitPending(connected bool) error {
@@ -77,25 +64,6 @@ func (t *Task) waitPending(connected bool) error {
 				})
 			}
 		}
-	})
-	if err != nil {
-		return err
-	}
-
-	if waited {
-		t.setState(lastState)
-	}
-
-	return nil
-}
-
-func (t *Task) waitSchedule() error {
-	waited := false
-	lastState := t.State
-
-	err := t.Traffic.WaitScheduled(func() {
-		waited = true
-		t.setState(TaskWaitScheduled)
 	})
 	if err != nil {
 		return err
