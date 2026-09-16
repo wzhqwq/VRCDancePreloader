@@ -102,7 +102,8 @@ func (dm *downloadManager) GetQueueSnapshot() []*ManagedTask {
 	dm.Lock()
 	defer dm.Unlock()
 
-	return lo.Map(dm.queue, func(id string, _ int) *ManagedTask {
-		return dm.tasks[id]
+	return lo.FilterMap(dm.queue, func(id string, _ int) (*ManagedTask, bool) {
+		t, ok := dm.tasks[id]
+		return t, ok
 	})
 }
