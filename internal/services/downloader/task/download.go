@@ -232,6 +232,10 @@ func (t *Task) Download() {
 		if errors.Is(err, ErrCanceled) {
 			goto canceled
 		}
+		if errors.Is(err, interactive.ErrUnrecoverable) {
+			t.setError(err)
+			return
+		}
 		logger.ErrorLn("Failed to resolve download task", t.ID, err.Error())
 	}
 
