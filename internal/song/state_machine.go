@@ -168,6 +168,7 @@ func (sm *StateMachine) StartDownloadLoop() {
 
 					switch t.State {
 					case task.TaskInitial:
+						continue
 					case task.TaskCompleted:
 						sm.ps.TotalSize = t.TotalSize
 						sm.ps.DownloadedSize = t.DownloadedSize
@@ -181,7 +182,11 @@ func (sm *StateMachine) StartDownloadLoop() {
 						sm.SwitchDownloadStatus(CoolingDown)
 					case task.TaskResolving:
 						sm.cooldownUntil = t.ResolverStatus.CooldownUntil
-						sm.SwitchDownloadStatus(Resolving)
+						if sm.cooldownUntil.IsZero() {
+							sm.SwitchDownloadStatus(Resolving)
+						} else {
+							sm.SwitchDownloadStatus(CoolingDown)
+						}
 					case task.TaskResolvingFailed:
 						sm.ps.PreloadError = t.ResolverStatus.Err
 						sm.retryUntil = t.ResolverStatus.RetryAfter
