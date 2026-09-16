@@ -37,8 +37,6 @@ type Task struct {
 	downloading atomic.Bool
 	canceled    atomic.Bool
 
-	connected bool
-
 	ID string
 
 	TotalSize      int64
@@ -54,6 +52,8 @@ type Task struct {
 	Remote  RemoteProvider
 	Local   LocalProvider
 	em      *utils.EventManager[TaskChangeType]
+
+	lastBodyRequest time.Time
 
 	cancelFn context.CancelCauseFunc
 	cancelMu sync.Mutex
@@ -107,6 +107,16 @@ func (t *Task) Restart() {
 
 	if t.cancelFn != nil {
 		t.cancelFn(ErrRestarted)
+	}
+}
+
+func (t *Task) CloseConnection() {
+	if t.canceled.Load() {
+		return
+	}
+
+	if t.cancelFn != nil {
+		t.cancelFn(ErrConnectionTimeoutClosed)
 	}
 }
 

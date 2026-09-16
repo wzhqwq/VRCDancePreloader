@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 )
 
@@ -43,8 +44,11 @@ func (n *nopTrafficControl) ScheduledTime() time.Time {
 	return time.Time{}
 }
 
-func (t *Task) waitPending() error {
+func (t *Task) waitPending(connected bool) error {
 	// scooped timeout
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), hangingConnectionTimeout)
 	defer cancel()
 
@@ -57,18 +61,20 @@ func (t *Task) waitPending() error {
 
 		t.resetEta()
 
-		if t.connected {
+		if connected {
 			if !eta.IsZero() && eta.Sub(time.Now()) > hangingConnectionTimeout {
 				// close download stream if it won't resume in 30s
-				t.Restart()
+				logger.InfoLn(t.ID, "is closed because it won't resume in 30s")
+				t.CloseConnection()
 			} else {
 				// close download stream after 30s
-				go func() {
+				wg.Go(func() {
 					<-ctx.Done()
 					if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-						t.Restart()
+						logger.InfoLn(t.ID, "is closed because of 30s timeout")
+						t.CloseConnection()
 					}
-				}()
+				})
 			}
 		}
 	})

@@ -16,6 +16,7 @@ var logger = utils.NewLogger("Download Task")
 
 var ErrCanceled = errors.New("task canceled")
 var ErrRestarted = errors.New("task restarted")
+var ErrConnectionTimeoutClosed = errors.New("connection timed out")
 
 func unwrapError(err error, ctx context.Context) error {
 	if errors.Is(err, context.Canceled) {
@@ -25,7 +26,7 @@ func unwrapError(err error, ctx context.Context) error {
 }
 
 func (t *Task) Write(p []byte) (int, error) {
-	if err := t.waitPending(); err != nil {
+	if err := t.waitPending(true); err != nil {
 		return 0, err
 	}
 
@@ -42,10 +43,14 @@ func (t *Task) progressiveDownload(body io.ReadCloser) error {
 }
 
 func (t *Task) singleDownload(ctx context.Context) error {
-	t.connected = true
-	defer func() {
-		t.connected = false
-	}()
+	if err := t.waitPending(false); err != nil {
+		return err
+	}
+
+	if time.Now().Sub(t.lastBodyRequest) < time.Millisecond*10 {
+		logger.WarnLn("Unexpected short request interval")
+	}
+	t.lastBodyRequest = time.Now()
 
 	t.setState(TaskRequested)
 	offset, err := t.Local.CurrentCursor()
@@ -109,6 +114,9 @@ func (t *Task) singleResolve(ctx context.Context) error {
 	if err := wait(ctx, t.ResolverStatus.CooldownUntil); err != nil {
 		return err
 	}
+	if err := t.waitPending(false); err != nil {
+		return err
+	}
 
 	totalLen, err := t.Remote.WaitResolving(ctx, func(status interactive.RemoteStatus) {
 		t.ResolverStatus = status
@@ -139,8 +147,7 @@ func (t *Task) Download() {
 		t.downloading.Store(false)
 	}()
 
-	err := t.Local.Open()
-	if err != nil {
+	if err := t.Local.Open(); err != nil {
 		t.setError(err)
 		logger.WarnLn(t.ID, "is not downloaded because", err.Error())
 		return
@@ -160,30 +167,18 @@ func (t *Task) Download() {
 
 	t.cancelFn = cancel
 
-	if errors.Is(t.waitPending(), ErrCanceled) {
-		goto canceled
-	}
-
-	if errors.Is(t.waitSchedule(), ErrCanceled) {
-		goto canceled
-	}
-
 	t.setState(TaskInitial)
 
-	if errors.Is(t.waitPending(), ErrCanceled) {
-		goto canceled
-	}
-
 	for {
-		err = unwrapError(t.singleResolve(ctx), ctx)
-		if err != nil {
-			if errors.Is(err, ErrCanceled) {
-				goto canceled
-			}
-			logger.ErrorLn("Failed to resolve download task", t.ID, err.Error())
-			continue
+		err := unwrapError(t.singleResolve(ctx), ctx)
+		if err == nil {
+			break
 		}
-		break
+
+		if errors.Is(err, ErrCanceled) {
+			goto canceled
+		}
+		logger.ErrorLn("Failed to resolve download task", t.ID, err.Error())
 	}
 
 	// Check again
@@ -195,11 +190,7 @@ func (t *Task) Download() {
 	}
 
 	for {
-		if errors.Is(t.waitPending(), ErrCanceled) {
-			goto canceled
-		}
-
-		err = unwrapError(t.singleDownload(ctx), ctx)
+		err := unwrapError(t.singleDownload(ctx), ctx)
 		if err == nil || t.Local.IsComplete() {
 			logger.InfoLn("Downloaded", t.ID)
 			t.markAsDone()
@@ -213,6 +204,7 @@ func (t *Task) Download() {
 		if errors.Is(err, io.EOF) ||
 			errors.Is(err, fragmented.ErrEndOfFragment) ||
 			errors.Is(err, ErrRestarted) ||
+			errors.Is(err, ErrConnectionTimeoutClosed) ||
 			errors.Is(err, requesting.ErrClientChanged) {
 
 			logger.InfoLn("Restarted", t.ID, "reason:", err.Error())
