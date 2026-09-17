@@ -305,7 +305,7 @@ func (r *downloadableBinaryRenderer) updateProgress() {
 	if task == nil {
 		return
 	}
-	r.bar.SetProgress(task.TotalSize, task.DownloadedSize, task.Speed(), task.RemainTime())
+	r.bar.SetProgress(task.TotalSize(), task.DownloadedSize(), task.Speed(), task.RemainTime())
 }
 
 func (r *downloadableBinaryRenderer) updateVersion() {

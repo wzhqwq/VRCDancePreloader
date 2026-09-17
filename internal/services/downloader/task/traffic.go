@@ -78,7 +78,7 @@ func (t *Task) waitPending(connected bool) error {
 	defer cancel()
 
 	waited := false
-	lastState := t.State
+	lastState := t.State()
 
 	err := t.Traffic.WaitPending(func(eta time.Time) {
 		waited = true

@@ -125,8 +125,8 @@ func TestTaskCancelDuringAttempt(t *testing.T) {
 	task.Cancel()
 	waitClosed(t, done, "Download to return after Cancel")
 
-	if !errors.Is(task.Error, ErrCanceled) {
-		t.Fatalf("task error = %v, want ErrCanceled", task.Error)
+	if !errors.Is(task.Err(), ErrCanceled) {
+		t.Fatalf("task error = %v, want ErrCanceled", task.Err())
 	}
 
 	_, stream := remote.counts()
@@ -179,11 +179,8 @@ func TestTaskAlreadyDownloaded(t *testing.T) {
 	if resolve != 0 || stream != 0 {
 		t.Fatalf("complete task issued requests: resolve=%d stream=%d", resolve, stream)
 	}
-	if task.State != TaskCompleted {
-		t.Fatalf("state = %v, want TaskCompleted", task.State)
-	}
-	if task.Error != nil {
-		t.Fatalf("error = %v, want nil", task.Error)
+	if state, err := task.StateAndError(); state != TaskCompleted || err != nil {
+		t.Fatalf("state = %v, error = %v, want TaskCompleted and no error", state, err)
 	}
 }
 
@@ -217,8 +214,8 @@ func TestStandaloneTaskHasNoQueueControl(t *testing.T) {
 	// It goes straight to the network instead of waiting for a slot.
 	waitFor(t, remote.entered, "the standalone task to start downloading")
 
-	if task.TotalSize != 1024 {
-		t.Fatalf("TotalSize = %d, want the size reported by the resolver", task.TotalSize)
+	if task.TotalSize() != 1024 {
+		t.Fatalf("TotalSize = %d, want the size reported by the resolver", task.TotalSize())
 	}
 
 	// The progress sink is wired to the local provider the caller supplied.
@@ -232,8 +229,8 @@ func TestStandaloneTaskHasNoQueueControl(t *testing.T) {
 	task.Cancel()
 	waitClosed(t, done, "the standalone task to return after Cancel")
 
-	if !errors.Is(task.Error, ErrCanceled) {
-		t.Fatalf("task error = %v, want ErrCanceled", task.Error)
+	if !errors.Is(task.Err(), ErrCanceled) {
+		t.Fatalf("task error = %v, want ErrCanceled", task.Err())
 	}
 
 	// The no queue control policy is stateless: it never vetoes, not even after
@@ -269,7 +266,7 @@ func (c *cancelBeforeBodyRequest) NotifyPermit(int, bool) {}
 func (c *cancelBeforeBodyRequest) WaitPending(_ func(time.Time)) error {
 	// TotalSize is filled in by the resolve phase, so this fires on the
 	// body-request gate rather than on the resolving one.
-	if !c.fired && c.task.TotalSize != 0 {
+	if !c.fired && c.task.TotalSize() != 0 {
 		c.fired = true
 		c.cancel()
 	}
@@ -294,8 +291,8 @@ func TestTaskCancelledBeforeFirstBodyRequest(t *testing.T) {
 		t.Fatalf("stream calls = %d, want 0: a task cancelled before its first "+
 			"body request must not issue it", stream)
 	}
-	if !errors.Is(task.Error, ErrCanceled) {
-		t.Fatalf("task error = %v, want ErrCanceled", task.Error)
+	if !errors.Is(task.Err(), ErrCanceled) {
+		t.Fatalf("task error = %v, want ErrCanceled", task.Err())
 	}
 }
 

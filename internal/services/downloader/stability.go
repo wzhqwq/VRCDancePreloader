@@ -17,7 +17,7 @@ func (dm *downloadManager) restartIfNeeded(task *ManagedTask, endMoment time.Tim
 		return
 	}
 
-	passed := task.Eta.Passed()
+	passed := task.Passed()
 	if passed < restartMinInterval {
 		return
 	}
@@ -27,7 +27,7 @@ func (dm *downloadManager) restartIfNeeded(task *ManagedTask, endMoment time.Tim
 		return
 	}
 
-	eta, valid := task.Eta.QueryEta()
+	eta, valid := task.QueryEta()
 	if valid {
 		// will be done in 10 seconds
 		if eta.Sub(time.Now()) < acceptableEta {
@@ -50,7 +50,7 @@ func (dm *downloadManager) UpdateRequestEta(id string, eta time.Time, duration t
 	}
 
 	// The task must be downloading
-	if t.State == task.TaskDownloading || t.State == task.TaskRequested || t.State == task.TaskResolving {
+	if state := t.State(); state == task.TaskDownloading || state == task.TaskRequested || state == task.TaskResolving {
 		dm.restartIfNeeded(t, eta.Add(duration))
 	}
 }

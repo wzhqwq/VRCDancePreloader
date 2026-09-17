@@ -114,7 +114,7 @@ func (t *ManagedTask) Download() {
 	t.Task.Download()
 
 	var throttleErr *utils.ThrottledError
-	if errors.As(t.Error, &throttleErr) {
+	if errors.As(t.Err(), &throttleErr) {
 		t.manager.scheduler.Throttle(throttleErr.RetryAfter)
 	}
 }

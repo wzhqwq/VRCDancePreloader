@@ -131,10 +131,10 @@ func (t *Task) singleDownload(ctx context.Context) error {
 		}
 	}
 
-	if t.TotalSize == 0 {
-		t.TotalSize = stream.Length
+	if t.TotalSize() == 0 {
+		t.setTotalSize(stream.Length)
 	}
-	t.DownloadedSize = t.Local.DownloadedSize()
+	t.setDownloadedSize(t.Local.DownloadedSize())
 	t.resetEta()
 
 	// Notify about the total size and that the request header is done
@@ -165,10 +165,12 @@ func wait(ctx context.Context, until time.Time) error {
 }
 
 func (t *Task) singleResolve(ctx context.Context) error {
-	if err := wait(ctx, t.ResolverStatus.RetryAfter); err != nil {
+	resolver := t.Resolver()
+
+	if err := wait(ctx, resolver.RetryAfter); err != nil {
 		return err
 	}
-	if err := wait(ctx, t.ResolverStatus.CooldownUntil); err != nil {
+	if err := wait(ctx, resolver.CooldownUntil); err != nil {
 		return err
 	}
 	if err := t.waitPending(false); err != nil {
@@ -176,7 +178,7 @@ func (t *Task) singleResolve(ctx context.Context) error {
 	}
 
 	totalLen, err := t.Remote.WaitResolving(ctx, func(status interactive.RemoteStatus) {
-		t.ResolverStatus = status
+		t.setResolverStatus(status)
 		if status.Fetching() {
 			t.setState(TaskResolving)
 		} else {
@@ -187,12 +189,12 @@ func (t *Task) singleResolve(ctx context.Context) error {
 		return err
 	}
 
-	t.TotalSize = totalLen
+	t.setTotalSize(totalLen)
 	return nil
 }
 
 func (t *Task) markAsDone() {
-	t.DownloadedSize = t.TotalSize
+	t.setDownloadedSize(t.TotalSize())
 	t.setState(TaskCompleted)
 }
 
@@ -212,7 +214,7 @@ func (t *Task) Download() {
 	// Check if file is already downloaded
 	if !t.Local.IsForceResolving() && t.Local.IsComplete() {
 		logger.InfoLn("Already downloaded", t.ID)
-		t.TotalSize = t.Local.DownloadedSize()
+		t.setTotalSize(t.Local.DownloadedSize())
 		t.markAsDone()
 		return
 	}
@@ -248,7 +250,7 @@ func (t *Task) Download() {
 	// Check again
 	if t.Local.IsComplete() {
 		logger.InfoLn("Already downloaded", t.ID)
-		t.TotalSize = t.Local.DownloadedSize()
+		t.setTotalSize(t.Local.DownloadedSize())
 		t.markAsDone()
 		return
 	}

@@ -44,7 +44,7 @@ func (dm *downloadManager) UpdatePriorities() {
 
 	dm.queue = lo.Filter(dm.queue, func(id string, _ int) bool {
 		t, ok := dm.tasks[id]
-		return ok && t.State != task.TaskCompleted
+		return ok && t.State() != task.TaskCompleted
 	})
 	dm.queueLogger.InfoLn("tasks:", dm.queue)
 
@@ -81,7 +81,7 @@ func (dm *downloadManager) publishPermitsLocked() {
 func (dm *downloadManager) allDownloadingEta() []int64 {
 	return lo.FilterMap(dm.queue, func(id string, _ int) (int64, bool) {
 		if t, ok := dm.tasks[id]; ok {
-			eta, valid := t.Eta.QueryEta()
+			eta, valid := t.QueryEta()
 			if valid {
 				return eta.Unix(), true
 			}
@@ -98,7 +98,7 @@ func (dm *downloadManager) EstimatedToResume(id string) time.Time {
 	slices.Sort(knownEta)
 
 	inQueue := lo.FilterMap(dm.queue, func(id string, _ int) (string, bool) {
-		if t, ok := dm.tasks[id]; ok && t.State == task.TaskPending {
+		if t, ok := dm.tasks[id]; ok && t.State() == task.TaskPending {
 			return id, true
 		}
 		return "", false

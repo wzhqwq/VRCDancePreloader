@@ -66,13 +66,14 @@ func (d *DownloadableBinary) downloadFile(release *api.BriefRelease) error {
 	for {
 		select {
 		case <-ch.Channel:
-			if d.Task.State == task.TaskCompleted {
+			state, err := d.Task.StateAndError()
+			if state == task.TaskCompleted {
 				return nil
 			}
-			if d.Task.Error != nil {
-				return d.Task.Error
+			if err != nil {
+				return err
 			}
-			if d.Task.TotalSize > 0 && time.Since(lastNotify) > time.Millisecond*500 {
+			if d.Task.TotalSize() > 0 && time.Since(lastNotify) > time.Millisecond*500 {
 				d.em.NotifySubscribers(BinProgress)
 				lastNotify = time.Now()
 			}
