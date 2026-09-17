@@ -189,12 +189,10 @@ func (t *Task) markAsDone() {
 }
 
 func (t *Task) Download() {
-	if !t.downloading.CompareAndSwap(false, true) {
+	if !t.run.tryBegin() {
 		return
 	}
-	defer func() {
-		t.downloading.Store(false)
-	}()
+	defer t.run.end()
 
 	if err := t.Local.Open(); err != nil {
 		t.setError(err)
@@ -215,15 +213,15 @@ func (t *Task) Download() {
 
 	// Every attempt installs its own cancellation scope, so that a Restart or a
 	// connection timeout only aborts the current attempt instead of poisoning
-	// the task permanently. See the comment on beginAttempt in task.go.
+	// the task permanently. See the comment on runControl in run_control.go.
 	for {
-		if t.canceled.Load() {
+		if t.run.cancelled() {
 			goto canceled
 		}
 
-		ctx, cancel := t.beginAttempt()
+		ctx, cancel := t.run.beginAttempt()
 		err := unwrapError(t.singleResolve(ctx), ctx)
-		t.endAttempt(cancel)
+		t.run.endAttempt(cancel)
 
 		if err == nil {
 			break
@@ -248,13 +246,13 @@ func (t *Task) Download() {
 	}
 
 	for {
-		if t.canceled.Load() {
+		if t.run.cancelled() {
 			goto canceled
 		}
 
-		ctx, cancel := t.beginAttempt()
+		ctx, cancel := t.run.beginAttempt()
 		err := unwrapError(t.singleDownload(ctx), ctx)
-		t.endAttempt(cancel)
+		t.run.endAttempt(cancel)
 
 		if err == nil || t.Local.IsComplete() {
 			logger.InfoLn("Downloaded", t.ID)

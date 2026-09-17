@@ -1,10 +1,7 @@
 package task
 
 import (
-	"context"
 	"io"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -33,8 +30,9 @@ const (
 type Task struct {
 	io.Writer
 
-	downloading atomic.Bool
-	canceled    atomic.Bool
+	// run owns the re-entrancy guard, the permanent cancellation flag and the
+	// cancellation scope of the attempt that is currently in flight.
+	run runControl
 
 	ID string
 
@@ -53,12 +51,6 @@ type Task struct {
 	em      *utils.EventManager[TaskChangeType]
 
 	lastBodyRequest time.Time
-
-	// cancelFn cancels the attempt that is currently running. It is replaced by
-	// beginAttempt at the start of every attempt and cleared by endAttempt, so
-	// it must always be accessed under cancelMu.
-	cancelFn context.CancelCauseFunc
-	cancelMu sync.Mutex
 }
 
 func NewTask(id string, remote RemoteProvider, local LocalProvider) *Task {
@@ -109,78 +101,26 @@ func (t *Task) notifyStateChange() {
 // Attempt scoped cancellation.
 //
 // Restart and CloseConnection only abort the attempt that is currently in
-// flight; the download loop is expected to install a fresh context and try
-// again. A single task wide context cannot express that: once it is cancelled
-// it stays cancelled, so every following attempt would fail immediately
-// without performing any work (and the retry loop would spin at full speed).
+// flight, and the download loop installs a fresh context with beginAttempt for
+// the next one. Cancel is different: it is irreversible.
 //
-// Cancel is different: it sets the canceled flag, which permanently terminates
-// the task no matter how many attempts are left.
-
-// beginAttempt installs a fresh cancellation scope for one attempt and returns
-// it together with its cancel function. The caller must pass the returned
-// cancel function to endAttempt.
-//
-// Cancel and beginAttempt are serialised by cancelMu, and beginAttempt
-// re-checks the canceled flag while still holding it. Without that, a Cancel
-// landing between the loop's canceled check and the installation of the new
-// cancel function would find cancelFn pointing at the previous (already
-// finished) attempt, and the fresh attempt would run to completion before the
-// loop noticed the cancellation.
-func (t *Task) beginAttempt() (context.Context, context.CancelCauseFunc) {
-	ctx, cancel := context.WithCancelCause(context.Background())
-
-	t.cancelMu.Lock()
-	t.cancelFn = cancel
-	alreadyCanceled := t.canceled.Load()
-	t.cancelMu.Unlock()
-
-	if alreadyCanceled {
-		cancel(ErrCanceled)
-	}
-
-	return ctx, cancel
-}
-
-// endAttempt releases the scope installed by beginAttempt.
-//
-// The cancel function is cleared first: a Restart or CloseConnection racing
-// with the end of an attempt then observes a nil cancel function and does
-// nothing, which is correct because the attempt it wanted to abort has already
-// finished (and the loop is about to decide what to do next anyway).
-func (t *Task) endAttempt(cancel context.CancelCauseFunc) {
-	t.cancelMu.Lock()
-	t.cancelFn = nil
-	t.cancelMu.Unlock()
-
-	cancel(nil)
-}
-
-// cancelCurrentAttempt aborts the attempt that is currently in flight, if any.
-func (t *Task) cancelCurrentAttempt(cause error) {
-	t.cancelMu.Lock()
-	cancel := t.cancelFn
-	t.cancelMu.Unlock()
-
-	if cancel != nil {
-		cancel(cause)
-	}
-}
+// All of this state lives in Task.run (see run_control.go); the methods below
+// are the task level entry points.
 
 func (t *Task) Restart() {
-	if t.canceled.Load() {
+	if t.run.cancelled() {
 		return
 	}
 
-	t.cancelCurrentAttempt(ErrRestarted)
+	t.run.abortAttempt(ErrRestarted)
 }
 
 func (t *Task) CloseConnection() {
-	if t.canceled.Load() {
+	if t.run.cancelled() {
 		return
 	}
 
-	t.cancelCurrentAttempt(ErrConnectionTimeoutClosed)
+	t.run.abortAttempt(ErrConnectionTimeoutClosed)
 }
 
 // ETA
@@ -211,24 +151,19 @@ func (t *Task) RemainTime() time.Duration {
 }
 
 // Cancel permanently terminates the task. Unlike Restart and CloseConnection
-// it does not only abort the current attempt: the canceled flag prevents any
+// it does not only abort the current attempt: the done phase prevents any
 // further attempt from starting, and beginAttempt also honours it for a scope
 // that is being installed concurrently.
+//
+// Traffic is cancelled after the context, so that the attempt scope stays the
+// authority even if a waiter happens to be released by the traffic control.
+// Both side effects run exactly once, on the call that transitioned the task.
 func (t *Task) Cancel() {
-	t.cancelMu.Lock()
-
-	if !t.canceled.CompareAndSwap(false, true) {
-		t.cancelMu.Unlock()
+	if !t.run.cancelAll() {
 		return
 	}
 
-	cancel := t.cancelFn
-	t.cancelMu.Unlock()
-
 	t.Traffic.Cancel()
-	if cancel != nil {
-		cancel(ErrCanceled)
-	}
 }
 
 // Event
