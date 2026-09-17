@@ -52,6 +52,14 @@ func unwrapError(err error, ctx context.Context) error {
 // lastBodyRequest is only ever touched by the download goroutine (Download is
 // serialized by the downloading flag), so it needs no lock.
 func (t *Task) waitBodyRequestInterval(ctx context.Context) error {
+	// Check the context first, like wait() does: a cancelled task must not issue
+	// another request just because the pacing window has already elapsed. The
+	// no-queue traffic control does not veto on its own, so this is the check
+	// that keeps "cancelled" from turning into "one more request".
+	if ctx.Err() != nil {
+		return context.Cause(ctx)
+	}
+
 	elapsed := time.Since(t.lastBodyRequest)
 	if elapsed >= minBodyRequestInterval {
 		return nil

@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 )
@@ -183,6 +184,118 @@ func TestTaskAlreadyDownloaded(t *testing.T) {
 	}
 	if task.Error != nil {
 		t.Fatalf("error = %v, want nil", task.Error)
+	}
+}
+
+// T10 — the standalone path must keep working: NewTask + nopTrafficControl +
+// NewLocalFileProvider is the "advanced download without queue control" that
+// other modules (local_executables, for yt-dlp and deno) reuse. This test is the
+// guard for that design intent: it fails if the standalone path is dropped or if
+// a queue gets wired into NewTask.
+func TestStandaloneTaskHasNoQueueControl(t *testing.T) {
+	remote := newFakeRemote()
+	remote.blockStream = make(chan struct{})
+
+	file, err := os.CreateTemp(t.TempDir(), "standalone")
+	if err != nil {
+		t.Fatalf("create temp file: %v", err)
+	}
+	defer file.Close()
+
+	task := NewTask("standalone", remote, NewLocalFileProvider(file))
+
+	// A permit published by nobody in particular must be ignored: there is no
+	// queue, so the task is always allowed.
+	task.Traffic.NotifyPermit(7, false)
+
+	if err := task.Traffic.WaitPending(nil); err != nil {
+		t.Fatalf("WaitPending = %v, want nil: a standalone task must never wait for a queue", err)
+	}
+
+	done := startDownload(t, task)
+
+	// It goes straight to the network instead of waiting for a slot.
+	waitFor(t, remote.entered, "the standalone task to start downloading")
+
+	if task.TotalSize != 1024 {
+		t.Fatalf("TotalSize = %d, want the size reported by the resolver", task.TotalSize)
+	}
+
+	// The progress sink is wired to the local provider the caller supplied.
+	if _, err := task.Local.Write([]byte("0123456789")); err != nil {
+		t.Fatalf("local write: %v", err)
+	}
+	if got := task.Local.DownloadedSize(); got != 10 {
+		t.Fatalf("DownloadedSize = %d, want 10", got)
+	}
+
+	task.Cancel()
+	waitClosed(t, done, "the standalone task to return after Cancel")
+
+	if !errors.Is(task.Error, ErrCanceled) {
+		t.Fatalf("task error = %v, want ErrCanceled", task.Error)
+	}
+
+	// The no queue control policy is stateless: it never vetoes, not even after
+	// Cancel. That is not a weakening of the cancellation guarantee — the
+	// assertions above are the guarantee (the loop returned, and it reported
+	// ErrCanceled, which came from the attempt scope). What this pins is that
+	// there is no second, task-local cancellation state that could disagree
+	// with the context.
+	if err := task.Traffic.WaitPending(nil); err != nil {
+		t.Fatalf("WaitPending after Cancel = %v, want nil: a standalone task has no queue that could veto it", err)
+	}
+}
+
+// cancelBeforeBodyRequest is a TrafficControl that cancels the task as soon as
+// the resolver has reported a size, i.e. exactly on the gate that guards the
+// first body request.
+//
+// It exists to cover what the no-queue policy deliberately does *not* do: veto.
+// With nopTrafficControl in place nothing would stop the loop from proceeding,
+// so the only thing standing between "cancelled" and "one more request" is the
+// context check in waitBodyRequestInterval.
+type cancelBeforeBodyRequest struct {
+	task   *Task
+	cancel func()
+
+	fired bool
+}
+
+func (c *cancelBeforeBodyRequest) Cancel() {}
+
+func (c *cancelBeforeBodyRequest) NotifyPermit(int, bool) {}
+
+func (c *cancelBeforeBodyRequest) WaitPending(_ func(time.Time)) error {
+	// TotalSize is filled in by the resolve phase, so this fires on the
+	// body-request gate rather than on the resolving one.
+	if !c.fired && c.task.TotalSize != 0 {
+		c.fired = true
+		c.cancel()
+	}
+
+	return nil
+}
+
+// A task that is cancelled between resolving and its first body request must not
+// issue that request. This is the guard for removing nopTrafficControl's own
+// cancellation flag: the context is what has to stop it.
+func TestTaskCancelledBeforeFirstBodyRequest(t *testing.T) {
+	remote := newFakeRemote()
+	local := &fakeLocal{}
+
+	task := NewTask("test", remote, local)
+	task.Traffic = &cancelBeforeBodyRequest{task: task, cancel: task.Cancel}
+
+	done := startDownload(t, task)
+	waitClosed(t, done, "the cancelled task to return")
+
+	if _, stream := remote.counts(); stream != 0 {
+		t.Fatalf("stream calls = %d, want 0: a task cancelled before its first "+
+			"body request must not issue it", stream)
+	}
+	if !errors.Is(task.Error, ErrCanceled) {
+		t.Fatalf("task error = %v, want ErrCanceled", task.Error)
 	}
 }
 

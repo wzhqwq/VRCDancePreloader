@@ -27,18 +27,18 @@ func (dm *downloadManager) Prioritize(ids ...string) {
 	)
 }
 
-func (dm *downloadManager) QueueTransaction() func() {
-	dm.inTransaction = true
-	return func() {
-		dm.inTransaction = false
-		dm.UpdatePriorities()
-	}
-}
-
 func (dm *downloadManager) UpdatePriorities() {
 	dm.Lock()
 	defer dm.Unlock()
-	if len(dm.queue) == 0 || dm.inTransaction {
+
+	if len(dm.queue) == 0 {
+		return
+	}
+
+	// A frozen queue is mid-assembly: the order below is not the final one, so
+	// neither the permits nor the queue event may be published from it. The
+	// freeze's own thaw publishes, once, over the order the caller intended.
+	if dm.batch > 0 {
 		return
 	}
 
@@ -47,18 +47,35 @@ func (dm *downloadManager) UpdatePriorities() {
 		return ok && t.State != task.TaskCompleted
 	})
 	dm.queueLogger.InfoLn("tasks:", dm.queue)
-	for i, id := range dm.queue {
-		t := dm.tasks[id]
-		if t != nil {
-			t.Traffic.(*traffic).sendPriority(i)
-		}
-	}
+
+	dm.publishPermitsLocked()
 
 	dm.em.NotifySubscribers(QueueChange)
 }
 
-func (dm *downloadManager) CanDownload(priority int) bool {
-	return priority >= 0 && priority < dm.maxParallel
+// publishPermitsLocked publishes the queue position and the download permission
+// to every queued task.
+//
+// The permission is derived from the position here and delivered as state, so
+// there is exactly one place that decides "who may download": the queue order
+// and maxParallel. Tasks never compare anything themselves.
+//
+// This is also the single place that *grants* a permit, so it is where the
+// freeze is enforced: while a caller is still assembling the order, a grant
+// would be a grant for a position the task is about to lose, and a granted task
+// only re-reads its permit when its attempt restarts.
+//
+// Caller must hold dm.Lock().
+func (dm *downloadManager) publishPermitsLocked() {
+	if dm.batch > 0 {
+		return
+	}
+
+	for i, id := range dm.queue {
+		if t := dm.tasks[id]; t != nil {
+			t.Traffic.NotifyPermit(i, i < dm.maxParallel)
+		}
+	}
 }
 
 func (dm *downloadManager) allDownloadingEta() []int64 {

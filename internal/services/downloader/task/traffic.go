@@ -9,27 +9,65 @@ import (
 
 const hangingConnectionTimeout = time.Second * 30
 
+// TrafficControl is the injection point for "may this task download right now".
+//
+// It has two implementations, and both are load bearing:
+//
+//   - traffic (in the downloader package) is the queue controlled policy: the
+//     manager publishes each task's queue position and whether the position is
+//     within the parallel limit;
+//   - nopTrafficControl is the no queue control policy used by NewTask, so that
+//     other modules can reuse the download engine without a queue.
 type TrafficControl interface {
-	WaitPending(beforeWait func(eta time.Time)) error
+	// WaitPending blocks until this task is permitted to download. A non-nil
+	// error is the queue's veto, including cancellation.
+	//
+	// beforeWait is invoked once per wait episode with the estimated resume
+	// time (zero value when unknown); the caller uses it to arm the
+	// hanging-connection watchdog.
+	//
+	// The permission is level triggered: every call re-reads the current state,
+	// so a task that re-enters the gate after a Restart or a connection timeout
+	// is re-evaluated instead of being assumed to be still permitted.
+	WaitPending(beforeWait func(resumeAt time.Time)) error
+
+	// NotifyPermit publishes the current queue position and whether this task
+	// may download. It is called by whoever controls the queue; implementations
+	// without queue control ignore it and always allow.
+	NotifyPermit(position int, allowed bool)
+
+	// Cancel is called exactly once, when the task is cancelled for good. It is
+	// only needed by an implementation whose wait has to be interrupted;
+	// cancellation itself is delivered through the attempt context, which is
+	// what actually stops the next request.
 	Cancel()
 }
 
-type nopTrafficControl struct {
-	canceled bool
-}
+// nopTrafficControl is the "no queue control" policy: there is no queue, so
+// there is nothing to wait for and nothing to veto. It is deliberately
+// stateless.
+//
+// In particular Cancel does not have to be remembered here. Cancelling a task
+// closes its attempt context (Task.Cancel), and every request the download loop
+// makes is bound to that context, so a cancelled task stops on its own — see
+// the cancellation tests in task_control_test.go. Keeping a flag would only
+// duplicate that, and would have to be synchronised to be race free.
+type nopTrafficControl struct{}
 
-func (n *nopTrafficControl) Cancel() {
-	n.canceled = true
-}
+// Cancel is a no-op: this implementation never blocks, so there is no wait to
+// interrupt. See the type comment.
+func (n *nopTrafficControl) Cancel() {}
 
 var _ TrafficControl = (*nopTrafficControl)(nil)
 
+// WaitPending returns immediately: without a queue the task is always permitted.
 func (n *nopTrafficControl) WaitPending(_ func(eta time.Time)) error {
-	if n.canceled {
-		return ErrCanceled
-	}
 	return nil
 }
+
+// NotifyPermit is a no-op: without a queue there is no permit to publish, and
+// the task is always allowed to download.
+func (n *nopTrafficControl) NotifyPermit(int, bool) {}
 
 func (t *Task) waitPending(connected bool) error {
 	// scooped timeout
