@@ -324,6 +324,9 @@ func (l *LocalRecords) GetNearestRecord() *DanceRecord {
 	}
 
 	orders := latestRecord.GetOrdersSnapshot()
+	if len(orders) == 0 {
+		return nil
+	}
 	lastOrder := orders[len(orders)-1]
 	if time.Now().Unix()-lastOrder.Time.Unix() > 30*60 {
 		return nil

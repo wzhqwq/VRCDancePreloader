@@ -132,7 +132,7 @@ func (f *File) Init(contentLength int64, lastModified time.Time) error {
 
 func (f *File) Stat() (int64, time.Time) {
 	var created time.Time
-	if stat, err := f.file.Stat(); err != nil {
+	if stat, err := f.file.Stat(); err == nil {
 		if attr, ok := stat.Sys().(*syscall.Win32FileAttributeData); ok {
 			created = time.Unix(0, attr.CreationTime.Nanoseconds())
 		}

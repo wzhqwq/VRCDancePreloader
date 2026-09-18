@@ -7,11 +7,12 @@ import (
 )
 
 type eventSink[T any] interface {
+	// send returns whether the channel is open, stop sending messages if you get false
 	send(T) bool
 }
 
 type EventManager[T any] struct {
-	sync.Mutex
+	subMu       sync.Mutex
 	subscribers []eventSink[T]
 }
 
@@ -20,19 +21,20 @@ func NewEventManager[T any]() *EventManager[T] {
 }
 
 func (em *EventManager[T]) SubscribeEvent() *EventSubscriber[T] {
-	em.Lock()
-	defer em.Unlock()
-
 	sub := &EventSubscriber[T]{
 		Channel: make(chan T, 10),
 	}
+
+	em.subMu.Lock()
+	defer em.subMu.Unlock()
 	em.subscribers = append(em.subscribers, sub)
+
 	return sub
 }
 
 func (em *EventManager[T]) NotifySubscribers(payload T) {
-	em.Lock()
-	defer em.Unlock()
+	em.subMu.Lock()
+	defer em.subMu.Unlock()
 	em.subscribers = lo.Filter(em.subscribers, func(p eventSink[T], _ int) bool {
 		return p.send(payload)
 	})
@@ -75,10 +77,7 @@ type mappedEventSink[In, Out any] struct {
 
 func (s *mappedEventSink[In, Out]) send(payload In) bool {
 	data, ok := s.mapFilter(payload)
-	if !ok {
-		return false
-	}
-	return s.target.send(data)
+	return !ok || s.target.send(data)
 }
 
 func PipeEvent[In, Out any](
@@ -93,6 +92,9 @@ func PipeEvent[In, Out any](
 		target:    target,
 		mapFilter: mapFilter,
 	}
+
+	em.subMu.Lock()
+	defer em.subMu.Unlock()
 	em.subscribers = append(em.subscribers, pipe)
 
 	return target

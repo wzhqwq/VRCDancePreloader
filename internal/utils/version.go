@@ -32,23 +32,19 @@ func (v Version) PrereleaseLevel() int {
 }
 
 func (v Version) NewerThan(right Version) bool {
-	if v.Major > right.Major {
-		return true
+	if v.Major != right.Major {
+		return v.Major > right.Major
 	}
-	if v.Minor > right.Minor {
-		return true
+	if v.Minor != right.Minor {
+		return v.Minor > right.Minor
 	}
-	if v.Patch > right.Patch {
-		return true
+	if v.Patch != right.Patch {
+		return v.Patch > right.Patch
 	}
-	if v.PrereleaseLevel() > right.PrereleaseLevel() {
-		return true
+	if v.PrereleaseLevel() != right.PrereleaseLevel() {
+		return v.PrereleaseLevel() > right.PrereleaseLevel()
 	}
-	if v.PrereleaseID > right.PrereleaseID {
-		return true
-	}
-
-	return false
+	return v.PrereleaseID > right.PrereleaseID
 }
 
 func (v Version) OlderThanOrEqual(right Version) bool {
@@ -99,21 +95,21 @@ func ParseVersion(text string) (Version, bool) {
 
 	major, err := strconv.ParseInt(matches[1], 10, 32)
 	if err != nil {
-		panic(err)
+		return Version{}, false
 	}
 	minor, err := strconv.ParseInt(matches[2], 10, 32)
 	if err != nil {
-		panic(err)
+		return Version{}, false
 	}
 
 	ver := Version{
 		Major: int(major),
 		Minor: int(minor),
 	}
-	if len(matches) > 3 {
+	if matches[3] != "" {
 		patch, err := strconv.ParseInt(matches[3], 10, 32)
 		if err != nil {
-			panic(err)
+			return Version{}, false
 		}
 		ver.Patch = int(patch)
 	}
@@ -127,11 +123,11 @@ type ShortVersion struct {
 }
 
 func (v ShortVersion) NewerThan(right ShortVersion) bool {
-	if v.Major > right.Major {
-		return true
+	if v.Major != right.Major {
+		return v.Major > right.Major
 	}
-	if v.Minor > right.Minor {
-		return true
+	if v.Minor != right.Minor {
+		return v.Minor > right.Minor
 	}
 
 	return false
@@ -149,11 +145,11 @@ func ParseShortVersion(text string) (ShortVersion, bool) {
 
 	major, err := strconv.ParseInt(matches[1], 10, 32)
 	if err != nil {
-		panic(err)
+		return ShortVersion{}, false
 	}
 	minor, err := strconv.ParseInt(matches[2], 10, 32)
 	if err != nil {
-		panic(err)
+		return ShortVersion{}, false
 	}
 
 	ver := ShortVersion{

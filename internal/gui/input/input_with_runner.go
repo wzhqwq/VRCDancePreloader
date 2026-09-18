@@ -56,7 +56,7 @@ func (i *InputWithRunner) updateStatus(status interactive.RunnerStatus) {
 		return
 	}
 
-	if status.Error == nil {
+	if status.Error != nil {
 		i.StatusIcon.SetIcon(theme.NewColoredResource(theme.WarningIcon(), theme.ColorNameError))
 		i.StatusIcon.SetMessage(status.Error.Error(), theme.Color(theme.ColorNameError))
 	} else {

@@ -87,7 +87,7 @@ func T(key string, options ...goeasyi18n.Options) string {
 
 func ParseMonth(m time.Month) string {
 	if lang == "en" {
-		return dateTranslations.MonthsAbbr[m]
+		return dateTranslations.MonthsAbbr[m-1]
 	}
 	return strconv.Itoa(int(m))
 }
