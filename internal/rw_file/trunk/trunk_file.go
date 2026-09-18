@@ -15,8 +15,17 @@ import (
 // 16KB per trunk
 const bytesPerTrunk = 1024 * 16
 
-// 256MB capacity
-// It's enough for a dance video. If a file exceed this size, we will fall back to legacy cache
+// 256MB capacity.
+//
+// It is enough for a dance video, and it is a hard limit of this backend: the
+// bitmap has exactly one bit per bytesPerTrunk, so a larger file cannot be
+// indexed at all. Init refuses one with ErrContentTooLarge instead of writing
+// past the end of the bitmap.
+//
+// This comment used to promise a fall back to the legacy cache. No such fallback
+// was ever implemented, which is what made the overflow look handled. Lifting the
+// limit belongs to a future file format version rather than to an automatic
+// downgrade.
 const capacity = 1024 * 1024 * 256
 
 var logger = utils.NewLogger("Cache File")
@@ -94,7 +103,25 @@ func (f *File) Close() error {
 
 var ErrWriteFailed = errors.New("failed to write changes to disk")
 
+// ErrContentTooLarge reports a file that does not fit the trunk bitmap: the
+// bitmap has one bit per bytesPerTrunk and is sized by capacity, so a bigger
+// file cannot be indexed at all. Callers are expected to fall back to a backend
+// that does not need a bitmap.
+var ErrContentTooLarge = errors.New("content is larger than the trunk cache can index")
+
+// MaxSize is the largest file the trunk bitmap can index. It is exported so that
+// callers can pick a different backend before opening a file, instead of
+// discovering the limit from ErrContentTooLarge.
+func MaxSize() int64 { return capacity }
+
 func (f *File) Init(contentLength int64, lastModified time.Time) error {
+	// Refuse an oversized file up front. Without this the fixed size bitmap is
+	// silently too small and every write past capacity indexes out of range
+	// (see FillTrunks).
+	if contentLength > capacity {
+		return fmt.Errorf("%w: %d bytes, the limit is %d", ErrContentTooLarge, contentLength, capacity)
+	}
+
 	f.FullSize = contentLength
 	f.LastModified = lastModified
 

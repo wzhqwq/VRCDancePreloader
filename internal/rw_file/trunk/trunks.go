@@ -34,9 +34,26 @@ func (f *File) ToFragments() []*Fragment {
 	return fragments
 }
 
+// trunkIndexRange is the half open bitmap range a fragment covers, clamped to
+// the bitmap.
+//
+// The clamp is what keeps a write past capacity from indexing out of range. It
+// is a separate function so the clamp can be tested without a file on disk, and
+// so FillTrunks stays a plain loop. Init rejects oversized files up front, so in
+// practice the clamp is the second line of defense, not the first.
+func (f *File) trunkIndexRange(frag *Fragment) (start, end int64) {
+	start = (frag.Start + bytesPerTrunk - 1) / bytesPerTrunk
+	end = frag.End() / bytesPerTrunk
+
+	if end > int64(len(f.trunks)) {
+		end = int64(len(f.trunks))
+	}
+
+	return start, end
+}
+
 func (f *File) FillTrunks(frag *Fragment) {
-	fillStart := (frag.Start + bytesPerTrunk - 1) / bytesPerTrunk
-	fillEnd := frag.End() / bytesPerTrunk
+	fillStart, fillEnd := f.trunkIndexRange(frag)
 	trunksChanged := false
 
 	for i := fillStart; i < fillEnd; i++ {
