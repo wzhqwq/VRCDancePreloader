@@ -15,14 +15,16 @@ func (s *BaseService[T]) SubscribeStatus() *utils.EventSubscriber[interactive.Ru
 }
 
 func (s *BaseService[T]) Status() interactive.RunnerStatus {
-	if s.running {
-		return interactive.RunnerStatus{
-			Running: true,
-		}
-	}
-
+	// Running and Error are independent: a service can be up while something it
+	// depends on failed its self check. Reporting the error next to Running
+	// instead of dropping it is what makes that visible; consumers that only
+	// care about liveness keep reading Running (host/runtime.go records the
+	// error and still treats the service as running).
+	//
+	// Deliberately lock free: notify() calls this while holding s.mu (Start and
+	// Stop both defer notify()), so taking the lock here would self deadlock.
 	return interactive.RunnerStatus{
-		Running: false,
+		Running: s.running,
 		Error:   s.lastError,
 	}
 }

@@ -75,6 +75,16 @@ func (s *BaseService[T]) Start() {
 		return
 	}
 	s.stopCh = make(chan struct{})
+
+	// Clear a stale error from a previous attempt *before* starting, not after.
+	//
+	// An error recorded during ServiceStart — for example a failed self check in
+	// ServeAndTest, which reports non fatally by setting lastError and returning
+	// nil — describes a service that is up but degraded. Clearing it afterwards
+	// would make it invisible to everyone, which is exactly the defect this
+	// ordering exists to avoid.
+	s.lastError = nil
+
 	err := s.control.ServiceStart()
 	if err != nil {
 		s.logger.ErrorLnf("Failed to start %s service: %v", s.name, err)
@@ -83,7 +93,6 @@ func (s *BaseService[T]) Start() {
 	}
 
 	s.running = true
-	s.lastError = nil
 }
 
 func (s *BaseService[T]) Shutdown() error {
@@ -177,10 +186,12 @@ func (s *BaseService[T]) ServeAndTest(port int, server ServerLike) error {
 	resp, err := http.Get(fmt.Sprintf("http://0.0.0.0:%d/alive", port))
 	if err != nil {
 		s.lastError = fmt.Errorf("server started but test failed: %w", err)
+		return nil
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		s.lastError = fmt.Errorf("server started but test failed: unexpected status %s", resp.Status)
+		return nil
 	}
 
 	return nil

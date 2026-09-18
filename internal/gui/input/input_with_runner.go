@@ -50,17 +50,21 @@ func (i *InputWithRunner) loop(stopCh <-chan struct{}) {
 }
 
 func (i *InputWithRunner) updateStatus(status interactive.RunnerStatus) {
+	// The error comes first: a service that is up can still report a failed self
+	// check, and showing a green tick for it would hide the problem the runner
+	// just detected.
+	if status.Error != nil {
+		i.StatusIcon.SetIcon(theme.NewColoredResource(theme.WarningIcon(), theme.ColorNameError))
+		i.StatusIcon.SetMessage(status.Error.Error(), theme.Color(theme.ColorNameError))
+		return
+	}
+
 	if status.Running {
 		i.StatusIcon.SetIcon(theme.NewColoredResource(theme.MediaPlayIcon(), theme.ColorNameSuccess))
 		i.StatusIcon.SetMessage("", theme.Color(theme.ColorNameSuccess))
 		return
 	}
 
-	if status.Error != nil {
-		i.StatusIcon.SetIcon(theme.NewColoredResource(theme.WarningIcon(), theme.ColorNameError))
-		i.StatusIcon.SetMessage(status.Error.Error(), theme.Color(theme.ColorNameError))
-	} else {
-		i.StatusIcon.SetIcon(nil)
-		i.StatusIcon.SetMessage("", theme.Color(theme.ColorNameForeground))
-	}
+	i.StatusIcon.SetIcon(nil)
+	i.StatusIcon.SetMessage("", theme.Color(theme.ColorNameForeground))
 }
