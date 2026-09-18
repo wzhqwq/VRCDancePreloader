@@ -17,6 +17,8 @@ func (t *mixedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	newReq := *req
 	args := newReq.URL.Query()
 	args.Set("key", t.Key)
+	u := *req.URL
+	newReq.URL = &u
 	newReq.URL.RawQuery = args.Encode()
 	return t.clientWithProxy.Transport.RoundTrip(&newReq)
 }

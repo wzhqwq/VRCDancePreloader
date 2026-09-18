@@ -281,7 +281,7 @@ func (p *BiliBiliProvider) getInfo(id string, ctx context.Context) (types.Genera
 		}
 
 		if p.mode == ModeYtDlp {
-			info, err := local_executables.GetVideoBasicInfoWithYtDlp(internal_id.GetStandardYoutubeURL(bvId), ctx)
+			info, err := local_executables.GetVideoBasicInfoWithYtDlp(internal_id.GetStandardBiliURL(bvId), ctx)
 			if err != nil {
 				return types.GeneralVideoInfo{}, fmt.Errorf("get BiliBili info by yt-dlp: %w", err)
 			}

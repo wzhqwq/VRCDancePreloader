@@ -63,5 +63,5 @@ func GetInternalIdByUrl(url string) string {
 }
 
 func GetUrlByInternalId(internalId string) string {
-	return urlBasedSongs.GetInternalIdByUrl(internalId)
+	return urlBasedSongs.GetUrlByInternalId(internalId)
 }

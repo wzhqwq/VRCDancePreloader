@@ -54,7 +54,9 @@ func NewProxyProvider(proxyUrl, name string, tc testCase) *ClientProvider {
 	if proxyUrl != "" {
 		c = createProxyClient(proxyUrl)
 	} else {
-		c = &http.Client{}
+		c = &http.Client{
+			Transport: http.DefaultTransport,
+		}
 	}
 
 	p := &ClientProvider{

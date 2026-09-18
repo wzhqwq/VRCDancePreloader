@@ -101,7 +101,7 @@ func diffQueues(old []*song.StatefulSong, new []queue.Item) {
 
 	// check same song replacement
 	if len(deletions) > 0 {
-		if deletions[0] == 1 && old[0].Match(old[1]) {
+		if deletions[0] == 1 && old[0].Match(old[1]) && !slices.Contains(deletions[1:], 0) {
 			deletions[0] = 0
 		}
 	}
