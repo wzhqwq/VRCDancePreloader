@@ -31,7 +31,41 @@ func New(cfg Config) *Service {
 func (s *Service) ServiceStart() error {
 	s.managers["pypy"] = newDownloadManager(s.Cfg.MaxDownload, utils.PyPyVideoScheduler())
 	s.managers["default"] = newDownloadManager(s.Cfg.MaxDownload, utils.SharedVideoScheduler())
+
+	// Failed tasks are re-run from the manager's due table rather than by one
+	// timer goroutine per failure, so something has to tick.
+	//
+	// Hosting the ticker on the service means it observes stopCh, which
+	// BaseService.Shutdown closes before ServiceStop runs. Note that it is *not*
+	// joined: BaseService.Wg is written by Go() but never waited on (see
+	// notes/02-host-service-framework.md). So the ticker has usually returned by
+	// the time Destroy runs, but nothing guarantees it — the same structural gap
+	// that leaves the download goroutines untracked.
+	s.Go(s.retryLoop)
+
 	return nil
+}
+
+// retryTickInterval is how often due retries are looked for. With the 3s retry
+// delay this lands a retry 3.0~3.5s after the failure, against the 3s the per
+// task timer used to give.
+const retryTickInterval = 500 * time.Millisecond
+
+// retryLoop runs the scheduled retries of both managers until the service stops.
+func (s *Service) retryLoop(stopCh <-chan struct{}) {
+	ticker := time.NewTicker(retryTickInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stopCh:
+			return
+		case <-ticker.C:
+			for _, dm := range s.managers {
+				dm.runDueRetries()
+			}
+		}
+	}
 }
 
 func (s *Service) ServiceStop() error {
@@ -98,11 +132,10 @@ func (s *Service) Download(id string, remoteFn RemoteProviderFn, localFn LocalPr
 	if t == nil {
 		return nil
 	}
-	go func() {
-		t.Download()
-		// re-calculate priorities after download
-		dm.UpdatePriorities()
-	}()
+
+	// The same runner the scheduled retries use, so both paths refresh the queue
+	// the same way.
+	dm.startTask(t)
 
 	return t
 }

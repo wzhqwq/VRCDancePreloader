@@ -148,55 +148,61 @@ func (sm *StateMachine) StartDownloadLoop() {
 			}
 			switch change {
 			case task.State:
-				if t.Error != nil {
+				// Read the pair in one step: branching on the error and then
+				// re-reading the state in a second call could mix two different
+				// transitions of the download task.
+				state, err := t.StateAndError()
+
+				if err != nil {
 					switch {
-					case errors.Is(t.Error, task.ErrCanceled):
+					case errors.Is(err, task.ErrCanceled):
 						return
-					case errors.Is(t.Error, third_parties.ErrFeatureDisabled):
+					case errors.Is(err, third_parties.ErrFeatureDisabled):
 						sm.SwitchDownloadStatus(Disabled)
 						return
-					case errors.As(t.Error, &refused):
+					case errors.As(err, &refused):
 						sm.SwitchDownloadStatus(Refused)
 						return
 					default:
-						sm.ps.PreloadError = t.Error
-						sm.retryUntil = t.Retry()
+						sm.ps.PreloadError = err
+						sm.retryUntil = t.ScheduleRetry()
 						sm.SwitchDownloadStatus(Failed)
 					}
 				} else {
 					sm.ps.PreloadError = nil
 
-					switch t.State {
+					switch state {
 					case task.TaskInitial:
 						continue
 					case task.TaskCompleted:
-						sm.ps.TotalSize = t.TotalSize
-						sm.ps.DownloadedSize = t.DownloadedSize
+						sm.ps.TotalSize = t.TotalSize()
+						sm.ps.DownloadedSize = t.DownloadedSize()
 						sm.SwitchDownloadStatus(Downloaded)
 						sm.ps.notifySubscribers(ProgressChange)
 						return
 					case task.TaskPending:
 						sm.SwitchDownloadStatus(Pending)
 					case task.TaskResolving:
-						sm.cooldownUntil = t.ResolverStatus.CooldownUntil
+						sm.cooldownUntil = t.Resolver().CooldownUntil
 						if sm.cooldownUntil.IsZero() {
 							sm.SwitchDownloadStatus(Resolving)
 						} else {
 							sm.SwitchDownloadStatus(CoolingDown)
 						}
 					case task.TaskResolvingFailed:
-						sm.ps.PreloadError = t.ResolverStatus.Err
-						sm.retryUntil = t.ResolverStatus.RetryAfter
+						resolver := t.Resolver()
+						sm.ps.PreloadError = resolver.Err
+						sm.retryUntil = resolver.RetryAfter
 						sm.SwitchDownloadStatus(Failed)
 					case task.TaskRequested:
 						sm.SwitchDownloadStatus(Requesting)
 					case task.TaskDownloading:
-						sm.ps.TotalSize = t.TotalSize
+						sm.ps.TotalSize = t.TotalSize()
 						sm.SwitchDownloadStatus(Downloading)
 					}
 				}
 			case task.Progress:
-				sm.ps.DownloadedSize = t.DownloadedSize
+				sm.ps.DownloadedSize = t.DownloadedSize()
 				sm.ps.notifySubscribers(ProgressChange)
 				lazy.Change()
 			}

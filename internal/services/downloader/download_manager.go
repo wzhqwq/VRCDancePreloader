@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"sync"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/downloader/task"
@@ -37,7 +38,25 @@ type downloadManager struct {
 	//
 	// Guarded by the embedded Mutex.
 	batch int
+
+	// dueAt is when a failed task may be run again, keyed by task id. It is
+	// filled by ScheduleRetry and drained by runDueRetries, which the service
+	// ticker calls — one entry per pending retry, instead of one goroutine per
+	// failed task.
+	//
+	// Guarded by the embedded Mutex.
+	dueAt map[string]time.Time
+
+	// retryDelay is how long a failed task waits before it is run again. It is a
+	// per manager field rather than the package level variable this used to be
+	// (ManagedTask.tempDelay), so tests can shorten it without affecting
+	// anything else, and nothing can change it behind the manager's back.
+	retryDelay time.Duration
 }
+
+// defaultRetryDelay is the production retry backoff. It is what the old
+// ManagedTask.tempDelay was, so the behavior is unchanged.
+const defaultRetryDelay = 3 * time.Second
 
 func newDownloadManager(maxParallel int, scheduler *utils.Scheduler) *downloadManager {
 	return &downloadManager{
@@ -49,6 +68,9 @@ func newDownloadManager(maxParallel int, scheduler *utils.Scheduler) *downloadMa
 		queueLogger: utils.NewUniqueLogger("Download Queue"),
 
 		maxParallel: maxParallel,
+
+		dueAt:      make(map[string]time.Time),
+		retryDelay: defaultRetryDelay,
 	}
 }
 
@@ -69,6 +91,10 @@ func (dm *downloadManager) CreateOrGetPausedTask(id string, remoteFn RemoteProvi
 		dm.tasks[id] = t
 		dm.queue = append(dm.queue, id)
 	}
+
+	// A fresh request supersedes a pending retry: the caller wants it now, and
+	// Service.Download is about to start it anyway.
+	delete(dm.dueAt, id)
 
 	// Keep the task paused until the queue has placed it.
 	//
@@ -101,11 +127,83 @@ func (dm *downloadManager) CancelDownload(ids ...string) {
 			t.Task.Cancel()
 			delete(dm.tasks, id)
 		}
+
+		// A canceled task must not be resurrected by a scheduled retry.
+		delete(dm.dueAt, id)
 	}
 }
 func (dm *downloadManager) unlockAndUpdate() {
 	dm.Unlock()
 	dm.UpdatePriorities()
+}
+
+// startTask runs one download loop in the background and re-derives the queue
+// when it returns.
+//
+// The goroutine is deliberately not tracked by the service lifecycle: that is
+// the pre-existing shape of Service.Download, and retries reuse it instead of
+// introducing a second, different runner.
+func (dm *downloadManager) startTask(t *ManagedTask) {
+	go func() {
+		t.Download()
+		dm.UpdatePriorities()
+	}()
+}
+
+// ScheduleRetry records that a failed task may be run again after the retry
+// delay, and returns that moment so the caller can show a countdown.
+//
+// This is deliberately a command rather than a query: the caller that decides
+// "this failure is worth retrying" is the song state machine (it is where all
+// the other error classification lives), and it needs the resulting time in the
+// same breath. The old ManagedTask.Retry did the same thing, but as a side
+// effect of a getter, and with one un-cancellable timer goroutine per failure.
+func (dm *downloadManager) ScheduleRetry(id string) time.Time {
+	dm.Lock()
+	defer dm.Unlock()
+
+	at := time.Now().Add(dm.retryDelay)
+	dm.dueAt[id] = at
+
+	return at
+}
+
+// runDueRetries starts every failed task whose retry delay has elapsed. It is
+// called by the service ticker (Service.retryLoop).
+//
+// Note that a retry does not get any special permission: startTask runs the
+// ordinary download loop, so the task re-enters the same gate and is judged
+// against the current queue order and maxParallel like everybody else. There is
+// deliberately no "put it back in the allowed prefix" step — the task never
+// left the queue, and forcing it forward would be exactly the bypass the queue
+// ordering exists to prevent.
+func (dm *downloadManager) runDueRetries() {
+	dm.Lock()
+
+	now := time.Now()
+	var due []*ManagedTask
+
+	for id, at := range dm.dueAt {
+		if now.Before(at) {
+			continue
+		}
+
+		delete(dm.dueAt, id)
+
+		// The task may have completed, or been canceled, while the retry was
+		// pending.
+		if t := dm.tasks[id]; t != nil && t.State() != task.TaskCompleted {
+			due = append(due, t)
+		}
+	}
+
+	dm.Unlock()
+
+	// Outside the lock: startTask spawns a goroutine, and the download loop
+	// takes the manager lock again as soon as it reaches the gate.
+	for _, t := range due {
+		dm.startTask(t)
+	}
 }
 
 // freeze suspends permit publication until the matching thaw.

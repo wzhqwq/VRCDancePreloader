@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -28,6 +29,12 @@ import (
 // bypass would show up right after an attempt restart.
 const gateWait = 400 * time.Millisecond
 
+// errGateFailed stands in for the CDN errors that end a download loop for good
+// (the loop only restarts itself for EOF, fragments, restarts and client
+// changes; anything else stops the task, which is when a retry becomes the
+// manager's business).
+var errGateFailed = errors.New("gate: simulated cdn failure")
+
 // gateRemote parks inside GetDownloadStream until it is released or the attempt
 // scope is aborted. A parked task stays "downloading", so it keeps whatever
 // slot it holds and the test can observe who is allowed to run.
@@ -36,6 +43,11 @@ type gateRemote struct {
 	streamCalls  atomic.Int64
 
 	entered chan struct{}
+
+	// failures is how many leading GetDownloadStream calls fail with
+	// errGateFailed instead of parking. It is read by the download goroutine, so
+	// it has to be set before the task is started.
+	failures int64
 
 	release     chan struct{}
 	releaseOnce sync.Once
@@ -54,11 +66,15 @@ func (g *gateRemote) WaitResolving(context.Context, func(interactive.RemoteStatu
 }
 
 func (g *gateRemote) GetDownloadStream(_ int64, ctx context.Context) (task.StreamInfo, error) {
-	g.streamCalls.Add(1)
+	n := g.streamCalls.Add(1)
 
 	select {
 	case g.entered <- struct{}{}:
 	default:
+	}
+
+	if n <= g.failures {
+		return task.StreamInfo{}, errGateFailed
 	}
 
 	select {

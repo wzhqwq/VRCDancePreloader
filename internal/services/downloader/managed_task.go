@@ -124,13 +124,12 @@ func (t *ManagedTask) Cancel() {
 	t.manager.CancelDownload(t.ID)
 }
 
-var tempDelay = time.Second * 3
-
-func (t *ManagedTask) Retry() time.Time {
-	go func() {
-		<-time.After(tempDelay)
-		t.Download()
-		t.manager.UpdatePriorities()
-	}()
-	return time.Now().Add(tempDelay)
+// ScheduleRetry asks the manager to run this task again after the retry delay,
+// and returns that moment.
+//
+// It replaces the old Retry(), which scheduled the retry as a side effect of
+// being read and waited in a goroutine of its own that nothing could cancel.
+// The waiting is now a table entry in the manager, driven by the service ticker.
+func (t *ManagedTask) ScheduleRetry() time.Time {
+	return t.manager.ScheduleRetry(t.ID)
 }
