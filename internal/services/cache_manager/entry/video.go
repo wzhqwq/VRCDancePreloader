@@ -51,6 +51,7 @@ func NewVideoEntry(id string, format int, cacheFs *cache_fs.CacheFS) (CDNEntry, 
 	}
 	e.upgradeFn = e.upgradeFile
 	e.openFileFn = e.openFile
+	e.discardFn = e.discardFiles
 
 	return e, nil
 }
@@ -81,6 +82,18 @@ func (e *VideoEntry) openFile() types.DeferredReadableFile {
 	return nil
 }
 
+// discardFiles removes the cache files of this entry, best effort.
+//
+// It is the concrete half of BaseCDNEntry.discardLocked, which closes the
+// working file first: on Windows a still open handle would make the delete fail,
+// and a half removed entry is worse than an untouched one.
+func (e *VideoEntry) discardFiles() {
+	// e.baseName is the same string as "video$" + e.id.
+	if err := e.cacheFs.DeleteWithoutExt(e.baseName); err != nil {
+		e.logger.ErrorLn("Failed to delete the unusable cache files of", e.id, err)
+	}
+}
+
 func (e *VideoEntry) upgradeFile() {
 	if e.workingFile == nil {
 		e.logger.WarnLn("Try to upgrade a closed file")
@@ -98,10 +111,19 @@ func (e *VideoEntry) upgradeFile() {
 	}
 	e.workingFile = nil
 
-	err = e.cacheFs.DeleteWithoutExt("video$" + e.id)
+	err = e.cacheFs.DeleteWithoutExt(e.baseName)
 	if err != nil {
 		e.logger.ErrorLn("Failed to delete old file", err)
 	}
 
-	e.openFile()
+	// The replacement has to be stored back: Init's retry loop carries on with
+	// e.workingFile, and dropping the return value left it nil, so the next
+	// iteration called Init on a nil interface and panicked.
+	file := e.openFile()
+	if file == nil {
+		e.logger.ErrorLn("Failed to open a replacement cache file for", e.id)
+		return
+	}
+
+	e.workingFile = file
 }

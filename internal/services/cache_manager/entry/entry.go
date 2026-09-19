@@ -43,6 +43,14 @@ type BaseCDNEntry struct {
 
 	upgradeFn func()
 
+	// discardFn, when set, removes whatever this entry has on disk. It is used by
+	// the failure paths of an upgrade: a file that cannot be read or converted
+	// must not be left in place, because every later attempt would read the same
+	// file and fail identically, leaving the entry permanently un-cacheable.
+	//
+	// Only the concrete entry knows which paths to remove, hence the hook.
+	discardFn func()
+
 	// initialized is closed as soon as workingFile became usable, i.e. as soon
 	// as it carries a non-zero total length. That happens either right after
 	// opening an existing cache file with a valid header, or after Init() has
@@ -130,26 +138,73 @@ func (e *BaseCDNEntry) closeFile() error {
 	return err
 }
 
+// discardLocked drops the working file and asks the concrete entry to remove what
+// it has on disk, best effort.
+//
+// The close happens here rather than in the hook because the hook only knows
+// about paths, and on Windows a still open handle would make the delete fail.
+//
+// Caller must hold workingFileMutex.
+func (e *BaseCDNEntry) discardLocked() {
+	if e.workingFile != nil {
+		if err := e.workingFile.Close(); err != nil {
+			e.logger.ErrorLn("Failed to close the file being discarded", err)
+		}
+		e.workingFile = nil
+	}
+
+	if e.discardFn != nil {
+		e.discardFn()
+	}
+}
+
 func (e *BaseCDNEntry) Init(size int64, lastModified time.Time, etag string) error {
 	e.workingFileMutex.Lock()
 	defer e.workingFileMutex.Unlock()
 
+	// The upgrade is attempted at most once, and the loop never continues with a
+	// nil working file. upgradeFn *replaces* e.workingFile, so when the
+	// replacement fails there is nothing left to initialize — calling Init on the
+	// nil interface is exactly the crash this guards against. Bounding the retry
+	// also stops an upgradeFn that cannot fix the state from spinning forever.
+	upgraded := false
+
 	for {
-		err := e.workingFile.Init(size, lastModified)
-		if err != nil {
-			if errors.Is(err, legacy_file.ErrLegacyDeprecated) {
-				e.logger.WarnLn("Legacy file format detected, we will re-download it completely")
-
-				if e.upgradeFn != nil {
-					e.upgradeFn()
-					continue
-				}
-
-				return errors.New("legacy file upgrade failed")
+		if e.workingFile == nil {
+			// Only reachable after an upgrade attempt: the replacement could not be
+			// opened. Drop what is on disk so that a later attempt starts from
+			// scratch instead of failing on the same file.
+			if upgraded {
+				e.discardLocked()
 			}
-			return err
+
+			return errors.New("the cache entry has no working file to initialize")
 		}
-		break
+
+		err := e.workingFile.Init(size, lastModified)
+		if err == nil {
+			break
+		}
+
+		if errors.Is(err, legacy_file.ErrLegacyDeprecated) {
+			e.logger.WarnLn("Legacy file format detected, we will re-download it completely")
+
+			if e.upgradeFn != nil && !upgraded {
+				upgraded = true
+				e.upgradeFn()
+				continue
+			}
+
+			// The upgrade could not turn this file into something usable, so remove
+			// it: leaving it in place means every later attempt reads the same
+			// legacy file and fails identically, and the entry never becomes
+			// cacheable again.
+			e.discardLocked()
+
+			return errors.New("legacy file upgrade failed")
+		}
+
+		return err
 	}
 
 	if etag != "" && e.etag != nil {
