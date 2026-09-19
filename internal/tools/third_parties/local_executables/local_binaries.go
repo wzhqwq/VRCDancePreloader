@@ -137,7 +137,13 @@ func (d *DownloadableBinary) SetPathAndCheck(path string) {
 	defer d.mutex.Unlock()
 
 	d.Path = path
-	if d.Valid() {
+
+	// Cache the resolved path here, where the write lock is legitimately held:
+	// the resolved form is what gets passed to yt-dlp and used as a rename
+	// target, and Valid() cannot do this itself because it is also called under
+	// the read lock.
+	if resolved := d.resolvePath(); resolved != "" {
+		d.Path = resolved
 		d.checkIntegrityLevel()
 	}
 }
@@ -198,9 +204,28 @@ func (d *DownloadableBinary) Execute(ctx context.Context, arg ...string) (string
 //			logger.ErrorLn("Failed to resume integrity level of ", d.Path, ":", err)
 //		}
 //	}
+//
+// RequestRunnable takes the read lock for as long as the caller uses the
+// executable, and reports ErrExecutableNotFound when there is nothing usable to
+// run.
+//
+// The error path releases the lock itself, so that acquisition and release have
+// the ordinary shape:
+//
+//	if err := d.RequestRunnable(); err != nil {
+//		return err
+//	}
+//	defer d.ReleaseRunnable()
+//
+// The previous version deliberately kept the lock on failure and relied on the
+// caller's unconditional ReleaseRunnable to drop it. That happened to pair up in
+// the single existing call site, but the shape above — the one anybody would
+// write — left the mutex read locked forever, so every later Lock()
+// (SetPathAndCheck, DownloadAndReplace, Init, ...) blocked silently.
 func (d *DownloadableBinary) RequestRunnable() error {
 	d.mutex.RLock()
 	if !d.Valid() {
+		d.mutex.RUnlock()
 		return ErrExecutableNotFound
 	}
 	return nil

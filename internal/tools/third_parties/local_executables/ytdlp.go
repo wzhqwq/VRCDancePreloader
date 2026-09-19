@@ -170,11 +170,13 @@ func printVideoInfoWithYtDlp(url, metaKey string, ctx context.Context) (string, 
 	//err = denoExecutable.RequestRunnableIntegrity(ctx)
 	//defer denoExecutable.ReleaseRunnableIntegrity()
 	err = denoExecutable.RequestRunnable()
-	defer denoExecutable.ReleaseRunnable()
 	if err != nil && !errors.Is(err, ErrExecutableNotFound) {
 		return "", err
 	}
 	if err == nil {
+		// Only a successful request holds the read lock; see RequestRunnable.
+		defer denoExecutable.ReleaseRunnable()
+
 		args = append(args, "--js-runtimes", "deno:"+denoExecutable.Path)
 	}
 

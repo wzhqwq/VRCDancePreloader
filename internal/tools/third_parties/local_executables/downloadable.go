@@ -80,16 +80,31 @@ func (d *DownloadableBinary) generateContext(dur time.Duration) (context.Context
 	return ctx, cancel
 }
 
-func (d *DownloadableBinary) Valid() bool {
+// resolvePath returns the path of the executable when there is a runnable one,
+// and "" otherwise.
+//
+// It never writes to the receiver. It is reached under the read lock (Execute,
+// RequestRunnable) as well as under the write lock (SetPathAndCheck), and caching
+// the resolved path here was a write under a read lock: two concurrent Execute
+// calls, or an Execute racing SetPathAndCheck, wrote the same field.
+func (d *DownloadableBinary) resolvePath() string {
 	if d.Path == "" {
-		return false
+		return ""
 	}
+
 	p, err := exec.LookPath(d.Path)
 	if err != nil {
-		return false
+		return ""
 	}
-	d.Path = p
-	return true
+
+	return p
+}
+
+// Valid reports whether there is a runnable executable.
+//
+// Callers that hold the write lock cache the resolved path; see SetPathAndCheck.
+func (d *DownloadableBinary) Valid() bool {
+	return d.resolvePath() != ""
 }
 
 func (d *DownloadableBinary) Init() {
