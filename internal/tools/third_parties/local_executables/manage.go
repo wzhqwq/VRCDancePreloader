@@ -13,9 +13,15 @@ func InitYtDlp() {
 	b := downloadableMap["ytdlp"]
 	if cfg.YtDlpPath == "<vrcdp>" {
 		b.SetPathAndCheck(filepath.Join(getLocalBinariesPath(), ytDlpLocalName))
+
+		// Read the setting here, not inside the goroutine: UpdateConfig replaces
+		// the whole cfg struct from the config thread, and a read from another
+		// goroutine would race with it.
+		checkOnStart := cfg.CheckUpdateOnStart
+
 		go func() {
 			b.Init()
-			if cfg.CheckUpdateOnStart {
+			if checkOnStart {
 				b.CheckUpdates()
 			}
 		}()
@@ -28,9 +34,12 @@ func InitDeno() {
 	b := downloadableMap["deno"]
 	if cfg.DenoPath == "<vrcdp>" {
 		b.SetPathAndCheck(filepath.Join(getLocalBinariesPath(), denoLocalName))
+
+		checkOnStart := cfg.CheckUpdateOnStart
+
 		go func() {
 			b.Init()
-			if cfg.CheckUpdateOnStart {
+			if checkOnStart {
 				b.CheckUpdates()
 			}
 		}()

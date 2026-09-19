@@ -50,17 +50,20 @@ func parseYtDlpVersion(version string) (utils.Version, bool) {
 		return utils.Version{}, false
 	}
 
+	// The regexp has already established that these are digits, so a parse failure
+	// can only come from a number that does not fit. It is reported, not panicked:
+	// the input is external release metadata.
 	year, err := strconv.ParseInt(matches[1], 10, 32)
 	if err != nil {
-		panic(err)
+		return utils.Version{}, false
 	}
 	month, err := strconv.ParseInt(matches[2], 10, 32)
 	if err != nil {
-		panic(err)
+		return utils.Version{}, false
 	}
 	day, err := strconv.ParseInt(matches[3], 10, 32)
 	if err != nil {
-		panic(err)
+		return utils.Version{}, false
 	}
 
 	ver := utils.Version{
@@ -72,7 +75,7 @@ func parseYtDlpVersion(version string) (utils.Version, bool) {
 	if len(matches) > 4 && len(matches[4]) > 0 {
 		build, err := strconv.ParseInt(matches[4], 10, 32)
 		if err != nil {
-			panic(err)
+			return utils.Version{}, false
 		}
 		ver.PrereleaseID = int(build)
 		ver.Alpha = true

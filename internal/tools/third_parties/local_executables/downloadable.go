@@ -203,6 +203,11 @@ func (d *DownloadableBinary) CancelDownload() {
 		d.Task.Cancel()
 	}
 }
+
+// Stop cancels the running download and closes the cancellation channel.
+//
+// It belongs to the single stop of the tool, which is why it needs no guard: see
+// the note on tool.go's stopCh.
 func (d *DownloadableBinary) Stop() {
 	d.CancelDownload()
 	close(d.stopCh)

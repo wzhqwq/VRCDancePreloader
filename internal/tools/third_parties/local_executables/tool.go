@@ -1,15 +1,27 @@
 package local_executables
 
 import (
+	"sync/atomic"
+
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/service"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
 var cfg Config
+
+// stopCh cancels the background work of this tool.
+//
+// A ConfigurableTool is started and stopped exactly once in the lifetime of the
+// process (it exposes no restart: see service.ConfigurableTool), so destroy closes
+// this without any guard. Should a restart path ever be added, this close is where
+// it would show up — as a panic on a closed channel, not as a silent half start.
 var stopCh = make(chan struct{})
 
 var ytdlpAvailableEm = utils.NewEventManager[bool]()
-var hasYtDlp = false
+
+// hasYtDlp is written by the pump below and read by YtDlpAvailable from arbitrary
+// goroutines (the providers' loops, the yt-dlp resolver), so it is atomic.
+var hasYtDlp atomic.Bool
 
 func initialize() error {
 	InitDeno()
@@ -18,7 +30,7 @@ func initialize() error {
 	ytdlpVerCh := Get("ytdlp").Subscribe()
 	denoVerCh := Get("deno").Subscribe()
 
-	hasYtDlp = Get("ytdlp").Info.Version != ""
+	hasYtDlp.Store(Get("ytdlp").Info.Version != "")
 
 	go func() {
 		defer ytdlpVerCh.Close()
@@ -28,11 +40,17 @@ func initialize() error {
 			select {
 			case <-stopCh:
 				return
-			case ver := <-ytdlpVerCh.Channel:
-				hasYtDlp = ver != ""
-				ytdlpAvailableEm.NotifySubscribers(hasYtDlp)
-			case ver := <-denoVerCh.Channel:
-				if ver != "" && hasYtDlp {
+			case <-ytdlpVerCh.Channel:
+				// The channel delivers the *kind* of change (BinVersion, BinState,
+				// BinProgress), not a version string: testing it for "" made every
+				// event report yt-dlp as available. The version itself is what the
+				// answer depends on, and the event is what orders the read after the
+				// write that produced it.
+				available := Get("ytdlp").Info.Version != ""
+				hasYtDlp.Store(available)
+				ytdlpAvailableEm.NotifySubscribers(available)
+			case <-denoVerCh.Channel:
+				if Get("deno").Info.Version != "" && hasYtDlp.Load() {
 					// retry ytdlp when deno becomes available
 					ytdlpAvailableEm.NotifySubscribers(true)
 				}
@@ -84,7 +102,7 @@ func SubscribeYtDlpAvailability() *utils.EventSubscriber[bool] {
 }
 
 func YtDlpAvailable() bool {
-	return hasYtDlp
+	return hasYtDlp.Load()
 }
 
 func updateIfNotTheSame(initializer func(), old, new string) {

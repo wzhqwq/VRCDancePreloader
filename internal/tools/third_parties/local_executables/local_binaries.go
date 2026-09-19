@@ -269,6 +269,16 @@ func (d *DownloadableBinary) DownloadAndReplace() error {
 	return os.Rename(downloadedExecutable, d.Path)
 }
 
+// isInside reports whether path is baseDir itself or something below it.
+func isInside(baseDir, path string) bool {
+	rel, err := filepath.Rel(baseDir, path)
+	if err != nil {
+		return false
+	}
+
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
 func UnzipExecutable(zipPath string) (string, error) {
 	defer func() {
 		err := os.Remove(zipPath)
@@ -292,7 +302,15 @@ func UnzipExecutable(zipPath string) (string, error) {
 		return "", errors.New("there is no executable file in the archive")
 	}
 
-	path := filepath.Join(filepath.Dir(zipPath), f.Name)
+	baseDir := filepath.Dir(zipPath)
+
+	// The entry name comes from a downloaded archive, so it may be absolute or
+	// contain "..". filepath.Join already cleans the result, which makes a plain
+	// containment check enough.
+	path := filepath.Join(baseDir, f.Name)
+	if !isInside(baseDir, path) {
+		return "", fmt.Errorf("the archive entry %q points outside the download directory", f.Name)
+	}
 
 	dstFile, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0755)
 	if err != nil {
