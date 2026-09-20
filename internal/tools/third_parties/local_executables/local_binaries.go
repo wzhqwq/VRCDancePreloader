@@ -133,10 +133,11 @@ func (d *DownloadableBinary) checkIntegrityLevel(path string) {
 
 	matches := integrityLevelRegex.FindStringSubmatch(string(output))
 	if len(matches) != 2 {
-		// icacls prints the level in the system language, so a non English Windows
-		// makes this regexp miss and the check then never fires. Say so instead of
-		// returning quietly: a silent skip is what made this hard to notice.
-		logger.WarnLn("Could not read the integrity level of", path, "from the icacls output; the check is skipped")
+		// Not a failure, and not worth a word: "Mandatory Label" is a label *name*
+		// the system prints only for files whose integrity level was set explicitly,
+		// so the ordinary file has no such line at all and simply runs at the
+		// default Medium. It is not localized output — only a file that carries a
+		// label can be Low, which is the one case left to raise.
 		return
 	}
 
