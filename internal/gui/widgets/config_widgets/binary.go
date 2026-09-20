@@ -65,25 +65,25 @@ func NewDownloadableBinaryGui(name string, setting interactive.StatefulSetting[s
 }
 
 func (d *DownloadableBinaryGui) UpgradeText() string {
-	if d.downloadable.State != local_executables.BinUpdateAvailable {
+	if d.downloadable.State() != local_executables.BinUpdateAvailable {
 		return i18n.T("btn_check_update")
 	}
 
-	if d.downloadable.Info.Exists {
+	if d.downloadable.Info().Exists {
 		return i18n.T("btn_upgrade")
 	}
 	return i18n.T("btn_download")
 }
 
 func (d *DownloadableBinaryGui) SizeText() string {
-	if d.downloadable.State == local_executables.BinCheckingLocal {
+	if d.downloadable.State() == local_executables.BinCheckingLocal {
 		return i18n.T("placeholder_checking_local")
 	}
-	if d.downloadable.State == local_executables.BinDownloaded {
+	if d.downloadable.State() == local_executables.BinDownloaded {
 		return i18n.T("placeholder_waiting_unlock")
 	}
-	if d.downloadable.Info.Exists {
-		return utils.PrettyByteSize(d.downloadable.Info.Size)
+	if d.downloadable.Info().Exists {
+		return utils.PrettyByteSize(d.downloadable.Info().Size)
 	}
 	return i18n.T("placeholder_not_downloaded")
 }
@@ -99,7 +99,7 @@ func (d *DownloadableBinaryGui) CreateRenderer() fyne.WidgetRenderer {
 	errorText := canvas.NewText("", theme.Color(theme.ColorNameError))
 	errorText.TextSize = 12
 
-	localVersion := canvas.NewText(d.downloadable.Info.Version, theme.Color(theme.ColorNamePlaceHolder))
+	localVersion := canvas.NewText(d.downloadable.Info().Version, theme.Color(theme.ColorNamePlaceHolder))
 	localVersion.TextSize = 12
 
 	upgradeVersion := canvas.NewText("", theme.Color(theme.ColorNamePlaceHolder))
@@ -111,7 +111,7 @@ func (d *DownloadableBinaryGui) CreateRenderer() fyne.WidgetRenderer {
 	removeButton.Importance = widget.DangerImportance
 
 	upgradeButton := widget.NewButton(d.UpgradeText(), func() {
-		if d.downloadable.State == local_executables.BinUpdateAvailable {
+		if d.downloadable.State() == local_executables.BinUpdateAvailable {
 			go d.downloadable.Upgrade()
 		} else {
 			go d.downloadable.CheckUpdates()
@@ -248,9 +248,9 @@ func (r *downloadableBinaryRenderer) Refresh() {
 }
 
 func (r *downloadableBinaryRenderer) updateState() {
-	state := r.d.downloadable.State
+	state := r.d.downloadable.State()
 
-	if state != local_executables.BinCheckingLocal && r.d.downloadable.Info.Exists {
+	if state != local_executables.BinCheckingLocal && r.d.downloadable.Info().Exists {
 		r.removeButton.Show()
 		r.localVersionText.Show()
 	} else {
@@ -292,8 +292,8 @@ func (r *downloadableBinaryRenderer) updateState() {
 		r.bar.Hide()
 	}
 
-	if r.d.downloadable.Error != nil {
-		r.errorText.Text = r.d.downloadable.Error.Error()
+	if err := r.d.downloadable.Err(); err != nil {
+		r.errorText.Text = err.Error()
 		r.errorText.Show()
 	} else {
 		r.errorText.Hide()
@@ -301,7 +301,7 @@ func (r *downloadableBinaryRenderer) updateState() {
 }
 
 func (r *downloadableBinaryRenderer) updateProgress() {
-	task := r.d.downloadable.Task
+	task := r.d.downloadable.Task()
 	if task == nil {
 		return
 	}
@@ -309,5 +309,5 @@ func (r *downloadableBinaryRenderer) updateProgress() {
 }
 
 func (r *downloadableBinaryRenderer) updateVersion() {
-	r.localVersionText.Text = r.d.downloadable.Info.Version
+	r.localVersionText.Text = r.d.downloadable.Info().Version
 }

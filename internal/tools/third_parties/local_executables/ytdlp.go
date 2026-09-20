@@ -180,7 +180,10 @@ func printVideoInfoWithYtDlp(url, metaKey string, ctx context.Context) (string, 
 		// Only a successful request holds the read lock; see RequestRunnable.
 		defer denoExecutable.ReleaseRunnable()
 
-		args = append(args, "--js-runtimes", "deno:"+denoExecutable.Path)
+		// The read lock is still held here, so the path is read directly: calling
+		// denoExecutable.Path() would take the read lock a second time, and a
+		// writer queued in between would deadlock it.
+		args = append(args, "--js-runtimes", "deno:"+denoExecutable.path)
 	}
 
 	args = append(args, url)

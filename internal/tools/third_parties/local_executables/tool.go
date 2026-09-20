@@ -30,7 +30,7 @@ func initialize() error {
 	ytdlpVerCh := Get("ytdlp").Subscribe()
 	denoVerCh := Get("deno").Subscribe()
 
-	hasYtDlp.Store(Get("ytdlp").Info.Version != "")
+	hasYtDlp.Store(Get("ytdlp").Info().Version != "")
 
 	go func() {
 		defer ytdlpVerCh.Close()
@@ -46,11 +46,11 @@ func initialize() error {
 				// event report yt-dlp as available. The version itself is what the
 				// answer depends on, and the event is what orders the read after the
 				// write that produced it.
-				available := Get("ytdlp").Info.Version != ""
+				available := Get("ytdlp").Info().Version != ""
 				hasYtDlp.Store(available)
 				ytdlpAvailableEm.NotifySubscribers(available)
 			case <-denoVerCh.Channel:
-				if Get("deno").Info.Version != "" && hasYtDlp.Load() {
+				if Get("deno").Info().Version != "" && hasYtDlp.Load() {
 					// retry ytdlp when deno becomes available
 					ytdlpAvailableEm.NotifySubscribers(true)
 				}

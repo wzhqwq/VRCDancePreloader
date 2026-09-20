@@ -17,11 +17,15 @@ func TestAvailabilityPumpReadsTheVersionNotTheEventKind(t *testing.T) {
 	if err := initialize(); err != nil {
 		t.Fatalf("initialize: %v", err)
 	}
-	t.Cleanup(func() { _ = destroy() })
+	// Deliberately no destroy() here. A ConfigurableTool is started and stopped
+	// once in the lifetime of the process (see the note on tool.go's stopCh), so a
+	// test must not stop it: a second run of this test (-count=2) would panic on
+	// the already closed channel. The pump goroutine simply lives until the test
+	// binary exits.
 
 	// initialize ran with the zero Config, so no binary was probed and there is no
 	// version to report on this machine either way.
-	if Get("ytdlp").Info.Version != "" {
+	if Get("ytdlp").Info().Version != "" {
 		t.Skip("this environment resolved a yt-dlp version; the pump cannot be tested")
 	}
 

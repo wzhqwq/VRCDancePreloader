@@ -54,26 +54,36 @@ func (d *DownloadableBinary) downloadFile(release *api.BriefRelease) error {
 	client := requesting.GetClient(requesting.GitHubAssets)
 	id := fmt.Sprintf("%s (%s)", release.Name, release.ReleaseName)
 
-	d.Task = task.NewTask(id, task.NewRangedRemoteProvider(release.BrowserDownloadURL, client), task.NewLocalFileProvider(file))
-	go d.Task.Download()
+	t := task.NewTask(id, task.NewRangedRemoteProvider(release.BrowserDownloadURL, client), task.NewLocalFileProvider(file))
+
+	// The pointer is published and cleared under the write lock: CancelDownload
+	// reads it from the GUI goroutine. The download itself works on the local
+	// value, so it never reads the field back.
+	d.mutex.Lock()
+	d.task = t
+	d.mutex.Unlock()
+
+	go t.Download()
 	defer func() {
-		d.Task = nil
+		d.mutex.Lock()
+		d.task = nil
+		d.mutex.Unlock()
 	}()
 
-	ch := d.Task.SubscribeChanges()
+	ch := t.SubscribeChanges()
 	defer ch.Close()
 	var lastNotify time.Time
 	for {
 		select {
 		case <-ch.Channel:
-			state, err := d.Task.StateAndError()
+			state, err := t.StateAndError()
 			if state == task.TaskCompleted {
 				return nil
 			}
 			if err != nil {
 				return err
 			}
-			if d.Task.TotalSize() > 0 && time.Since(lastNotify) > time.Millisecond*500 {
+			if t.TotalSize() > 0 && time.Since(lastNotify) > time.Millisecond*500 {
 				d.em.NotifySubscribers(BinProgress)
 				lastNotify = time.Now()
 			}
@@ -99,13 +109,20 @@ func (d *DownloadableBinary) downloadFile(release *api.BriefRelease) error {
 //	}
 var integrityLevelRegex = regexp.MustCompile(`([^\\]+) Mandatory Level`)
 
-func (d *DownloadableBinary) checkIntegrityLevel() {
+// checkIntegrityLevel inspects the executable at path and raises it to Medium
+// integrity when Windows marked it as Low.
+//
+// The path is a parameter instead of a field read because the two callers reach
+// it under different locks: SetPathAndCheck holds the write lock (and knows the
+// resolved path), while Upgrade has just renamed the new file into place and
+// holds nothing.
+func (d *DownloadableBinary) checkIntegrityLevel(path string) {
 	//d.lowLevel.Store(false)
 
 	ctx, cancel := d.generateContext(3 * time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "icacls", d.Path)
+	cmd := exec.CommandContext(ctx, "icacls", path)
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -114,15 +131,15 @@ func (d *DownloadableBinary) checkIntegrityLevel() {
 			logger.InfoLn("stderr:\n" + string(ee.Stderr))
 		}
 
-		logger.WarnLn("Failed to determine integrity level of", d.Path)
+		logger.WarnLn("Failed to determine integrity level of", path)
 	}
 
 	matches := integrityLevelRegex.FindStringSubmatch(string(output))
 	if len(matches) == 2 && matches[1] == "Low" {
-		logger.InfoLn("The integrity level of", d.Path, "is Low, we should raise that to `Medium` to allow it to access filesystem")
-		cmd = exec.CommandContext(ctx, "icacls", d.Path, "/setintegritylevel", "M")
+		logger.InfoLn("The integrity level of", path, "is Low, we should raise that to `Medium` to allow it to access filesystem")
+		cmd = exec.CommandContext(ctx, "icacls", path, "/setintegritylevel", "M")
 		if cmd.Run() != nil {
-			logger.WarnLn("Failed to raise the integrity level of", d.Path, ", the executable may encounter problems while running")
+			logger.WarnLn("Failed to raise the integrity level of", path, ", the executable may encounter problems while running")
 		}
 	}
 	//if len(matches) != 2 {
@@ -136,15 +153,15 @@ func (d *DownloadableBinary) SetPathAndCheck(path string) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
-	d.Path = path
+	d.path = path
 
 	// Cache the resolved path here, where the write lock is legitimately held:
 	// the resolved form is what gets passed to yt-dlp and used as a rename
 	// target, and Valid() cannot do this itself because it is also called under
 	// the read lock.
 	if resolved := d.resolvePath(); resolved != "" {
-		d.Path = resolved
-		d.checkIntegrityLevel()
+		d.path = resolved
+		d.checkIntegrityLevel(resolved)
 	}
 }
 
@@ -152,6 +169,10 @@ var ErrExecutableNotFound = errors.New("executable not found")
 var ErrParsingReleaseVersion = errors.New("failed to parse release version")
 
 func (d *DownloadableBinary) Execute(ctx context.Context, arg ...string) (string, error) {
+	// The read lock is held for the whole run of the child process, so that
+	// nobody replaces or deletes the file while it is executing. Both Valid and
+	// the path below therefore read the fields directly; calling the accessors
+	// here would take the read lock a second time.
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 
@@ -170,7 +191,7 @@ func (d *DownloadableBinary) Execute(ctx context.Context, arg ...string) (string
 	//	}
 	//}()
 
-	cmd := exec.CommandContext(ctx, d.Path, arg...)
+	cmd := exec.CommandContext(ctx, d.path, arg...)
 	output, err := cmd.Output()
 	if err != nil {
 		var ee *exec.ExitError
@@ -236,12 +257,20 @@ func (d *DownloadableBinary) ReleaseRunnable() {
 }
 
 func (d *DownloadableBinary) DownloadAndReplace() error {
+	// One snapshot of the release for the whole operation: it is what names the
+	// download file and decides whether the archive has to be unpacked, and
+	// reading the field again halfway through would race with CheckUpdates.
+	release := d.Release()
+	if release == nil {
+		return errors.New("there is no release to download")
+	}
+
 	err := os.MkdirAll(getLocalBinaryDownloadPath(), 0755)
 	if err != nil {
 		return err
 	}
 
-	downloadedExecutable := filepath.Join(getLocalBinaryDownloadPath(), d.Release.Name)
+	downloadedExecutable := filepath.Join(getLocalBinaryDownloadPath(), release.Name)
 	defer func() {
 		if _, err := os.Stat(downloadedExecutable); err == nil {
 			if err := os.Remove(downloadedExecutable); err != nil {
@@ -250,12 +279,12 @@ func (d *DownloadableBinary) DownloadAndReplace() error {
 		}
 	}()
 
-	err = d.downloadFile(d.Release)
+	err = d.downloadFile(release)
 	if err != nil {
 		return err
 	}
 
-	if strings.HasSuffix(d.Release.Name, ".zip") {
+	if strings.HasSuffix(release.Name, ".zip") {
 		downloadedExecutable, err = UnzipExecutable(downloadedExecutable)
 		if err != nil {
 			return err
@@ -266,7 +295,7 @@ func (d *DownloadableBinary) DownloadAndReplace() error {
 
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	return os.Rename(downloadedExecutable, d.Path)
+	return os.Rename(downloadedExecutable, d.path)
 }
 
 // isInside reports whether path is baseDir itself or something below it.

@@ -43,7 +43,7 @@ func bareExecutableName(t *testing.T) string {
 func TestValidOnlyReadsTheBinary(t *testing.T) {
 	name := bareExecutableName(t)
 
-	d := &DownloadableBinary{Path: name}
+	d := &DownloadableBinary{path: name}
 
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
@@ -52,8 +52,10 @@ func TestValidOnlyReadsTheBinary(t *testing.T) {
 		t.Fatalf("Valid() = false for %q, which PATH resolves to a real file", name)
 	}
 
-	if d.Path != name {
-		t.Fatalf("Valid() rewrote Path from %q to %q while only the read lock is held", name, d.Path)
+	// Read the field directly: the test holds the read lock itself, and Path()
+	// would take it a second time.
+	if d.path != name {
+		t.Fatalf("Valid() rewrote Path from %q to %q while only the read lock is held", name, d.path)
 	}
 }
 
@@ -64,7 +66,7 @@ func TestValidOnlyReadsTheBinary(t *testing.T) {
 func TestConcurrentReadersDoNotRaceOnThePath(t *testing.T) {
 	name := bareExecutableName(t)
 
-	d := &DownloadableBinary{Path: name}
+	d := &DownloadableBinary{path: name}
 
 	var wg sync.WaitGroup
 	for i := 0; i < 8; i++ {
@@ -90,20 +92,20 @@ func TestConcurrentReadersDoNotRaceOnThePath(t *testing.T) {
 func TestSetPathAndCheckCachesTheResolvedPath(t *testing.T) {
 	name := bareExecutableName(t)
 
-	d := &DownloadableBinary{Path: name}
+	d := &DownloadableBinary{path: name}
 	d.SetPathAndCheck(name)
 
-	if !strings.HasSuffix(d.Path, name) {
-		t.Fatalf("Path = %q, want it resolved and cached as an absolute path", d.Path)
+	if !strings.HasSuffix(d.Path(), name) {
+		t.Fatalf("Path = %q, want it resolved and cached as an absolute path", d.Path())
 	}
-	if !filepath.IsAbs(d.Path) {
-		t.Fatalf("Path = %q, want an absolute path", d.Path)
+	if !filepath.IsAbs(d.Path()) {
+		t.Fatalf("Path = %q, want an absolute path", d.Path())
 	}
 
 	// With no path there is nothing to resolve, and Path is left as given.
 	empty := &DownloadableBinary{}
 	empty.SetPathAndCheck("")
-	if empty.Path != "" {
-		t.Fatalf("Path = %q, want the empty path to stay empty", empty.Path)
+	if empty.Path() != "" {
+		t.Fatalf("Path = %q, want the empty path to stay empty", empty.Path())
 	}
 }

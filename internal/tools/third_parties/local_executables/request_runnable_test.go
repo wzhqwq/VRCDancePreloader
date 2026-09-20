@@ -62,7 +62,7 @@ func TestRequestRunnableHoldsTheLockUntilReleased(t *testing.T) {
 		t.Fatalf("locate the test binary: %v", err)
 	}
 
-	d := &DownloadableBinary{Path: self}
+	d := &DownloadableBinary{path: self}
 
 	if err := d.RequestRunnable(); err != nil {
 		t.Fatalf("RequestRunnable = %v, want nil for an existing executable", err)
