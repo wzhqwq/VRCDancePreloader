@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -48,6 +49,61 @@ func TestParseYtDlpVersionReportsUnparsableNumbers(t *testing.T) {
 		if _, ok := parseYtDlpVersion(tag); ok {
 			t.Fatalf("parseYtDlpVersion(%q) accepted a value it cannot represent", tag)
 		}
+	}
+}
+
+// An archive that offers several executables used to be resolved by zip entry
+// order, which is not an intent: the one that came first was installed. It is
+// refused instead.
+func TestUnzipExecutableRefusesAnAmbiguousArchive(t *testing.T) {
+	root := t.TempDir()
+
+	writeZip := func(name string, entries ...string) string {
+		t.Helper()
+
+		path := filepath.Join(root, name)
+
+		file, err := os.Create(path)
+		if err != nil {
+			t.Fatalf("create %s: %v", name, err)
+		}
+
+		w := zip.NewWriter(file)
+		for _, entry := range entries {
+			f, err := w.Create(entry)
+			if err != nil {
+				t.Fatalf("add %s: %v", entry, err)
+			}
+			if _, err := f.Write([]byte("payload")); err != nil {
+				t.Fatalf("write %s: %v", entry, err)
+			}
+		}
+		if err := w.Close(); err != nil {
+			t.Fatalf("close %s: %v", name, err)
+		}
+		if err := file.Close(); err != nil {
+			t.Fatalf("close %s: %v", name, err)
+		}
+
+		return path
+	}
+
+	two := writeZip("two.zip", "yt-dlp.exe", "yt-dlp_min.exe")
+
+	if _, err := UnzipExecutable(two); err == nil {
+		t.Fatal("UnzipExecutable accepted an archive with two executables and picked one")
+	}
+
+	// A single executable is still extracted, so the refusal is about ambiguity
+	// and not about archives in general.
+	one := writeZip("one.zip", "readme.txt", "yt-dlp.exe")
+
+	extracted, err := UnzipExecutable(one)
+	if err != nil {
+		t.Fatalf("UnzipExecutable refused an unambiguous archive: %v", err)
+	}
+	if !strings.HasSuffix(extracted, "yt-dlp.exe") {
+		t.Fatalf("extracted %q, want the single executable in the archive", extracted)
 	}
 }
 

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wzhqwq/VRCDancePreloader/internal/gui/custom_fyne"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
@@ -148,7 +147,7 @@ func GetLocalYtDlpInfo(ctx context.Context) BinaryInfo {
 }
 
 func printVideoInfoWithYtDlp(url, metaKey string, ctx context.Context) (string, error) {
-	tempPath := filepath.Join(custom_fyne.AppDataRoot, "temp")
+	tempPath := filepath.Join(appDataRoot(), "temp")
 	err := os.MkdirAll(tempPath, 0755)
 	if err != nil {
 		return "", err

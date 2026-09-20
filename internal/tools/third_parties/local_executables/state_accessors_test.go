@@ -270,3 +270,37 @@ func TestCompositeReadersDoNotNestTheLock(t *testing.T) {
 		t.Fatal("HasUpdates/UpdateText did not return: the composite reader takes the read lock a second time, and a queued writer deadlocks it")
 	}
 }
+
+// C2-⑦ — Init must not leave its in-flight mark behind.
+//
+// The state machine cannot express "a local probe is running" (Init moves into
+// BinCheckingLocal, which is also the state a fresh binary starts in, so two
+// concurrent probes both see an idle machine), which is why Init carries a flag
+// of its own. That flag has to be released on every exit path: a mark left behind
+// turns every later probe into a silent no-op and freezes the tool on the first
+// version it ever saw.
+func TestInitReleasesTheProbeFlag(t *testing.T) {
+	isolateAppData(t)
+
+	d := NewDownloadableBinary("ytdlp")
+
+	// Nothing is installed under the temporary root, so a probe that does run
+	// resolves to "not present" and overwrites the sentinel below.
+	probe := func(round int) {
+		t.Helper()
+
+		d.mutex.Lock()
+		d.info = BinaryInfo{Exists: true, Version: "sentinel"}
+		d.state = BinInitial
+		d.mutex.Unlock()
+
+		d.Init()
+
+		if got := d.Info(); got.Version == "sentinel" {
+			t.Fatalf("round %d: Info = %+v after Init, want the probe to have run: the in-flight mark was not released", round, got)
+		}
+	}
+
+	probe(1)
+	probe(2)
+}

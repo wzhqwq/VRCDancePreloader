@@ -76,7 +76,19 @@ type DownloadableBinary struct {
 
 	em *utils.EventManager[DownloadableChange]
 
-	lowLevel atomic.Bool
+	// probing marks a local probe (Init) as being in flight. The state machine
+	// cannot express it: Init runs in BinCheckingLocal, which is also the state a
+	// fresh binary starts in, so two concurrent probes both see an idle machine and
+	// both run --version.
+	probing bool
+
+	// integrityChecked records that the file installed at d.path has had its
+	// integrity level inspected. Everything that starts the executable depends on
+	// it, so it is invalidated by everything that can change that file:
+	// SetPathAndCheck, DownloadAndReplace (which renames a freshly downloaded
+	// binary over it) and Remove. It is atomic because the exec path reads and
+	// sets it while holding only the read lock.
+	integrityChecked atomic.Bool
 
 	stopCh chan struct{}
 }
@@ -274,9 +286,9 @@ func (d *DownloadableBinary) setRelease(release *api.BriefRelease) {
 //
 // BinCheckingLocal is in the list even though Init is the one moving into it:
 // the constructor starts in that state, so refusing it would refuse the startup
-// probe. Two concurrent Init calls are therefore not mutually exclusive — the
-// state machine has no separate "local probe in flight" state — but both probes
-// read the same local binary and publish the result under the lock.
+// probe. That overlap also means the state machine alone cannot tell a probe that
+// is already running from one that has not started yet, so Init carries its own
+// `probing` flag on top of this list.
 //
 // The GUI only ever offers these entry points from the idle states (it hides the
 // upgrade button during a download, and disables it during a check), so the
@@ -289,6 +301,22 @@ var idleStates = []DownloadableState{
 }
 
 func (d *DownloadableBinary) Init() {
+	// One probe at a time: see the note on probing. The flag is released on every
+	// exit path, the early returns below included.
+	d.mutex.Lock()
+	if d.probing {
+		d.mutex.Unlock()
+		return
+	}
+	d.probing = true
+	d.mutex.Unlock()
+
+	defer func() {
+		d.mutex.Lock()
+		d.probing = false
+		d.mutex.Unlock()
+	}()
+
 	// Claim the machine for this probe: see idleStates.
 	if !d.trySetState(idleStates, BinCheckingLocal) {
 		return
@@ -384,7 +412,10 @@ func (d *DownloadableBinary) Upgrade() {
 	logger.InfoLn("Downloaded latest version of", d.Name)
 
 	d.setState(BinCheckingLocal)
-	d.checkIntegrityLevel(d.Path())
+
+	// The check is not repeated here: DownloadAndReplace has dropped the previous
+	// answer (the file it just renamed into place was never inspected), and the
+	// probe below starts that file through Execute, which inspects it first.
 	d.Init()
 }
 
@@ -413,6 +444,30 @@ func (d *DownloadableBinary) Stop() {
 }
 
 func (d *DownloadableBinary) Remove() {
+	// Refuse while a download owns the state machine.
+	//
+	// The delete targets the installed binary, while DownloadAndReplace is about to
+	// rename the freshly downloaded one into that very path. Whichever order the two
+	// take, a delete that lands first is silently undone by that rename — the user
+	// would see "deleted, and still there". So the answer is a refusal the caller can
+	// show, not a delete that quietly loses. (Cancelling the download and then
+	// deleting would be a different feature, not a fix.)
+	d.mutex.RLock()
+	downloading := d.state == BinDownloading
+	d.mutex.RUnlock()
+
+	if downloading {
+		d.mutex.Lock()
+		d.err = errors.New("the binary is being downloaded, cancel the download before removing it")
+		d.mutex.Unlock()
+
+		logger.InfoLn("Refused to remove", d.Path(), "while it is being downloaded")
+
+		// Outside the lock: the subscriber runs in this goroutine.
+		d.em.NotifySubscribers(BinState)
+		return
+	}
+
 	// The write lock is held around the delete so that it stays serialized with
 	// SetPathAndCheck and with the rename at the end of DownloadAndReplace.
 	d.mutex.Lock()
@@ -421,6 +476,9 @@ func (d *DownloadableBinary) Remove() {
 	if err != nil {
 		d.err = err
 	}
+
+	// There is no file to have inspected any more.
+	d.integrityChecked.Store(false)
 	d.mutex.Unlock()
 
 	if err != nil {
