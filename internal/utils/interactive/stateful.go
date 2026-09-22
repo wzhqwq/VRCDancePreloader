@@ -44,7 +44,6 @@ type StatefulRemoteData[T any] interface {
 	Invalidate()
 	Snapshot() RemoteSnapshot[T]
 	BlockedGet(ctx context.Context) (T, error)
-	WaitValid(ctx context.Context) error
 	Subscribe() *utils.EventSubscriber[RemoteSnapshot[T]]
 	SubscribeStatus() *utils.EventSubscriber[RemoteStatus]
 	Close()

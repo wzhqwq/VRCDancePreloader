@@ -906,29 +906,6 @@ func (h *RemoteHandle[T]) Snapshot() RemoteSnapshot[T] {
 	return h.entry.snapshot()
 }
 
-func (h *RemoteHandle[T]) WaitValid(ctx context.Context) error {
-	ch := h.Subscribe()
-	defer ch.Close()
-
-	snapshot := h.Snapshot()
-	if snapshot.Status.Valid() {
-		return nil
-	}
-
-	for {
-		select {
-		case <-h.manager.closeCh:
-			return errors.New("closed")
-		case <-ctx.Done():
-			return ctx.Err()
-		case snapshot = <-ch.Channel:
-			if snapshot.Status.Valid() {
-				return nil
-			}
-		}
-	}
-}
-
 func (h *RemoteHandle[T]) Refresh() {
 	if h == nil || h.manager == nil || h.entry == nil {
 		return

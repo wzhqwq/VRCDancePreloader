@@ -134,12 +134,6 @@ func (s *Service) getResource(item *song.StatefulSong, ctx context.Context) (typ
 		session.Close(logger)
 	}()
 
-	// wait for video info
-	err = third_parties.GetProviderById(id).ResolvedVideo(id).WaitValid(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	// Having the resolved info available is not enough: the cache entry must
 	// also have consumed it, because entry.GetResource reports a download
 	// failure as long as the file has no total length. Only the download task
