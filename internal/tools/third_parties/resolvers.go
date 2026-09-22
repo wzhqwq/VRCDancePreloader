@@ -11,6 +11,7 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/local_executables"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
 type ErrRefused struct {
@@ -19,6 +20,10 @@ type ErrRefused struct {
 
 func (e *ErrRefused) Error() string {
 	return "the remote server refuse to provide a video"
+}
+
+func (e *ErrRefused) Unwrap() error {
+	return interactive.ErrUnrecoverable
 }
 
 var urlResolverLogger = utils.NewLogger("URL Resolver")

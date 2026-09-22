@@ -55,7 +55,7 @@ func (t *Task) waitBodyRequestInterval(ctx context.Context) error {
 	// Check the context first, like wait() does: a cancelled task must not issue
 	// another request just because the pacing window has already elapsed. The
 	// no-queue traffic control does not veto on its own, so this is the check
-	// that keeps "cancelled" from turning into "one more request".
+	// that keeps "canceled" from turning into "one more request".
 	if ctx.Err() != nil {
 		return context.Cause(ctx)
 	}
@@ -240,7 +240,7 @@ func (t *Task) Download() {
 		if errors.Is(err, ErrCanceled) {
 			goto canceled
 		}
-		if errors.Is(err, interactive.ErrUnrecoverable) {
+		if t.Resolver().Phase == interactive.RemoteError {
 			t.setError(err)
 			return
 		}
