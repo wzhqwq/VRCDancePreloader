@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
@@ -18,9 +19,29 @@ func createProxyClient(proxyURL string) *http.Client {
 		logger.FatalLn("Error parsing proxy URL:", err)
 	}
 	return &http.Client{
-		Transport: &http.Transport{
+		Transport: newGate(&http.Transport{
 			Proxy: http.ProxyURL(proxy),
-		},
+
+			// Same as http.DefaultTransport. Without it a zero-valued
+			// IdleConnTimeout means "no limit", so the pooled connection to the
+			// proxy would stay open for the whole process lifetime — and a
+			// replaced transport (SetProxy builds a new client) would never let
+			// go of it either.
+			IdleConnTimeout: 90 * time.Second,
+		}),
+	}
+}
+
+// closeIdleConnections releases the pooled connections of a client that is being
+// replaced or shut down. Nothing else can reach them afterwards, and the
+// transports this package builds are never garbage collected while a connection
+// is still pooled (the connection's own goroutine holds the transport).
+func closeIdleConnections(client *http.Client) {
+	if client == nil {
+		return
+	}
+	if closer, ok := client.Transport.(interface{ CloseIdleConnections() }); ok {
+		closer.CloseIdleConnections()
 	}
 }
 
@@ -55,7 +76,7 @@ func NewProxyProvider(proxyUrl, name string, tc testCase) *ClientProvider {
 		c = createProxyClient(proxyUrl)
 	} else {
 		c = &http.Client{
-			Transport: http.DefaultTransport,
+			Transport: newGate(nil),
 		}
 	}
 
@@ -71,18 +92,33 @@ func NewProxyProvider(proxyUrl, name string, tc testCase) *ClientProvider {
 	}
 
 	p.tester = interactive.NewTester(func() error {
-		return testClient(p.client, p.name, p.tc)
+		return testClient(p.client, p.name, p.tc, p.ProxyUrl)
 	})
 
 	return p
 }
 
 func (p *ClientProvider) SetProxy(proxyUrl string) {
+	previous := p.client
+
 	if proxyUrl != "" {
 		p.client = createProxyClient(proxyUrl)
 	} else {
-		p.client = &http.Client{}
+		// Transport must never be nil: mixedTransport.RoundTrip (request.go)
+		// calls it directly, and a nil interface panics.
+		p.client = &http.Client{Transport: newGate(nil)}
 	}
+
+	// ProxyUrl is what yt-dlp is handed (local_executables/ytdlp.go) and what the
+	// availability log describes, so a hot switch has to update it as well:
+	// leaving the old value here would keep passing the previous proxy to yt-dlp.
+	p.ProxyUrl = proxyUrl
+
+	// The replaced client is unreachable now, and its transport would keep its
+	// pooled connections (the ones built by createProxyClient have an idle
+	// timeout, but waiting them out is not the same as dropping them).
+	closeIdleConnections(previous)
+
 	p.tester.Reset()
 	p.em.NotifySubscribers(ClientChanged)
 }
@@ -184,4 +220,9 @@ func (p *ClientProvider) BoundGet(url string) (*http.Response, error) {
 func (p *ClientProvider) Shutdown() {
 	p.em.NotifySubscribers(ClientShutdown)
 	p.wg.Wait()
+
+	// The clients outlive this call (the map still points at them, and SetProxy
+	// can revive them), so the pooled connections are released explicitly instead
+	// of being left to an idle timeout that the process may never reach.
+	closeIdleConnections(p.client)
 }

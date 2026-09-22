@@ -49,7 +49,7 @@ func accessClient(client *http.Client, tc testCase) error {
 	return nil
 }
 
-func testClient(client *http.Client, serviceName string, tc testCase) error {
+func testClient(client *http.Client, serviceName string, tc testCase, proxyUrl string) error {
 	if tc.url == "" {
 		return errors.New("empty test case")
 	}
@@ -57,15 +57,25 @@ func testClient(client *http.Client, serviceName string, tc testCase) error {
 
 	err := accessClient(client, tc)
 	if err != nil {
-		if client.Transport == nil {
-			logger.WarnLnf("Cannot connect to %s service, maybe you should configure proxy: %v", serviceName, err)
-		} else {
-			logger.WarnLnf("Cannot connect to %s service through provided proxy: %v", serviceName, err)
-		}
+		// What the message says follows the *configuration*, not the client's
+		// Transport: that is never nil any more (see gate), and reading it as
+		// "no proxy configured" would report a configured proxy for a client that
+		// has none.
+		logger.WarnLnf("Cannot connect to %s service%s: %v", serviceName, proxyHintSuffix(proxyUrl), err)
 		return err
 	}
 
 	return nil
+}
+
+// proxyHintSuffix names the situation a failed self-test is in, so that the
+// message tells the user whether the proxy they configured is what failed, or
+// whether there simply is none.
+func proxyHintSuffix(proxyUrl string) string {
+	if proxyUrl == "" {
+		return ", maybe you should configure proxy"
+	}
+	return " through provided proxy"
 }
 
 func videoTestCase(url string) testCase {
