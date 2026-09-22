@@ -335,7 +335,12 @@ func TestMockM5YoutubeApiUsesMock(t *testing.T) {
 	initClient(YouTubeApi, deadEndpoint, false)
 	clients[YouTubeApi].SetProxy("")
 
-	svc, err := youtube.NewService(context.Background(), WithYoutubeApiClient("test-api-key"))
+	clientOption, err := WithYoutubeApiClient("test-api-key")
+	if err != nil {
+		t.Fatalf("M5: WithYoutubeApiClient: %v", err)
+	}
+
+	svc, err := youtube.NewService(context.Background(), clientOption)
 	if err != nil {
 		t.Fatalf("M5: youtube.NewService: %v", err)
 	}

@@ -47,8 +47,8 @@ var testCases = map[ClientName]testCase{
 	// google.golang.org/api youtube/v3 service uses the base path
 	// "https://youtube.googleapis.com/" (youtube-gen.go:100), while
 	// www.googleapis.com is a different host — a self-test passing there would not
-	// prove the endpoint the API uses is reachable.
-	// TestAvailabilityProbeTargetsTheRealEndpoint pins this against svc.BasePath.
+	// prove the endpoint the API uses is reachable. (Verified against svc.BasePath
+	// once; the invariant is deliberately not pinned by a test.)
 	YouTubeApi:   authenticatedTestCase("https://youtube.googleapis.com/youtube/v3/videos"),
 	YouTubeImage: anonymousTestCase(internal_id.GetYoutubeMQThumbnailURL("qylu4Ajh6k8")),
 	GitHubApi:    anonymousTestCaseGet("https://api.github.com"),

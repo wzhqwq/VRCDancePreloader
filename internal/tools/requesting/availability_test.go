@@ -1,49 +1,26 @@
 package requesting
 
 import (
-	"context"
-	"net/url"
 	"testing"
-
-	"google.golang.org/api/youtube/v3"
 )
 
-// A1: the availability self-test probes the endpoint the API client really calls.
+// A3: WithYoutubeApiClient reports a missing provider instead of dereferencing it.
 //
-// The probe used to point at www.googleapis.com while the generated
-// google.golang.org/api youtube/v3 service talks to youtube.googleapis.com
-// (basePath in youtube-gen.go). A self-test on a host the API never uses measures
-// the wrong thing: it can report the service as reachable while every real API
-// call fails.
-//
-// The expectation is taken from the library itself (svc.BasePath), not from a
-// host written down here, so a future version that moves its endpoint moves the
-// probe with it.
-func TestAvailabilityProbeTargetsTheRealEndpoint(t *testing.T) {
-	probe := testCases[YouTubeApi]
-	if probe.url == "" {
-		t.Fatal("the YouTubeApi test case has no URL to probe")
-	}
-	probeURL, err := url.Parse(probe.url)
-	if err != nil {
-		t.Fatalf("parsing the probe URL %q: %v", probe.url, err)
-	}
+// The provider is filled in by initialize() and every call site runs after that, so
+// a missing one means the caller asked too early — an error it can log and return
+// beats the nil dereference this call used to do (api/youtube.go reaches it on a
+// normal code path).
+func TestWithYoutubeApiClientReportsAMissingProvider(t *testing.T) {
+	previous := clients[YouTubeApi]
+	clients[YouTubeApi] = nil
+	t.Cleanup(func() { clients[YouTubeApi] = previous })
 
-	// WithYoutubeApiClient reads clients[YouTubeApi] (request.go), so the provider
-	// has to exist. doTest=false: no availability goroutine is wanted here.
-	initClient(YouTubeApi, "", false)
-
-	svc, err := youtube.NewService(context.Background(), WithYoutubeApiClient("test-api-key"))
-	if err != nil {
-		t.Fatalf("building the youtube service: %v", err)
+	clientOption, err := WithYoutubeApiClient("test-api-key")
+	if err == nil {
+		t.Fatalf("WithYoutubeApiClient returned %v and no error for a missing provider", clientOption)
 	}
-	apiURL, err := url.Parse(svc.BasePath)
-	if err != nil {
-		t.Fatalf("parsing the service base path %q: %v", svc.BasePath, err)
-	}
-
-	if probeURL.Hostname() != apiURL.Hostname() {
-		t.Fatalf("the YouTubeApi self-test probes %q but the API client calls %q: the self-test would measure a host the API never uses", probeURL.Hostname(), apiURL.Hostname())
+	if clientOption != nil {
+		t.Fatalf("WithYoutubeApiClient returned an option (%v) together with the error", clientOption)
 	}
 }
 

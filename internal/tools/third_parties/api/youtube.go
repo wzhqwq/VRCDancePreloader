@@ -22,7 +22,12 @@ func GetYoutubeInfoFromApi(videoID, apiKey string, ctx context.Context) (*youtub
 	apiCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	svc, err := youtube.NewService(apiCtx, requesting.WithYoutubeApiClient(apiKey))
+	clientOption, err := requesting.WithYoutubeApiClient(apiKey)
+	if err != nil {
+		return nil, err
+	}
+
+	svc, err := youtube.NewService(apiCtx, clientOption)
 	if err != nil {
 		return nil, err
 	}
