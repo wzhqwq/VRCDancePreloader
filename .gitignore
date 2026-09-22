@@ -32,6 +32,10 @@ config.yaml
 *.crt
 *.key
 *.db
+dump_*.txt
+
+/.idea/
+/build/
 
 /internal/services/live/web/*
 
