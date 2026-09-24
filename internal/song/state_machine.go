@@ -158,9 +158,28 @@ func (sm *StateMachine) StartDownloadLoop() {
 					case errors.Is(err, task.ErrCanceled):
 						return
 					case errors.Is(err, third_parties.ErrFeatureDisabled):
+						// Disabled and Refused below are terminal: neither is
+						// retried (only the default branch schedules a retry), so
+						// this loop is the last thing that will ever look at this
+						// task. Cancel it before leaving — that is what takes it
+						// out of the download manager's queue.
+						//
+						// Leaving it there is what starved every song behind it:
+						// UpdatePriorities only drops completed tasks, so a task
+						// that ended in one of these states stays in dm.queue and
+						// keeps holding one of the maxParallel slots, and the
+						// songs queued after it never got a permit. The retry
+						// path deliberately does the opposite: a task waiting for
+						// its retry keeps its slot, that is the intended cost of
+						// the delay, and a retry goes back through the ordinary
+						// gate when it runs again.
+						sm.CancelTask()
 						sm.SwitchDownloadStatus(Disabled)
 						return
 					case errors.As(err, &refused):
+						// See the Disabled branch above: terminal, and it must
+						// not stay in the download queue.
+						sm.CancelTask()
 						sm.SwitchDownloadStatus(Refused)
 						return
 					default:
