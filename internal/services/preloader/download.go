@@ -22,10 +22,101 @@ import (
 // that within a few seconds; if it has not happened by then something is wrong,
 // and failing the request is preferable to holding the proxy connection open
 // indefinitely.
+//
+// This applies to videos that are supposed to be downloaded. A request the
+// queue is not going to serve yet never reaches this wait at all: it is served
+// from the origin instead (see Service.requestTemporary).
 const entryInitWaitTimeout = 30 * time.Second
+
+// entryReadyWatcherTimeout bounds the lifetime of the goroutine that watches a
+// cache entry for a request that is being served from the origin.
+//
+// The entry is expected to become usable within seconds, and the watch ends
+// then. The timeout only bounds the other direction: a client that keeps a
+// pass-through connection wide open on a video whose download never happens
+// would otherwise keep the goroutine alive for the whole connection. It only
+// watches, so giving up costs nothing but the opportunity to hand over.
+const entryReadyWatcherTimeout = 10 * time.Minute
 
 func (s *Service) cacheBinder() (types.CDNFileSession, error) {
 	return s.cacheSvc.CreateSession("video")
+}
+
+// hasCompleteCache reports whether the video is already fully cached, and so can
+// be served without waiting for anything.
+//
+// "Fully" rather than "has a header": a partially downloaded file opens and
+// initializes instantly, so it cannot be told apart from a complete one by
+// getResource alone, and serving it would be an unnecessary pass-through — the
+// entry is ready, and the reader fills the gaps as they arrive.
+func (s *Service) hasCompleteCache(id string, ctx context.Context) bool {
+	logger := utils.NewLogger("Cache Probe")
+
+	session, err := s.cacheSvc.CreateSession("video")
+	if err != nil {
+		return false
+	}
+	defer session.Close()
+
+	if err := session.Open(id, logger); err != nil {
+		return false
+	}
+
+	file, err := session.AcquireFile()
+	if err != nil {
+		return false
+	}
+	complete := file.IsComplete()
+	session.ReleaseFile()
+
+	return complete
+}
+
+// WatchEntryReady reports, by closing the returned channel, when the cache entry
+// of a video has become usable — the same condition getResource waits for before
+// it serves the video from the cache.
+//
+// It is how a pass-through response learns that it should stop: the entry is
+// initialized exactly when serving from the cache becomes possible, and the
+// download task is what initializes it.
+//
+// The channel is closed at most once and the goroutine always terminates: it
+// stops when the request is over, when the watch times out, or when the entry is
+// ready.
+func (s *Service) WatchEntryReady(id string, ctx context.Context) <-chan struct{} {
+	ready := make(chan struct{})
+
+	go func() {
+		logger := utils.NewLogger("Cache Watch")
+
+		// The watch is tied to the request only for cancellation; the deadline is
+		// its own, so that a request that stays open for a long time still
+		// releases it eventually.
+		watchCtx, cancelWatch := context.WithTimeout(context.WithoutCancel(ctx), entryReadyWatcherTimeout)
+		defer cancelWatch()
+
+		session, err := s.cacheSvc.CreateSession("video")
+		if err != nil {
+			logger.ErrorLn("Cannot watch the cache entry of", id, ":", err)
+			return
+		}
+		defer session.Close()
+
+		if err := session.Open(id, logger); err != nil {
+			logger.ErrorLn("Cannot watch the cache entry of", id, ":", err)
+			return
+		}
+
+		if err := session.WaitInitialized(watchCtx); err != nil {
+			logger.InfoLn("Stopped watching the cache entry of", id, ":", err)
+			return
+		}
+
+		logger.InfoLn("Cache entry of", id, "is initialized")
+		close(ready)
+	}()
+
+	return ready
 }
 
 func (s *Service) taskBinder(songSession types.CDNFileSession, id string) *downloader.ManagedTask {
