@@ -31,7 +31,10 @@ func TestServiceTickerRetriesFailedTask(t *testing.T) {
 	h := newGateHarness(t, 1)
 	h.dm.retryDelay = 20 * time.Millisecond
 
-	// The first attempt fails, the retry succeeds.
+	// The first attempt fails, the retry succeeds. The failure count is set
+	// before the loop is started: it is read by the download goroutine, so
+	// writing it after start would be a data race and the attempt could see the
+	// zero value instead.
 	remote := h.requireTask("r")
 	remote.failures = 1
 

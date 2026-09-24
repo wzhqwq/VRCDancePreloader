@@ -62,8 +62,11 @@ func (dm *downloadManager) UpdatePriorities() {
 //
 // This is also the single place that *grants* a permit, so it is where the
 // freeze is enforced: while a caller is still assembling the order, a grant
-// would be a grant for a position the task is about to lose, and a granted task
-// only re-reads its permit when its attempt restarts.
+// would be a grant for a position the task is about to lose. A task re-reads its
+// permit on every block it writes (Task.Write), so what a grant in that window
+// buys is one more request and up to one block of data before the next
+// publication takes it away again — still work done in a position the task does
+// not hold, which is why the freeze exists.
 //
 // Caller must hold dm.Lock().
 func (dm *downloadManager) publishPermitsLocked() {

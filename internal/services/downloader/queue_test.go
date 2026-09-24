@@ -142,7 +142,9 @@ func newGateHarness(t *testing.T, maxParallel int) *gateHarness {
 }
 
 // requireTask registers a task through the same entry point the downloader
-// service uses, with a real (file backed) LocalProvider.
+// service uses, with a real (file backed) LocalProvider. It does not start the
+// download loop: the tests below do that explicitly, because the order in which
+// tasks are created and started is part of what they assert.
 func (h *gateHarness) requireTask(id string) *gateRemote {
 	h.t.Helper()
 
