@@ -67,14 +67,18 @@ func (p *RoomProvider[T]) loop() {
 	ytdlpAvailableCh := local_executables.SubscribeYtDlpAvailability()
 	defer ytdlpAvailableCh.Close()
 
-	catalogStatusCh := p.catalogHandle.SubscribeStatus()
-	defer catalogStatusCh.Close()
+	catalogCh := p.catalogHandle.Subscribe()
+	defer catalogCh.Close()
 
 	catalogAllowed := lo.Contains(p.currentAllowResources(), ResourceCatalog)
 	thumbnailAllowed := lo.Contains(p.currentAllowResources(), ResourceThumbnail)
 	videoAllowed := lo.Contains(p.currentAllowResources(), ResourceVideo)
 
-	p.catalogAvailable = newBothTrue(catalogAllowed, p.catalogHandle.Snapshot().Status.Valid(), p.catalogAvailableEm)
+	// newBothTrue takes (available, allowed): the catalog's own fetch status is the
+	// availability, the user's resource list is the permission. Swapping the two
+	// makes SetAvailable() write the permission field, so a finished fetch can
+	// never satisfy this gate.
+	p.catalogAvailable = newBothTrue(p.catalogHandle.Snapshot().HasData, catalogAllowed, p.catalogAvailableEm)
 	p.thumbnailAvailable = newIsAllowed(thumbnailAllowed, p.thumbnailAvailableEm)
 	p.videoAvailable = newIsAllowed(videoAllowed, p.videoAvailableEm)
 
@@ -93,8 +97,8 @@ func (p *RoomProvider[T]) loop() {
 			p.catalogAvailable.SetAllowed(catalogAllowed)
 			p.thumbnailAvailable.SetAllowed(thumbnailAllowed)
 			p.videoAvailable.SetAllowed(videoAllowed)
-		case catalogStatus := <-catalogStatusCh.Channel:
-			p.catalogAvailable.SetAvailable(catalogStatus.Valid())
+		case snap := <-catalogCh.Channel:
+			p.catalogAvailable.SetAvailable(snap.HasData)
 		// client changed
 		case <-clientCh.Channel:
 			p.catalogAvailable.NotifyIfSatisfied()
@@ -109,12 +113,12 @@ func (p *RoomProvider[T]) loop() {
 }
 
 func (p *RoomProvider[T]) findSong(id int) (song T, ok bool) {
-	c := p.catalogHandle.Snapshot().Data
-	if c == nil {
+	snap := p.catalogHandle.Snapshot()
+	if !snap.HasData || snap.Data == nil {
 		return
 	}
 
-	song, ok = c.FindSong(id)
+	song, ok = snap.Data.FindSong(id)
 	return
 }
 
