@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"strings"
+	"sync/atomic"
 
 	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
@@ -20,7 +21,12 @@ import (
 type PlatformProvider struct {
 	BaseProvider
 
-	mode string
+	// mode is read from the request path (the getters below, which run on the
+	// info/resolver workers) and from this provider's own loop, while SetMode
+	// writes it from the configuration thread. It is a pointer so that both sides
+	// can use it without a lock, and so that "never set" is representable: the
+	// zero value reads as "".
+	mode atomic.Pointer[string]
 
 	modeEm *utils.EventManager[string]
 
@@ -29,15 +35,28 @@ type PlatformProvider struct {
 	infoAvailable, videoAvailable, thumbnailAvailable *BothTrue
 }
 
+// currentMode is the mode every reader sees. It is safe to call from any
+// goroutine; see the note on the field.
+func (p *PlatformProvider) currentMode() string {
+	if mode := p.mode.Load(); mode != nil {
+		return *mode
+	}
+
+	return ""
+}
+
 func ValidMode(mode string) bool {
 	return mode == ModeDisabled || mode == ModeApi || mode == ModeYtDlp
 }
 
 func (p *PlatformProvider) SetMode(mode string) {
-	if mode == p.mode {
+	if mode == p.currentMode() {
 		return
 	}
-	p.mode = mode
+
+	// Stored before the notification: the loop re-reads the mode when it handles
+	// the event, so the value it then finds has to be the one that was announced.
+	p.mode.Store(&mode)
 	p.modeEm.NotifySubscribers(mode)
 }
 
@@ -87,15 +106,15 @@ func (*YouTubeProvider) getInfoPlaceholder(id string) types.GeneralVideoInfo {
 }
 
 func (p *YouTubeProvider) getInfo(id string, ctx context.Context) (types.GeneralVideoInfo, error) {
-	if p.mode == ModeDisabled {
+	if p.currentMode() == ModeDisabled {
 		return types.GeneralVideoInfo{}, errYouTubeDisabled
 	}
-	if !lo.Contains(p.allowResources, ResourceInfo) {
+	if !lo.Contains(p.currentAllowResources(), ResourceInfo) {
 		return types.GeneralVideoInfo{}, errYouTubeInfoDisabled
 	}
 
 	if videoID, isYoutube := internal_id.CheckIdIsYoutube(id); isYoutube {
-		if p.mode == ModeApi {
+		if p.currentMode() == ModeApi {
 			if key := secrets.Get(secrets.YoutubeKeyUser); key != "" {
 				info, err := api.GetYoutubeInfo(videoID, key, ctx)
 				if err != nil {
@@ -108,7 +127,7 @@ func (p *YouTubeProvider) getInfo(id string, ctx context.Context) (types.General
 			return types.GeneralVideoInfo{}, errYouTubeApiNotConfigured
 		}
 
-		if p.mode == ModeYtDlp {
+		if p.currentMode() == ModeYtDlp {
 			info, err := local_executables.GetVideoBasicInfoWithYtDlp(internal_id.GetStandardYoutubeURL(videoID), ctx)
 			if err != nil {
 				return types.GeneralVideoInfo{}, fmt.Errorf("get YouTube info by yt-dlp: %w", err)
@@ -122,10 +141,10 @@ func (p *YouTubeProvider) getInfo(id string, ctx context.Context) (types.General
 }
 
 func (p *YouTubeProvider) getThumbnail(id string, ctx context.Context) (image.Image, error) {
-	if p.mode == ModeDisabled {
+	if p.currentMode() == ModeDisabled {
 		return nil, errYouTubeDisabled
 	}
-	if !lo.Contains(p.allowResources, ResourceThumbnail) {
+	if !lo.Contains(p.currentAllowResources(), ResourceThumbnail) {
 		return nil, errYouTubeThumbnailDisabled
 	}
 
@@ -142,13 +161,13 @@ func (p *YouTubeProvider) getThumbnail(id string, ctx context.Context) (image.Im
 }
 
 func (p *YouTubeProvider) resolveVideoUrl(id string, ctx context.Context) (*types.RemoteHttpResourceInfo, error) {
-	if p.mode == ModeDisabled {
+	if p.currentMode() == ModeDisabled {
 		return nil, errYouTubeDisabled
 	}
-	if p.mode == ModeApi {
+	if p.currentMode() == ModeApi {
 		return nil, errYouTubeApiNotSupported
 	}
-	if !lo.Contains(p.allowResources, ResourceVideo) {
+	if !lo.Contains(p.currentAllowResources(), ResourceVideo) {
 		return nil, errYouTubeVideoDisabled
 	}
 
@@ -177,12 +196,12 @@ func (p *YouTubeProvider) loop() {
 	ytdlpAvailableCh := local_executables.SubscribeYtDlpAvailability()
 	defer ytdlpAvailableCh.Close()
 
-	apiAvailable := p.mode == ModeApi && secrets.Get(secrets.YoutubeKeyUser) != ""
-	ytdlpAvailable := p.mode == ModeYtDlp && local_executables.YtDlpAvailable()
+	apiAvailable := p.currentMode() == ModeApi && secrets.Get(secrets.YoutubeKeyUser) != ""
+	ytdlpAvailable := p.currentMode() == ModeYtDlp && local_executables.YtDlpAvailable()
 
-	infoAllowed := lo.Contains(p.allowResources, ResourceInfo)
-	thumbnailAllowed := lo.Contains(p.allowResources, ResourceThumbnail)
-	videoAllowed := lo.Contains(p.allowResources, ResourceVideo)
+	infoAllowed := lo.Contains(p.currentAllowResources(), ResourceInfo)
+	thumbnailAllowed := lo.Contains(p.currentAllowResources(), ResourceThumbnail)
+	videoAllowed := lo.Contains(p.currentAllowResources(), ResourceVideo)
 
 	p.infoAvailable = newBothTrue(apiAvailable || ytdlpAvailable, infoAllowed, p.infoAvailableEm)
 	p.thumbnailAvailable = newBothTrue(true, thumbnailAllowed, p.thumbnailAvailableEm)
@@ -210,7 +229,7 @@ func (p *YouTubeProvider) loop() {
 			p.videoAvailable.SetAllowed(videoAllowed)
 		// key changed
 		case key := <-keyCh.Channel:
-			apiAvailable = p.mode == ModeApi && key != ""
+			apiAvailable = p.currentMode() == ModeApi && key != ""
 
 			p.infoAvailable.SetAvailable(apiAvailable || ytdlpAvailable)
 		// client changed
@@ -222,7 +241,7 @@ func (p *YouTubeProvider) loop() {
 			p.videoAvailable.NotifyIfSatisfied()
 		// YtDlp availability changed
 		case ok := <-ytdlpAvailableCh.Channel:
-			ytdlpAvailable = p.mode == ModeYtDlp && ok
+			ytdlpAvailable = p.currentMode() == ModeYtDlp && ok
 
 			p.infoAvailable.SetAvailable(apiAvailable || ytdlpAvailable)
 			p.videoAvailable.SetAvailable(ytdlpAvailable)
@@ -239,7 +258,6 @@ func newYouTubeProvider() ResourceProvider {
 	p.PlatformProvider = constructPlatformProvider(p)
 	p.setup("YouTube")
 
-	p.wg.Go(p.loop)
 	return p
 }
 
@@ -263,15 +281,15 @@ func (*BiliBiliProvider) getInfoPlaceholder(id string) types.GeneralVideoInfo {
 }
 
 func (p *BiliBiliProvider) getInfo(id string, ctx context.Context) (types.GeneralVideoInfo, error) {
-	if p.mode == ModeDisabled {
+	if p.currentMode() == ModeDisabled {
 		return types.GeneralVideoInfo{}, errBiliBiliDisabled
 	}
-	if !lo.Contains(p.allowResources, ResourceInfo) {
+	if !lo.Contains(p.currentAllowResources(), ResourceInfo) {
 		return types.GeneralVideoInfo{}, errBiliBiliInfoDisabled
 	}
 
 	if bvId, isBiliBili := internal_id.CheckIdIsBili(id); isBiliBili {
-		if p.mode == ModeApi {
+		if p.currentMode() == ModeApi {
 			info, err := api.GetBiliBiliInfo(bvId, ctx)
 			if err != nil {
 				return types.GeneralVideoInfo{}, fmt.Errorf("get BiliBili info from api: %w", err)
@@ -280,7 +298,7 @@ func (p *BiliBiliProvider) getInfo(id string, ctx context.Context) (types.Genera
 			return *info, nil
 		}
 
-		if p.mode == ModeYtDlp {
+		if p.currentMode() == ModeYtDlp {
 			info, err := local_executables.GetVideoBasicInfoWithYtDlp(internal_id.GetStandardBiliURL(bvId), ctx)
 			if err != nil {
 				return types.GeneralVideoInfo{}, fmt.Errorf("get BiliBili info by yt-dlp: %w", err)
@@ -294,15 +312,15 @@ func (p *BiliBiliProvider) getInfo(id string, ctx context.Context) (types.Genera
 }
 
 func (p *BiliBiliProvider) getThumbnail(id string, ctx context.Context) (image.Image, error) {
-	if p.mode == ModeDisabled {
+	if p.currentMode() == ModeDisabled {
 		return nil, errBiliBiliDisabled
 	}
-	if !lo.Contains(p.allowResources, ResourceThumbnail) {
+	if !lo.Contains(p.currentAllowResources(), ResourceThumbnail) {
 		return nil, errBiliBiliThumbnailDisabled
 	}
 
 	if bvId, isBiliBili := internal_id.CheckIdIsBili(id); isBiliBili {
-		if p.mode == ModeApi {
+		if p.currentMode() == ModeApi {
 			info, err := api.GetBvInfo(bvId, ctx)
 			if err != nil {
 				return nil, fmt.Errorf("get BiliBili thumbnail from api: %w", err)
@@ -311,7 +329,7 @@ func (p *BiliBiliProvider) getThumbnail(id string, ctx context.Context) (image.I
 			return GetThumbnailImage(requesting.GetClient(requesting.BiliBili), info.Pic, ctx)
 		}
 
-		if p.mode == ModeYtDlp {
+		if p.currentMode() == ModeYtDlp {
 			url, err := local_executables.GetVideoThumbnailWithYtDlp(internal_id.GetStandardBiliURL(bvId), ctx)
 			if err != nil {
 				return nil, fmt.Errorf("get BiliBili thumbnail by yt-dlp: %w", err)
@@ -325,15 +343,15 @@ func (p *BiliBiliProvider) getThumbnail(id string, ctx context.Context) (image.I
 }
 
 func (p *BiliBiliProvider) resolveVideoUrl(id string, ctx context.Context) (*types.RemoteHttpResourceInfo, error) {
-	if p.mode == ModeDisabled {
+	if p.currentMode() == ModeDisabled {
 		return nil, errBiliBiliDisabled
 	}
-	if !lo.Contains(p.allowResources, ResourceVideo) {
+	if !lo.Contains(p.currentAllowResources(), ResourceVideo) {
 		return nil, errBiliBiliVideoDisabled
 	}
 
 	if bvId, isBiliBili := internal_id.CheckIdIsBili(id); isBiliBili {
-		if p.mode == ModeApi {
+		if p.currentMode() == ModeApi {
 			url, lastModified, err := api.GetBiliBiliUrlAndUploadTime(bvId, ctx)
 
 			info, err := directResolve(url, requesting.GetClient(requesting.BiliBili), ctx)
@@ -344,7 +362,7 @@ func (p *BiliBiliProvider) resolveVideoUrl(id string, ctx context.Context) (*typ
 			info.LastModified = lastModified
 			return info, nil
 		}
-		if p.mode == ModeYtDlp {
+		if p.currentMode() == ModeYtDlp {
 			return ytDlpResolve(internal_id.GetStandardBiliURL(bvId), requesting.GetClient(requesting.BiliBili), ctx)
 		}
 	}
@@ -364,11 +382,11 @@ func (p *BiliBiliProvider) loop() {
 	ytdlpAvailableCh := local_executables.SubscribeYtDlpAvailability()
 	defer ytdlpAvailableCh.Close()
 
-	available := p.mode == ModeApi || (p.mode == ModeYtDlp && local_executables.YtDlpAvailable())
+	available := p.currentMode() == ModeApi || (p.currentMode() == ModeYtDlp && local_executables.YtDlpAvailable())
 
-	infoAllowed := lo.Contains(p.allowResources, ResourceInfo)
-	thumbnailAllowed := lo.Contains(p.allowResources, ResourceThumbnail)
-	videoAllowed := lo.Contains(p.allowResources, ResourceVideo)
+	infoAllowed := lo.Contains(p.currentAllowResources(), ResourceInfo)
+	thumbnailAllowed := lo.Contains(p.currentAllowResources(), ResourceThumbnail)
+	videoAllowed := lo.Contains(p.currentAllowResources(), ResourceVideo)
 
 	p.infoAvailable = newBothTrue(available, infoAllowed, p.infoAvailableEm)
 	p.thumbnailAvailable = newBothTrue(available, thumbnailAllowed, p.thumbnailAvailableEm)
@@ -400,7 +418,7 @@ func (p *BiliBiliProvider) loop() {
 			p.videoAvailable.NotifyIfSatisfied()
 		// YtDlp availability changed
 		case ok := <-ytdlpAvailableCh.Channel:
-			available = p.mode == ModeApi || (p.mode == ModeYtDlp && ok)
+			available = p.currentMode() == ModeApi || (p.currentMode() == ModeYtDlp && ok)
 
 			p.infoAvailable.SetAvailable(available)
 			p.thumbnailAvailable.SetAvailable(available)
@@ -418,6 +436,5 @@ func newBiliBiliProvider() ResourceProvider {
 	p.PlatformProvider = constructPlatformProvider(p)
 	p.setup("BiliBili")
 
-	p.wg.Go(p.loop)
 	return p
 }

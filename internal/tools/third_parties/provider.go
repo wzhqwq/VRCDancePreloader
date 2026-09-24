@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
@@ -48,7 +49,12 @@ type ResourceProvider interface {
 }
 
 type BaseProvider struct {
-	allowResources []string
+	// allowResources is written by SetAllowResources on the configuration thread
+	// and read by every provider loop and every getter (which run on the workers
+	// of the managers below). It is a pointer so that both sides can use it
+	// without a lock, and so that "nothing allowed yet" is representable: the zero
+	// value reads as nil, which allows nothing.
+	allowResources atomic.Pointer[[]string]
 
 	videoAvailableEm, thumbnailAvailableEm *utils.EventManager[bool]
 
@@ -76,10 +82,25 @@ func (p *BaseProvider) setup(name string) {
 }
 
 func (p *BaseProvider) SetAllowResources(resources []string) {
-	if utils.IsArrayChanged(p.allowResources, resources) {
-		p.allowResources = resources
-		p.allowedResourcesEm.NotifySubscribers(resources)
+	if !utils.IsArrayChanged(p.currentAllowResources(), resources) {
+		return
 	}
+
+	// Stored before the notification: the loops and the getters re-read the
+	// allowed set when they react to it, so the set they then find has to be the
+	// one that was announced.
+	p.allowResources.Store(&resources)
+	p.allowedResourcesEm.NotifySubscribers(resources)
+}
+
+// currentAllowResources is the allowed resource set every reader sees. It is safe
+// to call from any goroutine; see the note on the field.
+func (p *BaseProvider) currentAllowResources() []string {
+	if resources := p.allowResources.Load(); resources != nil {
+		return *resources
+	}
+
+	return nil
 }
 
 func (p *BaseProvider) Info(id string) *interactive.RemoteHandle[types.GeneralVideoInfo] {

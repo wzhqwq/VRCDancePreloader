@@ -46,7 +46,7 @@ func (p *RoomProvider[T]) SetMode(_ string) {
 }
 
 func (p *RoomProvider[T]) Start() {
-	p.catalogManager.SetAllowed(lo.Contains(p.allowResources, ResourceCatalog))
+	p.catalogManager.SetAllowed(lo.Contains(p.currentAllowResources(), ResourceCatalog))
 	p.catalogHandle = p.catalogManager.Handle()
 
 	p.wg.Go(p.loop)
@@ -70,9 +70,9 @@ func (p *RoomProvider[T]) loop() {
 	catalogStatusCh := p.catalogHandle.SubscribeStatus()
 	defer catalogStatusCh.Close()
 
-	catalogAllowed := lo.Contains(p.allowResources, ResourceCatalog)
-	thumbnailAllowed := lo.Contains(p.allowResources, ResourceThumbnail)
-	videoAllowed := lo.Contains(p.allowResources, ResourceVideo)
+	catalogAllowed := lo.Contains(p.currentAllowResources(), ResourceCatalog)
+	thumbnailAllowed := lo.Contains(p.currentAllowResources(), ResourceThumbnail)
+	videoAllowed := lo.Contains(p.currentAllowResources(), ResourceVideo)
 
 	p.catalogAvailable = newBothTrue(catalogAllowed, p.catalogHandle.Snapshot().Status.Valid(), p.catalogAvailableEm)
 	p.thumbnailAvailable = newIsAllowed(thumbnailAllowed, p.thumbnailAvailableEm)
@@ -152,7 +152,7 @@ func (*PyPyDanceProvider) getInfoPlaceholder(id string) types.GeneralVideoInfo {
 }
 
 func (p *PyPyDanceProvider) getInfo(id string, _ context.Context) (types.GeneralVideoInfo, error) {
-	if !lo.Contains(p.allowResources, ResourceCatalog) {
+	if !lo.Contains(p.currentAllowResources(), ResourceCatalog) {
 		return types.GeneralVideoInfo{}, errPyPyDanceCatalogDisabled
 	}
 
@@ -178,7 +178,7 @@ func (p *PyPyDanceProvider) getInfo(id string, _ context.Context) (types.General
 }
 
 func (p *PyPyDanceProvider) getThumbnail(id string, ctx context.Context) (image.Image, error) {
-	if !lo.Contains(p.allowResources, ResourceThumbnail) {
+	if !lo.Contains(p.currentAllowResources(), ResourceThumbnail) {
 		return nil, errPyPyDanceThumbnailDisabled
 	}
 
@@ -195,7 +195,7 @@ func (p *PyPyDanceProvider) getThumbnail(id string, ctx context.Context) (image.
 }
 
 func (p *PyPyDanceProvider) resolveVideoUrl(id string, ctx context.Context) (*types.RemoteHttpResourceInfo, error) {
-	if !lo.Contains(p.allowResources, ResourceVideo) {
+	if !lo.Contains(p.currentAllowResources(), ResourceVideo) {
 		return nil, errPyPyDanceVideoDisabled
 	}
 
@@ -234,7 +234,7 @@ func (*WannaDanceProvider) getInfoPlaceholder(id string) types.GeneralVideoInfo 
 }
 
 func (p *WannaDanceProvider) getInfo(id string, _ context.Context) (types.GeneralVideoInfo, error) {
-	if !lo.Contains(p.allowResources, ResourceCatalog) {
+	if !lo.Contains(p.currentAllowResources(), ResourceCatalog) {
 		return types.GeneralVideoInfo{}, errWannaDanceCatalogDisabled
 	}
 
@@ -254,7 +254,7 @@ func (p *WannaDanceProvider) getInfo(id string, _ context.Context) (types.Genera
 }
 
 func (p *WannaDanceProvider) getThumbnail(id string, ctx context.Context) (image.Image, error) {
-	if !lo.Contains(p.allowResources, ResourceThumbnail) {
+	if !lo.Contains(p.currentAllowResources(), ResourceThumbnail) {
 		return nil, errWannaDanceThumbnailDisabled
 	}
 
@@ -271,7 +271,7 @@ func (p *WannaDanceProvider) getThumbnail(id string, ctx context.Context) (image
 }
 
 func (p *WannaDanceProvider) resolveVideoUrl(id string, ctx context.Context) (*types.RemoteHttpResourceInfo, error) {
-	if !lo.Contains(p.allowResources, ResourceVideo) {
+	if !lo.Contains(p.currentAllowResources(), ResourceVideo) {
 		return nil, errWannaDanceVideoDisabled
 	}
 
@@ -311,7 +311,7 @@ func (*DuDuFitDanceProvider) getInfoPlaceholder(id string) types.GeneralVideoInf
 }
 
 func (p *DuDuFitDanceProvider) getInfo(id string, _ context.Context) (types.GeneralVideoInfo, error) {
-	if !lo.Contains(p.allowResources, ResourceCatalog) {
+	if !lo.Contains(p.currentAllowResources(), ResourceCatalog) {
 		return types.GeneralVideoInfo{}, errDuDuFitDanceCatalogDisabled
 	}
 
@@ -331,7 +331,7 @@ func (p *DuDuFitDanceProvider) getInfo(id string, _ context.Context) (types.Gene
 }
 
 func (p *DuDuFitDanceProvider) getThumbnail(id string, ctx context.Context) (image.Image, error) {
-	if !lo.Contains(p.allowResources, ResourceThumbnail) {
+	if !lo.Contains(p.currentAllowResources(), ResourceThumbnail) {
 		return nil, errDuDuFitDanceThumbnailDisabled
 	}
 
@@ -348,7 +348,7 @@ func (p *DuDuFitDanceProvider) getThumbnail(id string, ctx context.Context) (ima
 }
 
 func (p *DuDuFitDanceProvider) resolveVideoUrl(id string, ctx context.Context) (*types.RemoteHttpResourceInfo, error) {
-	if !lo.Contains(p.allowResources, ResourceVideo) {
+	if !lo.Contains(p.currentAllowResources(), ResourceVideo) {
 		return nil, errDuDuFitDanceVideoDisabled
 	}
 
