@@ -38,23 +38,27 @@ func Migrate(c Config) error {
 }
 
 func UpdateConfig(c Config, field string) error {
-	if field == "" {
-		err := updateIfNotTheSame(YoutubeKeyUser, youtubeApiKeyEm.NotifySubscribers, cfg.YoutubeApiKey, c.YoutubeApiKey)
+	keyChanged := false
+
+	if field == "" || field == YoutubeKeyUser {
+		changed, err := updateIfNotTheSame(YoutubeKeyUser, cfg.YoutubeApiKey, c.YoutubeApiKey)
 		if err != nil {
 			return err
 		}
-	} else {
-		switch field {
-		case YoutubeKeyUser:
-			err := updateIfNotTheSame(YoutubeKeyUser, youtubeApiKeyEm.NotifySubscribers, cfg.YoutubeApiKey, c.YoutubeApiKey)
-			if err != nil {
-				return err
-			}
-			//case obsSecretUser:
-		}
+		keyChanged = changed
+		// case obsSecretUser:
 	}
 
+	// Stored before the notification: the readers recompute from the current
+	// state when they handle the event (third_parties' gates read Get() instead
+	// of using the payload), so the key they then find has to be the announced
+	// one.
 	cfg = c
+
+	if keyChanged {
+		youtubeApiKeyEm.NotifySubscribers(c.YoutubeApiKey)
+	}
+
 	return nil
 }
 
@@ -74,15 +78,19 @@ func migrateField(field string, key string) error {
 	return nil
 }
 
-func updateIfNotTheSame(field string, notifier func(string), old, new string) error {
-	if old != new {
-		err := keyring.Set(custom_fyne.AppName, field, new)
-		if err != nil {
-			return err
-		}
-		notifier(new)
+// updateIfNotTheSame writes the new secret into the keyring and reports whether
+// it changed at all. The caller notifies only after it stored the new config, so
+// that a reader woken by the notification cannot see the previous value.
+func updateIfNotTheSame(field string, old, new string) (bool, error) {
+	if old == new {
+		return false, nil
 	}
-	return nil
+
+	if err := keyring.Set(custom_fyne.AppName, field, new); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func Get(field string) string {
