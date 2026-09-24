@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
@@ -56,9 +57,14 @@ type BaseProvider struct {
 	// value reads as nil, which allows nothing.
 	allowResources atomic.Pointer[[]string]
 
-	videoAvailableEm, thumbnailAvailableEm *utils.EventManager[bool]
-
 	allowedResourcesEm *utils.EventManager[[]string]
+
+	// Every provider offers the same three resources, so the gates live here and
+	// a provider only supplies their "available" input from its own loop (its
+	// "allowed" input is always the resource list).
+	infoAvailable      *ResourceGate
+	thumbnailAvailable *ResourceGate
+	videoAvailable     *ResourceGate
 
 	infoManager          *interactive.RemoteManager[types.GeneralVideoInfo]
 	thumbnailManager     *interactive.RemoteManager[image.Image]
@@ -69,16 +75,36 @@ type BaseProvider struct {
 }
 
 func (p *BaseProvider) setup(name string) {
-	p.infoManager.BindLogger(utils.NewLogger(name + " Video Info"))
+	p.infoAvailable = newResourceGate()
+	p.thumbnailAvailable = newResourceGate()
+	p.videoAvailable = newResourceGate()
 
-	p.thumbnailManager.BindAvailability(p.thumbnailAvailableEm.SubscribeEvent)
+	p.infoManager.BindLogger(utils.NewLogger(name + " Video Info"))
+	p.infoManager.BindAvailability(p.infoAvailable.Subscribe)
+
+	p.thumbnailManager.BindAvailability(p.thumbnailAvailable.Subscribe)
 	p.thumbnailManager.BindLogger(utils.NewLogger(name + " Thumbnail"))
 	p.thumbnailManager.BindScheduler(utils.SharedThumbnailScheduler())
 	p.thumbnailManager.BindRetry(thumbnailRetryPolicy)
 
-	p.resolvedVideoManager.BindAvailability(p.videoAvailableEm.SubscribeEvent)
+	p.resolvedVideoManager.BindAvailability(p.videoAvailable.Subscribe)
 	p.resolvedVideoManager.BindLogger(utils.NewLogger(name + " Resolver"))
 	p.resolvedVideoManager.BindScheduler(utils.SharedVideoScheduler())
+}
+
+// updateGate recomputes one gate. The permission always comes from the resource
+// list, so it is derived here rather than passed in: that pair of booleans is
+// what got swapped in the previous version (see review/09 §6).
+func (p *BaseProvider) updateGate(gate *ResourceGate, resources []string, key string, available ResourceAvailable) {
+	gate.Update(ResourceAllowed(lo.Contains(resources, key)), available)
+}
+
+// retryGates asks the downstream managers to re-check their entries even though
+// the gates themselves did not change.
+func (p *BaseProvider) retryGates() {
+	p.infoAvailable.Retry()
+	p.thumbnailAvailable.Retry()
+	p.videoAvailable.Retry()
 }
 
 func (p *BaseProvider) SetAllowResources(resources []string) {
@@ -135,9 +161,7 @@ type resourceGetters interface {
 
 func constructBaseProvider[P resourceGetters](p P, infoParallel int) BaseProvider {
 	return BaseProvider{
-		videoAvailableEm:     utils.NewEventManager[bool](),
-		thumbnailAvailableEm: utils.NewEventManager[bool](),
-		allowedResourcesEm:   utils.NewEventManager[[]string](),
+		allowedResourcesEm: utils.NewEventManager[[]string](),
 
 		infoManager:          interactive.NewRemoteManager(p.getInfo, p.getInfoPlaceholder, 100, infoParallel),
 		thumbnailManager:     interactive.NewRemoteManager(p.getThumbnail, nil, 100, 3),

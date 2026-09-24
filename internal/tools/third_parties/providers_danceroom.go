@@ -12,7 +12,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/api"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/catalog"
-	"github.com/wzhqwq/VRCDancePreloader/internal/tools/third_parties/local_executables"
 	"github.com/wzhqwq/VRCDancePreloader/internal/types"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
@@ -21,11 +20,6 @@ import (
 
 type RoomProvider[T any] struct {
 	BaseProvider
-
-	catalogAvailableEm *utils.EventManager[bool]
-
-	catalogAvailable                   *BothTrue
-	videoAvailable, thumbnailAvailable *IsAllowed
 
 	catalogManager catalog.Manager[T]
 	catalogHandle  *interactive.RemoteHandle[*catalog.Catalog[T]]
@@ -64,52 +58,51 @@ func (p *RoomProvider[T]) loop() {
 	clientCh := p.client.SubscribeChange()
 	defer clientCh.Close()
 
-	ytdlpAvailableCh := local_executables.SubscribeYtDlpAvailability()
-	defer ytdlpAvailableCh.Close()
-
 	catalogCh := p.catalogHandle.Subscribe()
 	defer catalogCh.Close()
 
-	catalogAllowed := lo.Contains(p.currentAllowResources(), ResourceCatalog)
-	thumbnailAllowed := lo.Contains(p.currentAllowResources(), ResourceThumbnail)
-	videoAllowed := lo.Contains(p.currentAllowResources(), ResourceVideo)
-
-	// newBothTrue takes (available, allowed): the catalog's own fetch status is the
-	// availability, the user's resource list is the permission. Swapping the two
-	// makes SetAvailable() write the permission field, so a finished fetch can
-	// never satisfy this gate.
-	p.catalogAvailable = newBothTrue(p.catalogHandle.Snapshot().HasData, catalogAllowed, p.catalogAvailableEm)
-	p.thumbnailAvailable = newIsAllowed(thumbnailAllowed, p.thumbnailAvailableEm)
-	p.videoAvailable = newIsAllowed(videoAllowed, p.videoAvailableEm)
+	p.refreshGates()
 
 	for {
 		select {
 		case <-p.stopCh:
 			return
-		case allowed := <-resourcesCh.Channel:
-			catalogAllowed = lo.Contains(allowed, ResourceCatalog)
-			thumbnailAllowed = lo.Contains(allowed, ResourceThumbnail)
-			videoAllowed = lo.Contains(allowed, ResourceVideo)
-
-			if catalogAllowed != p.catalogAvailable.allowed {
-				p.catalogManager.SetAllowed(catalogAllowed)
-			}
-			p.catalogAvailable.SetAllowed(catalogAllowed)
-			p.thumbnailAvailable.SetAllowed(thumbnailAllowed)
-			p.videoAvailable.SetAllowed(videoAllowed)
-		case snap := <-catalogCh.Channel:
-			p.catalogAvailable.SetAvailable(snap.HasData)
-		// client changed
+		// The resource list changed: every gate's permission moved, and the
+		// catalog manager keeps its own "may we download the catalog at all".
+		case <-resourcesCh.Channel:
+			p.catalogManager.SetAllowed(lo.Contains(p.currentAllowResources(), ResourceCatalog))
+			p.refreshGates()
+		// The catalog entry moved. Its payload is deliberately unused: the gate
+		// is recomputed from the entry's current snapshot, so a dropped or
+		// outdated event cannot leave a stale value behind.
+		case <-catalogCh.Channel:
+			p.refreshGates()
+		// A new HTTP client replaced the previous one: the fetches that failed
+		// with the old one are worth another try. The catalog entry has its own
+		// gate, so it has to be told separately.
 		case <-clientCh.Channel:
-			p.catalogAvailable.NotifyIfSatisfied()
-			p.thumbnailAvailable.NotifyIfAllowed()
-			p.videoAvailable.NotifyIfAllowed()
+			p.retryGates()
 
-			if catalogAllowed {
+			if lo.Contains(p.currentAllowResources(), ResourceCatalog) {
 				p.catalogManager.SetAllowed(true)
 			}
 		}
 	}
+}
+
+// refreshGates recomputes all three gates from the current state. Nothing is
+// cached here on purpose: the previous version kept copies of the inputs that
+// were sampled once when the loop started, and the stale copy is what made a
+// finished catalog fetch unable to satisfy the info gate (review/09 §6).
+func (p *RoomProvider[T]) refreshGates() {
+	resources := p.currentAllowResources()
+	catalogReady := ResourceAvailable(p.catalogHandle.Snapshot().HasData)
+
+	p.updateGate(p.infoAvailable, resources, ResourceCatalog, catalogReady)
+	// Thumbnails and videos are fetched straight from the room's CDN, so the
+	// only thing that can hold them back is the user's own resource list.
+	p.updateGate(p.thumbnailAvailable, resources, ResourceThumbnail, true)
+	p.updateGate(p.videoAvailable, resources, ResourceVideo, true)
 }
 
 func (p *RoomProvider[T]) findSong(id int) (song T, ok bool) {
@@ -124,14 +117,12 @@ func (p *RoomProvider[T]) findSong(id int) (song T, ok bool) {
 
 func (p *RoomProvider[T]) setup(name string, client *requesting.ClientProvider) {
 	p.BaseProvider.setup(name)
-	p.infoManager.BindAvailability(p.catalogAvailableEm.SubscribeEvent)
 	p.client = client
 }
 
 func constructRoomProvider[T any, P resourceGetters](p P, catalogManager catalog.Manager[T]) RoomProvider[T] {
 	return RoomProvider[T]{
-		BaseProvider:       constructBaseProvider(p, 10),
-		catalogAvailableEm: utils.NewEventManager[bool](),
+		BaseProvider: constructBaseProvider(p, 10),
 
 		catalogManager: catalogManager,
 	}

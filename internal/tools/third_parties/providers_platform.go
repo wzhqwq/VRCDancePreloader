@@ -29,10 +29,6 @@ type PlatformProvider struct {
 	mode atomic.Pointer[string]
 
 	modeEm *utils.EventManager[string]
-
-	infoAvailableEm *utils.EventManager[bool]
-
-	infoAvailable, videoAvailable, thumbnailAvailable *BothTrue
 }
 
 // currentMode is the mode every reader sees. It is safe to call from any
@@ -63,7 +59,6 @@ func (p *PlatformProvider) SetMode(mode string) {
 func (p *PlatformProvider) setup(name string) {
 	p.BaseProvider.setup(name)
 	p.infoManager.BindScheduler(utils.SharedVideoScheduler())
-	p.infoManager.BindAvailability(p.infoAvailableEm.SubscribeEvent)
 }
 
 func ValidPlatformResources(resources []string) bool {
@@ -77,9 +72,8 @@ func ValidPlatformResources(resources []string) bool {
 
 func constructPlatformProvider[P resourceGetters](p P) PlatformProvider {
 	return PlatformProvider{
-		modeEm:          utils.NewEventManager[string](),
-		BaseProvider:    constructBaseProvider(p, 1),
-		infoAvailableEm: utils.NewEventManager[bool](),
+		modeEm:       utils.NewEventManager[string](),
+		BaseProvider: constructBaseProvider(p, 1),
 	}
 }
 
@@ -196,57 +190,47 @@ func (p *YouTubeProvider) loop() {
 	ytdlpAvailableCh := local_executables.SubscribeYtDlpAvailability()
 	defer ytdlpAvailableCh.Close()
 
-	apiAvailable := p.currentMode() == ModeApi && secrets.Get(secrets.YoutubeKeyUser) != ""
-	ytdlpAvailable := p.currentMode() == ModeYtDlp && local_executables.YtDlpAvailable()
-
-	infoAllowed := lo.Contains(p.currentAllowResources(), ResourceInfo)
-	thumbnailAllowed := lo.Contains(p.currentAllowResources(), ResourceThumbnail)
-	videoAllowed := lo.Contains(p.currentAllowResources(), ResourceVideo)
-
-	p.infoAvailable = newBothTrue(apiAvailable || ytdlpAvailable, infoAllowed, p.infoAvailableEm)
-	p.thumbnailAvailable = newBothTrue(true, thumbnailAllowed, p.thumbnailAvailableEm)
-	p.videoAvailable = newBothTrue(ytdlpAvailable, videoAllowed, p.videoAvailableEm)
+	p.refreshGates()
 
 	for {
 		select {
 		case <-p.stopCh:
 			return
-		// fetching mode changed
-		case mode := <-modeCh.Channel:
-			apiAvailable = mode == ModeApi && secrets.Get(secrets.YoutubeKeyUser) != ""
-			ytdlpAvailable = mode == ModeYtDlp && local_executables.YtDlpAvailable()
-
-			p.infoAvailable.SetAvailable(apiAvailable || ytdlpAvailable)
-			p.videoAvailable.SetAvailable(ytdlpAvailable)
-		// allowed resources changed
-		case allowed := <-resourcesCh.Channel:
-			infoAllowed = lo.Contains(allowed, ResourceInfo)
-			thumbnailAllowed = lo.Contains(allowed, ResourceThumbnail)
-			videoAllowed = lo.Contains(allowed, ResourceVideo)
-
-			p.infoAvailable.SetAllowed(infoAllowed)
-			p.thumbnailAvailable.SetAllowed(thumbnailAllowed)
-			p.videoAvailable.SetAllowed(videoAllowed)
-		// key changed
-		case key := <-keyCh.Channel:
-			apiAvailable = p.currentMode() == ModeApi && key != ""
-
-			p.infoAvailable.SetAvailable(apiAvailable || ytdlpAvailable)
-		// client changed
+		// Every input the gates derive from: the fetching mode, the resource
+		// list, the api key and the yt-dlp binary. All three gates are
+		// recomputed from the current state instead of from a copy kept here.
+		case <-modeCh.Channel:
+			p.refreshGates()
+		case <-resourcesCh.Channel:
+			p.refreshGates()
+		case <-keyCh.Channel:
+			p.refreshGates()
+		case <-ytdlpAvailableCh.Channel:
+			p.refreshGates()
+		// A new HTTP client replaced the previous one: the entries that failed
+		// with the old one are worth another try.
 		case <-apiClientCh.Channel:
-			p.infoAvailable.NotifyIfSatisfied()
+			p.infoAvailable.Retry()
 		case <-thumbnailClientCh.Channel:
-			p.thumbnailAvailable.NotifyIfSatisfied()
+			p.thumbnailAvailable.Retry()
 		case <-videoClientCh.Channel:
-			p.videoAvailable.NotifyIfSatisfied()
-		// YtDlp availability changed
-		case ok := <-ytdlpAvailableCh.Channel:
-			ytdlpAvailable = p.currentMode() == ModeYtDlp && ok
-
-			p.infoAvailable.SetAvailable(apiAvailable || ytdlpAvailable)
-			p.videoAvailable.SetAvailable(ytdlpAvailable)
+			p.videoAvailable.Retry()
 		}
 	}
+}
+
+// refreshGates recomputes YouTube's three gates from the current mode, the api
+// key, yt-dlp and the resource list.
+func (p *YouTubeProvider) refreshGates() {
+	resources := p.currentAllowResources()
+	apiReady := p.currentMode() == ModeApi && secrets.Get(secrets.YoutubeKeyUser) != ""
+	ytdlpReady := p.currentMode() == ModeYtDlp && local_executables.YtDlpAvailable()
+
+	// The api answers info requests, yt-dlp answers both info and video ones,
+	// and thumbnails come from YouTube's image CDN in either mode.
+	p.updateGate(p.infoAvailable, resources, ResourceInfo, ResourceAvailable(apiReady || ytdlpReady))
+	p.updateGate(p.thumbnailAvailable, resources, ResourceThumbnail, true)
+	p.updateGate(p.videoAvailable, resources, ResourceVideo, ResourceAvailable(ytdlpReady))
 }
 
 func (p *YouTubeProvider) Start() {
@@ -382,49 +366,38 @@ func (p *BiliBiliProvider) loop() {
 	ytdlpAvailableCh := local_executables.SubscribeYtDlpAvailability()
 	defer ytdlpAvailableCh.Close()
 
-	available := p.currentMode() == ModeApi || (p.currentMode() == ModeYtDlp && local_executables.YtDlpAvailable())
-
-	infoAllowed := lo.Contains(p.currentAllowResources(), ResourceInfo)
-	thumbnailAllowed := lo.Contains(p.currentAllowResources(), ResourceThumbnail)
-	videoAllowed := lo.Contains(p.currentAllowResources(), ResourceVideo)
-
-	p.infoAvailable = newBothTrue(available, infoAllowed, p.infoAvailableEm)
-	p.thumbnailAvailable = newBothTrue(available, thumbnailAllowed, p.thumbnailAvailableEm)
-	p.videoAvailable = newBothTrue(available, videoAllowed, p.videoAvailableEm)
+	p.refreshGates()
 
 	for {
 		select {
 		case <-p.stopCh:
 			return
-		// fetching mode changed
-		case mode := <-modeCh.Channel:
-			available = mode == ModeApi || (mode == ModeYtDlp && local_executables.YtDlpAvailable())
-
-			p.infoAvailable.SetAvailable(available)
-			p.thumbnailAvailable.SetAvailable(available)
-			p.videoAvailable.SetAvailable(available)
-		case allowed := <-resourcesCh.Channel:
-			infoAllowed = lo.Contains(allowed, ResourceInfo)
-			thumbnailAllowed = lo.Contains(allowed, ResourceThumbnail)
-			videoAllowed = lo.Contains(allowed, ResourceVideo)
-
-			p.infoAvailable.SetAllowed(infoAllowed)
-			p.thumbnailAvailable.SetAllowed(thumbnailAllowed)
-			p.videoAvailable.SetAllowed(videoAllowed)
-		// client changed
+		case <-modeCh.Channel:
+			p.refreshGates()
+		case <-resourcesCh.Channel:
+			p.refreshGates()
+		case <-ytdlpAvailableCh.Channel:
+			p.refreshGates()
+		// A new HTTP client replaced the previous one: the entries that failed
+		// with the old one are worth another try.
 		case <-clientCh.Channel:
-			p.infoAvailable.NotifyIfSatisfied()
-			p.thumbnailAvailable.NotifyIfSatisfied()
-			p.videoAvailable.NotifyIfSatisfied()
-		// YtDlp availability changed
-		case ok := <-ytdlpAvailableCh.Channel:
-			available = p.currentMode() == ModeApi || (p.currentMode() == ModeYtDlp && ok)
-
-			p.infoAvailable.SetAvailable(available)
-			p.thumbnailAvailable.SetAvailable(available)
-			p.videoAvailable.SetAvailable(available)
+			p.retryGates()
 		}
 	}
+}
+
+// refreshGates recomputes BiliBili's three gates: the api mode answers all three
+// resources, the yt-dlp mode answers them as long as the binary is there.
+func (p *BiliBiliProvider) refreshGates() {
+	resources := p.currentAllowResources()
+	available := ResourceAvailable(
+		p.currentMode() == ModeApi ||
+			(p.currentMode() == ModeYtDlp && local_executables.YtDlpAvailable()),
+	)
+
+	p.updateGate(p.infoAvailable, resources, ResourceInfo, available)
+	p.updateGate(p.thumbnailAvailable, resources, ResourceThumbnail, available)
+	p.updateGate(p.videoAvailable, resources, ResourceVideo, available)
 }
 
 func (p *BiliBiliProvider) Start() {
