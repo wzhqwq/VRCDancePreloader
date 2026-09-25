@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/samber/lo"
@@ -363,14 +364,18 @@ func newDuDuFitDanceProvider() ResourceProvider {
 }
 
 type DDFDOriginalVideoInfoProvider struct {
-	enabled bool
+	// enabled is the level its manager reads, and wake tells it to read it again
+	// (see interactive.AvailabilitySource). SetEnabled runs on the preloader's
+	// configuration goroutine while getInfo runs on the manager's worker, hence
+	// the atomic.
+	enabled atomic.Bool
+	wake    chan struct{}
 
-	availableEm *utils.EventManager[bool]
-	manager     *interactive.RemoteManager[api.DuDuOriginalVideoInfo]
+	manager *interactive.RemoteManager[api.DuDuOriginalVideoInfo]
 }
 
 func (p *DDFDOriginalVideoInfoProvider) getInfo(id string, ctx context.Context) (api.DuDuOriginalVideoInfo, error) {
-	if !p.enabled {
+	if !p.enabled.Load() {
 		return api.DuDuOriginalVideoInfo{}, errDuDuFitDanceOriginalVideoDisabled
 	}
 
@@ -385,9 +390,26 @@ func (p *DDFDOriginalVideoInfoProvider) Info(id string) *interactive.RemoteHandl
 	return p.manager.Acquire(id)
 }
 
+// Available and Wakes make the provider the availability source of its own
+// manager: its info may only be fetched while the preloader has it enabled.
+func (p *DDFDOriginalVideoInfoProvider) Available() bool {
+	return p.enabled.Load()
+}
+
+func (p *DDFDOriginalVideoInfoProvider) Wakes() <-chan struct{} {
+	return p.wake
+}
+
 func (p *DDFDOriginalVideoInfoProvider) SetEnabled(enabled bool) {
-	p.enabled = enabled
-	p.availableEm.NotifySubscribers(enabled)
+	p.enabled.Store(enabled)
+
+	if enabled {
+		select {
+		case p.wake <- struct{}{}:
+		default:
+			// A wake-up is already pending and the reader re-reads the level.
+		}
+	}
 }
 
 func (p *DDFDOriginalVideoInfoProvider) Close() {
@@ -396,10 +418,10 @@ func (p *DDFDOriginalVideoInfoProvider) Close() {
 
 func NewDDFOriginalVideoInfoProvider() *DDFDOriginalVideoInfoProvider {
 	p := &DDFDOriginalVideoInfoProvider{
-		availableEm: utils.NewEventManager[bool](),
+		wake: make(chan struct{}, 1),
 	}
 	p.manager = interactive.NewRemoteManager(p.getInfo, nil, 100, 1)
-	p.manager.BindAvailability(p.availableEm.SubscribeEvent)
+	p.manager.BindAvailability(p)
 	p.manager.BindScheduler(utils.DuDuAssetScheduler())
 	p.manager.BindLogger(utils.NewLogger("DuDuFitDance Original Video Info"))
 

@@ -80,14 +80,14 @@ func (p *BaseProvider) setup(name string) {
 	p.videoAvailable = newResourceGate()
 
 	p.infoManager.BindLogger(utils.NewLogger(name + " Video Info"))
-	p.infoManager.BindAvailability(p.infoAvailable.Subscribe)
+	p.infoManager.BindAvailability(p.infoAvailable)
 
-	p.thumbnailManager.BindAvailability(p.thumbnailAvailable.Subscribe)
+	p.thumbnailManager.BindAvailability(p.thumbnailAvailable)
 	p.thumbnailManager.BindLogger(utils.NewLogger(name + " Thumbnail"))
 	p.thumbnailManager.BindScheduler(utils.SharedThumbnailScheduler())
 	p.thumbnailManager.BindRetry(thumbnailRetryPolicy)
 
-	p.resolvedVideoManager.BindAvailability(p.videoAvailable.Subscribe)
+	p.resolvedVideoManager.BindAvailability(p.videoAvailable)
 	p.resolvedVideoManager.BindLogger(utils.NewLogger(name + " Resolver"))
 	p.resolvedVideoManager.BindScheduler(utils.SharedVideoScheduler())
 }

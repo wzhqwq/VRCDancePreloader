@@ -34,7 +34,7 @@ type StatefulSetting[T any] interface {
 }
 
 type StatefulRemoteData[T any] interface {
-	BindAvailability(availabilitySubFn AvailabilitySubFn)
+	BindAvailability(availability AvailabilitySource)
 	BindScheduler(scheduler *utils.Scheduler)
 	BindRetry(retryPolicy *utils.RetryPolicy)
 

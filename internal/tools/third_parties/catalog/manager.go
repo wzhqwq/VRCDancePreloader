@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
@@ -60,8 +61,12 @@ type baseManager[T any, R any] struct {
 
 	statefulCatalog *interactive.RemoteManager[*Catalog[T]]
 
-	availableEm *utils.EventManager[bool]
-	allowed     bool
+	// allowed is the level the catalog's own RemoteManager reads, and wake tells
+	// it to read it again (one pending wake-up is enough, see
+	// interactive.AvailabilitySource). Both are touched from the provider's loop
+	// and read by the manager's workers, hence the atomic.
+	allowed atomic.Bool
+	wake    chan struct{}
 
 	processFn func(*R) *Catalog[T]
 
@@ -78,9 +83,26 @@ func (m *baseManager[T, R]) Handle() *interactive.RemoteHandle[*Catalog[T]] {
 	return m.statefulCatalog.Acquire(m.catalogId)
 }
 
+// Available and Wakes make the manager the availability source of its own
+// RemoteManager: it may fetch the catalog only while the user allows it.
+func (m *baseManager[T, R]) Available() bool {
+	return m.allowed.Load()
+}
+
+func (m *baseManager[T, R]) Wakes() <-chan struct{} {
+	return m.wake
+}
+
 func (m *baseManager[T, R]) SetAllowed(allowed bool) {
-	m.allowed = allowed
-	m.availableEm.NotifySubscribers(allowed)
+	m.allowed.Store(allowed)
+
+	if allowed {
+		select {
+		case m.wake <- struct{}{}:
+		default:
+			// A wake-up is already pending and the reader re-reads the level.
+		}
+	}
 }
 
 func (m *baseManager[T, R]) shutdown() {
@@ -88,7 +110,7 @@ func (m *baseManager[T, R]) shutdown() {
 }
 
 func (m *baseManager[T, R]) setup(id, name string, processFn func(*R) *Catalog[T]) {
-	m.availableEm = utils.NewEventManager[bool]()
+	m.wake = make(chan struct{}, 1)
 	m.logger = utils.NewLogger(name)
 	m.processFn = processFn
 	m.catalogId = id
@@ -111,7 +133,7 @@ func (m *baseManager[T, R]) setup(id, name string, processFn func(*R) *Catalog[T
 		scheduler = utils.PyPyVideoScheduler()
 	}
 	m.statefulCatalog.BindScheduler(scheduler)
-	m.statefulCatalog.BindAvailability(m.availableEm.SubscribeEvent)
+	m.statefulCatalog.BindAvailability(m)
 	m.statefulCatalog.BindRetry(retryPolicy)
 	m.statefulCatalog.BindLogger(m.logger)
 }
@@ -183,7 +205,7 @@ func (m *baseManager[T, R]) saveToCache(bytes []byte) {
 }
 
 func (m *baseManager[T, R]) request(_ string, ctx context.Context) (*Catalog[T], error) {
-	if !m.allowed {
+	if !m.allowed.Load() {
 		m.logger.WarnLn("Catalog cache manager is not allowed", m.catalogId)
 		return nil, ErrCatalogDisabled
 	}

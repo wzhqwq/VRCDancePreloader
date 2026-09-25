@@ -112,7 +112,21 @@ type fetchRequest[T any] struct {
 
 type GetFn[T any] func(id string, ctx context.Context) (T, error)
 
-type AvailabilitySubFn func() *utils.EventSubscriber[bool]
+// AvailabilitySource is what a RemoteManager asks two things: "may I fetch now?"
+// and "tell me when that answer may have changed".
+//
+// The wake-up carries no value on purpose. The manager reads Available when it
+// handles a wake-up, so a dropped or duplicated wake-up cannot leave it with a
+// stale answer, while an edge-triggered signal that carries the new value can
+// (review/09 §2.5, review/02 A7). Producers are expected to coalesce: one
+// pending wake-up is enough, because the receiver re-reads the level anyway.
+type AvailabilitySource interface {
+	// Available reports whether the resource may be fetched right now.
+	Available() bool
+	// Wakes returns the wake-up channel: a receive means "Available may have
+	// changed", and the value is never read.
+	Wakes() <-chan struct{}
+}
 
 type RemoteManager[T any] struct {
 	mu sync.RWMutex
@@ -131,7 +145,7 @@ type RemoteManager[T any] struct {
 
 	maxCacheEntries int
 
-	availabilitySubFn AvailabilitySubFn
+	availability AvailabilitySource
 
 	closeOnce sync.Once
 	closeCh   chan struct{}
@@ -162,8 +176,8 @@ func NewRemoteManager[T any](
 	return m
 }
 
-func (m *RemoteManager[T]) BindAvailability(availabilitySubFn AvailabilitySubFn) {
-	m.availabilitySubFn = availabilitySubFn
+func (m *RemoteManager[T]) BindAvailability(availability AvailabilitySource) {
+	m.availability = availability
 	go m.availabilityLoop()
 }
 
@@ -432,20 +446,25 @@ func (m *RemoteManager[T]) finishFetch(
 }
 
 func (m *RemoteManager[T]) availabilityLoop() {
-	sub := m.availabilitySubFn()
-	if sub == nil {
+	availability := m.availability
+	if availability == nil {
 		return
 	}
-	defer sub.Close()
+
+	wake := availability.Wakes()
+
+	// A wake-up only means "read the level again", and the level is what decides.
+	// Reading it once before waiting covers a resource that was already available
+	// when this loop started: its wake-up was sent before the subscription
+	// existed and would otherwise be lost.
+	if availability.Available() {
+		m.retryUnavailableEntries()
+	}
 
 	for {
 		select {
-		case available, ok := <-sub.Channel:
-			if !ok {
-				return
-			}
-
-			if available {
+		case <-wake:
+			if availability.Available() {
 				m.retryUnavailableEntries()
 			}
 
