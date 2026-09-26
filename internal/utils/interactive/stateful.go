@@ -1,8 +1,6 @@
 package interactive
 
 import (
-	"context"
-
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
@@ -33,18 +31,9 @@ type StatefulSetting[T any] interface {
 	SubscribeWhether(func(T) bool) *utils.EventSubscriber[bool]
 }
 
-type StatefulRemoteData[T any] interface {
-	BindAvailability(availability AvailabilitySource)
-	BindScheduler(scheduler *utils.Scheduler)
-	BindRetry(retryPolicy *utils.RetryPolicy)
-
-	Request()
-	Release()
-	Refresh()
-	Invalidate()
-	Snapshot() RemoteSnapshot[T]
-	BlockedGet(ctx context.Context) (T, error)
-	Subscribe() *utils.EventSubscriber[RemoteSnapshot[T]]
-	SubscribeStatus() *utils.EventSubscriber[RemoteStatus]
-	Close()
-}
+// StatefulRemoteData[T] used to live here: an interface with no implementer that
+// also could not be implemented (its BindRetry took *utils.RetryPolicy while
+// RemoteManager.BindRetry takes a value, and it mixed methods of
+// *RemoteManager[T] with methods of *RemoteHandle[T]). It was deleted on
+// 2026-09-25 by the maintainer's ruling; the content is in git history and in
+// notes/19 if the contract ever has to be drafted again.

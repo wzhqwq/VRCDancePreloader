@@ -940,6 +940,14 @@ func (h *RemoteHandle[T]) Subscribe() *utils.EventSubscriber[RemoteSnapshot[T]] 
 	return h.entry.em.SubscribeEvent()
 }
 
+// SubscribeStatus is the status-only view of a handle: the same notifications as
+// Subscribe, mapped to the RemoteStatus they carry.
+//
+// Nothing in the tree consumes it right now (the dance room provider reads the
+// full snapshot instead, because it needs HasData). It is kept deliberately, not
+// as an oversight: "watch only the phase of this entry" is a coherent and tiny
+// addition on top of the entry's own event manager, and GUI/diagnostics code is
+// the obvious caller. See AGENTS.md §7 and notes/19.
 func (h *RemoteHandle[T]) SubscribeStatus() *utils.EventSubscriber[RemoteStatus] {
 	return utils.PipeEvent(h.entry.em, func(snap RemoteSnapshot[T]) (RemoteStatus, bool) {
 		return snap.Status, true
