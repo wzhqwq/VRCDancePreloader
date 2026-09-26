@@ -34,6 +34,30 @@ const (
 	RemoteErrorRetrying
 )
 
+// String names the phase for logs and diagnostics. The UI keeps using the i18n
+// keys derived from the numeric value (see RemoteStatus.String), so this is only
+// about being able to read a phase in a log line.
+func (p RemotePhase) String() string {
+	switch p {
+	case RemoteIdle:
+		return "Idle"
+	case RemoteLoading:
+		return "Loading"
+	case RemoteReady:
+		return "Ready"
+	case RemoteRefreshing:
+		return "Refreshing"
+	case RemoteError:
+		return "Error"
+	case RemoteErrorRetryPending:
+		return "ErrorRetryPending"
+	case RemoteErrorRetrying:
+		return "ErrorRetrying"
+	}
+
+	return "RemotePhase(" + strconv.Itoa(int(p)) + ")"
+}
+
 type RemoteStatus struct {
 	Phase       RemotePhase
 	Placeholder bool
@@ -302,10 +326,10 @@ func (m *RemoteManager[T]) execute(req fetchRequest[T]) {
 			if entry.status.Phase == RemoteErrorRetryPending {
 				entry.status.Phase = RemoteErrorRetrying
 			}
-			snapshot := entry.snapshotLocked()
+			snapshot, seq := entry.bumpSnapshotLocked()
 			entry.mu.Unlock()
 
-			entry.em.NotifySubscribers(snapshot)
+			entry.publish(snapshot, seq)
 
 			err = waitDelay(ctx, delay)
 			if err == nil {
@@ -361,11 +385,11 @@ func (m *RemoteManager[T]) execute(req fetchRequest[T]) {
 				entry.status.Err = err
 				entry.status.RetryAttempts = fmt.Sprintf("%d / %d", attempt+1, m.retryPolicy.MaxRetries)
 				entry.status.RetryAfter = time.Now().Add(nextDelay)
-				snapshot = entry.snapshotLocked()
+				snapshot, seq = entry.bumpSnapshotLocked()
 				entry.mu.Unlock()
 			}
 
-			entry.em.NotifySubscribers(snapshot)
+			entry.publish(snapshot, seq)
 
 			return
 		},
@@ -392,10 +416,10 @@ func (m *RemoteManager[T]) finishFetch(
 	entry.fetching = false
 
 	if generation != entry.generation {
-		snapshot := entry.snapshotLocked()
+		snapshot, seq := entry.bumpSnapshotLocked()
 		entry.mu.Unlock()
 
-		entry.em.NotifySubscribers(snapshot)
+		entry.publish(snapshot, seq)
 		m.evictIfNeeded()
 		return
 	}
@@ -437,11 +461,11 @@ func (m *RemoteManager[T]) finishFetch(
 	}
 
 	entry.lastAccess = time.Now()
-	snapshot := entry.snapshotLocked()
+	snapshot, seq := entry.bumpSnapshotLocked()
 
 	entry.mu.Unlock()
 
-	entry.em.NotifySubscribers(snapshot)
+	entry.publish(snapshot, seq)
 	m.evictIfNeeded()
 }
 
@@ -624,6 +648,7 @@ func (m *RemoteManager[T]) invalidateEntry(entry *remoteEntry[T]) {
 	var (
 		cancel      context.CancelFunc
 		snapshot    RemoteSnapshot[T]
+		seq         uint64
 		shouldFetch bool
 	)
 
@@ -664,7 +689,7 @@ func (m *RemoteManager[T]) invalidateEntry(entry *remoteEntry[T]) {
 	}
 
 	shouldFetch = entry.refCount.Load() > 0
-	snapshot = entry.snapshotLocked()
+	snapshot, seq = entry.bumpSnapshotLocked()
 
 	entry.mu.Unlock()
 
@@ -672,7 +697,7 @@ func (m *RemoteManager[T]) invalidateEntry(entry *remoteEntry[T]) {
 		cancel()
 	}
 
-	entry.em.NotifySubscribers(snapshot)
+	entry.publish(snapshot, seq)
 
 	if shouldFetch {
 		m.enqueue(entry, false)
@@ -865,12 +890,12 @@ func (m *RemoteManager[T]) ModifyPlaceholderFn(id string, modify func(current T)
 	entry.lastAccess = time.Now()
 	entry.status.Placeholder = true
 
-	snapshot = entry.snapshotLocked()
+	snapshot, seq := entry.bumpSnapshotLocked()
 
 	entry.mu.Unlock()
 	m.mu.RUnlock()
 
-	entry.em.NotifySubscribers(snapshot)
+	entry.publish(snapshot, seq)
 	return true
 }
 
@@ -889,6 +914,16 @@ type remoteEntry[T any] struct {
 	generation        uint64
 	runningGeneration uint64
 
+	// seq is the version of the state a snapshot was taken from (guarded by mu),
+	// and deliver serializes the "is this still the newest?" check with the
+	// delivery itself. Deliveries happen *after* the entry lock is released, so
+	// without both a snapshot read before a newer one can be delivered after it —
+	// which is how a subscriber ended up publishing 3m40s, then 0s, then 3m40s
+	// again for the same entry (review/09 §8.5).
+	seq      uint64
+	deliver  sync.Mutex
+	notified uint64 // guarded by deliver
+
 	queued   bool
 	fetching bool
 
@@ -905,6 +940,38 @@ func (e *remoteEntry[T]) snapshotLocked() RemoteSnapshot[T] {
 		HasData: e.hasData,
 		Status:  e.status,
 	}
+}
+
+// bumpSnapshotLocked takes the snapshot of the current state and the version it
+// represents. It has to be called under e.mu, immediately after the write that is
+// about to be announced, so that the version and the snapshot always describe the
+// same state.
+func (e *remoteEntry[T]) bumpSnapshotLocked() (RemoteSnapshot[T], uint64) {
+	e.seq++
+
+	return e.snapshotLocked(), e.seq
+}
+
+// publish announces a snapshot, unless that version was already announced or has
+// been superseded by a newer one in the meantime. Every notification about an
+// entry goes through here: it is what keeps the delivered states in write order
+// and free of regressions (see remoteEntry.seq).
+//
+// The check and the delivery share one mutex because passing the check is not
+// enough on its own: a publisher can be descheduled between them and deliver an
+// older snapshot after a newer one. NotifySubscribers only pushes into buffered
+// channels (no subscriber code runs), so holding the mutex across it is cheap and
+// cannot deadlock.
+func (e *remoteEntry[T]) publish(snapshot RemoteSnapshot[T], seq uint64) {
+	e.deliver.Lock()
+	defer e.deliver.Unlock()
+
+	if seq <= e.notified {
+		return
+	}
+	e.notified = seq
+
+	e.em.NotifySubscribers(snapshot)
 }
 
 func (e *remoteEntry[T]) snapshot() RemoteSnapshot[T] {

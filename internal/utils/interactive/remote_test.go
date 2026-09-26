@@ -7,7 +7,207 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
+
+// --- delivery order (review/09 §8.5) -----------------------------------------
+
+func newTestEntry[T any](initial T) *remoteEntry[T] {
+	entry := &remoteEntry[T]{
+		id: "test",
+		em: utils.NewEventManager[RemoteSnapshot[T]](),
+	}
+	entry.data, entry.hasData = initial, true
+
+	return entry
+}
+
+// bumpWithData models one write followed by the snapshot that announces it.
+func bumpWithData[T any](entry *remoteEntry[T], data T) (RemoteSnapshot[T], uint64) {
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+
+	entry.data, entry.hasData = data, true
+
+	return entry.bumpSnapshotLocked()
+}
+
+func drainSnapshots[T any](ch *utils.EventSubscriber[RemoteSnapshot[T]]) []RemoteSnapshot[T] {
+	var got []RemoteSnapshot[T]
+
+drain:
+	for {
+		select {
+		case snapshot := <-ch.Channel:
+			got = append(got, snapshot)
+		default:
+			break drain
+		}
+	}
+
+	return got
+}
+
+func snapshotData(t *testing.T, snapshots []RemoteSnapshot[int]) []int {
+	t.Helper()
+
+	data := make([]int, 0, len(snapshots))
+	for _, snapshot := range snapshots {
+		data = append(data, snapshot.Data)
+	}
+
+	return data
+}
+
+// TestPublishDropsSupersededSnapshots is the review/09 §8.5 case: the snapshot of
+// an older state is announced after a newer one was already announced. It used to
+// reach the subscriber and make it publish a value that had been replaced.
+func TestPublishDropsSupersededSnapshots(t *testing.T) {
+	entry := newTestEntry(0)
+	ch := entry.em.SubscribeEvent()
+	defer ch.Close()
+
+	first, firstSeq := bumpWithData(entry, 1)
+	second, secondSeq := bumpWithData(entry, 2)
+
+	entry.publish(second, secondSeq)
+	entry.publish(first, firstSeq)
+
+	third, thirdSeq := bumpWithData(entry, 3)
+	entry.publish(third, thirdSeq)
+
+	got := snapshotData(t, drainSnapshots(ch))
+	if len(got) != 2 || got[0] != 2 || got[1] != 3 {
+		t.Fatalf("delivered %v, want [2 3] (the stale 1 must be dropped)", got)
+	}
+}
+
+func TestPublishKeepsInOrderDeliveries(t *testing.T) {
+	entry := newTestEntry(0)
+	ch := entry.em.SubscribeEvent()
+	defer ch.Close()
+
+	first, firstSeq := bumpWithData(entry, 1)
+	entry.publish(first, firstSeq)
+	second, secondSeq := bumpWithData(entry, 2)
+	entry.publish(second, secondSeq)
+
+	got := snapshotData(t, drainSnapshots(ch))
+	if len(got) != 2 || got[0] != 1 || got[1] != 2 {
+		t.Fatalf("delivered %v, want [1 2]", got)
+	}
+}
+
+// TestPublishDoesNotRepeatAVersion pins that re-announcing the same version is a
+// no-op: the retry loop re-publishes its snapshot on the failure path, and a
+// duplicate carries nothing new.
+func TestPublishDoesNotRepeatAVersion(t *testing.T) {
+	entry := newTestEntry(0)
+	ch := entry.em.SubscribeEvent()
+	defer ch.Close()
+
+	snapshot, seq := bumpWithData(entry, 1)
+	entry.publish(snapshot, seq)
+	entry.publish(snapshot, seq)
+
+	if got := snapshotData(t, drainSnapshots(ch)); len(got) != 1 || got[0] != 1 {
+		t.Fatalf("delivered %v, want [1]", got)
+	}
+}
+
+// TestPublishNeverRegressesUnderConcurrency checks the property the guard exists
+// for: whatever the interleaving, a subscriber never sees a state older than one
+// it has already been given.
+//
+// The counter is bumped inside the same critical section as the write, exactly
+// like a real producer (which writes its state and bumps the version under the
+// entry lock), so a delivery that is not strictly greater than the previous one
+// can only mean the guard let an older state through.
+func TestPublishNeverRegressesUnderConcurrency(t *testing.T) {
+	entry := newTestEntry(int64(0))
+
+	var counter int64
+	bumpCounter := func() (RemoteSnapshot[int64], uint64) {
+		entry.mu.Lock()
+		defer entry.mu.Unlock()
+
+		counter++
+		entry.data, entry.hasData = counter, true
+
+		return entry.bumpSnapshotLocked()
+	}
+
+	ch := entry.em.SubscribeEvent()
+	defer ch.Close()
+
+	var (
+		mu       sync.Mutex
+		observed []int64
+		stop     = make(chan struct{})
+		done     = make(chan struct{})
+	)
+
+	go func() {
+		defer close(done)
+
+		collect := func(snapshot RemoteSnapshot[int64]) {
+			mu.Lock()
+			observed = append(observed, snapshot.Data)
+			mu.Unlock()
+		}
+
+		for {
+			select {
+			case snapshot := <-ch.Channel:
+				collect(snapshot)
+			case <-stop:
+				for {
+					select {
+					case snapshot := <-ch.Channel:
+						collect(snapshot)
+					default:
+						return
+					}
+				}
+			}
+		}
+	}()
+
+	var publishers sync.WaitGroup
+	for publisher := 0; publisher < 4; publisher++ {
+		publishers.Add(1)
+		go func() {
+			defer publishers.Done()
+
+			for i := 0; i < 50; i++ {
+				snapshot, seq := bumpCounter()
+				entry.publish(snapshot, seq)
+			}
+		}()
+	}
+
+	publishers.Wait()
+	close(stop)
+	<-done
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(observed) == 0 {
+		t.Fatal("no snapshot was delivered at all")
+	}
+
+	for i := 1; i < len(observed); i++ {
+		if observed[i] <= observed[i-1] {
+			t.Fatalf("delivery %d went backwards: %v", i, observed[i-1:i+1])
+		}
+	}
+
+	if last := observed[len(observed)-1]; last > entry.snapshot().Data {
+		t.Fatalf("the last delivery (%d) is newer than the entry (%d)", last, entry.snapshot().Data)
+	}
+}
 
 // stubAvailability is an AvailabilitySource whose level the test flips. Its
 // wake-up channel has room for exactly one pending wake-up, like the real
