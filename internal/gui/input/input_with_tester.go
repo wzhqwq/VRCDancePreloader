@@ -43,16 +43,17 @@ func NewInputWithTester(tester interactive.StatefulTester, setting interactive.S
 }
 
 func (t *InputWithTester) loop(stopCh <-chan struct{}) {
-	ch := t.tester.SubscribeStatus()
-	defer ch.Close()
+	watcher := t.tester.WatchStatus()
+	defer watcher.Close()
 	t.updateStatus(t.tester.Status())
 
 	for {
 		select {
 		case <-stopCh:
 			return
-		case status := <-ch.Channel:
-			t.updateStatus(status)
+		case <-watcher.Wakes():
+			// A wake-up is only "it may have changed": the status is read again.
+			t.updateStatus(t.tester.Status())
 		}
 	}
 }

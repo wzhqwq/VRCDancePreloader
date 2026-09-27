@@ -154,24 +154,24 @@ func (s *Service) getDuDuOriginalInfo(id string, stopCh <-chan struct{}) (api.Du
 	handle := s.duduOriginalVideoInfoProvider.Info(id)
 	defer handle.Release()
 
-	snap := handle.Snapshot()
-
 	ch := handle.Subscribe()
 	defer ch.Close()
 
 	for {
+		// A notification is only a wake-up: the handle is what says whether the
+		// info is usable, so a stale payload cannot make this return early (nor
+		// hand out an older snapshot).
+		snap := handle.Snapshot()
 		if snap.Status.Valid() {
-			break
+			return snap.Data, true
 		}
 
 		select {
 		case <-stopCh:
 			return api.DuDuOriginalVideoInfo{}, false
-		case snap = <-ch.Channel:
+		case <-ch.Channel:
 		}
 	}
-
-	return snap.Data, true
 }
 
 func (s *Service) bind(sm *song.StateMachine) {

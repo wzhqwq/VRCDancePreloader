@@ -20,50 +20,49 @@ func (m *Manager) startStatusInfrastructure() {
 		if !node.isStateful() {
 			continue
 		}
-		subscriber, err := safeSubscribe(node)
-		if err != nil || subscriber == nil {
+		watcher, err := safeSubscribe(node)
+		if err != nil || watcher == nil {
 			m.mu.Lock()
 			node.phase = phaseFailed
 			node.lastError = err
 			if node.lastError == nil {
-				node.lastError = fmt.Errorf("service %q returned a nil status subscriber", node.name)
+				node.lastError = fmt.Errorf("service %q returned a nil status watcher", node.name)
 			}
 			m.mu.Unlock()
 			continue
 		}
 		m.mu.Lock()
-		node.subscriber = subscriber
+		node.watcher = watcher
 		m.mu.Unlock()
 		m.listenerWG.Add(1)
-		go m.listenServiceStatus(ctx, node, subscriber)
+		go m.listenServiceStatus(ctx, node, watcher)
 	}
 	m.publishAllWrapperStatuses()
 }
 
-func safeSubscribe(node *serviceNode) (subscriber *utils.EventSubscriber[interactive.RunnerStatus], err error) {
+func safeSubscribe(node *serviceNode) (watcher *utils.LevelWatcher[interactive.RunnerStatus], err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			err = panicError("SubscribeStatus service "+node.name, recovered)
+			err = panicError("WatchStatus service "+node.name, recovered)
 		}
 	}()
-	return node.stateful.SubscribeStatus(), nil
+	return node.stateful.WatchStatus(), nil
 }
 
 func (m *Manager) listenServiceStatus(
 	ctx interface{ Done() <-chan struct{} },
 	node *serviceNode,
-	subscriber *utils.EventSubscriber[interactive.RunnerStatus],
+	watcher *utils.LevelWatcher[interactive.RunnerStatus],
 ) {
 	defer m.listenerWG.Done()
-	defer subscriber.Close()
+	defer watcher.Close()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case _, ok := <-subscriber.Channel:
-			if !ok {
-				return
-			}
+		case <-watcher.Wakes():
+			// Only the wake-up matters here: the reconciler reads the status
+			// itself (safeStatus), so a coalesced or late wake-up loses nothing.
 			m.requestReconcile(node.name)
 		}
 	}

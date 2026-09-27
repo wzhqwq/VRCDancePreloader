@@ -80,7 +80,7 @@ type serviceNode struct {
 	lastError        error
 	startAttempted   bool
 	permanentFailure bool
-	subscriber       *utils.EventSubscriber[interactive.RunnerStatus]
+	watcher          *utils.LevelWatcher[interactive.RunnerStatus]
 }
 
 func (n *serviceNode) isStateful() bool {

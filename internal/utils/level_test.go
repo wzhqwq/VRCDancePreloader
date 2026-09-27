@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-func pendingWakeUps(level *Level[int]) int {
+func pendingWakeUps(watcher *LevelWatcher[int]) int {
 	woken := 0
 
 drain:
 	for {
 		select {
-		case <-level.Wakes():
+		case <-watcher.Wakes():
 			woken++
 		default:
 			break drain
@@ -22,42 +22,46 @@ drain:
 	return woken
 }
 
-// TestLevelStoresBeforeWaking pins rule 1 of Level: a reader that reacts to a
+// TestLevelStoresBeforeWaking pins rule 1 of Level: a watcher that reacts to a
 // wake-up reads the value that caused it.
 func TestLevelStoresBeforeWaking(t *testing.T) {
 	level := NewLevel(0)
+	watcher := level.Subscribe()
+	defer watcher.Close()
 
 	level.Store(7)
 
 	select {
-	case <-level.Wakes():
+	case <-watcher.Wakes():
 	default:
-		t.Fatal("Store did not wake the readers")
+		t.Fatal("Store did not wake the watcher")
 	}
 
-	if got := level.Current(); got != 7 {
+	if got := watcher.Current(); got != 7 {
 		t.Fatalf("Current() = %d after the wake-up, want 7", got)
 	}
 }
 
 // TestLevelCoalescesWakeUps pins rule 2: one pending wake-up is enough, because
-// the reader reads the value instead of receiving it.
+// the watcher reads the value instead of receiving it.
 func TestLevelCoalescesWakeUps(t *testing.T) {
 	level := NewLevel(0)
+	watcher := level.Subscribe()
+	defer watcher.Close()
 
 	level.Store(1)
 	level.Store(2)
 	level.Store(3)
 
-	if woken := pendingWakeUps(level); woken != 1 {
+	if woken := pendingWakeUps(watcher); woken != 1 {
 		t.Fatalf("got %d pending wake-ups after three stores, want 1", woken)
 	}
-	if got := level.Current(); got != 3 {
+	if got := watcher.Current(); got != 3 {
 		t.Fatalf("Current() = %d, want the latest value 3", got)
 	}
 
 	level.Store(4)
-	if woken := pendingWakeUps(level); woken != 1 {
+	if woken := pendingWakeUps(watcher); woken != 1 {
 		t.Fatalf("got %d wake-ups after the channel was drained, want 1", woken)
 	}
 }
@@ -66,19 +70,76 @@ func TestLevelCoalescesWakeUps(t *testing.T) {
 // did not" case (a replaced HTTP client).
 func TestLevelWakeKeepsTheValue(t *testing.T) {
 	level := NewLevel(5)
+	watcher := level.Subscribe()
+	defer watcher.Close()
 
 	level.Wake()
 
-	if woken := pendingWakeUps(level); woken != 1 {
+	if woken := pendingWakeUps(watcher); woken != 1 {
 		t.Fatalf("got %d pending wake-ups after Wake(), want 1", woken)
 	}
-	if got := level.Current(); got != 5 {
+	if got := watcher.Current(); got != 5 {
 		t.Fatalf("Wake() changed the value to %d, want it to stay 5", got)
 	}
 }
 
+// TestLevelWakesEveryWatcher is why watchers exist instead of one shared wake-up
+// channel: each consumer has its own slot, so one store wakes all of them.
+func TestLevelWakesEveryWatcher(t *testing.T) {
+	level := NewLevel(0)
+
+	watchers := make([]*LevelWatcher[int], 0, 4)
+	for i := 0; i < 4; i++ {
+		watcher := level.Subscribe()
+		defer watcher.Close()
+		watchers = append(watchers, watcher)
+	}
+
+	level.Store(9)
+
+	for i, watcher := range watchers {
+		if woken := pendingWakeUps(watcher); woken != 1 {
+			t.Fatalf("watcher %d got %d wake-ups, want 1", i, woken)
+		}
+		if got := watcher.Current(); got != 9 {
+			t.Fatalf("watcher %d read %d, want 9", i, got)
+		}
+	}
+}
+
+// TestLevelClosedWatcherStopsBeingWoken covers the lifecycle: a consumer that is
+// gone must not be woken (nor block the producer) forever.
+func TestLevelClosedWatcherStopsBeingWoken(t *testing.T) {
+	level := NewLevel(0)
+	watcher := level.Subscribe()
+	other := level.Subscribe()
+	defer other.Close()
+
+	level.Store(1) // sanity: the watcher is live
+	if woken := pendingWakeUps(watcher); woken != 1 {
+		t.Fatalf("live watcher got %d wake-ups, want 1", woken)
+	}
+
+	watcher.Close()
+	level.Store(2)
+
+	if woken := pendingWakeUps(watcher); woken != 0 {
+		t.Fatalf("closed watcher got %d wake-ups, want 0", woken)
+	}
+	// The other watcher is woken, but its wake-up is coalesced: Store(1) already
+	// left one pending, so the slot holds one wake-up, not two.
+	if woken := pendingWakeUps(other); woken != 1 {
+		t.Fatalf("the other watcher got %d wake-ups, want 1 (coalesced)", woken)
+	}
+	if got := other.Current(); got != 2 {
+		t.Fatalf("the other watcher read %d, want 2", got)
+	}
+
+	watcher.Close() // idempotent
+}
+
 // TestLevelConcurrentReadersSeeTheLatestValue is the property the level is there
-// for: whatever the interleaving, a reader that has been woken reads a value that
+// for: whatever the interleaving, a watcher that has been woken reads a value that
 // is at least as new as the one that woke it. Values are produced by a counter
 // incremented in the same critical section as the store, like a real producer.
 func TestLevelConcurrentReadersSeeTheLatestValue(t *testing.T) {
@@ -92,15 +153,17 @@ func TestLevelConcurrentReadersSeeTheLatestValue(t *testing.T) {
 		done  = make(chan struct{})
 	)
 
+	watcher := level.Subscribe()
+	defer watcher.Close()
+
 	go func() {
 		defer close(done)
 
-		wake := level.Wakes()
 		for {
 			select {
-			case <-wake:
+			case <-watcher.Wakes():
 				mu.Lock()
-				seen = append(seen, level.Current())
+				seen = append(seen, watcher.Current())
 				mu.Unlock()
 			case <-stop:
 				return
@@ -137,7 +200,7 @@ func TestLevelConcurrentReadersSeeTheLatestValue(t *testing.T) {
 	defer mu.Unlock()
 
 	if len(seen) == 0 {
-		t.Fatal("the reader was never woken")
+		t.Fatal("the watcher was never woken")
 	}
 	for i := 1; i < len(seen); i++ {
 		if seen[i] < seen[i-1] {

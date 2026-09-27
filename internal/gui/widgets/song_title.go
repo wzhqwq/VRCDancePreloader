@@ -58,7 +58,11 @@ func (t *SongTitle) loop(stopCh <-chan struct{}) {
 		select {
 		case <-stopCh:
 			return
-		case snap := <-ch.Channel:
+		case <-ch.Channel:
+			// The notification is only a wake-up: read the entry instead of the
+			// payload, so what is rendered is the current title (remote.go's
+			// deliveries are ordered, but a newer state may exist by now).
+			snap := infoHandle.Snapshot()
 			if snap.Status.Valid() {
 				title = snap.Data.Title
 				persistence.UpdateSavedTitle(t.ID, title)

@@ -177,8 +177,8 @@ func (p *YouTubeProvider) loop() {
 	defer modeCh.Close()
 	resourcesCh := p.allowedResourcesEm.SubscribeEvent()
 	defer resourcesCh.Close()
-	keyCh := secrets.Subscribe(secrets.YoutubeKeyUser)
-	defer keyCh.Close()
+	keySource := secrets.Source(secrets.YoutubeKeyUser)
+	defer keySource.Close()
 
 	apiClientCh := requesting.GetClient(requesting.YouTubeApi).SubscribeChange()
 	defer apiClientCh.Close()
@@ -187,8 +187,11 @@ func (p *YouTubeProvider) loop() {
 	videoClientCh := requesting.GetClient(requesting.YouTubeVideo).SubscribeChange()
 	defer videoClientCh.Close()
 
-	ytdlpAvailableCh := local_executables.SubscribeYtDlpAvailability()
-	defer ytdlpAvailableCh.Close()
+	// A watcher of the availability level: it is read again whenever it wakes the
+	// loop, so a dropped or late wake-up cannot leave the gates stale
+	// (review/09 §2.5).
+	ytdlpAvailability := local_executables.YtDlpAvailability()
+	defer ytdlpAvailability.Close()
 
 	p.refreshGates()
 
@@ -203,9 +206,9 @@ func (p *YouTubeProvider) loop() {
 			p.refreshGates()
 		case <-resourcesCh.Channel:
 			p.refreshGates()
-		case <-keyCh.Channel:
+		case <-keySource.Wakes():
 			p.refreshGates()
-		case <-ytdlpAvailableCh.Channel:
+		case <-ytdlpAvailability.Wakes():
 			p.refreshGates()
 		// A new HTTP client replaced the previous one: the entries that failed
 		// with the old one are worth another try.
@@ -363,8 +366,8 @@ func (p *BiliBiliProvider) loop() {
 	clientCh := requesting.GetClient(requesting.BiliBili).SubscribeChange()
 	defer clientCh.Close()
 
-	ytdlpAvailableCh := local_executables.SubscribeYtDlpAvailability()
-	defer ytdlpAvailableCh.Close()
+	ytdlpAvailability := local_executables.YtDlpAvailability()
+	defer ytdlpAvailability.Close()
 
 	p.refreshGates()
 
@@ -376,7 +379,7 @@ func (p *BiliBiliProvider) loop() {
 			p.refreshGates()
 		case <-resourcesCh.Channel:
 			p.refreshGates()
-		case <-ytdlpAvailableCh.Channel:
+		case <-ytdlpAvailability.Wakes():
 			p.refreshGates()
 		// A new HTTP client replaced the previous one: the entries that failed
 		// with the old one are worth another try.

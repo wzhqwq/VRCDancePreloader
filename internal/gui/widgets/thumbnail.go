@@ -98,12 +98,16 @@ func (t *Thumbnail) loopForId(stopCh <-chan struct{}) bool {
 			return false
 		case <-t.idArrived:
 			return true
-		case thumbnailSnap = <-thumbnailCh.Channel:
+		case <-thumbnailCh.Channel:
+			// A notification is only a wake-up: read the handle, so the image
+			// rendered is the current one.
+			thumbnailSnap = thumbnailHandle.Snapshot()
 			if thumbnailSnap.Status.Valid() {
 				t.setImage(thumbnailSnap.Data)
 				return false
 			}
-		case infoSnap = <-infoChannel:
+		case <-infoChannel:
+			infoSnap = infoHandle.Snapshot()
 			if infoSnap.Data.GroupName != group {
 				group = infoSnap.Data.GroupName
 				t.setImage(thumbnails.GetGroupThumbnail(group))

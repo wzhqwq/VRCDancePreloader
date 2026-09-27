@@ -50,7 +50,8 @@ func (dm *downloadManager) UpdatePriorities() {
 
 	dm.publishPermitsLocked()
 
-	dm.em.NotifySubscribers(QueueChange)
+	// The queue order is published as state: consumers wake up and read it.
+	dm.publishQueueLocked()
 }
 
 // publishPermitsLocked publishes the queue position and the download permission

@@ -126,7 +126,11 @@ func (p *rwFileRemoteProvider) WaitResolving(ctx context.Context, beforeWait fun
 			// cancellation from restart by comparing against ErrCanceled,
 			// ErrRestarted and ErrConnectionTimeoutClosed.
 			return 0, context.Cause(ctx)
-		case snapshot = <-ch.Channel:
+		case <-ch.Channel:
+			// A notification is only a wake-up: the handle is read again, so a
+			// stale payload cannot make this resolver fail (or wait) on a state
+			// that has already been replaced.
+			snapshot = handle.Snapshot()
 		}
 	}
 

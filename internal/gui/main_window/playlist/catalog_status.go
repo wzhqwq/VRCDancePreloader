@@ -80,14 +80,16 @@ func (b *SongListButton) loop(stopCh <-chan struct{}) {
 		select {
 		case <-stopCh:
 			return
-		case pypySnap := <-pypyCh.Channel:
-			pypyComplete = pypySnap.Status.Valid()
+		case <-pypyCh.Channel:
+			// A notification is only a wake-up: read the handle instead of the
+			// payload, so the icon reflects the current state.
+			pypyComplete = pypyHandle.Snapshot().Status.Valid()
 			b.SetComplete(pypyComplete && wannaComplete && duduComplete)
-		case wannaSnap := <-wannaCh.Channel:
-			wannaComplete = wannaSnap.Status.Valid()
+		case <-wannaCh.Channel:
+			wannaComplete = wannaHandle.Snapshot().Status.Valid()
 			b.SetComplete(pypyComplete && wannaComplete && duduComplete)
-		case duduSnap := <-duduCh.Channel:
-			duduComplete = duduSnap.Status.Valid()
+		case <-duduCh.Channel:
+			duduComplete = duduHandle.Snapshot().Status.Valid()
 			b.SetComplete(pypyComplete && wannaComplete && duduComplete)
 		}
 	}
@@ -157,7 +159,10 @@ func (s *CatalogState[T]) loop(stopCh <-chan struct{}) {
 		select {
 		case <-stopCh:
 			return
-		case snap = <-ch.Channel:
+		case <-ch.Channel:
+			// A notification is only a wake-up: read the handle, so what the card
+			// shows (status, version time, countdown) is the current state.
+			snap = handle.Snapshot()
 			s.processSnap(snap)
 			if timer != nil {
 				err = timer.SetUntil(snap.Status.CountdownUntil())

@@ -9,21 +9,26 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
 
-type ManagerChangeType string
-
-const (
-	QueueChange ManagerChangeType = "queue"
-	Stopped     ManagerChangeType = "stopped"
-)
-
 type downloadManager struct {
 	sync.Mutex
 	//utils.LoggingMutex
 
-	tasks     map[string]*ManagedTask
-	queue     []string
+	tasks map[string]*ManagedTask
+	queue []string
+
+	// queueOrder is the queue as a state: the ordered ids, published whenever the
+	// order changes, so consumers read it instead of receiving it (a coalesced or
+	// late wake-up loses nothing). The tasks themselves are read through
+	// GetQueueSnapshot.
+	//
+	// queueOrder guards itself, so Store may be called with dm's lock held.
+	//
+	// This is the manager's only notification: it has no lifecycle event, because
+	// Destroy only ever happens when the service stops, and the GUI learns about
+	// that from the service status it already watches.
+	queueOrder *utils.Level[[]string]
+
 	scheduler *utils.Scheduler
-	em        *utils.EventManager[ManagerChangeType]
 
 	queueLogger *utils.UniqueLogger
 
@@ -60,10 +65,10 @@ const defaultRetryDelay = 3 * time.Second
 
 func newDownloadManager(maxParallel int, scheduler *utils.Scheduler) *downloadManager {
 	return &downloadManager{
-		tasks:     make(map[string]*ManagedTask),
-		queue:     make([]string, 0),
-		scheduler: scheduler,
-		em:        utils.NewEventManager[ManagerChangeType](),
+		tasks:      make(map[string]*ManagedTask),
+		queue:      make([]string, 0),
+		queueOrder: utils.NewLevel([]string(nil)),
+		scheduler:  scheduler,
 
 		queueLogger: utils.NewUniqueLogger("Download Queue"),
 
@@ -249,17 +254,30 @@ func (dm *downloadManager) SetMaxParallel(max int) {
 	dm.maxParallel = max
 	dm.publishPermitsLocked()
 }
+
+// Destroy cancels every task. It deliberately announces nothing: it only runs
+// when the service stops, and the GUI is told about that by the host service
+// status it already watches, so the manager has no lifecycle event of its own.
 func (dm *downloadManager) Destroy() {
 	dm.Lock()
 	defer dm.Unlock()
 	for _, t := range dm.tasks {
 		t.Task.Cancel()
 	}
-	dm.em.NotifySubscribers(Stopped)
 }
 
-func (dm *downloadManager) Subscribe() *utils.EventSubscriber[ManagerChangeType] {
-	return dm.em.SubscribeEvent()
+// WatchQueue hands the caller its own watcher of the queue order level: wait on
+// Wakes, then read Current (or GetQueueSnapshot for the tasks themselves). A
+// coalesced or late wake-up loses nothing, because the order is read, not
+// received.
+func (dm *downloadManager) WatchQueue() *utils.LevelWatcher[[]string] {
+	return dm.queueOrder.Subscribe()
+}
+
+// publishQueueLocked republishes the queue order. It has to be called under
+// dm's lock, right after the order changed.
+func (dm *downloadManager) publishQueueLocked() {
+	dm.queueOrder.Store(append([]string(nil), dm.queue...))
 }
 
 func (dm *downloadManager) GetQueueSnapshot() []*ManagedTask {

@@ -7,11 +7,13 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
-func (s *BaseService[T]) SubscribeStatus() *utils.EventSubscriber[interactive.RunnerStatus] {
-	if s.em == nil {
+// WatchStatus hands the caller its own watcher of the service status level: wait
+// on Wakes, then read Status (or the watcher's Current) for the value.
+func (s *BaseService[T]) WatchStatus() *utils.LevelWatcher[interactive.RunnerStatus] {
+	if s.status == nil {
 		panic(errors.New("SetControl not called yet"))
 	}
-	return s.em.SubscribeEvent()
+	return s.status.Subscribe()
 }
 
 func (s *BaseService[T]) Status() interactive.RunnerStatus {
@@ -35,7 +37,7 @@ func (s *BaseService[T]) Restart() {
 }
 
 func (s *BaseService[T]) notify() {
-	if s.em != nil {
-		s.em.NotifySubscribers(s.Status())
+	if s.status != nil {
+		s.status.Store(s.Status())
 	}
 }

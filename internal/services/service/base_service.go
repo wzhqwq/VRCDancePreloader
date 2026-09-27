@@ -34,7 +34,7 @@ type BaseService[T any] struct {
 
 	running   bool
 	lastError error
-	em        *utils.EventManager[interactive.RunnerStatus]
+	status    *utils.Level[interactive.RunnerStatus]
 
 	Wg     sync.WaitGroup
 	stopCh chan struct{}
@@ -147,7 +147,7 @@ func (s *BaseService[T]) SetControl(name string, control Control) {
 	s.name = name
 	s.control = control
 	s.logger = utils.NewLogger(name)
-	s.em = utils.NewEventManager[interactive.RunnerStatus]()
+	s.status = utils.NewLevel(s.Status())
 }
 
 func (s *BaseService[T]) L() *utils.CustomLogger {

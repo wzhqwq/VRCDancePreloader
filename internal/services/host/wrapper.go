@@ -12,7 +12,7 @@ import (
 type wrappedService struct {
 	manager *Manager
 	node    *serviceNode
-	events  *utils.EventManager[interactive.RunnerStatus]
+	status  *utils.Level[interactive.RunnerStatus]
 
 	publishMu    sync.Mutex
 	hasPublished bool
@@ -29,12 +29,13 @@ func newWrappedService(manager *Manager, node *serviceNode) *wrappedService {
 	return &wrappedService{
 		manager: manager,
 		node:    node,
-		events:  utils.NewEventManager[interactive.RunnerStatus](),
+		status:  utils.NewLevel(interactive.RunnerStatus{}),
 	}
 }
 
-func (w *wrappedService) SubscribeStatus() *utils.EventSubscriber[interactive.RunnerStatus] {
-	return w.events.SubscribeEvent()
+// WatchStatus hands the caller its own watcher of the wrapper's status level.
+func (w *wrappedService) WatchStatus() *utils.LevelWatcher[interactive.RunnerStatus] {
+	return w.status.Subscribe()
 }
 
 func (w *wrappedService) Status() interactive.RunnerStatus {
@@ -74,5 +75,5 @@ func (w *wrappedService) publish(status interactive.RunnerStatus) {
 	w.hasPublished = true
 	w.last = fingerprint
 	w.publishMu.Unlock()
-	w.events.NotifySubscribers(status)
+	w.status.Store(status)
 }

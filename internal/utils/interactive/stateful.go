@@ -9,17 +9,21 @@ type RunnerStatus struct {
 	Error   error
 }
 
+// StatefulService and StatefulTester expose their status both as a value
+// (Status) and as a level (WatchStatus): the watcher is only a wake-up, so a
+// consumer that is woken reads Status and cannot act on a status that has already
+// been replaced. Each caller gets its own watcher and closes it when it stops.
 type StatefulService interface {
-	SubscribeStatus() *utils.EventSubscriber[RunnerStatus]
 	Status() RunnerStatus
+	WatchStatus() *utils.LevelWatcher[RunnerStatus]
 	Start()
 	Stop()
 	Restart()
 }
 
 type StatefulTester interface {
-	SubscribeStatus() *utils.EventSubscriber[TesterStatus]
 	Status() TesterStatus
+	WatchStatus() *utils.LevelWatcher[TesterStatus]
 	Test()
 	Reset()
 }

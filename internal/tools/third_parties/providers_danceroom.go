@@ -368,6 +368,7 @@ type DDFDOriginalVideoInfoProvider struct {
 	// (interactive.AvailabilitySource). SetEnabled runs on the preloader's
 	// configuration goroutine while getInfo runs on the manager's worker.
 	enabled *utils.Level[bool]
+	watcher *utils.LevelWatcher[bool]
 
 	manager *interactive.RemoteManager[api.DuDuOriginalVideoInfo]
 }
@@ -395,7 +396,7 @@ func (p *DDFDOriginalVideoInfoProvider) Current() bool {
 }
 
 func (p *DDFDOriginalVideoInfoProvider) Wakes() <-chan struct{} {
-	return p.enabled.Wakes()
+	return p.watcher.Wakes()
 }
 
 func (p *DDFDOriginalVideoInfoProvider) SetEnabled(enabled bool) {
@@ -404,11 +405,15 @@ func (p *DDFDOriginalVideoInfoProvider) SetEnabled(enabled bool) {
 
 func (p *DDFDOriginalVideoInfoProvider) Close() {
 	p.manager.Close()
+	p.watcher.Close()
 }
 
 func NewDDFOriginalVideoInfoProvider() *DDFDOriginalVideoInfoProvider {
+	enabled := utils.NewLevel(false)
+
 	p := &DDFDOriginalVideoInfoProvider{
-		enabled: utils.NewLevel(false),
+		enabled: enabled,
+		watcher: enabled.Subscribe(),
 	}
 	p.manager = interactive.NewRemoteManager(p.getInfo, nil, 100, 1)
 	p.manager.BindAvailability(p)

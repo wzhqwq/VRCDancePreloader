@@ -64,6 +64,9 @@ type baseManager[T any, R any] struct {
 	// download the catalog at all?"), and it is a utils.Level so that the reader
 	// re-reads it instead of trusting a wake-up (interactive.AvailabilitySource).
 	allowed *utils.Level[bool]
+	// watcher is the single consumer's view of that level (the availability loop
+	// of the manager below).
+	watcher *utils.LevelWatcher[bool]
 
 	processFn func(*R) *Catalog[T]
 
@@ -87,7 +90,7 @@ func (m *baseManager[T, R]) Current() bool {
 }
 
 func (m *baseManager[T, R]) Wakes() <-chan struct{} {
-	return m.allowed.Wakes()
+	return m.watcher.Wakes()
 }
 
 func (m *baseManager[T, R]) SetAllowed(allowed bool) {
@@ -96,10 +99,12 @@ func (m *baseManager[T, R]) SetAllowed(allowed bool) {
 
 func (m *baseManager[T, R]) shutdown() {
 	m.statefulCatalog.Close()
+	m.watcher.Close()
 }
 
 func (m *baseManager[T, R]) setup(id, name string, processFn func(*R) *Catalog[T]) {
 	m.allowed = utils.NewLevel(false)
+	m.watcher = m.allowed.Subscribe()
 	m.logger = utils.NewLogger(name)
 	m.processFn = processFn
 	m.catalogId = id

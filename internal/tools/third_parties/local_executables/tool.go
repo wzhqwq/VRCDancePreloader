@@ -1,8 +1,6 @@
 package local_executables
 
 import (
-	"sync/atomic"
-
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/service"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 )
@@ -17,11 +15,10 @@ var cfg Config
 // it would show up — as a panic on a closed channel, not as a silent half start.
 var stopCh = make(chan struct{})
 
-var ytdlpAvailableEm = utils.NewEventManager[bool]()
-
-// hasYtDlp is written by the pump below and read by YtDlpAvailable from arbitrary
-// goroutines (the providers' loops, the yt-dlp resolver), so it is atomic.
-var hasYtDlp atomic.Bool
+// ytdlpAvailable is the level every consumer reads: it is a utils.Level so that
+// a reader re-reads it when it is woken instead of trusting the wake-up, and so
+// that the value is always stored before the wake-up is sent.
+var ytdlpAvailable = utils.NewLevel(false)
 
 func initialize() error {
 	InitDeno()
@@ -30,7 +27,7 @@ func initialize() error {
 	ytdlpVerCh := Get("ytdlp").Subscribe()
 	denoVerCh := Get("deno").Subscribe()
 
-	hasYtDlp.Store(Get("ytdlp").Info().Version != "")
+	ytdlpAvailable.Store(Get("ytdlp").Info().Version != "")
 
 	go func() {
 		defer ytdlpVerCh.Close()
@@ -46,13 +43,11 @@ func initialize() error {
 				// event report yt-dlp as available. The version itself is what the
 				// answer depends on, and the event is what orders the read after the
 				// write that produced it.
-				available := Get("ytdlp").Info().Version != ""
-				hasYtDlp.Store(available)
-				ytdlpAvailableEm.NotifySubscribers(available)
+				ytdlpAvailable.Store(Get("ytdlp").Info().Version != "")
 			case <-denoVerCh.Channel:
-				if Get("deno").Info().Version != "" && hasYtDlp.Load() {
+				if Get("deno").Info().Version != "" && ytdlpAvailable.Current() {
 					// retry ytdlp when deno becomes available
-					ytdlpAvailableEm.NotifySubscribers(true)
+					ytdlpAvailable.Wake()
 				}
 			}
 		}
@@ -97,12 +92,15 @@ func UpdateConfig(c Config, field string) error {
 	return nil
 }
 
-func SubscribeYtDlpAvailability() *utils.EventSubscriber[bool] {
-	return ytdlpAvailableEm.SubscribeEvent()
+// YtDlpAvailability hands a consumer its own watcher of the availability level:
+// wait on Wakes, then read YtDlpAvailable (or the watcher's Current). The caller
+// closes it, so a provider loop that exits stops being woken.
+func YtDlpAvailability() *utils.LevelWatcher[bool] {
+	return ytdlpAvailable.Subscribe()
 }
 
 func YtDlpAvailable() bool {
-	return hasYtDlp.Load()
+	return ytdlpAvailable.Current()
 }
 
 func updateIfNotTheSame(initializer func(), old, new string) {

@@ -25,14 +25,20 @@ type ResourceAllowed bool
 // Update/Retry are called from the owning provider's loop goroutine, which is
 // also the only writer of the derived state.
 type ResourceGate struct {
-	level *utils.Level[bool]
+	level   *utils.Level[bool]
+	watcher *utils.LevelWatcher[bool]
 
 	allowed   bool
 	available bool
 }
 
 func newResourceGate() *ResourceGate {
-	return &ResourceGate{level: utils.NewLevel(false)}
+	level := utils.NewLevel(false)
+
+	return &ResourceGate{
+		level:   level,
+		watcher: level.Subscribe(),
+	}
 }
 
 // Current is the level the manager reads; it is also the read side of the gate.
@@ -40,9 +46,10 @@ func (g *ResourceGate) Current() bool {
 	return g.level.Current()
 }
 
-// Wakes implements utils.LevelSource.
+// Wakes implements utils.LevelSource (the gate has exactly one consumer: the
+// availability loop of the manager it is bound to).
 func (g *ResourceGate) Wakes() <-chan struct{} {
-	return g.level.Wakes()
+	return g.watcher.Wakes()
 }
 
 // Update recomputes the gate from both of its inputs and wakes the manager.

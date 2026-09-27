@@ -74,8 +74,8 @@ func NewBroadcastButton() *BroadcastButton {
 func (b *BroadcastButton) loop(stopCh <-chan struct{}) {
 	portCh := b.cfg.LiveServerPort().Subscribe()
 	defer portCh.Close()
-	statusCh := b.svc.SubscribeStatus()
-	defer statusCh.Close()
+	statusWatcher := b.svc.WatchStatus()
+	defer statusWatcher.Close()
 
 	b.SetRich(b.cfg.LiveServerPort().Get())
 	b.SetStatus(b.svc.Status())
@@ -86,8 +86,9 @@ func (b *BroadcastButton) loop(stopCh <-chan struct{}) {
 			return
 		case port := <-portCh.Channel:
 			b.SetRich(port)
-		case status := <-statusCh.Channel:
-			b.SetStatus(status)
+		case <-statusWatcher.Wakes():
+			// A wake-up is only "it may have changed": the status is read again.
+			b.SetStatus(b.svc.Status())
 		}
 	}
 }

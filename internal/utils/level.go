@@ -1,6 +1,9 @@
 package utils
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 // LevelSource is a value that can be read at any time, together with a wake-up
 // that says "read it again".
@@ -22,31 +25,35 @@ type LevelSource[T any] interface {
 	Wakes() <-chan struct{}
 }
 
-// Level is the reusable producer side of LevelSource.
+// Level is the producer side of a state: it holds a value and wakes its watchers
+// when the value is stored.
 //
 // Two rules make it work, and both are load-bearing:
 //
-//  1. the value is stored *before* the wake-up, so a reader that reacts to a
-//     wake-up always sees the value that caused it;
-//  2. wake-ups are coalesced (one pending is enough), because the reader reads
-//     the value instead of receiving it — so dropping a wake-up loses nothing.
+//  1. the value is stored *before* the wake-ups are sent, so a watcher that
+//     reacts to a wake-up always sees the value that caused it;
+//  2. wake-ups are coalesced (one pending per watcher is enough), because the
+//     watcher reads the value instead of receiving it — so dropping one loses
+//     nothing.
 //
 // A wake-up means "read it again", not "the value became true": storing a value
-// that turns something off wakes the readers too, and they see the new value.
+// that turns something off wakes the watchers too, and they see the new value.
+//
+// Every consumer gets its own watcher from Subscribe. Do not hand one watcher to
+// two consumers: a wake-up is delivered to a single watcher, so the other
+// consumer would keep sleeping (measured: with one shared wake slot only 1 of 8
+// readers was woken per store).
 type Level[T any] struct {
-	mu    sync.RWMutex
-	value T
-	wake  chan struct{}
+	mu       sync.RWMutex
+	value    T
+	watchers []*LevelWatcher[T]
 }
 
 func NewLevel[T any](initial T) *Level[T] {
-	return &Level[T]{
-		value: initial,
-		wake:  make(chan struct{}, 1),
-	}
+	return &Level[T]{value: initial}
 }
 
-// Current implements LevelSource.
+// Current returns the value as of now.
 func (l *Level[T]) Current() T {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -54,29 +61,97 @@ func (l *Level[T]) Current() T {
 	return l.value
 }
 
-// Wakes implements LevelSource.
-func (l *Level[T]) Wakes() <-chan struct{} {
-	return l.wake
-}
-
-// Store publishes a new value and wakes the readers.
+// Store publishes a new value and wakes every watcher.
 func (l *Level[T]) Store(value T) {
 	l.mu.Lock()
 	l.value = value
+	l.wakeLocked()
 	l.mu.Unlock()
-
-	l.Wake()
 }
 
-// Wake tells the readers to read Current again without changing it: for callers
+// Wake tells the watchers to read Current again without changing it: for callers
 // that know an external condition changed while the value itself did not (a
 // replaced HTTP client, for example, which makes previously failed work worth
 // another try).
 func (l *Level[T]) Wake() {
+	l.mu.RLock()
+	l.wakeLocked()
+	l.mu.RUnlock()
+}
+
+func (l *Level[T]) wakeLocked() {
+	for _, watcher := range l.watchers {
+		watcher.wakeUp()
+	}
+}
+
+// Subscribe returns a watcher for one consumer. Close it when the consumer stops,
+// so that it is no longer woken (the Level keeps its watchers forever otherwise).
+func (l *Level[T]) Subscribe() *LevelWatcher[T] {
+	watcher := &LevelWatcher[T]{
+		level: l,
+		wake:  make(chan struct{}, 1),
+	}
+
+	l.mu.Lock()
+	l.watchers = append(l.watchers, watcher)
+	l.mu.Unlock()
+
+	return watcher
+}
+
+// LevelWatcher is one consumer's view of a Level: it is a LevelSource itself, and
+// it is safe for use from a single consumer goroutine (the same discipline as an
+// EventSubscriber).
+type LevelWatcher[T any] struct {
+	level *Level[T]
+	wake  chan struct{}
+
+	closed atomic.Bool
+}
+
+// Current implements LevelSource: the watcher reads through to the level, so it
+// always sees the latest value, not the one that was current when it was woken.
+func (w *LevelWatcher[T]) Current() T {
+	return w.level.Current()
+}
+
+// Wakes implements LevelSource.
+func (w *LevelWatcher[T]) Wakes() <-chan struct{} {
+	return w.wake
+}
+
+// Close removes the watcher from its level. The wake-up channel is deliberately
+// *not* closed: a wake-up that is already pending stays harmless, and nothing can
+// ever send on a closed channel.
+func (w *LevelWatcher[T]) Close() {
+	if w.closed.CompareAndSwap(false, true) {
+		w.level.unsubscribe(w)
+	}
+}
+
+func (l *Level[T]) unsubscribe(watcher *LevelWatcher[T]) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	kept := l.watchers[:0]
+	for _, candidate := range l.watchers {
+		if candidate != watcher {
+			kept = append(kept, candidate)
+		}
+	}
+	l.watchers = kept
+}
+
+func (w *LevelWatcher[T]) wakeUp() {
+	if w.closed.Load() {
+		return
+	}
+
 	select {
-	case l.wake <- struct{}{}:
+	case w.wake <- struct{}{}:
 	default:
-		// A wake-up is already pending and the reader will read the value that is
-		// set right now, so this one adds nothing.
+		// A wake-up is already pending and this watcher will read the value that
+		// is set right now, so this one adds nothing.
 	}
 }

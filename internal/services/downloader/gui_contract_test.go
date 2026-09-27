@@ -13,8 +13,13 @@ import (
 // The queue window is not implemented yet, but downloadManager already exposes
 // the two things it will be built on, and the plan freezes both:
 //
-//	Subscribe()        *utils.EventSubscriber[ManagerChangeType]  // QueueChange / Stopped
-//	GetQueueSnapshot() []*ManagedTask                             // queue order, never nil
+//	WatchQueue()       *utils.LevelWatcher[[]string]  // the queue order, as state
+//	GetQueueSnapshot() []*ManagedTask                 // queue order, never nil
+//
+// The queue order is *state*: a consumer is woken and reads it, so a coalesced or
+// late wake-up loses nothing (review/09 §8.5). The manager has no lifecycle event
+// — Destroy only runs when the service stops, and the GUI learns about that from
+// the host service status it already watches.
 //
 // These tests pin that contract against the four mutations the queue actually
 // goes through (cancel, completion, interleaved Prioritize + creation, plain
@@ -47,61 +52,80 @@ func (h *gateHarness) assertSnapshot(what string, want ...string) {
 	}
 }
 
-// drainEvents empties whatever is already buffered, so that a later wait is
+// drainQueue empties whatever wake-up is already pending, so that a later wait is
 // about the operation under test rather than about an earlier one.
-func drainEvents(ch *utils.EventSubscriber[ManagerChangeType]) {
+func drainQueue(watcher *utils.LevelWatcher[[]string]) {
 	for {
 		select {
-		case <-ch.Channel:
+		case <-watcher.Wakes():
 		default:
 			return
 		}
 	}
 }
 
-// waitEvent asserts that the subscriber is told about an event of the given
-// kind. The channel is buffered and its sends are non blocking, so the wait has
-// to tolerate other events arriving first, but it must not tolerate silence.
-func waitEvent(t *testing.T, ch *utils.EventSubscriber[ManagerChangeType], want ManagerChangeType, what string) {
+// waitQueueOrder asserts that the consumer is woken *and* that the order it then
+// reads is the expected one. The wake-up slot is coalescing, so the wait has to
+// tolerate earlier ones being merged, but it must not tolerate silence.
+func waitQueueOrder(t *testing.T, watcher *utils.LevelWatcher[[]string], what string, want ...string) {
 	t.Helper()
 
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		select {
-		case got := <-ch.Channel:
-			if got == want {
-				return
+		case <-watcher.Wakes():
+			if got := watcher.Current(); !slices.Equal(got, want) {
+				t.Fatalf("%s: the order read after the wake-up = %v, want %v", what, got, want)
 			}
+			return
 		case <-time.After(time.Millisecond):
 		}
 	}
 
-	t.Fatalf("timed out waiting for a %v event (%s)", want, what)
+	t.Fatalf("timed out waiting for a queue change (%s)", what)
+}
+
+// Destroy is a lifecycle operation, not a queue change: it cancels the tasks and
+// leaves the queue state alone, and it deliberately announces nothing (the GUI
+// learns that the manager is going away from the host service status).
+func TestQueueContractOnDestroy(t *testing.T) {
+	h := newGateHarness(t, 2)
+	queue := h.dm.WatchQueue()
+	defer queue.Close()
+
+	h.requireTask("a")
+	before := slices.Clone(queue.Current())
+
+	h.dm.Destroy()
+
+	if got := queue.Current(); !slices.Equal(got, before) {
+		t.Fatalf("Destroy changed the queue state: %v -> %v", before, got)
+	}
 }
 
 // Cancelling a task removes it from the snapshot and announces the change.
 func TestQueueContractOnCancel(t *testing.T) {
 	h := newGateHarness(t, 2)
-	ch := h.dm.Subscribe()
-	defer ch.Close()
+	queue := h.dm.WatchQueue()
+	defer queue.Close()
 
 	for _, id := range []string{"a", "b", "c"} {
 		h.requireTask(id)
 	}
 	h.assertSnapshot("after creating three tasks", "a", "b", "c")
 
-	drainEvents(ch)
+	drainQueue(queue)
 	h.dm.CancelDownload("b")
 
 	h.assertSnapshot("after cancelling b", "a", "c")
-	waitEvent(t, ch, QueueChange, "cancelling a task")
+	waitQueueOrder(t, queue, "cancelling a task", "a", "c")
 }
 
 // Completing a task removes it from the snapshot and announces the change.
 func TestQueueContractOnCompletion(t *testing.T) {
 	h := newGateHarness(t, 1)
-	ch := h.dm.Subscribe()
-	defer ch.Close()
+	queue := h.dm.WatchQueue()
+	defer queue.Close()
 
 	h.requireTask("a")
 	h.requireTask("b")
@@ -119,7 +143,7 @@ func TestQueueContractOnCompletion(t *testing.T) {
 		"the completed task to leave the queue")
 
 	h.assertSnapshot("after a completed", "b")
-	waitEvent(t, ch, QueueChange, "a task completing")
+	waitQueueOrder(t, queue, "a task completing", "b")
 }
 
 // Interleaving Prioritize with new tasks is how the preloader assembles the
@@ -127,44 +151,44 @@ func TestQueueContractOnCompletion(t *testing.T) {
 // hear about it.
 func TestQueueContractOnInterleavedPrioritizeAndCreate(t *testing.T) {
 	h := newGateHarness(t, 2)
-	ch := h.dm.Subscribe()
-	defer ch.Close()
+	queue := h.dm.WatchQueue()
+	defer queue.Close()
 
 	h.requireTask("a")
 	h.requireTask("b")
 
-	drainEvents(ch)
+	drainQueue(queue)
 	h.dm.Prioritize("b")
 	h.assertSnapshot("after prioritizing b", "b", "a")
-	waitEvent(t, ch, QueueChange, "prioritizing b")
+	waitQueueOrder(t, queue, "prioritizing b", "b", "a")
 
-	drainEvents(ch)
+	drainQueue(queue)
 	h.requireTask("c")
 	h.assertSnapshot("after creating c", "b", "a", "c")
-	waitEvent(t, ch, QueueChange, "creating a task")
+	waitQueueOrder(t, queue, "creating a task", "b", "a", "c")
 
-	drainEvents(ch)
+	drainQueue(queue)
 	h.dm.Prioritize("c")
 	h.assertSnapshot("after prioritizing c", "c", "b", "a")
-	waitEvent(t, ch, QueueChange, "prioritizing c")
+	waitQueueOrder(t, queue, "prioritizing c", "c", "b", "a")
 }
 
 // A plain Prioritize moves the named task to the front and keeps the rest in
 // their previous relative order.
 func TestQueueContractOnPrioritize(t *testing.T) {
 	h := newGateHarness(t, 2)
-	ch := h.dm.Subscribe()
-	defer ch.Close()
+	queue := h.dm.WatchQueue()
+	defer queue.Close()
 
 	for _, id := range []string{"a", "b", "c", "d"} {
 		h.requireTask(id)
 	}
 
-	drainEvents(ch)
+	drainQueue(queue)
 	h.dm.Prioritize("c")
 
 	h.assertSnapshot("after prioritizing c", "c", "a", "b", "d")
-	waitEvent(t, ch, QueueChange, "prioritizing c")
+	waitQueueOrder(t, queue, "prioritizing c", "c", "a", "b", "d")
 }
 
 // The snapshot must skip a queued id that has no task instead of returning a nil
@@ -194,19 +218,4 @@ func TestQueueSnapshotIsEmptyBeforeAnythingIsQueued(t *testing.T) {
 	if got := dm.GetQueueSnapshot(); len(got) != 0 {
 		t.Fatalf("empty manager returned %d entries, want none", len(got))
 	}
-}
-
-// Destroy is the other half of the event contract: the GUI is told that the
-// manager is going away.
-func TestQueueContractOnDestroy(t *testing.T) {
-	h := newGateHarness(t, 2)
-	ch := h.dm.Subscribe()
-	defer ch.Close()
-
-	h.requireTask("a")
-
-	drainEvents(ch)
-	h.dm.Destroy()
-
-	waitEvent(t, ch, Stopped, "Destroy")
 }
