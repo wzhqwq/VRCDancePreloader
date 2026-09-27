@@ -19,12 +19,14 @@ import (
 
 type sitesSetting interactive.StatefulSetting[[]string]
 
+// settingSubset is one site's slice of the shared "allowed resources" list: it
+// keeps its own filtered value and republishes it when the full list changes.
 type settingSubset struct {
 	value    []string
 	filterFn func(string) bool
 	saveFn   func() error
 
-	em *utils.EventManager[[]string]
+	level *utils.Level[[]string]
 }
 
 func (s *settingSubset) Get() []string {
@@ -33,17 +35,20 @@ func (s *settingSubset) Get() []string {
 
 func (s *settingSubset) Save(value []string) error {
 	s.value = value
-	return s.saveFn()
+	if err := s.saveFn(); err != nil {
+		return err
+	}
+
+	// Publish the value to the level as well, the way setting.Save does: consumers
+	// read watcher.Current(), so a save made here has to land in the level too, or
+	// they would keep seeing the previous value.
+	s.level.Store(s.value)
+	return nil
 }
 
-func (s *settingSubset) Subscribe() *utils.EventSubscriber[[]string] {
-	return s.em.SubscribeEvent()
-}
-
-func (s *settingSubset) SubscribeWhether(whether func([]string) bool) *utils.EventSubscriber[bool] {
-	return utils.PipeEvent(s.em, func(in []string) (bool, bool) {
-		return whether(in), true
-	})
+// Watch hands the caller its own watcher of this subset's value level.
+func (s *settingSubset) Watch() *utils.LevelWatcher[[]string] {
+	return s.level.Subscribe()
 }
 
 func (s *settingSubset) setFullSet(full []string) {
@@ -52,21 +57,23 @@ func (s *settingSubset) setFullSet(full []string) {
 	})
 	if utils.IsArrayChanged(s.value, newValue) {
 		s.value = newValue
-		s.em.NotifySubscribers(s.value)
+		s.level.Store(s.value)
 	}
 }
 
 var _ sitesSetting = (*settingSubset)(nil)
 
 func newSettingSubset(full []string, filterFn func(string) bool, saveFn func() error) *settingSubset {
+	value := lo.Filter(full, func(item string, _ int) bool {
+		return filterFn(item)
+	})
+
 	return &settingSubset{
-		value: lo.Filter(full, func(item string, _ int) bool {
-			return filterFn(item)
-		}),
+		value:    value,
 		filterFn: filterFn,
 		saveFn:   saveFn,
 
-		em: utils.NewEventManager[[]string](),
+		level: utils.NewLevel(value),
 	}
 }
 
@@ -111,17 +118,20 @@ func (m *MultiSelectSites) update(value []string) {
 }
 
 func (m *MultiSelectSites) loop(stopCh <-chan struct{}) {
-	ch := m.setting.Subscribe()
-	defer ch.Close()
+	watcher := m.setting.Watch()
+	defer watcher.Close()
 
-	m.update(m.setting.Get())
+	m.update(watcher.Current())
 
 	for {
 		select {
 		case <-stopCh:
 			return
-		case value := <-ch.Channel:
-			m.update(value)
+		case <-watcher.Wakes():
+			// A wake-up means "it may have changed": the value that caused it is
+			// already stored in the watcher, so read that instead of re-deriving
+			// the setting (Get on a derived setting recomputes).
+			m.update(watcher.Current())
 		}
 	}
 }

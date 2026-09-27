@@ -242,16 +242,19 @@ func (c *Check) writeData(data binding.DataItem) {
 }
 
 func (c *Check) loop(stopCh <-chan struct{}) {
-	ch := c.setting.Subscribe()
-	c.updateValue(c.setting.Get())
-	defer ch.Close()
+	watcher := c.setting.Watch()
+	defer watcher.Close()
+	c.updateValue(watcher.Current())
 
 	for {
 		select {
 		case <-stopCh:
 			return
-		case value := <-ch.Channel:
-			c.updateValue(value)
+		case <-watcher.Wakes():
+			// A wake-up means "it may have changed": the value that caused it is
+			// already stored in the watcher, so read that instead of re-deriving
+			// the setting (Get on a derived setting recomputes).
+			c.updateValue(watcher.Current())
 		}
 	}
 }

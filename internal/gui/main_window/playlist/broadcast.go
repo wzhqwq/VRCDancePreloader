@@ -45,7 +45,7 @@ func NewBroadcastButton() *BroadcastButton {
 				input.NewInputWithRunner(svc, cfg.LiveServerPort(), i18n.T("label_broadcast_port")),
 				rich,
 			),
-			cfg.LiveServerEnabled(),
+			cfg.LiveServerEnabled().Watch,
 		),
 	)
 
@@ -72,23 +72,26 @@ func NewBroadcastButton() *BroadcastButton {
 }
 
 func (b *BroadcastButton) loop(stopCh <-chan struct{}) {
-	portCh := b.cfg.LiveServerPort().Subscribe()
-	defer portCh.Close()
+	portWatcher := b.cfg.LiveServerPort().Watch()
+	defer portWatcher.Close()
 	statusWatcher := b.svc.WatchStatus()
 	defer statusWatcher.Close()
 
-	b.SetRich(b.cfg.LiveServerPort().Get())
-	b.SetStatus(b.svc.Status())
+	b.SetRich(portWatcher.Current())
+	b.SetStatus(statusWatcher.Current())
 
 	for {
 		select {
 		case <-stopCh:
 			return
-		case port := <-portCh.Channel:
-			b.SetRich(port)
+		case <-portWatcher.Wakes():
+			// A wake-up means "it may have changed": the value that caused it is
+			// already stored in the watcher, so read that instead of the config
+			// field again.
+			b.SetRich(portWatcher.Current())
 		case <-statusWatcher.Wakes():
-			// A wake-up is only "it may have changed": the status is read again.
-			b.SetStatus(b.svc.Status())
+			// Same for the status: the service published it before waking.
+			b.SetStatus(statusWatcher.Current())
 		}
 	}
 }

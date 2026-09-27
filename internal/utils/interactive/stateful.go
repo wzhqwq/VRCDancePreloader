@@ -28,11 +28,18 @@ type StatefulTester interface {
 	Reset()
 }
 
+// StatefulSetting exposes a configuration value both as a value (Get) and as a
+// level (Watch): a consumer is woken and reads Get, so it can never render a
+// value that has already been replaced. Each caller gets its own watcher and
+// closes it when it stops.
+//
+// There is deliberately no SubscribeWhether: "tell me whether the predicate holds
+// after each change" is the consumer's own `if pred(setting.Get())` after a
+// wake-up.
 type StatefulSetting[T any] interface {
 	Get() T
 	Save(T) error
-	Subscribe() *utils.EventSubscriber[T]
-	SubscribeWhether(func(T) bool) *utils.EventSubscriber[bool]
+	Watch() *utils.LevelWatcher[T]
 }
 
 // StatefulRemoteData[T] used to live here: an interface with no implementer that

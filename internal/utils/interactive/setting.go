@@ -1,6 +1,7 @@
 package interactive
 
 import (
+	"sync"
 	"weak"
 
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
@@ -18,7 +19,7 @@ type setting[T any, C any] struct {
 	get func(C) T
 	set func(*C, T) error
 
-	em *utils.EventManager[T]
+	level *utils.Level[T]
 }
 
 func (s *setting[T, C]) Get() T {
@@ -36,18 +37,61 @@ func (s *setting[T, C]) Save(v T) error {
 		return err
 	}
 
-	s.em.NotifySubscribers(v)
+	s.level.Store(v)
 	return nil
 }
 
-func (s *setting[T, C]) Subscribe() *utils.EventSubscriber[T] {
-	return s.em.SubscribeEvent()
+// Watch hands the caller its own watcher of the setting's value level: wait on
+// Wakes, then read Get (or the watcher's Current) for the value.
+func (s *setting[T, C]) Watch() *utils.LevelWatcher[T] {
+	return s.level.Subscribe()
 }
 
-func (s *setting[T, C]) SubscribeWhether(whether func(T) bool) *utils.EventSubscriber[bool] {
-	return utils.PipeEvent(s.em, func(in T) (bool, bool) {
-		return whether(in), true
+// derivedLevel keeps a level of Out in sync with a setting of In: the value is
+// re-derived every time the upstream setting is stored.
+//
+// The pump is started on the first Watch and then lives as long as the process.
+// Settings are process-wide singletons (config.Manager getters over the weak
+// cache below), so there is nothing to stop it for.
+type derivedLevel[In any, Out any] struct {
+	level    *utils.Level[Out]
+	upstream StatefulSetting[In]
+	derive   func() Out
+
+	once sync.Once
+}
+
+func newDerivedLevel[In any, Out any](upstream StatefulSetting[In], derive func() Out) *derivedLevel[In, Out] {
+	return &derivedLevel[In, Out]{
+		level:    utils.NewLevel(derive()),
+		upstream: upstream,
+		derive:   derive,
+	}
+}
+
+func (d *derivedLevel[In, Out]) watch() *utils.LevelWatcher[Out] {
+	d.once.Do(func() {
+		// This watcher (and the pump) belongs to the setting itself rather than to
+		// one consumer, so it is never closed: a derived setting is built once per
+		// config field and lives as long as the process.
+		upstream := d.upstream.Watch()
+
+		// The level was seeded when the setting was built, but the upstream can
+		// have moved since without a pump running. Re-derive once here, before the
+		// first subscriber starts reading Current().
+		d.level.Store(d.derive())
+
+		go func() {
+			for {
+				select {
+				case <-upstream.Wakes():
+					d.level.Store(d.derive())
+				}
+			}
+		}()
 	})
+
+	return d.level.Subscribe()
 }
 
 type TypedSettingCache[T any, C any] struct {
@@ -71,7 +115,7 @@ func (c TypedSettingCache[T, C]) NewSetting(
 		field: field,
 		get:   get,
 		set:   set,
-		em:    utils.NewEventManager[T](),
+		level: utils.NewLevel(get(c.m.Current())),
 	}
 	c.cache[field] = weak.Make(s)
 	return s
@@ -133,19 +177,25 @@ type readonlyDerivedSetting[In any, Out any] struct {
 	get func(In) Out
 
 	s StatefulSetting[In]
+
+	derived *derivedLevel[In, Out]
 }
 
-func NewReadonlyDerivedSetting[In any, Out any](s StatefulSetting[In], get func(In) Out) StatefulSetting[Out] {
-	return &readonlyDerivedSetting[In, Out]{
+// newReadonlyDerivedSetting is the only place that wires derived. A derived
+// setting built without it panics on the first Watch (nil d.derived), so every
+// constructor — including NewDerivedSetting — has to go through here.
+func newReadonlyDerivedSetting[In any, Out any](s StatefulSetting[In], get func(In) Out) *readonlyDerivedSetting[In, Out] {
+	d := &readonlyDerivedSetting[In, Out]{
 		get: get,
 		s:   s,
 	}
+	d.derived = newDerivedLevel(s, d.Get)
+
+	return d
 }
 
-func (d *readonlyDerivedSetting[In, Out]) SubscribeWhether(whether func(Out) bool) *utils.EventSubscriber[bool] {
-	return d.s.SubscribeWhether(func(in In) bool {
-		return whether(d.get(in))
-	})
+func NewReadonlyDerivedSetting[In any, Out any](s StatefulSetting[In], get func(In) Out) StatefulSetting[Out] {
+	return newReadonlyDerivedSetting(s, get)
 }
 
 func (d *readonlyDerivedSetting[In, Out]) Get() Out {
@@ -156,14 +206,12 @@ func (d *readonlyDerivedSetting[In, Out]) Save(_ Out) error {
 	panic("you are saving a readonly setting")
 }
 
-func (d *readonlyDerivedSetting[In, Out]) Subscribe() *utils.EventSubscriber[Out] {
-	return utils.PipeSubEvent(d.s.Subscribe(), func(in In) (Out, bool) {
-		return d.get(in), true
-	})
+func (d *readonlyDerivedSetting[In, Out]) Watch() *utils.LevelWatcher[Out] {
+	return d.derived.watch()
 }
 
 type derivedSetting[In any, Out any] struct {
-	readonlyDerivedSetting[In, Out]
+	*readonlyDerivedSetting[In, Out]
 
 	set func(Out) In
 }
@@ -174,10 +222,7 @@ func (d *derivedSetting[In, Out]) Save(t Out) error {
 
 func NewDerivedSetting[In any, Out any](s StatefulSetting[In], get func(In) Out, set func(Out) In) StatefulSetting[Out] {
 	return &derivedSetting[In, Out]{
-		readonlyDerivedSetting: readonlyDerivedSetting[In, Out]{
-			get: get,
-			s:   s,
-		},
-		set: set,
+		readonlyDerivedSetting: newReadonlyDerivedSetting(s, get),
+		set:                    set,
 	}
 }

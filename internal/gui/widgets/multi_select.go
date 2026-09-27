@@ -46,17 +46,20 @@ func NewMultiSelect(options []input.NamedOption[string], setting interactive.Sta
 var _ fyne.Tappable = (*MultiSelect)(nil)
 
 func (m *MultiSelect) loop(stopCh <-chan struct{}) {
-	ch := m.setting.Subscribe()
-	defer ch.Close()
+	watcher := m.setting.Watch()
+	defer watcher.Close()
 
-	m.update(m.setting.Get())
+	m.update(watcher.Current())
 
 	for {
 		select {
 		case <-stopCh:
 			return
-		case value := <-ch.Channel:
-			m.update(value)
+		case <-watcher.Wakes():
+			// A wake-up means "it may have changed": the value that caused it is
+			// already stored in the watcher, so read that instead of re-deriving
+			// the setting (Get on a derived setting recomputes).
+			m.update(watcher.Current())
 		}
 	}
 }

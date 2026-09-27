@@ -11,23 +11,25 @@ type AvailableWhen struct {
 
 	item fyne.CanvasObject
 
-	getAndSub GetAndSubBool
+	// watch hands out one watcher per loop run. The widget needs exactly two
+	// things from the state it follows — the value now and a wake-up for "it may
+	// have changed" — and a utils.LevelWatcher provides both, so it never asks
+	// the setting for a (recomputed) value and needs no interface of its own
+	// (AGENTS.md §8 rule 1). A function rather than a stored watcher: the
+	// renderer — and with it this widget instance — is built again whenever it
+	// is recreated, while a watcher handed out here is closed when its loop ends.
+	watch func() *utils.LevelWatcher[bool]
 
 	UseDisable bool
 
 	Reverse bool
 }
 
-type GetAndSubBool interface {
-	Get() bool
-	Subscribe() *utils.EventSubscriber[bool]
-}
-
-func NewAvailableWhen(item fyne.CanvasObject, getAndSub GetAndSubBool) *AvailableWhen {
+func NewAvailableWhen(item fyne.CanvasObject, watch func() *utils.LevelWatcher[bool]) *AvailableWhen {
 	a := &AvailableWhen{
 		item: item,
 
-		getAndSub: getAndSub,
+		watch: watch,
 	}
 	a.AddLifeCycleFn(a.loop)
 	a.ExtendBaseWidget(a)
@@ -35,11 +37,11 @@ func NewAvailableWhen(item fyne.CanvasObject, getAndSub GetAndSubBool) *Availabl
 	return a
 }
 
-func NewAvailableWhenNot(item fyne.CanvasObject, getAndSub GetAndSubBool) *AvailableWhen {
+func NewAvailableWhenNot(item fyne.CanvasObject, watch func() *utils.LevelWatcher[bool]) *AvailableWhen {
 	a := &AvailableWhen{
 		item: item,
 
-		getAndSub: getAndSub,
+		watch: watch,
 
 		Reverse: true,
 	}
@@ -50,17 +52,20 @@ func NewAvailableWhenNot(item fyne.CanvasObject, getAndSub GetAndSubBool) *Avail
 }
 
 func (a *AvailableWhen) loop(stopCh <-chan struct{}) {
-	ch := a.getAndSub.Subscribe()
-	defer ch.Close()
+	watcher := a.watch()
+	defer watcher.Close()
 
-	a.applyAvailable(a.getAndSub.Get())
+	a.applyAvailable(watcher.Current())
 
 	for {
 		select {
 		case <-stopCh:
 			return
-		case available := <-ch.Channel:
-			a.applyAvailable(available)
+		case <-watcher.Wakes():
+			// A wake-up means "it may have changed": the value that caused it is
+			// already stored in the watcher, so read that instead of re-deriving
+			// the setting (Get on a derived setting recomputes).
+			a.applyAvailable(watcher.Current())
 		}
 	}
 }

@@ -3,6 +3,7 @@ package input
 import (
 	"strconv"
 	"strings"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -22,6 +23,52 @@ type AcceptedValue interface {
 
 type AdapterSetting struct {
 	s any
+
+	level *utils.Level[string]
+	once  sync.Once
+}
+
+// Watch hands the caller its own watcher of the adapted string value: the adapter
+// re-formats the wrapped setting every time that setting changes.
+//
+// A setting type the adapter does not know yields a watcher that never wakes
+// instead of the nil the old Subscribe returned — a nil subscriber panics on
+// Close, and this type is only reachable through a mistake anyway.
+func (s *AdapterSetting) Watch() *utils.LevelWatcher[string] {
+	s.once.Do(func() {
+		s.level = utils.NewLevel(s.Get())
+
+		upstream, ok := s.upstream()
+		if !ok {
+			return
+		}
+
+		go func() {
+			for {
+				select {
+				case <-upstream:
+					s.level.Store(s.Get())
+				}
+			}
+		}()
+	})
+
+	return s.level.Subscribe()
+}
+
+// upstream is the wake-up channel of the wrapped setting, when its type is one
+// this adapter supports.
+func (s *AdapterSetting) upstream() (<-chan struct{}, bool) {
+	if intSetting, ok := s.s.(interactive.StatefulSetting[int]); ok {
+		return intSetting.Watch().Wakes(), true
+	}
+	if floatSetting, ok := s.s.(interactive.StatefulSetting[float64]); ok {
+		return floatSetting.Watch().Wakes(), true
+	}
+	if stringSetting, ok := s.s.(interactive.StatefulSetting[string]); ok {
+		return stringSetting.Watch().Wakes(), true
+	}
+	return nil, false
 }
 
 func (s *AdapterSetting) Get() string {
@@ -54,40 +101,6 @@ func (s *AdapterSetting) Save(value string) error {
 	}
 	if stringSetting, ok := s.s.(interactive.StatefulSetting[string]); ok {
 		return stringSetting.Save(value)
-	}
-	return nil
-}
-
-func (s *AdapterSetting) Subscribe() *utils.EventSubscriber[string] {
-	if intSetting, ok := s.s.(interactive.StatefulSetting[int]); ok {
-		return utils.PipeSubEvent(intSetting.Subscribe(), func(in int) (string, bool) {
-			return strconv.Itoa(intSetting.Get()), true
-		})
-	}
-	if floatSetting, ok := s.s.(interactive.StatefulSetting[float64]); ok {
-		return utils.PipeSubEvent(floatSetting.Subscribe(), func(in float64) (string, bool) {
-			return strconv.FormatFloat(floatSetting.Get(), 'f', -1, 64), true
-		})
-	}
-	if stringSetting, ok := s.s.(interactive.StatefulSetting[string]); ok {
-		return stringSetting.Subscribe()
-	}
-	return nil
-}
-
-func (s *AdapterSetting) SubscribeWhether(whether func(string) bool) *utils.EventSubscriber[bool] {
-	if intSetting, ok := s.s.(interactive.StatefulSetting[int]); ok {
-		return intSetting.SubscribeWhether(func(in int) bool {
-			return whether(strconv.Itoa(intSetting.Get()))
-		})
-	}
-	if floatSetting, ok := s.s.(interactive.StatefulSetting[float64]); ok {
-		return floatSetting.SubscribeWhether(func(in float64) bool {
-			return whether(strconv.FormatFloat(floatSetting.Get(), 'f', -1, 64))
-		})
-	}
-	if stringSetting, ok := s.s.(interactive.StatefulSetting[string]); ok {
-		return stringSetting.SubscribeWhether(whether)
 	}
 	return nil
 }
@@ -206,16 +219,19 @@ func (i *InputWithSave) validate(value string) error {
 }
 
 func (i *InputWithSave) loop(stopCh <-chan struct{}) {
-	ch := i.Setting.Subscribe()
-	i.updateValue(i.Setting.Get())
-	defer ch.Close()
+	watcher := i.Setting.Watch()
+	defer watcher.Close()
+	i.updateValue(watcher.Current())
 
 	for {
 		select {
 		case <-stopCh:
 			return
-		case value := <-ch.Channel:
-			i.updateValue(value)
+		case <-watcher.Wakes():
+			// A wake-up means "it may have changed": the adapter has already
+			// formatted and stored the new value, so read that instead of asking
+			// the wrapped setting again.
+			i.updateValue(watcher.Current())
 		}
 	}
 }

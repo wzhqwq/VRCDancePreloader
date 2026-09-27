@@ -37,15 +37,17 @@ func NewInputWithRunner[T AcceptedValue](service interactive.StatefulService, se
 func (i *InputWithRunner) loop(stopCh <-chan struct{}) {
 	watcher := i.service.WatchStatus()
 	defer watcher.Close()
-	i.updateStatus(i.service.Status())
+	i.updateStatus(watcher.Current())
 
 	for {
 		select {
 		case <-stopCh:
 			return
 		case <-watcher.Wakes():
-			// A wake-up is only "it may have changed": the status is read again.
-			i.updateStatus(i.service.Status())
+			// A wake-up means "it may have changed": the published status is
+			// already stored in the watcher, so read that instead of asking the
+			// service (whose Status reads its live fields).
+			i.updateStatus(watcher.Current())
 		}
 	}
 }

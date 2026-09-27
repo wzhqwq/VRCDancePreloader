@@ -16,7 +16,6 @@ import (
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/host"
 	"github.com/wzhqwq/VRCDancePreloader/internal/services/preloader"
 	"github.com/wzhqwq/VRCDancePreloader/internal/tools/requesting"
-	"github.com/wzhqwq/VRCDancePreloader/internal/utils"
 	"github.com/wzhqwq/VRCDancePreloader/internal/utils/interactive"
 )
 
@@ -76,20 +75,6 @@ func createProxySettingsContent(cfg *config.Manager) fyne.CanvasObject {
 	)
 }
 
-type youtubeApiGetAndSub struct {
-	cfg *config.Manager
-}
-
-func (y *youtubeApiGetAndSub) Get() bool {
-	return y.cfg.ThirdPartyBiliBiliMode().Get() == "api"
-}
-
-func (y *youtubeApiGetAndSub) Subscribe() *utils.EventSubscriber[bool] {
-	return y.cfg.ThirdPartyYoutubeMode().SubscribeWhether(func(mode string) bool {
-		return mode == "api"
-	})
-}
-
 func createThirdPartySettingsContent(cfg *config.Manager) fyne.CanvasObject {
 	modeOptions := []input.NamedOption[string]{
 		{"disabled", i18n.T("option_via_disabled")},
@@ -102,7 +87,12 @@ func createThirdPartySettingsContent(cfg *config.Manager) fyne.CanvasObject {
 		input.NewHRadioGroup(i18n.T("label_yt_mode"), modeOptions, cfg.ThirdPartyYoutubeMode()),
 		interactive_widgets.NewAvailableWhen(
 			input.NewInputWithSave(cfg.SecretYoutubeAPIKey(), i18n.T("label_yt_api_key")),
-			&youtubeApiGetAndSub{cfg},
+			// The API key only applies to the api mode of *YouTube*: the derived
+			// setting makes the value and the wake-up come from the same source
+			// (they used to be read from different settings, see the plan §9.8).
+			interactive.NewReadonlyDerivedSetting(cfg.ThirdPartyYoutubeMode(), func(mode string) bool {
+				return mode == "api"
+			}).Watch,
 		),
 		input.NewHRadioGroup(i18n.T("label_bili_mode"), modeOptions, cfg.ThirdPartyBiliBiliMode()),
 		config_widgets.NewAllowedResources(cfg),
@@ -157,7 +147,7 @@ func createPreloadSettingsContent(cfg *config.Manager) fyne.CanvasObject {
 							func(rooms []string) bool {
 								return lo.Contains(rooms, preloader.DuDuFitDanceRoomName)
 							},
-						),
+						).Watch,
 					),
 				),
 				i18n.T("label_when_fallback"),
@@ -167,7 +157,7 @@ func createPreloadSettingsContent(cfg *config.Manager) fyne.CanvasObject {
 				func(rooms []string) bool {
 					return len(rooms) > 0
 				},
-			),
+			).Watch,
 		),
 	)
 }

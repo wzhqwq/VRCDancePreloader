@@ -137,8 +137,8 @@ func (d *DownloadableBinaryGui) CreateRenderer() fyne.WidgetRenderer {
 
 	box := container.NewVBox(
 		container.NewHBox(name, customCb),
-		interactive_widgets.NewAvailableWhen(customInput, d.checkSetting),
-		interactive_widgets.NewAvailableWhenNot(operations, d.checkSetting),
+		interactive_widgets.NewAvailableWhen(customInput, d.checkSetting.Watch),
+		interactive_widgets.NewAvailableWhenNot(operations, d.checkSetting.Watch),
 	)
 
 	r := &downloadableBinaryRenderer{

@@ -45,15 +45,17 @@ func NewInputWithTester(tester interactive.StatefulTester, setting interactive.S
 func (t *InputWithTester) loop(stopCh <-chan struct{}) {
 	watcher := t.tester.WatchStatus()
 	defer watcher.Close()
-	t.updateStatus(t.tester.Status())
+	t.updateStatus(watcher.Current())
 
 	for {
 		select {
 		case <-stopCh:
 			return
 		case <-watcher.Wakes():
-			// A wake-up is only "it may have changed": the status is read again.
-			t.updateStatus(t.tester.Status())
+			// A wake-up means "it may have changed": the published status is
+			// already stored in the watcher, so read that instead of asking the
+			// tester (whose Status assembles the live fields).
+			t.updateStatus(watcher.Current())
 		}
 	}
 }

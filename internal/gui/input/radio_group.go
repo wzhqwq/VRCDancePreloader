@@ -123,16 +123,19 @@ func (r *RadioGroup[T]) itemTapped(idx int) {
 }
 
 func (r *RadioGroup[T]) loop(stopCh <-chan struct{}) {
-	ch := r.setting.Subscribe()
-	r.updateValue(r.setting.Get(), true)
-	defer ch.Close()
+	watcher := r.setting.Watch()
+	defer watcher.Close()
+	r.updateValue(watcher.Current(), true)
 
 	for {
 		select {
 		case <-stopCh:
 			return
-		case value := <-ch.Channel:
-			r.updateValue(value, true)
+		case <-watcher.Wakes():
+			// A wake-up means "it may have changed": the value that caused it is
+			// already stored in the watcher, so read that instead of re-deriving
+			// the setting (Get on a derived setting recomputes).
+			r.updateValue(watcher.Current(), true)
 			fyne.Do(r.Refresh)
 		}
 	}
