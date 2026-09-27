@@ -48,49 +48,43 @@ func assertSteps(t *testing.T, steps []gateStep) {
 		if (woken > 0) != step.wake {
 			t.Fatalf("step %d (%s): got %d wake-ups, want wake=%v", i, step.name, woken, step.wake)
 		}
-		if got := gate.Available(); got != step.avail {
-			t.Fatalf("step %d (%s): Available()=%v, want %v", i, step.name, got, step.avail)
+		if got := gate.Current(); got != step.avail {
+			t.Fatalf("step %d (%s): Current()=%v, want %v", i, step.name, got, step.avail)
 		}
 	}
 }
 
-// TestResourceGateWakesWhenItBecomesSatisfied covers the two ways a gate can
-// turn usable, including the one that 0eed86d fixed: the permission was granted
-// long before the dance room catalog finished loading.
-func TestResourceGateWakesWhenItBecomesSatisfied(t *testing.T) {
+// TestResourceGateTracksItsInputs covers the two ways a gate can turn usable,
+// including the one that 0eed86d fixed: the permission was granted long before
+// the dance room catalog finished loading.
+//
+// Every update wakes the manager, usable or not: a wake-up only means "read the
+// level again", and the manager ignores an unusable gate (see
+// interactive's TestAvailabilityWakeUpsAreIgnoredWhileUnavailable). Keeping the
+// wake-up unconditional is what lets the gate be a thin layer over utils.Level
+// instead of re-implementing "did it become true?".
+func TestResourceGateTracksItsInputs(t *testing.T) {
 	assertSteps(t, []gateStep{
-		{"permission only", func(g *ResourceGate) { g.Update(allow(true), ready(false)) }, false, false},
+		{"permission only", func(g *ResourceGate) { g.Update(allow(true), ready(false)) }, true, false},
 		{"the catalog data arrives", func(g *ResourceGate) { g.Update(allow(true), ready(true)) }, true, true},
-		{"the data goes away again", func(g *ResourceGate) { g.Update(allow(true), ready(false)) }, false, false},
+		{"the data goes away again", func(g *ResourceGate) { g.Update(allow(true), ready(false)) }, true, false},
 	})
 
 	assertSteps(t, []gateStep{
-		{"data only", func(g *ResourceGate) { g.Update(allow(false), ready(true)) }, false, false},
+		{"data only", func(g *ResourceGate) { g.Update(allow(false), ready(true)) }, true, false},
 		{"the user enables the resource", func(g *ResourceGate) { g.Update(allow(true), ready(true)) }, true, true},
 	})
 }
 
-// TestResourceGateStaysSilentWhileUnsatisfied pins the fact that the manager is
-// never woken while the gate is unusable.
-func TestResourceGateStaysSilentWhileUnsatisfied(t *testing.T) {
-	assertSteps(t, []gateStep{
-		{"neither", func(g *ResourceGate) { g.Update(allow(false), ready(false)) }, false, false},
-		{"data only", func(g *ResourceGate) { g.Update(allow(false), ready(true)) }, false, false},
-		{"permission revoked", func(g *ResourceGate) { g.Update(allow(false), ready(false)) }, false, false},
-		{"data gone", func(g *ResourceGate) { g.Update(allow(true), ready(false)) }, false, false},
-		{"retry while unsatisfied", func(g *ResourceGate) { g.Retry() }, false, false},
-	})
-}
-
-// TestResourceGateRetryWakesWhileSatisfied covers the "a new HTTP client
-// replaced the old one" path: the inputs did not change, but the fetches that
-// failed with the old client are worth another try.
-func TestResourceGateRetryWakesWhileSatisfied(t *testing.T) {
+// TestResourceGateRetryWakes covers the "a new HTTP client replaced the old one"
+// path: the inputs did not change, but the fetches that failed with the old
+// client are worth another try.
+func TestResourceGateRetryWakes(t *testing.T) {
 	assertSteps(t, []gateStep{
 		{"satisfied", func(g *ResourceGate) { g.Update(allow(true), ready(true)) }, true, true},
 		{"retry", func(g *ResourceGate) { g.Retry() }, true, true},
-		{"permission lost", func(g *ResourceGate) { g.Update(allow(false), ready(true)) }, false, false},
-		{"retry while unsatisfied", func(g *ResourceGate) { g.Retry() }, false, false},
+		{"permission lost", func(g *ResourceGate) { g.Update(allow(false), ready(true)) }, true, false},
+		{"retry while unsatisfied", func(g *ResourceGate) { g.Retry() }, true, false},
 		{"permission back", func(g *ResourceGate) { g.Update(allow(true), ready(true)) }, true, true},
 	})
 }
@@ -118,29 +112,29 @@ func TestResourceGateCoalescesWakes(t *testing.T) {
 	}
 }
 
-// TestResourceGateAvailableIsTheLevelTheManagerReads is the read side of the
-// gate: it is what the manager consults when it is woken, so it has to track the
-// inputs even when no wake-up is signalled.
-func TestResourceGateAvailableIsTheLevelTheManagerReads(t *testing.T) {
+// TestResourceGateCurrentIsTheLevelTheManagerReads is the read side of the gate:
+// it is what the manager consults when it is woken, so it has to track the inputs
+// even when no wake-up is signalled.
+func TestResourceGateCurrentIsTheLevelTheManagerReads(t *testing.T) {
 	gate := newResourceGate()
-	if gate.Available() {
+	if gate.Current() {
 		t.Fatal("a fresh gate must not be available")
 	}
 
 	// Unsatisfied updates must still move the level, so that a manager woken by
 	// something else reads the truth.
 	gate.Update(allow(true), ready(false))
-	if gate.Available() {
+	if gate.Current() {
 		t.Fatal("the gate must not be available while the condition is missing")
 	}
 
 	gate.Update(allow(false), ready(true))
-	if gate.Available() {
+	if gate.Current() {
 		t.Fatal("the gate must not be available while the permission is missing")
 	}
 
 	gate.Update(allow(true), ready(true))
-	if !gate.Available() {
+	if !gate.Current() {
 		t.Fatal("the gate has to be available after allowed && available")
 	}
 }

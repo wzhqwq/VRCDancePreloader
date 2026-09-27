@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/samber/lo"
@@ -364,18 +363,17 @@ func newDuDuFitDanceProvider() ResourceProvider {
 }
 
 type DDFDOriginalVideoInfoProvider struct {
-	// enabled is the level its manager reads, and wake tells it to read it again
-	// (see interactive.AvailabilitySource). SetEnabled runs on the preloader's
-	// configuration goroutine while getInfo runs on the manager's worker, hence
-	// the atomic.
-	enabled atomic.Bool
-	wake    chan struct{}
+	// enabled is the level its manager reads, as a utils.Level so that the reader
+	// re-reads it instead of trusting a wake-up
+	// (interactive.AvailabilitySource). SetEnabled runs on the preloader's
+	// configuration goroutine while getInfo runs on the manager's worker.
+	enabled *utils.Level[bool]
 
 	manager *interactive.RemoteManager[api.DuDuOriginalVideoInfo]
 }
 
 func (p *DDFDOriginalVideoInfoProvider) getInfo(id string, ctx context.Context) (api.DuDuOriginalVideoInfo, error) {
-	if !p.enabled.Load() {
+	if !p.enabled.Current() {
 		return api.DuDuOriginalVideoInfo{}, errDuDuFitDanceOriginalVideoDisabled
 	}
 
@@ -390,26 +388,18 @@ func (p *DDFDOriginalVideoInfoProvider) Info(id string) *interactive.RemoteHandl
 	return p.manager.Acquire(id)
 }
 
-// Available and Wakes make the provider the availability source of its own
+// Current and Wakes make the provider the availability source of its own
 // manager: its info may only be fetched while the preloader has it enabled.
-func (p *DDFDOriginalVideoInfoProvider) Available() bool {
-	return p.enabled.Load()
+func (p *DDFDOriginalVideoInfoProvider) Current() bool {
+	return p.enabled.Current()
 }
 
 func (p *DDFDOriginalVideoInfoProvider) Wakes() <-chan struct{} {
-	return p.wake
+	return p.enabled.Wakes()
 }
 
 func (p *DDFDOriginalVideoInfoProvider) SetEnabled(enabled bool) {
 	p.enabled.Store(enabled)
-
-	if enabled {
-		select {
-		case p.wake <- struct{}{}:
-		default:
-			// A wake-up is already pending and the reader re-reads the level.
-		}
-	}
 }
 
 func (p *DDFDOriginalVideoInfoProvider) Close() {
@@ -418,7 +408,7 @@ func (p *DDFDOriginalVideoInfoProvider) Close() {
 
 func NewDDFOriginalVideoInfoProvider() *DDFDOriginalVideoInfoProvider {
 	p := &DDFDOriginalVideoInfoProvider{
-		wake: make(chan struct{}, 1),
+		enabled: utils.NewLevel(false),
 	}
 	p.manager = interactive.NewRemoteManager(p.getInfo, nil, 100, 1)
 	p.manager.BindAvailability(p)

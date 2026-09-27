@@ -139,18 +139,12 @@ type GetFn[T any] func(id string, ctx context.Context) (T, error)
 // AvailabilitySource is what a RemoteManager asks two things: "may I fetch now?"
 // and "tell me when that answer may have changed".
 //
-// The wake-up carries no value on purpose. The manager reads Available when it
-// handles a wake-up, so a dropped or duplicated wake-up cannot leave it with a
-// stale answer, while an edge-triggered signal that carries the new value can
-// (review/09 §2.5, review/02 A7). Producers are expected to coalesce: one
-// pending wake-up is enough, because the receiver re-reads the level anyway.
-type AvailabilitySource interface {
-	// Available reports whether the resource may be fetched right now.
-	Available() bool
-	// Wakes returns the wake-up channel: a receive means "Available may have
-	// changed", and the value is never read.
-	Wakes() <-chan struct{}
-}
+// It is the bool-shaped case of utils.LevelSource: the wake-up carries no value
+// on purpose, because the manager reads Current when it handles a wake-up. A
+// dropped or duplicated wake-up therefore cannot leave it with a stale answer,
+// while an edge-triggered signal that carries the new value can (review/09 §2.5,
+// review/02 A7).
+type AvailabilitySource = utils.LevelSource[bool]
 
 type RemoteManager[T any] struct {
 	mu sync.RWMutex
@@ -481,14 +475,14 @@ func (m *RemoteManager[T]) availabilityLoop() {
 	// Reading it once before waiting covers a resource that was already available
 	// when this loop started: its wake-up was sent before the subscription
 	// existed and would otherwise be lost.
-	if availability.Available() {
+	if availability.Current() {
 		m.retryUnavailableEntries()
 	}
 
 	for {
 		select {
 		case <-wake:
-			if availability.Available() {
+			if availability.Current() {
 				m.retryUnavailableEntries()
 			}
 

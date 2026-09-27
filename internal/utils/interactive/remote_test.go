@@ -222,7 +222,7 @@ func newStubAvailability() *stubAvailability {
 	return &stubAvailability{wake: make(chan struct{}, 1)}
 }
 
-func (s *stubAvailability) Available() bool {
+func (s *stubAvailability) Current() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
